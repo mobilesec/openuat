@@ -51,8 +51,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			Assert.assertTrue(SimpleKeyAgreement.skip1024Modulus.isProbablePrime(100));
 			// TODO: where is my q ??
 			//Assert.True(SimpleKeyAgreement.q.isProbablePrime(100));
-			// TODO: is that correct? it should be 1024 Bits!!
-			Assert.assertFalse(SimpleKeyAgreement.skip1024Modulus.bitCount() < 256);
+			Assert.assertFalse(SimpleKeyAgreement.skip1024Modulus.bitLength() < 1024);
 			// TODO: where is my q ??
 			//Assert.True(SimpleKeyAgreement.skip1024Modulus.subtract(BigInteger.ONE).mod(q).Equals(BigInteger.ZERO));
 			Assert.assertFalse(SimpleKeyAgreement.skip1024Base.equals(BigInteger.ONE));
@@ -74,7 +73,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 			
 			// we can get the key once directly after initialization
-			byte[] pubKey = ka.getPublicKey();
+			ka.getPublicKey();
 		}
 
 		public void testStates_getPublicKey_wrongState() throws KeyAgreementProtocolException, InternalApplicationException
@@ -82,10 +81,10 @@ public class SimpleKeyAgreementTest extends TestCase {
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 			
 			// we can get the key once directly after initialization
-			byte[] pubKey = ka.getPublicKey();
+			ka.getPublicKey();
 			// this should produce an exception
 			try {
-				byte[] pubKey2 = ka.getPublicKey();
+				ka.getPublicKey();
 				Assert.fail();
 			} catch (KeyAgreementProtocolException e) {
 				Assert.assertTrue(true);
@@ -98,7 +97,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			// the second object is just for getting a valid public key
 			SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
 			
-			byte[] pubKey1 = ka1.getPublicKey();
+			ka1.getPublicKey();
 			byte[] pubKey2 = ka2.getPublicKey();
 			
 			// this should work since we are in the correct state
@@ -128,7 +127,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			// the second object is just for getting a valid public key
 			SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
 			
-			byte[] pubKey1 = ka1.getPublicKey();
+			ka1.getPublicKey();
 			byte[] pubKey2 = ka2.getPublicKey();
 			
 			// this should work since we are in the correct state
@@ -158,7 +157,7 @@ public class SimpleKeyAgreementTest extends TestCase {
      {
          SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
 
-         byte[] pubKey1 = ka1.getPublicKey();
+         ka1.getPublicKey();
 
          // should not work, we have noto yet complete the agreement
 			try {
@@ -175,7 +174,7 @@ public class SimpleKeyAgreementTest extends TestCase {
          // the second object is just for getting a valid public key
          SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
 
-         byte[] pubKey1 = ka1.getPublicKey();
+         ka1.getPublicKey();
          byte[] pubKey2 = ka2.getPublicKey();
 
          // this should work since we are in the correct state
@@ -201,7 +200,7 @@ public class SimpleKeyAgreementTest extends TestCase {
      {
          SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
 
-         byte[] pubKey1 = ka1.getPublicKey();
+         ka1.getPublicKey();
 
          // should not work, we have noto yet complete the agreement
 			try {
@@ -218,7 +217,7 @@ public class SimpleKeyAgreementTest extends TestCase {
          // the second object is just for getting a valid public key
          SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
 
-         byte[] pubKey1 = ka1.getPublicKey();
+         ka1.getPublicKey();
          byte[] pubKey2 = ka2.getPublicKey();
 
          // this should work since we are in the correct state
@@ -247,7 +246,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
 			// for the correct state			
-			byte[] pubKey = ka.getPublicKey();
+			ka.getPublicKey();
 			// this should produce an exception, since the public key is 1 (invalid)
 			try {
 				ka.addRemotePublicKey(BigInteger.ONE.toByteArray());
@@ -262,7 +261,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
 			// for the correct state			
-			byte[] pubKey = ka.getPublicKey();
+			ka.getPublicKey();
 			// this should produce an exception, since the public key is 0 (invalid)
 			try {
 				ka.addRemotePublicKey(BigInteger.ZERO.toByteArray());
@@ -277,7 +276,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
 			// for the correct state			
-			byte[] pubKey = ka.getPublicKey();
+			ka.getPublicKey();
 			// this should produce an exception, since the public key is >= p (invalid)
 			try {
 				ka.addRemotePublicKey(SimpleKeyAgreement.skip1024Modulus.toByteArray());
@@ -292,7 +291,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
 			// for the correct state			
-			byte[] pubKey = ka.getPublicKey();
+			ka.getPublicKey();
 			// this should produce an exception, since the public key is >= p (invalid)
 			try {
 				ka.addRemotePublicKey(SimpleKeyAgreement.skip1024Modulus.add(BigInteger.ONE).toByteArray());
