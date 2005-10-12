@@ -1,7 +1,6 @@
 package org.eu.mayrhofer.authentication;
 
 import org.eu.mayrhofer.authentication.exceptions.*;
-import javax.crypto.*;
 import javax.crypto.interfaces.*;
 import javax.crypto.spec.*;
 import java.security.*;
@@ -122,25 +121,6 @@ public class SimpleKeyAgreement {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
 		wipe();
 
-     // OPTION 1: Bouncycastle
-     // instead of using fixed parameters, generate them;
-		/*DHParametersGenerator pGen = new DHParametersGenerator();
-			pGen.init(size, 10, new SecureRandom());
-			DHParameters dhParams = pGen.generateParameters(); */
-		
-		/*dhParams = new DHParameters(p1024, g1024);
-				
-		KeyGenerationParameters keyParams = new DHKeyGenerationParameters(new SecureRandom(), dhParams);
-		DHBasicKeyPairGenerator kpGen = new DHBasicKeyPairGenerator();
-		kpGen.init(keyParams);
-		AsymmetricCipherKeyPair pair = kpGen.generateKeyPair();
-		pubKey = (DHPublicKeyParameters) pair.getPublic();
-		privKey = (DHPrivateKeyParameters) pair.getPrivate();
-		
-		dh = new DHBasicAgreement();	
-		dh.init(privKey);*/
-
-     // OPTION 2: DH-helper
      // this also generates the private value X with a bit length of 256
 		try { 
 		dh = javax.crypto.KeyAgreement.getInstance(KEYAGREEMENT_ALGORITHM);
