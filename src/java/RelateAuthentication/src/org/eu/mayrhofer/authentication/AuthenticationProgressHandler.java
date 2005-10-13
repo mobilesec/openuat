@@ -8,8 +8,8 @@ public interface AuthenticationProgressHandler {
 	// with the remote host.
     // / </summary>
     // / <param name="remote"></param>
-    // / <param name="sharedKey"></param>
-    public void AuthenticationSuccess(InetAddress remote, byte[] sharedKey);
+    // / <param name="sharedSessionKey"></param>
+    public void AuthenticationSuccess(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey);
 
     // / <summary>
     // / Upon authentication failure, an exception might have been thrown and a
