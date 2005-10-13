@@ -19,7 +19,7 @@ public class HostProtocolHandler {
     private PrintWriter toRemote;
     private BufferedReader fromRemote;
     
-    static private LinkedList eventsHandlers;
+    static private LinkedList eventsHandlers = new LinkedList();
 
     // / <summary>
     // / This class should only be instantiated by HostServerSocket for incoming
@@ -38,12 +38,11 @@ public class HostProtocolHandler {
 	// exiting.</param>
     HostProtocolHandler(Socket soc) 
 	{
-    	eventsHandlers = new LinkedList();
 		socket = soc;
     }
     
     static public void addAuthenticationProgressHandler(AuthenticationProgressHandler h) {
-    	if (eventsHandlers.contains(h))
+    	if (! eventsHandlers.contains(h))
     		eventsHandlers.add(h);
     }
 
@@ -51,10 +50,10 @@ public class HostProtocolHandler {
    		return eventsHandlers.remove(h);
     }
     
-    static private void raiseAuthenticationSuccessEvent(InetAddress remote, byte[] sharedKey) {
+    static private void raiseAuthenticationSuccessEvent(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey) {
     	if (eventsHandlers != null)
     		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-    			((AuthenticationProgressHandler) i.next()).AuthenticationSuccess(remote, sharedKey);
+    			((AuthenticationProgressHandler) i.next()).AuthenticationSuccess(remote, sharedSessionKey, sharedAuthenticationKey);
     }
 
     static private void raiseAuthenticationFailureEvent(InetAddress remote, Exception e, String msg) {
@@ -80,8 +79,10 @@ public class HostProtocolHandler {
     	}
         if (socket != null && socket.isConnected())
         {
-        	socket.shutdownInput();
-        	socket.shutdownOutput();
+        	if (! socket.isInputShutdown() && !socket.isClosed())
+        		socket.shutdownInput();
+        	if (! socket.isOutputShutdown() && !socket.isClosed())
+        		socket.shutdownOutput();
         	socket.close();
         }
     	}
@@ -136,59 +137,94 @@ public class HostProtocolHandler {
             raiseAuthenticationFailureEvent(remote, e, "Protocol error: can not decode remote public key");
             return null;
         }
-        if (remotePubKey.length != 128)
+        if (remotePubKey.length < 128)
         {
             toRemote.println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            raiseAuthenticationFailureEvent(remote, null, "Protocol error: remote key too short");
+            raiseAuthenticationFailureEvent(remote, null, "Protocol error: remote key too short (only " + remotePubKey.length + " bytes instead of 128)");
             return null;
         }
         return remotePubKey;
     }
     
-    // Hack to just allow one method to be called asynchronously while still having access to the outer class
-    private abstract class AsynchronousCallHelper implements Runnable {
-    	protected HostProtocolHandler outer;
-    	
-    	protected AsynchronousCallHelper(HostProtocolHandler outer) {
-    		this.outer = outer;
-    	}
-    }
-
-	void startIncomingAuthenticationThread()
-	{
-		new Thread(new AsynchronousCallHelper(this) 
-	{ public void run() {
-        SimpleKeyAgreement ka = null;
+    /*** This method depends on prior initialization and assumes to be launched in an independent thread, i.e. it performs blocking operations.
+     * It assumes that the socket variable already contains a valid, connected socket that can be used for communication with the remote
+     * authentication partner. fromRemote and toRemote will be initialized as streams connected to this socket.
+     * @param serverSide true for server side ("authenticator"), false for client side ("authenticatee")
+     */
+    private void performAuthenticationProtocol(boolean serverSide) {
+    	SimpleKeyAgreement ka = null;
         // remember whom we are communication with: when the socket gets closed,
 		// we can no longer access it
         InetAddress remote = socket.getInetAddress();
+        String inOrOut, serverToClient, clientToServer;
 
+        if (serverSide) {
+        	inOrOut = "Incoming";
+        	serverToClient = "sent";
+        	clientToServer = "received";
+        } else {
+        	inOrOut = "Outgoing";
+        	serverToClient = "received";
+        	clientToServer = "sent";
+        }
+        
+        //System.out.println(inOrOut + " connection to authentication service with " + remote);
+        
         try
         {
             fromRemote = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            toRemote = new PrintWriter(socket.getOutputStream());
+            // this enables auto-flush
+            toRemote = new PrintWriter(socket.getOutputStream(), true);
 
-            toRemote.println(Protocol_Hello);
-
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, "Incoming authentication connection, sent greeting");
-
-            byte[] remotePubKey = Helper_ExtractPublicKey(Protocol_AuthenticationRequest, remote);
-            if (remotePubKey == null)
-            {
-                shutdownSocketsCleanly();
-                return;
+            if (serverSide) {
+            	toRemote.println(Protocol_Hello);
             }
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, "Incoming authentication connection, received public key");
+            else {
+                String msg = fromRemote.readLine();
+                if (!msg.equals(Protocol_Hello))
+                {
+                	HostProtocolHandler.raiseAuthenticationFailureEvent(remote, null, "Protocol error: did not get greeting from server");
+                    shutdownSocketsCleanly();
+                    return;
+                }
+        	}
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
-            // for performance reasons: only now start the DH phase
-            ka = new SimpleKeyAgreement();
-            toRemote.println(Protocol_AuthenticationAcknowledge + Hex.encodeHex(ka.getPublicKey()).toString());
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, "Incoming authentication connection, sent public key");
+            byte[] remotePubKey = null;
+            if (serverSide) {
+                remotePubKey = Helper_ExtractPublicKey(Protocol_AuthenticationRequest, remote);
+                if (remotePubKey == null)
+                {
+                    shutdownSocketsCleanly();
+                    return;
+                }
+            }
+            else {
+            	// now send my first message, but already need the public key for it
+            	ka = new SimpleKeyAgreement();
+            	toRemote.println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())));
+            }
+        	HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
+
+        	if (serverSide) {
+                // for performance reasons: only now start the DH phase
+                ka = new SimpleKeyAgreement();
+                toRemote.println(Protocol_AuthenticationAcknowledge + new String(Hex.encodeHex(ka.getPublicKey())));
+        	}
+        	else {
+                remotePubKey = Helper_ExtractPublicKey(Protocol_AuthenticationAcknowledge, remote);
+                if (remotePubKey == null)
+                {
+                    shutdownSocketsCleanly();
+                    return;
+                }
+        	}
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
             ka.addRemotePublicKey(remotePubKey);
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, "Incoming authentication connection, computed shared secret");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
-            HostProtocolHandler.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey());
+            HostProtocolHandler.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey(), ka.getAuthenticationKey());
         }
         catch (InternalApplicationException e)
         {
@@ -199,6 +235,7 @@ public class HostProtocolHandler {
         }
         catch (IOException e)
         {
+            //System.out.println(e);
             // even if we ignore the exception and not treat it as an error
 			// case, report it to listeners
             // so that they can clean up their state of this authentication
@@ -213,8 +250,27 @@ public class HostProtocolHandler {
             shutdownSocketsCleanly();
             if (ka != null)
                 ka.wipe();
+            //System.out.println("Ended " + inOrOut + " authentication connection with " + remote);
         }
+            }
+    
+    // Hack to just allow one method to be called asynchronously while still having access to the outer class
+    private abstract class AsynchronousCallHelper implements Runnable {
+    	protected HostProtocolHandler outer;
+    	
+    	protected AsynchronousCallHelper(HostProtocolHandler outer) {
+    		this.outer = outer;
+    	}
+    }
+
+	void startIncomingAuthenticationThread()
+	{
+		//System.out.println("Starting incoming authentication thread handler");
+		new Thread(new AsynchronousCallHelper(this) 
+	{ public void run() {
+		outer.performAuthenticationProtocol(true);
     }}).start();
+		//System.out.println("Started incoming authentication thread handler");
 	}
 
     // / <summary>
@@ -226,7 +282,7 @@ public class HostProtocolHandler {
 	// events to get notifications
     // / of authentication success, failure and progress.
     // / </summary>
-    static public void StartAuthenticationWith(String remoteAddress, int remotePort) throws UnknownHostException, IOException
+    static public void startAuthenticationWith(String remoteAddress, int remotePort) throws UnknownHostException, IOException
     {
         Socket clientSocket = new Socket(remoteAddress, remotePort);
 
@@ -234,71 +290,8 @@ public class HostProtocolHandler {
         new Thread(tmpProtocolHandler.new AsynchronousCallHelper(tmpProtocolHandler) {
     public void run()
     {
-        SimpleKeyAgreement ka = null;
-        // remember whom we are communication with: when the socket gets closed,
-		// we can no longer access it
-        InetAddress remote = outer.socket.getInetAddress();
-
-        try
-        {
-            outer.fromRemote = new BufferedReader(new InputStreamReader(outer.socket.getInputStream()));
-            outer.toRemote = new PrintWriter(outer.socket.getOutputStream());
-
-            String msg = outer.fromRemote.readLine();
-            if (!msg.equals(Protocol_Hello))
-            {
-            	HostProtocolHandler.raiseAuthenticationFailureEvent(remote, null, "Protocol error: did not get greeting from server");
-
-                outer.shutdownSocketsCleanly();
-                return;
-            }
-
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, "Outgoing authentication connection, received greeting");
-
-            // now send my first message, but already need the public key for it
-            ka = new SimpleKeyAgreement();
-            outer.toRemote.println(Protocol_AuthenticationRequest + Hex.encodeHex(ka.getPublicKey()).toString());
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, "Outgoing authentication connection, sent public key");
-
-            byte[] remotePubKey = outer.Helper_ExtractPublicKey(Protocol_AuthenticationAcknowledge, remote);
-            if (remotePubKey == null)
-            {
-                outer.shutdownSocketsCleanly();
-                return;
-            }
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, "Outgoing authentication connection, received public key");
-
-            ka.addRemotePublicKey(remotePubKey);
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, "Outgoing authentication connection, computed shared secret");
-
-            HostProtocolHandler.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey());
-        }
-        catch (InternalApplicationException e)
-        {
-            System.out.println(e);
-            // also communicate any application exception to interested
-			// listeners
-            HostProtocolHandler.raiseAuthenticationFailureEvent(remote, e, null);
-        }
-        catch (IOException e)
-        {
-            // even if we ignore the exception and not treat it as an error
-			// case, report it to listeners
-            // so that they can clean up their state of this authentication
-			// (identified by the remote
-        	HostProtocolHandler.raiseAuthenticationFailureEvent(remote, null, "Server closed connection unexpectedly\n");
-        }
-        catch (Exception e)
-        {
-            System.out.println("UNEXPECTED EXCEPTION: " + e);
-        }
-        finally
-        {
-            outer.shutdownSocketsCleanly();
-            if (ka != null)
-                ka.wipe();
-        }
-    } }).start();
+    	outer.performAuthenticationProtocol(false);
+    	} }).start();
     }
 
 }

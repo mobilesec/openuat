@@ -67,8 +67,9 @@ public class HostProtocolHandlerTest extends TestCase {
     public void testCompleteAuthentication() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
     {
         EventHelper h = new EventHelper();
+        HostProtocolHandler.addAuthenticationProgressHandler(h);
 
-        HostProtocolHandler.StartAuthenticationWith("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -81,24 +82,28 @@ public class HostProtocolHandlerTest extends TestCase {
         Assert.assertEquals(8, h.getReceivedProgress());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
-        //Assert.assertTrue(h.AreSharedSecretsEqual());
+        Assert.assertTrue(h.areSharedSecretsEqual());
+        
+        HostProtocolHandler.removeAuthenticationProgressHandler(h);
     }
 
     private class EventHelper implements AuthenticationProgressHandler
     {
         private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0;
-        private byte[][] sharedSecrets = new byte[2][];
+        private byte[][] sharedSessionKeys = new byte[2][], sharedAuthenticationKeys = new byte[2][];
 
         EventHelper() 
         {
             HostProtocolHandler.addAuthenticationProgressHandler(this);
         }
 
-        public void AuthenticationSuccess(InetAddress remote, byte[] sharedKey)
+        public void AuthenticationSuccess(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey)
         {
             synchronized (this)
             {
-                sharedSecrets[receivedSecrets++] = sharedKey;
+            	int r = receivedSecrets++;
+                sharedSessionKeys[r] = sharedSessionKey;
+                sharedAuthenticationKeys[r] = sharedAuthenticationKey;
             }
         }
 
@@ -138,7 +143,8 @@ public class HostProtocolHandlerTest extends TestCase {
             if (receivedSecrets != 2)
                 return false;
             else
-                return SimpleKeyAgreementTest.compareByteArray(sharedSecrets[0], sharedSecrets[1]);
+                return SimpleKeyAgreementTest.compareByteArray(sharedSessionKeys[0], sharedSessionKeys[1]) &&
+                	SimpleKeyAgreementTest.compareByteArray(sharedAuthenticationKeys[0], sharedAuthenticationKeys[1]);
         }
     }
 }

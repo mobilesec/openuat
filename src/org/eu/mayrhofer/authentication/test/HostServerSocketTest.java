@@ -33,7 +33,6 @@ public class HostServerSocketTest extends TestCase {
 
 	public void testCreateConnection() throws UnknownHostException, IOException {
 		client = new Socket("localhost", PORT);
-		Assert.assertTrue("Can't connect to server socket", client
-				.isConnected());
+		Assert.assertTrue("Can't connect to server socket", client.isConnected());
 	}
 }

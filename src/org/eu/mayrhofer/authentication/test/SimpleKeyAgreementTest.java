@@ -241,7 +241,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 
-		public void testMessages_addRemotePublicKey_equalInvalidKeyAdded1() throws KeyAgreementProtocolException, InternalApplicationException
+		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded1() throws KeyAgreementProtocolException, InternalApplicationException
 		{
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
@@ -256,7 +256,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 
-		public void testMessages_addRemotePublicKey_equalInvalidKeyAdded2() throws KeyAgreementProtocolException, InternalApplicationException
+		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded2() throws KeyAgreementProtocolException, InternalApplicationException
 		{
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
@@ -271,7 +271,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 
-		public void testMessages_addRemotePublicKey_equalInvalidKeyAdded3() throws KeyAgreementProtocolException, InternalApplicationException
+		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded3() throws KeyAgreementProtocolException, InternalApplicationException
 		{
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
@@ -286,7 +286,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 
-		public void testMessages_addRemotePublicKey_equalInvalidKeyAdded4() throws KeyAgreementProtocolException, InternalApplicationException
+		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded4() throws KeyAgreementProtocolException, InternalApplicationException
 		{
 			SimpleKeyAgreement ka = new SimpleKeyAgreement();
 
@@ -301,6 +301,21 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 
+		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded5() throws KeyAgreementProtocolException, InternalApplicationException
+		{
+			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+
+			// for the correct state			
+			ka.getPublicKey();
+			// this should produce an exception, since the public key is null (invalid)
+			try {
+				ka.addRemotePublicKey(null);
+				Assert.fail();
+			} catch (KeyAgreementProtocolException e) {
+				Assert.assertTrue(true);
+			}
+		}
+		
 		public void testCorrectAgreement() throws KeyAgreementProtocolException, InternalApplicationException
 		{
 			SimpleKeyAgreement ag1 = new SimpleKeyAgreement();

@@ -176,6 +176,9 @@ public class SimpleKeyAgreement {
 							+ "any kind of replay attacks. To add a remote public key, either first send the own public key "
 							+ "to the remote or restart the protocol if you have already added one.");
 
+		if (key == null)
+			throw new KeyAgreementProtocolException("addRemotePublicKeyy called with null public key.");
+		
 		if (new BigInteger(key).equals(((DHPublicKey) myKeypair.getPublic())
 				.getY()))
 			throw new KeyAgreementProtocolException(
