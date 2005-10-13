@@ -170,7 +170,7 @@ public class HostProtocolHandler {
 
             toRemote.println(Protocol_Hello);
 
-            outer.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, "Incoming authentication connection, sent greeting");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, "Incoming authentication connection, sent greeting");
 
             byte[] remotePubKey = Helper_ExtractPublicKey(Protocol_AuthenticationRequest, remote);
             if (remotePubKey == null)
@@ -178,17 +178,17 @@ public class HostProtocolHandler {
                 shutdownSocketsCleanly();
                 return;
             }
-            outer.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, "Incoming authentication connection, received public key");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, "Incoming authentication connection, received public key");
 
             // for performance reasons: only now start the DH phase
             ka = new SimpleKeyAgreement();
             toRemote.println(Protocol_AuthenticationAcknowledge + Hex.encodeHex(ka.getPublicKey()).toString());
-            outer.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, "Incoming authentication connection, sent public key");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, "Incoming authentication connection, sent public key");
 
             ka.addRemotePublicKey(remotePubKey);
-            outer.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, "Incoming authentication connection, computed shared secret");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, "Incoming authentication connection, computed shared secret");
 
-            outer.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey());
+            HostProtocolHandler.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey());
         }
         catch (InternalApplicationException e)
         {
@@ -247,18 +247,18 @@ public class HostProtocolHandler {
             String msg = outer.fromRemote.readLine();
             if (!msg.equals(Protocol_Hello))
             {
-                outer.raiseAuthenticationFailureEvent(remote, null, "Protocol error: did not get greeting from server");
+            	HostProtocolHandler.raiseAuthenticationFailureEvent(remote, null, "Protocol error: did not get greeting from server");
 
                 outer.shutdownSocketsCleanly();
                 return;
             }
 
-            outer.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, "Outgoing authentication connection, received greeting");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, "Outgoing authentication connection, received greeting");
 
             // now send my first message, but already need the public key for it
             ka = new SimpleKeyAgreement();
             outer.toRemote.println(Protocol_AuthenticationRequest + Hex.encodeHex(ka.getPublicKey()).toString());
-            outer.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, "Outgoing authentication connection, sent public key");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, "Outgoing authentication connection, sent public key");
 
             byte[] remotePubKey = outer.Helper_ExtractPublicKey(Protocol_AuthenticationAcknowledge, remote);
             if (remotePubKey == null)
@@ -266,19 +266,19 @@ public class HostProtocolHandler {
                 outer.shutdownSocketsCleanly();
                 return;
             }
-            outer.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, "Outgoing authentication connection, received public key");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, "Outgoing authentication connection, received public key");
 
             ka.addRemotePublicKey(remotePubKey);
-            outer.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, "Outgoing authentication connection, computed shared secret");
+            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, "Outgoing authentication connection, computed shared secret");
 
-            outer.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey());
+            HostProtocolHandler.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey());
         }
         catch (InternalApplicationException e)
         {
             System.out.println(e);
             // also communicate any application exception to interested
 			// listeners
-            outer.raiseAuthenticationFailureEvent(remote, e, null);
+            HostProtocolHandler.raiseAuthenticationFailureEvent(remote, e, null);
         }
         catch (IOException e)
         {
@@ -286,7 +286,7 @@ public class HostProtocolHandler {
 			// case, report it to listeners
             // so that they can clean up their state of this authentication
 			// (identified by the remote
-            outer.raiseAuthenticationFailureEvent(remote, null, "Server closed connection unexpectedly\n");
+        	HostProtocolHandler.raiseAuthenticationFailureEvent(remote, null, "Server closed connection unexpectedly\n");
         }
         catch (Exception e)
         {
