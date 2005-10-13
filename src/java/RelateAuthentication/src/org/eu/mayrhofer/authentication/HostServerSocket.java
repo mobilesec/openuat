@@ -56,7 +56,11 @@ public class HostServerSocket implements Runnable {
 				h.startIncomingAuthenticationThread();
 			}
 		} catch(SocketException e) {
-			//System.out.println("Listening socket was forcibly closed, exiting listening thread now.");
+			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 
+			if (running)
+				System.out.println("Error in listening thread: " + e);
+			/*else
+				System.out.println("Listening socket was forcibly closed, exiting listening thread now.");*/
 		} catch (IOException e) {
 			System.out.println("Error in listening thread: " + e);
 		}
