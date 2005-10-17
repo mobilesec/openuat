@@ -595,7 +595,6 @@ public class Measurement implements Cloneable, Serializable {
     public static Measurement fromString(String what) {
     	Measurement result = null;
     	StringTokenizer tokenizer = null;
-    	int i;
     	String token;
     	
     	if (what != null) {
