@@ -49,6 +49,9 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
         //Environment.Exit(0);
         //System.Diagnostics.Process.GetCurrentProcess().Kill();
 
+        DongleProtocolHandler h = new DongleProtocolHandler("/dev/ttyUSB0");
+        h.startAuthenticationWith(0, null, null, 2);
+        
         /*try
         {
             DongleProtocolHandler.StartAuthenticationWith("COM3", -1, null, null);
