@@ -217,7 +217,6 @@ public class SensorReading implements Cloneable, Serializable  {
 		/*System.out.println("[SensorReading] Warning: to be re-done") ;*/
 		SensorReading result = null;
 		StringTokenizer tokenizer = null;
-		int i;
 		String token;
 		
 		if (what != null) {

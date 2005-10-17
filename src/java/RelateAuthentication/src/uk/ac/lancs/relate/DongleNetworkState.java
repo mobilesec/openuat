@@ -73,7 +73,6 @@ public class DongleNetworkState {
 	
 	public boolean equals(DongleNetworkState dnState) {
 		boolean result = false;
-		int i ;
 		if (dnState != null) {
 			result = true ;
 			result = result && 

@@ -411,18 +411,17 @@ public class Device implements Cloneable, Serializable {
 	 */
 	public String toString() {
 	    String result = null;
-	    int i;
 	    
 	    if (getId() > -1) {
 	        result = "[Device: id=" +  getId() + ",";
 	        if (getType() != null)
 	            result += "type=" + getType() + ",";
-	        for (i=0; i<Configuration.SIDES.length; i++) {
+/*	        for (int i=0; i<Configuration.SIDES.length; i++) {
 		        if (getSide() == Configuration.SIDES[i]) {
 		            result += "side=" + Configuration.SIDE_NAMES[i] + ",";
 		            break;
 		        }
-	        }
+	        }*/
 	        if (getUserName() != null)
 	            result += "userName=" + getUserName() + ",";
 	        if (getMachineName() != null)
@@ -457,8 +456,7 @@ public class Device implements Cloneable, Serializable {
 	 */
 	public static Device fromString(String devString) {
 	    Device result = null;
-	    String tmp = null,
-	    	type = null,
+	    String tmp = null,	type = null,
 	    	userName = null,
 	    	machineName = null,
 	    	ipAddress = null;
@@ -502,12 +500,12 @@ public class Device implements Cloneable, Serializable {
 	                endIndex = devString.indexOf(',', index);
 	                if (endIndex > 0) {
 	                    tmp = devString.substring(index+5, endIndex);
-	                    for (index=0; index<Configuration.SIDE_NAMES.length; index++) {
+/*	                    for (index=0; index<Configuration.SIDE_NAMES.length; index++) {
 	                        if (tmp.equals(Configuration.SIDE_NAMES[index])) {
 	                            side = Configuration.SIDES[index];
 	                            break;
 	                        }
-	                    }
+	                    }*/
 	                }
 	            }
 	            index = devString.indexOf("type=");
