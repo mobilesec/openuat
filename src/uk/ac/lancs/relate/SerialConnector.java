@@ -9,174 +9,216 @@ import javax.comm.*;
 import java.io.*;
 import java.util.*;
 
-/* Make it compile */
-class Relate {
-	private Device localDevice = new Device(0, 0, "ich", "mein", "127.0.0.1", "test", 0, new Boolean(true));
-	
-	void setLocalDevice(Device dev) {
-		localDevice = dev;
-	}
-	
-	Device getLocalDevice() {
-		return localDevice;
-	}
-}
-
 /**
- ** This class handles communication protocols, 
- *data's exchange and parsing between a Relate dongle
- *and its host device (laptop, desktop, PDA, projector)
- ** @author  Chris Kray, Henoc Agbota
- **/
+ * * This class handles communication protocols, data's exchange and parsing
+ * between a Relate dongle and its host device (laptop, desktop, PDA, projector) *
+ * 
+ * @author Chris Kray, Henoc Agbota
+ */
 
-public class SerialConnector/* implements Runnable*/ {
-	
+public class SerialConnector/* implements Runnable */{
+	/**
+	 * At the moment, there can only be a single instance of SerialConnector.
+	 * This singleton is held here and returned by getSerialConnector.
+	 * 
+	 * @see getSerialConnector
+	 */
 	private static SerialConnector sConn = null;
-	
-	/* testing the Input/OutputStream to better read/write raw bytes */
-	// in interacting mode, fos and fis are initialized, in receiving only mode only fis is initialized and fos is null
+
+	/**
+	 * The initialization of fis and fos depends on the state variable
+	 * interacting. In interacting mode (i.e. interacting = true), both fos and
+	 * fis are initialized. I In receiving only mode (i.e. interacting = false),
+	 * only fis is initialized and fos is null
+	 */
 	private InputStream fis;
+
+	/** @see fis */
 	private OutputStream fos;
-	// specifies the current mode: false for receiving only mode (measurements, 57600 baud), true for command/interacting mode (19200 baud)
+
+	/**
+	 * Specifies the current mode: false for receiving only mode (measurements,
+	 * 57600 baud), true for command/interacting mode (19200 baud).
+	 */
 	public boolean interacting = false;
-//	private boolean testingFilterStream = true;
-	
-	/*private BufferedReader b;
-	 private BufferedWriter bw;*/
-	/** flag indicating wether this instance should continue to run */
+
+	/**
+	 * Flag indicating wether this instance should continue to run. Used by
+	 * die() to signal the thread to terminate.
+	 * 
+	 * @see die
+	 */
 	private boolean alive = true;
-	/** flag indicating wether this instance is running*/  
+
+	/** Flag indicating wether this instance is running */
 	private boolean operational = false;
-	/** flag indicating wether this instance is fully initialised*/
+
+	/**
+	 * Flag indicating wether this instance is fully initialised. It is used by
+	 * getSerialConnector to wait for an instance to be initialised before
+	 * returning it.
+	 * 
+	 * @see getSerialConnector
+	 * @see SerialConnector
+	 */
 	private boolean initialised = false;
-	
+
 	private boolean logging = true;
-	
-	/** flag indicating the dongle's state*/
+
+	/** flag indicating the dongle's state */
 	private boolean dongle_on = true;
 
-	/** flag indicating the dongle state AFTER sending BLOCK_DONGLE or UNBLOCK_DONGLE*/
+	/**
+	 * flag indicating the dongle state AFTER sending BLOCK_DONGLE or
+	 * UNBLOCK_DONGLE
+	 */
 	private boolean awaken = true;
-	
-	/** flag indicating wether still waiting for calibration info*/
-	private boolean calibrated = false;
-	
-	/** list of available ports*/
-	private String[] portNames = null;
-	private Vector availablePorts = null;
-	private CommPortIdentifier portId = null;
-	/** serial port object*/
-	private SerialPort serialPort = null;
-	
-	/** unique currently running relate instance*/
-	private Relate relate = new Relate();
-	
-	/** Configuration object used to obtain and send host info*/
-//	private Configuration configuration = null;
-	
-	/** queue to push new measurements onto */
-//	private MessageQueue queue = null;
-	/** relate's event queue */
-//	private MessageQueue relateQueue = null;
-	
-	/** bytes to send to bring dongle into sleep mode*/
-	private final static byte[] BLOCK_DONGLE = {67,48} ;
-	/** bytes to send to awake dongle from sleep mode*/
-	private final static byte[] UNBLOCK_DONGLE = {67,49} ;
-	/** bytes to send to awake dongle from sleep mode*/
-	private final static byte[] DIAGNOSTIC_ON = {67,50} ;
-	/** bytes to send to awake dongle from sleep mode*/
-	private final static byte[] DIAGNOSTIC_OFF = {67,51} ;
-	/** acknowledgement bytes sent by dongle; 
-	 * also served as prefixed bytes to the dongle's relate id */
-	private final static byte[] ACK = {65,65} ;
-	/*private final static int END_COMM = 90 ;*/
-	/** number of bytes for the host info*/
-	private final static int HOST_INFO_LENGTH = 51 ;
-	/** number of bytes for the ultrasonic calibration info*/
-	private final static int CALIBRATION_INFO_LENGTH = 18 ;
-	/** number of bytes for the ultrasonic sensor info*/
-	private final static int US_SENSOR_INFO_LENGTH = 11 ;
-	/** number of bytes for this measurement*/
-	private final static int MES_SIZE = 6 ;
-	/** number of bits for ultrasonic receiver id*/
-	private final static int RX_ID_SIZE = 8 ;
-	/** number of bits for ultrasonic sender id*/
-	private final static int TX_ID_SIZE = 8 ;
-	/** number of bits for this measurement timestamp*/
-	private final static int TIMESTAMP_SIZE = 8 ;
-	/** number of bits for number of transducers involved in this measurement*/
-	private final static int NUMRX_SIZE = 3 ;
-	/** number of high bits in distance measurement*/
-	private final static int DIST_HIGH_SIZE = 4 ;
-	/** number of low bits in distance measurement*/
-	private final static int DIST_LOW_SIZE = 7 ;
-	/** number of high bits in angle measurement*/
-	private final static int ANGLE_HIGH_SIZE = 1 ;
-	/** number of low bits in angle measurement*/
-	private final static int ANGLE_LOW_SIZE = 7 ;
-	/** number of bits for ball switch data*/
-	private final static int BALL_SWITCH_SIZE = 1 ;
-	/** number of bits for SS high byte*/
-	private final static int SS_HIGH_SIZE = 2 ;
-	
-	/** Prefix to measurement bytes 'M'*/
-	private final static int DEVICE_MEASUREMENT_SIGN = 77 ;
-	/** this host relate id*/
-	private int myRelateId = -1 ;
-	/** bytes array containing host information*/
-	public byte[] hostInfo = new byte[HOST_INFO_LENGTH] ;
-	
-	Object changeStateWaiter = new Object();
-	
-	/** Minimal value for a relate id*/
-	private int MIN_ID = 0;
-	/** Maximal value for a relate id*/
-	private int MAX_ID = 255;
-	
-	/** Prefix to host info 'H'*/
-	private static final int HOST_INFO_SIGN = 72;
-	/** Prefix to calibration info 'L'*/
-	private static final int CALIBRATION_INFO_SIGN = 76;
-	/** Prefix to uS sensor info 'U'*/
-	private static final int US_SENSOR_INFO_SIGN = 85;
-	
-	/** flag indicating wether the diagnostic mode is turned on*/  
-	public boolean diagnosticMode = false;
-	
-	/** number of bytes for the firmware version*/
-	private static final int FIRMWARE_VERSION_LENGTH = 2;
-	
-	/** Prefix to firmware version*/
-	private static final int FIRMWARE_VERSION_SIGN = 86;
-	
-	/** Firmware version*/
-	public String firmwareVersion = null;
-	
-	/** Calibration object*/
-	private	Calibration calibration = null ;
-	
-	/** List of devices to exclude (temporary for Oliver)*/
-	private final static int[] DEVICE_NON_GRATA = {} ;
 
-	/** Prefix to error code*/
+	/** flag indicating wether still waiting for calibration info */
+	private boolean calibrated = false;
+
+	/** list of available ports */
+	private String[] portNames = null;
+
+	private Vector availablePorts = null;
+
+	/**
+	 * The port identifier used to reference the serial port used by the dongle.
+	 * From this object, the serialPort object is reconstructed every time after
+	 * changing the baud rate.
+	 */
+	private CommPortIdentifier portId = null;
+
+	/** serial port object */
+	private SerialPort serialPort = null;
+
+	/** Configuration object used to obtain and send host info */
+	// private Configuration configuration = null;
+	/** queue to push new measurements onto */
+	// private MessageQueue queue = null;
+	/** relate's event queue */
+	// private MessageQueue relateQueue = null;
+	/** bytes to send to bring dongle into sleep mode */
+	private final static byte[] BLOCK_DONGLE = { 67, 48 };
+
+	/** bytes to send to awake dongle from sleep mode */
+	private final static byte[] UNBLOCK_DONGLE = { 67, 49 };
+
+	/** bytes to send to awake dongle from sleep mode */
+	private final static byte[] DIAGNOSTIC_ON = { 67, 50 };
+
+	/** bytes to send to awake dongle from sleep mode */
+	private final static byte[] DIAGNOSTIC_OFF = { 67, 51 };
+
+	/**
+	 * acknowledgement bytes sent by dongle; also served as prefixed bytes to
+	 * the dongle's relate id
+	 */
+	private final static byte[] ACK = { 65, 65 };
+
+	/* private final static int END_COMM = 90 ; */
+	/** number of bytes for the host info */
+	private final static int HOST_INFO_LENGTH = 51;
+
+	/** number of bytes for the ultrasonic calibration info */
+	private final static int CALIBRATION_INFO_LENGTH = 18;
+
+	/** number of bytes for the ultrasonic sensor info */
+	private final static int US_SENSOR_INFO_LENGTH = 11;
+
+	/** number of bytes for this measurement */
+	private final static int MES_SIZE = 6;
+
+	/** number of bits for ultrasonic receiver id */
+	private final static int RX_ID_SIZE = 8;
+
+	/** number of bits for ultrasonic sender id */
+	private final static int TX_ID_SIZE = 8;
+
+	/** number of bits for this measurement timestamp */
+	private final static int TIMESTAMP_SIZE = 8;
+
+	/** number of bits for number of transducers involved in this measurement */
+	private final static int NUMRX_SIZE = 3;
+
+	/** number of high bits in distance measurement */
+	private final static int DIST_HIGH_SIZE = 4;
+
+	/** number of low bits in distance measurement */
+	private final static int DIST_LOW_SIZE = 7;
+
+	/** number of high bits in angle measurement */
+	private final static int ANGLE_HIGH_SIZE = 1;
+
+	/** number of low bits in angle measurement */
+	private final static int ANGLE_LOW_SIZE = 7;
+
+	/** number of bits for ball switch data */
+	private final static int BALL_SWITCH_SIZE = 1;
+
+	/** number of bits for SS high byte */
+	private final static int SS_HIGH_SIZE = 2;
+
+	/** Prefix to measurement bytes 'M' */
+	private final static int DEVICE_MEASUREMENT_SIGN = 77;
+
+	/** this host relate id */
+	private int myRelateId = -1;
+
+	/** bytes array containing host information */
+	public byte[] hostInfo = new byte[HOST_INFO_LENGTH];
+
+	Object changeStateWaiter = new Object();
+
+	/** Minimal value for a relate id */
+	private int MIN_ID = 0;
+
+	/** Maximal value for a relate id */
+	private int MAX_ID = 255;
+
+	/** Prefix to host info 'H' */
+	private static final int HOST_INFO_SIGN = 72;
+
+	/** Prefix to calibration info 'L' */
+	private static final int CALIBRATION_INFO_SIGN = 76;
+
+	/** Prefix to uS sensor info 'U' */
+	private static final int US_SENSOR_INFO_SIGN = 85;
+
+	/** flag indicating wether the diagnostic mode is turned on */
+	public boolean diagnosticMode = false;
+
+	/** number of bytes for the firmware version */
+	private static final int FIRMWARE_VERSION_LENGTH = 2;
+
+	/** Prefix to firmware version */
+	private static final int FIRMWARE_VERSION_SIGN = 86;
+
+	/** Firmware version */
+	public String firmwareVersion = null;
+
+	/** Calibration object */
+	private Calibration calibration = null;
+
+	/** List of devices to exclude (temporary for Oliver) */
+	private final static int[] DEVICE_NON_GRATA = {};
+
+	/** Prefix to error code */
 	private static final int ERROR_CODE_SIGN = 69;
-	
-	/** Firmware version*/
+
+	/** Firmware version */
 	public int errorCode = -1;
 
 	/** */
 	private static int DN_STATE_LENGTH = 0;
-	
-	/** Prefix to firmware version*/
+
+	/** Prefix to firmware version */
 	private static final int DN_STATE_SIGN = 78;
-	
-	
+
 	protected SerialConnector(boolean loggingOn) {
 		CommPortIdentifier id;
 		Enumeration portList;
-		int i;
-		
+
 		logging = loggingOn;
 		operational = false;
 		portList = CommPortIdentifier.getPortIdentifiers();
@@ -184,36 +226,31 @@ public class SerialConnector/* implements Runnable*/ {
 		/* generate list of (available) ports */
 		while ((portList.hasMoreElements()) && (portId == null)) {
 			id = (CommPortIdentifier) portList.nextElement();
-			log("port " + id + " (" + id.getName() + ") is " +
-					(id.isCurrentlyOwned() ? " not " : "") + " available.");
+			log("port " + id + " (" + id.getName() + ") is "
+					+ (id.isCurrentlyOwned() ? " not " : "") + " available.");
 			if (!(id.isCurrentlyOwned())) {
 				availablePorts.addElement(id);
 			}
 		}
 		if (availablePorts.size() > 0) {
 			portNames = new String[availablePorts.size()];
-			for (i=0; i<availablePorts.size(); i++) {
-				portNames[i] = ((CommPortIdentifier) availablePorts.elementAt(i)).getName();
+			for (int i = 0; i < availablePorts.size(); i++) {
+				portNames[i] = ((CommPortIdentifier) availablePorts
+						.elementAt(i)).getName();
 			}
 		} else {
 			log("no ports available");
 		}
-		
-		/*		try{
-		 portId = (CommPortIdentifier) CommPortIdentifier.getPortIdentifier("COM1");
-		 }catch(NoSuchPortException e){
-		 e.printStackTrace();
-		 return;
-		 }*/
+
 		initialised = true;
 	}
-	
-	/** Get the only instance of the SerialConnector.*/
+
+	/** Get the only instance of the SerialConnector. */
 	public static SerialConnector getSerialConnector() {
 		return getSerialConnector(false);
 	}
-	
-	/** Get the only instance of the SerialConnector.*/
+
+	/** Get the only instance of the SerialConnector. */
 	public static SerialConnector getSerialConnector(boolean loggingOn) {
 		if (sConn == null)
 			sConn = new SerialConnector(loggingOn);
@@ -221,29 +258,33 @@ public class SerialConnector/* implements Runnable*/ {
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
-				
+
 			}
-			return sConn;
+		return sConn;
 	}
 	
 	/** return list of available serial ports */
-/*	public String[] getPorts() {
+	public String[] getPorts() {
 		return portNames;
-	}*/
+	}
 
 	/** return Calibration object */
-/*	public Calibration getCalibration() {
+	public Calibration getCalibration() {
 		return calibration ;
-	}*/
+	}
 	
-/*	public void startLogging() {
+	public void startLogging() {
 		logging = true;
 	}
 	public void stopLogging() {
 		logging = false;
-	}*/
+	}
 	
-	// prepare for either a send or receive
+	/** Prepares the dongle for either interacting mode (used to send commands to the dongle and get its status) or read-only monitoring mode.
+	 * 
+	 * @param interacting true for interacting mode, false for monitoring mode
+	 * @return true if successful, false otherwise
+	 */
 	private boolean prepareMode(boolean interacting) {
 		if (this.interacting == interacting) {
 			// already in the requested mode, nothing to do
@@ -296,7 +337,9 @@ public class SerialConnector/* implements Runnable*/ {
 		}
 	}
 	
-	// this implicitly switches the dongle to interactive mode
+	/** Send data to the dongle.
+	 * This implicitly switches the dongle to interactive mode.
+	 */
 	private boolean sendToDongle(byte[] data) {
 		prepareMode(true);
 		try {
@@ -310,39 +353,36 @@ public class SerialConnector/* implements Runnable*/ {
 		}
 	}
 
-	// this works in both modes
+	/** Receive data from the dongle. Works in both modes and does not affect the current mode setting. 
+	 *  @param bytes The number of bytes to read from the dongle. 
+	 *  @param timeout Maximum time in milliseconds to wait for the data.
+	 *  @return The data received from the dongle or null if unable to receive (due to timeout or unable to read). 
+	 */
 	private byte[] receiveFromDongle(int bytes, long timeout) {
 		return receiveFromDongle(bytes, null, timeout);
 	}
 
-	// this method also resceives from the dongle, but skips bytes until they match an expected start header (e.g. acknowledge)
-	// timeout is in milliseconds
+	/** This method also resceives from the dongle, but skips bytes until they match an expected start header (e.g. acknowledge).
+	 * @param bytesToRead The number of bytes to read from the dongle.
+	 * @param expectedStart The expected bytes that the dongle should return. On success, the returned data will start with exactly these bytes.
+	 *  @param timeout Maximum time in milliseconds to wait for the data.
+	 *  @return The data received from the dongle or null if unable to receive (due to timeout, unable to read, or expectedStart not found within timeout). 
+	 */
 	private byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, long timeout) {
 		byte[] received = new byte[bytesToRead];
 		int alreadyRead = 0, readBytes;
 		long startTime = System.currentTimeMillis();
 		boolean wait = true;
 		
-//		log("Trying to read " + bytesToRead + " bytes from dongle.");
-		if (expectedStart != null) {
-			/*log("Expecting bytes from dongle: ");
-			printByteArray(expectedStart);*/
-//			log("Waiting at max " + timeout + "ms for " + expectedStart.length + " expected bytes.");
-		}
-		
 		try {
 			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
 			if (expectedStart != null && expectedStart.length > 0) {
 				int recv = fis.read();
-//				log("Received byte " + recv + " from dongle");
 				while(recv != expectedStart[0] && recv != -1 && wait) {
-//					log("is unexpected, continuing read");
 					recv = fis.read();
-//					log("Received byte " + recv + " from dongle");
 					wait = (System.currentTimeMillis() - startTime) < timeout;
 				}
 				if (recv == expectedStart[0]) {
-//					log("found first expected byte: " + recv);
 					alreadyRead++;
 					received[0] = (byte) recv;
 				}
@@ -372,7 +412,6 @@ public class SerialConnector/* implements Runnable*/ {
 					}
 			}
 			// finally: read all bytes that have been requested and compared ok to the expected start
-//			log("Received successfully, returning now.");
 			return received;
 		} catch (IOException ex) {
 			log("sending info to dongle failed due to " + ex);
@@ -381,23 +420,15 @@ public class SerialConnector/* implements Runnable*/ {
 		}
 	}
 	
-	/** initialise connector. 
-	 @param rel           is the Relate instance that will receive 
-	 notifications about new object information 
-	 @param queue         the queue to push new measurements onto
-	 @param configuration the current configuration
+	/** initialise connector.
+	 * @param port		  the port to connect with 
 	 @param minID         the lowest valid ID for relate objects
 	 @param maxID         the highest valid ID for relate objects
 	 @return the ID of the attached dongle or -1 if something went wrong
 	 **/
-	public int connect(Relate rel, /*MessageQueue queue, *//*Configuration configuration,*/String port,
-			int minID, int maxID) {
+	public int connect(String port, int minID, int maxID) {
 		int result = -1;
 		int i;
-//		String port = configuration.getDevicePortNumber();
-		
-/*		this.queue = queue;
-		this.relateQueue = rel.getQueue();*/	
 //		this.hostInfo = configuration.getFormat(); 
 		
 		this.MIN_ID = minID;
@@ -418,16 +449,6 @@ public class SerialConnector/* implements Runnable*/ {
 					log("port " + port + " is currently in use by " +
 							portId.getCurrentOwner());
 				} else {
-					/* port seems to exist and is available */
-					/*try {
-						serialPort = (SerialPort) portId.open("RelatePort", 2000);
-						log("port " + port + " seems to exist and is available.");
-					} catch (Exception e) {
-						//System.out.println("PortInUseException") ;
-						e.printStackTrace();
-						return -1;
-					}*/
-
 					// this implicitly sends the host info and gets the local device id
 					result = pcSend(null, true);
 					log("local device id: "+result+"\n") ;
@@ -443,11 +464,12 @@ public class SerialConnector/* implements Runnable*/ {
 					prepareMode(false);
 
 					operational = true;
-//					relate = rel;
 				}
 			}
 		}
-//		this.configuration = configuration;
+		if (result != -1)
+			// remember the local relate Id
+			myRelateId = result;
 		return result;
 	}
 	
@@ -479,14 +501,14 @@ public class SerialConnector/* implements Runnable*/ {
 	}
 	
 	
-	/** initialise connector. 
+	/**  
 	 @param size the size of the mask
-	 @return size number of all-set-to-1 low bits
+	 @return size bitmask of all-set-to-1 low bits (higher bits zero)
 	 **/
-	private static int doMask(int size) {
+	private static int getMask(int size) {
 		int i, mask ;
 		mask = 0 ;
-		for(i = 1; i <= size; ++i) {
+		for(i = 1; i <= size; i++) {
 			mask = (mask << 1) | 1 ;
 		}
 		return mask ;
@@ -551,35 +573,35 @@ public class SerialConnector/* implements Runnable*/ {
 				
 				/* From higher to lower bits, 
 				 * fourth byte represents: trans (3), hDist (4) and a spare bit (1) */
-				mask = doMask(NUMRX_SIZE) ;
+				mask = getMask(NUMRX_SIZE) ;
 				mask <<= (1 + DIST_HIGH_SIZE) ;
 				trans = (bytes[3] & mask)>>(1 + DIST_HIGH_SIZE) ;
 				
-				mask = doMask(DIST_HIGH_SIZE) ;
+				mask = getMask(DIST_HIGH_SIZE) ;
 				mask = mask << 1 ;
 				hDist = (bytes[3] & mask)>>1 ;
 				//System.out.println("hDist: "+ hDist +" \n") ;
 				
 				/* From higher to lower bits, 
 				 * fifth byte represents: lDist (7) and ball switch bit (1) */
-				mask = doMask(DIST_LOW_SIZE) ;
+				mask = getMask(DIST_LOW_SIZE) ;
 				mask = mask << BALL_SWITCH_SIZE ;
 				lDist = (bytes[4] & mask) ;
 				//				System.out.println("lDist: "+ lDist +" \n") ;
 				
-				mask = doMask(BALL_SWITCH_SIZE) ;
+				mask = getMask(BALL_SWITCH_SIZE) ;
 				ballSwitch = (bytes[4] & mask) ;
 				inMotion = (ballSwitch == 1) ;
 				//System.out.println("ballSwitch: "+ ballSwitch +" \n") ;
 				
 				/* From higher to lower bits, 
 				 * sixth byte represents: hAngle (1) lAngle (7) */
-				mask = doMask(ANGLE_HIGH_SIZE) ;
+				mask = getMask(ANGLE_HIGH_SIZE) ;
 				mask = mask << ANGLE_LOW_SIZE ;
 				hAngle = (bytes[5] & mask)>> ANGLE_LOW_SIZE ;
 				//System.out.println("hAngle: "+ hAngle +" \n") ;
 				
-				mask = doMask(ANGLE_LOW_SIZE) ;
+				mask = getMask(ANGLE_LOW_SIZE) ;
 				lAngle = (bytes[5] & mask)<<1 ;
 				//System.out.println("lAngle: "+ lAngle +" \n") ;
 				
@@ -616,15 +638,15 @@ public class SerialConnector/* implements Runnable*/ {
 						 * fifth byte represents: hSSUs4,hSSUs2,hSSUs1;
 						 * 2 bits each . The first two bits of this fifth byte
 						 * contain no info*/
-						mask = doMask(SS_HIGH_SIZE) ;
+						mask = getMask(SS_HIGH_SIZE) ;
 						mask <<= (2*SS_HIGH_SIZE) ;
 						hSSUs4 = (bytes[12] & mask)>>(2*SS_HIGH_SIZE) ;
 						
-						mask = doMask(SS_HIGH_SIZE) ;
+						mask = getMask(SS_HIGH_SIZE) ;
 						mask <<= (SS_HIGH_SIZE) ;
 						hSSUs2 = (bytes[12] & mask)>>(SS_HIGH_SIZE) ;
 						
-						mask = doMask(SS_HIGH_SIZE) ;
+						mask = getMask(SS_HIGH_SIZE) ;
 						hSSUs1 = (bytes[12] & mask) ;
 						
 						/* From higher to lower bits, 
@@ -720,9 +742,9 @@ public class SerialConnector/* implements Runnable*/ {
 				calibration = new Calibration(ablUs1,ablUs2,ablUs4,
 						mblUs1,mblUs2,mblUs4,thlUs1,thlUs2,thlUs4) ;
 				log(calibration.toString()) ;
-				result = new RelateEvent(RelateEvent.CALIBRATION_INFO, relate.getLocalDevice(),
+/*				result = new RelateEvent(RelateEvent.CALIBRATION_INFO, relate.getLocalDevice(),
 						null,System.currentTimeMillis(),
-/*null,*/calibration);
+null,calibration);*/
 				calibrated = true ;
 			}if(bytes[0] == DN_STATE_SIGN && bytes.length == DN_STATE_LENGTH) {
 				dicoveryListIds = new Vector() ;
@@ -738,8 +760,8 @@ public class SerialConnector/* implements Runnable*/ {
 				awareconSyncRate = unsign(bytes[DN_STATE_LENGTH-1]) ;
 				dnState = new DongleNetworkState(relateTime,numberOfEntries,
 						dicoveryListIds,dicoveryListTimes,awareconSyncRate) ;
-				result = new RelateEvent(RelateEvent.DN_STATE, relate.getLocalDevice(),
-						null,System.currentTimeMillis(),null,dnState);
+/*				result = new RelateEvent(RelateEvent.DN_STATE, relate.getLocalDevice(),
+						null,System.currentTimeMillis(),null,dnState);*/
 			}
 		}
 		return result;
