@@ -180,7 +180,7 @@ class SerialCommunicationHelper {
 					received[0] = (byte) recv;
 				}
 				else {
-					//log("Could not find first expected byte, returning");
+					log("Could not find first expected byte, returning");
 					// unable to find even our first expected byte, either due to timeout or to read error
 					return null;
 				}
@@ -197,9 +197,10 @@ class SerialCommunicationHelper {
 			}
 			// before returning, check the remaining expected bytes (if there are any)
 			if (expectedStart != null) {
-				for (int i=alreadyRead; i<expectedStart.length; i++)
+				// the first byte must already match, but checking is cheap so do it anyway
+				for (int i=0; i<expectedStart.length; i++)
 					if (received[i] != expectedStart[i]) {
-						log("Received bytes didn't match");
+						log("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
 						// error in comparison
 						return null;
 					}
@@ -236,17 +237,22 @@ class SerialCommunicationHelper {
 				/*Discard everything currently in the serial input buffer.*/
 				fis.skip(fis.available());
 				/*Send garbage..*/
-				sendToDongle(new byte[] {(byte) 0xAA});
-				/*Discard everything currently in the serial input buffer.*/
-				fis.skip(fis.available());
+				// MAGIC VALUE NUMBER 1: send the 10 garbage bytes, seems to work well
+				int MAGIC_1 = 10;
+				byte[] garbage = new byte[MAGIC_1];
+				for (int i=0; i<garbage.length; i++)
+					garbage[i] = (byte) 0xAA;
+				sendToDongle(garbage);
 				lastTry = System.currentTimeMillis();
 				// why is this inner loop necessary??
 //				do {
+					// MAGIC VALUE NUMBER 2: wait for 100 ms for the dongle to realize we sent garbage. also seems to work reasonably well
+					int MAGIC_2 = 200;
 					recv = receiveFromDongle(3, ACK, 100); 
 					if (recv != null) {
 						unacknowledged = false;
 						localId = recv[2];
-						log("Got first ACK and Id: "+localId+"\n");
+						log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
 						log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+" ms");
 					}
 //				} while ((System.currentTimeMillis() - lastTry < 3) && unacknowledged);

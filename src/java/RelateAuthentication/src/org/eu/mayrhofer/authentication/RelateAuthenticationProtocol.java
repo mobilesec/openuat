@@ -70,6 +70,9 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
         
         h.authenticateWith(1, nonce, rfMessage, 2);
         
+        // problem with the javax.comm API - doesn't release its native thread
+        System.exit(0);
+        
         /*try
         {
             DongleProtocolHandler.StartAuthenticationWith("COM3", -1, null, null);
