@@ -8,66 +8,97 @@ import java.util.*;
 import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.*;
 
+/**
+ * This class handles the key agreement protocol between two hosts on the TCP/IP
+ * level. It implements both sides of the protocol, allowing to handle incoming
+ * connections (i.e. incoming authentication requests) as well as initiating
+ * outgoing connections (i.e. outgoing authentication requests). Events are
+ * raised upon authentication success, failure and during the progress of an
+ * authentication protocol.
+ * 
+ * @author Rene Mayrhofer
+ */
 public class HostProtocolHandler {
+	/** These are the messages of the ASCII authentication protocol. */
     public static final String Protocol_Hello = "HELO RelateAuthentication";
+    /** @see Protocol_Hello */
     public static final String Protocol_AuthenticationRequest = "AUTHREQ ";
+    /** @see Protocol_Hello */
     public static final String Protocol_AuthenticationAcknowledge = "AUTHACK ";
 
+    /** At the moment, the whole protocol consists of 4 stages. */
     public static final int AuthenticationStages = 4;
 
+    /** The socket used to communicate with the remote end, for both incoming and outgoing connections. */
     private Socket socket;
+    /** The stream to send messages to the remote end. */
     private PrintWriter toRemote;
+    /** The stream to receive messages from the remote end. */
     private BufferedReader fromRemote;
     
-    static private LinkedList eventsHandlers = new LinkedList();
+    /** The list of listeners that are notified of authentication events. */
+    private static LinkedList eventsHandlers = new LinkedList();
 
-    // / <summary>
-    // / This class should only be instantiated by HostServerSocket for incoming
-	// connections or with the
-    // / static StartAuthenticatingWith method for outgoing connections.
-    // / </summary>
-    // / <param name="soc">The socket to use for communication. It must already
-	// be connected to the
-    // / other side, but will be shut down and closed before the protocol
-	// handler methods return. The
-    // / reason for this asymmetry (the socket must be connected by the caller,
-	// but is closed by the
-    // / methods of this class) lies in the asynchronity: the protocol handler
-	// methods are called in
-    // / background threads and must therefore dispose the objects before
-	// exiting.</param>
+    /**
+	 * This class should only be instantiated by HostServerSocket for incoming
+	 * connections or with the static startAuthenticatingWith method for
+	 * outgoing connections.
+	 * 
+	 * @param soc
+	 *            The socket to use for communication. It must already be
+	 *            connected to the other side, but will be shut down and closed
+	 *            before the protocol handler methods return. The reason for
+	 *            this asymmetry (the socket must be connected by the caller,
+	 *            but is closed by the methods of this class) lies in the
+	 *            asynchronity: the protocol handler methods are called in
+	 *            background threads and must therefore dispose the objects
+	 *            before exiting.
+	 */
     HostProtocolHandler(Socket soc) 
 	{
 		socket = soc;
     }
     
+    /** Register a listener for receiving events. */
     static public void addAuthenticationProgressHandler(AuthenticationProgressHandler h) {
     	if (! eventsHandlers.contains(h))
     		eventsHandlers.add(h);
     }
 
+    /** De-register a listener for receiving events. */
     static public boolean removeAuthenticationProgressHandler(AuthenticationProgressHandler h) {
    		return eventsHandlers.remove(h);
     }
-    
+
+    /** Helper method for sending an AuthenticationSuccess event to all registered listeners (if any). */
     static private void raiseAuthenticationSuccessEvent(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey) {
     	if (eventsHandlers != null)
     		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
     			((AuthenticationProgressHandler) i.next()).AuthenticationSuccess(remote, sharedSessionKey, sharedAuthenticationKey);
     }
 
+    /** Helper method for sending an AuthenticationFailure event to all registered listeners (if any). */
     static private void raiseAuthenticationFailureEvent(InetAddress remote, Exception e, String msg) {
     	if (eventsHandlers != null)
     		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
     			((AuthenticationProgressHandler) i.next()).AuthenticationFailure(remote, e, msg);
     }
 
+    /** Helper method for sending an AuthenticationProgress event to all registered listeners (if any). */
     static private void raiseAuthenticationProgressEvent(InetAddress remote, int cur, int max, String msg) {
     	if (eventsHandlers != null)
     		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
     			((AuthenticationProgressHandler) i.next()).AuthenticationProgress(remote, cur, max, msg);
     }
 
+    /**
+	 * Helper method used for closing the socket and its connected streams
+	 * cleanly.
+	 * 
+	 * @see fromRemote
+	 * @see toRemote
+	 * @see socket
+	 */
     void shutdownSocketsCleanly()
     {
     	try {
@@ -91,26 +122,23 @@ public class HostProtocolHandler {
     	}
     }
     
-    // / <summary>
-    // / Tries to receive a properly formatted public key from the remote host.
-	// If decoding fails, an
-    // / OnAuthenticationFailure event is raised.
-    // / </summary>
-    // / <param name="expectedMsg">Gives the message that is expected to be
-	// received: for server mode,
-    // / a Protocol_AuthenticationRequest message is expected, while for client
-	// mode, a
-    // / Protocol_AuthenticationAcknowledge is expected.</param>
-    // / <param name="remotePubKey">The extracted public key is returned in this
-	// array. If decoding failed,
-    // / null will be returned instead of the (meaningless) parts that might
-	// have been decoded.</param>
-    // / <param name="remote">The remote socket. This is only needed for raising
-	// events and is passed
-    // / unmodified to the event method.</param>
-    // / <returns>true if a properly formatted public key was found within the
-	// expected message,
-    // / false otherwise.</returns>
+    /**
+	 * Tries to receive a properly formatted public key from the remote host. If
+	 * decoding fails, an OnAuthenticationFailure event is raised.
+	 * 
+	 * @param expectedMsg
+	 *            Gives the message that is expected to be received: for server
+	 *            mode, a Protocol_AuthenticationRequest message is expected,
+	 *            while for client mode, a Protocol_AuthenticationAcknowledge is
+	 *            expected
+	 * @return The extracted public key is returned in this array. If decoding
+	 *         failed, null will be returned instead of the (meaningless) parts
+	 *         that might have been decoded.
+	 * @param remote
+	 *            The remote socket. This is only needed for raising // events
+	 *            and is passed // / unmodified to the event method.
+	 * @throws IOException
+	 */
     private byte[] Helper_ExtractPublicKey(String expectedMsg, InetAddress remote) throws IOException
     {
     	String msg = fromRemote.readLine();
@@ -146,11 +174,18 @@ public class HostProtocolHandler {
         return remotePubKey;
     }
     
-    /*** This method depends on prior initialization and assumes to be launched in an independent thread, i.e. it performs blocking operations.
-     * It assumes that the socket variable already contains a valid, connected socket that can be used for communication with the remote
-     * authentication partner. fromRemote and toRemote will be initialized as streams connected to this socket.
-     * @param serverSide true for server side ("authenticator"), false for client side ("authenticatee")
-     */
+    /**
+	 * This method depends on prior initialization and assumes to be launched
+	 * in an independent thread, i.e. it performs blocking operations. It
+	 * assumes that the socket variable already contains a valid, connected
+	 * socket that can be used for communication with the remote authentication
+	 * partner. fromRemote and toRemote will be initialized as streams connected
+	 * to this socket.
+	 * 
+	 * @param serverSide
+	 *            true for server side ("authenticator"), false for client side
+	 *            ("authenticatee")
+	 */
     private void performAuthenticationProtocol(boolean serverSide) {
     	SimpleKeyAgreement ka = null;
         // remember whom we are communication with: when the socket gets closed,
@@ -254,7 +289,7 @@ public class HostProtocolHandler {
         }
             }
     
-    // Hack to just allow one method to be called asynchronously while still having access to the outer class
+    /** Hack to just allow one method to be called asynchronously while still having access to the outer class. */
     private abstract class AsynchronousCallHelper implements Runnable {
     	protected HostProtocolHandler outer;
     	
@@ -263,35 +298,40 @@ public class HostProtocolHandler {
     	}
     }
 
-	void startIncomingAuthenticationThread()
-	{
-		//System.out.println("Starting incoming authentication thread handler");
-		new Thread(new AsynchronousCallHelper(this) 
-	{ public void run() {
-		outer.performAuthenticationProtocol(true);
-    }}).start();
-		//System.out.println("Started incoming authentication thread handler");
+    /**
+	 * Starts a background thread for handling an incoming authentication
+	 * request. Should only be called by HostServerSocket after accepting a new
+	 * connection.
+	 */
+	void startIncomingAuthenticationThread() {
+		// System.out.println("Starting incoming authentication thread
+		// handler");
+		new Thread(new AsynchronousCallHelper(this) {
+			public void run() {
+				outer.performAuthenticationProtocol(true);
+			}
+		}).start();
+		// System.out.println("Started incoming authentication thread handler");
 	}
 
-    // / <summary>
-    // / Outgoing authentication connections are done asynchronously just like
-	// the incoming
-    // / connections. This method starts a new thread that tries to authenticate
-	// with the host
-    // / given as remote. Callers need to subscribe to the Authentication*
-	// events to get notifications
-    // / of authentication success, failure and progress.
-    // / </summary>
-    static public void startAuthenticationWith(String remoteAddress, int remotePort) throws UnknownHostException, IOException
-    {
-        Socket clientSocket = new Socket(remoteAddress, remotePort);
+    /**
+	 * Outgoing authentication connections are done asynchronously just like the
+	 * incoming connections. This method starts a new thread that tries to
+	 * authenticate with the host given as remote. Callers need to subscribe to
+	 * the Authentication* events to get notifications of authentication
+	 * success, failure and progress.
+	 */
+    static public void startAuthenticationWith(String remoteAddress,
+			int remotePort) throws UnknownHostException, IOException {
+		Socket clientSocket = new Socket(remoteAddress, remotePort);
 
-        HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket);
-        new Thread(tmpProtocolHandler.new AsynchronousCallHelper(tmpProtocolHandler) {
-    public void run()
-    {
-    	outer.performAuthenticationProtocol(false);
-    	} }).start();
-    }
-
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(
+				clientSocket);
+		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
+				tmpProtocolHandler) {
+			public void run() {
+				outer.performAuthenticationProtocol(false);
+			}
+		}).start();
+	}
 }

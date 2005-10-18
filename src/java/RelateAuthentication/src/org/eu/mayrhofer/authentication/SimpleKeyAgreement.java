@@ -7,6 +7,14 @@ import java.security.*;
 import java.security.spec.*;
 import java.math.BigInteger;
 
+/** This class implements a simple key agreement protocol. Simple refers to the interface of this class, not its security. 
+ * For a complete key agreement, the caller is expected to initialize the object, transmit the public key to the remote host,
+ * receive the remote public key and add it to this agreements and then get the shared authentication and session keys. Each 
+ * caller is expected to handle the transmitted public keys and especially the private keys with care and not leak it to
+ * an outside class. The steps must be done in exactly this order or a KeyAgreementProtocolException will be thrown.
+ * @author Rene Mayrhofer
+ *
+ */
 public class SimpleKeyAgreement {
 	/* These are our states of the key agreement protocol: 
 	 - initialized means that the internal nonce has been generated (by the init method),
@@ -17,43 +25,28 @@ public class SimpleKeyAgreement {
 	 - completed means that we have received the remote part and thus completed the protocol.
 	 */
 	private static final int STATE_INITIALIZED = 1;
-
+	/** @see STATE_INITIALIZED */
 	private static final int STATE_INTRANSIT = 2;
-
+	/** @see STATE_INITIALIZED */
 	private static final int STATE_COMPLETED = 3;
 
+	/** The current state of the protocol, i.e. one of STATE_INITIALIZED, STATE_INTRANSIT, or STATE_COMPLETED. */
 	private int state;
 
+	/** The Diffie-Hellman key agreement object used for computing the shared key. */
 	private javax.crypto.KeyAgreement dh;
 
-	// these should hold the DH key data
+	/** The local Diffie-Hellman key pair, can be used to get the public and private parts. */
 	private KeyPair myKeypair;
 
+	/** We use this algorithm for computing the shared key. It is hard-coded for simpler use of this class. */
 	private static final String KEYAGREEMENT_ALGORITHM = "DiffieHellman";
-
+	/** We use this algorithm for computing the shared key. It is hard-coded for simpler use of this class. */
 	private static final String DIGEST_ALGORITHM = "SHA-256";
+	/** This is used for deriving the authentication key from the shared session key to ensure that they are different. It's just some random text, the exact value really does not matter. */
+	private static final String MAGIC_COOKIE = "MAGIC COOKIE FOR SPATIAL AUTHENTICAION";
 
-	private static final String MAGIC_COOKIE = "MAGIC COOKIE FOR RELATE AUTHENTICAION";
-
-	/*public static final short[] p1024_orig = {
-	 0x9B,0xD1,0x92,0x1F,0x5F,0xAA,0xF7,0x94,0xEC,0xBA,0x8B,0x7C,
-	 0x45,0x0B,0xA1,0x92,0xAE,0xF7,0x8D,0x34,0xC1,0x0D,0x29,0x1D,
-	 0xD7,0xC4,0xE4,0xA0,0xC9,0xEE,0x3C,0x59,0xB3,0x81,0xF1,0xEF,
-	 0x09,0x55,0x3F,0xCE,0xD4,0x80,0x89,0xAC,0x0C,0xFF,0xF5,0x51,
-	 0x3A,0x51,0x0D,0x9B,0x6F,0xF3,0xE2,0xAE,0x4D,0xF4,0x9F,0xEA,
-	 0x33,0xDA,0x60,0x31,0x3B,0x43,0x9F,0x5C,0xE8,0x1E,0x20,0x60,
-	 0x23,0x19,0xF3,0xD6,0xC0,0xB1,0x49,0x93,0xDE,0x94,0x87,0xC5,
-	 0x2D,0x14,0xC9,0xA1,0x2E,0x38,0xB2,0x19,0x12,0x11,0x7F,0xB7,
-	 0xF9,0x28,0xE9,0xA8,0x6E,0x7A,0x91,0x74,0x13,0x1D,0x41,0x04,
-	 0x06,0x75,0x2C,0x89,0xE8,0x44,0xE6,0x23,0x4C,0x45,0xDE,0x55,
-	 0x8D,0xF1,0xFB,0xD5,0xF9,0xB5,0xCB,0xB3,
-	 };
-	 public static byte[] p1024;
-	 public static final byte[] g1024 = {
-	 0x02,
-	 };*/
-
-	// The 1024 bit Diffie-Hellman modulus values used by SKIP
+	/** The 1024 bit Diffie-Hellman modulus values used by SKIP */
 	private static final byte skip1024ModulusBytes[] = { (byte) 0xF4,
 			(byte) 0x88, (byte) 0xFD, (byte) 0x58, (byte) 0x4E, (byte) 0x49,
 			(byte) 0xDB, (byte) 0xCD, (byte) 0x20, (byte) 0xB4, (byte) 0x9D,
@@ -82,11 +75,11 @@ public class SimpleKeyAgreement {
 			(byte) 0x5E, (byte) 0xC3, (byte) 0x55, (byte) 0xE9, (byte) 0x2F,
 			(byte) 0x78, (byte) 0xC7 };
 
-	// The SKIP 1024 bit modulus
+	/** The SKIP 1024 bit modulus. This is only a BigInterger representation of skip1024ModulusBytes, but kept for performance reasons. */
 	public static final BigInteger skip1024Modulus = new BigInteger(1,
 			skip1024ModulusBytes);
 
-	// The base used with the SKIP 1024 bit modulus
+	/** The base used with the SKIP 1024 bit modulus */
 	public static final BigInteger skip1024Base = BigInteger.valueOf(2);
 
 	/*static {
@@ -104,14 +97,27 @@ public class SimpleKeyAgreement {
 	 }
 	 }*/
 
+	/** This is the shared key computed by the key agreement algorithm (Diffie-Hellman at the moment). It is not passed
+	 * to the caller by any function, but the session and authentication keys computed by getSessionKey and getAuthenticationKey
+	 * are only derived from this key in a non-reversable way. This provides Perfect Forward Secrecy (PFS), i.e. even when some
+	 * session or authentication key is leaked by improper use or side-channel attacks, neither this shared secret nor the private
+	 * key used to establish it will be leaked. The authentication and session keys are independent in the same way: knowing one
+	 * does not give any knowledge about the other (under the assumption that the hashing algorithm specified in 
+	 * DIGEST_ALGORITHM is secure).
+	 */
 	private byte[] sharedKey;
 
+	/** Initialized a fresh key agreement, simply by calling init(). 
+	 * @see init
+	 */
 	public SimpleKeyAgreement() throws InternalApplicationException {
 		init();
 	}
 
-	/// Initializes the random nonce of this side for generating the shared session key.
-	/// This method can only be called in any state and wipes all old values.
+	/** Initializes the random nonce of this side for generating the shared session key.
+	 * This method can be called in any state and wipes all old values (by calling wipe()).
+	 * @see wipe
+	 */
 	public void init() throws InternalApplicationException {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
 		wipe();
@@ -122,7 +128,6 @@ public class SimpleKeyAgreement {
 			KeyPairGenerator kg = KeyPairGenerator
 					.getInstance(KEYAGREEMENT_ALGORITHM);
 
-			//DHParameterSpec ps = new DHParameterSpec(new BigInteger(p1024), new BigInteger(g1024)); 
 			DHParameterSpec ps = new DHParameterSpec(skip1024Modulus,
 					skip1024Base);
 			kg.initialize(ps);
@@ -146,13 +151,37 @@ public class SimpleKeyAgreement {
 		}
 	}
 
+	/** This method performs a secure wipe of the cryptographic key material held by this class by overwriting the memory
+	 * regions with zero before freeing them (i.e. handing them over to the garbage collector, which might free them
+	 * at an unpredictable time later, marking them for overwrite at an even later time). More specifically, it wipes
+	 * sharedKey, myKeypair and dh.
+	 * 
+	 * TODO: This method is not yet secure! It can't access the internal data structures of myKeypair and dh, which do not
+	 * offer wipe methods themselves.
+	 * 
+	 * @see sharedKey
+	 * @see myKeypair
+	 * @see dh
+	 */
 	public void wipe() {
-		// TODO: secure wipe of old values!
-		// wipe dh, dhParams, pubKey, privKey, sharedKey
-
+		if (sharedKey != null) {
+			for (int i=0; i<sharedKey.length; i++)
+				sharedKey[i] = 0;
+			sharedKey = null;
+		}
+		// TODO: can not wipe myKeyPair, because there is no access to its internal data structures!
+		myKeypair = null;
+		// TODO: can not wipe dh, because there is no access to its internal data structures!
+		dh = null;
+		// Trigger the garbage collector now. This won't be necessary if we could wipe the values above (which would be a lot more secure).
+		System.gc();
+		
+		// special state: unusable!
+		state = 0;
 	}
 
-	/// This method can only be called in state initialized and changes it to inTransit.
+	/**  Get the public key for the key agreement protocol. This byte array should be transmitted to the remote side.
+	 * This method can only be called in state initialized and changes it to inTransit. */
 	public byte[] getPublicKey() throws KeyAgreementProtocolException {
 		if (state != STATE_INITIALIZED)
 			throw new KeyAgreementProtocolException(
@@ -166,7 +195,9 @@ public class SimpleKeyAgreement {
 		return ((DHPublicKey) myKeypair.getPublic()).getY().toByteArray();
 	}
 
-	/// This method can only be called in state inTransmit and changes it to completed.
+	/** Add the remote public key.
+	 * This method can only be called in state inTransmit and changes it to completed.
+	 */ 
 	public void addRemotePublicKey(byte[] key)
 			throws KeyAgreementProtocolException, InternalApplicationException {
 		if (state != STATE_INTRANSIT)
@@ -224,7 +255,7 @@ public class SimpleKeyAgreement {
 		}
 	}
 
-	/// this is a small utility function for computing a secure hash from the shared key		
+	/** this is a small utility function for computing a secure hash from the shared key. */		
 	private byte[] doubleSHA256(byte[] text)
 			throws InternalApplicationException {
 		// this double hashing with the first hash being prepended to the message is suggested by 
@@ -246,10 +277,10 @@ public class SimpleKeyAgreement {
 		}
 	}
 
-	/// This method can only be called in state completed.
-	/// The returned session key must only be used for deriving authentication and encryption keys,
-	/// e.g. as a PSK for IPSec. It must _not_ be used directly for authentication, since this could
-	/// leak the encryption key to any attacker if the authentication function is not strong enough.
+	/** This method can only be called in state completed.
+	 * The returned session key must only be used for deriving authentication and encryption keys,
+	 * e.g. as a PSK for IPSec. It must _not_ be used directly for authentication, since this could
+	 * leak the encryption key to any attacker if the authentication function is not strong enough. */
 	public byte[] getSessionKey() throws KeyAgreementProtocolException,
 			InternalApplicationException {
 		if (state != STATE_COMPLETED)
@@ -263,11 +294,11 @@ public class SimpleKeyAgreement {
 		return doubleSHA256(sharedKey);
 	}
 
-	/// This method can only be called in state completed.
-	/// The returned key should be used for the initial authentication phase, but must _not_ be
-	/// used for deriving other channel authentication and encryption keys. It is a fingerprint of 
-	/// the key returned by getSessionKey, and one can thus assume that if this key is equal on 
-	/// both sides, then both sides also share the same session key.  
+	/** This method can only be called in state completed.
+	 * The returned key should be used for the initial authentication phase, but must _not_ be
+	 * used for deriving other channel authentication and encryption keys. It is derived from the same base as 
+     * the key returned by getSessionKey, and one can thus assume that if this key is equal on 
+	 * both sides, then both sides also share the same session key. */  
 	public byte[] getAuthenticationKey() throws KeyAgreementProtocolException,
 			InternalApplicationException {
 		if (state != STATE_COMPLETED)
@@ -283,5 +314,4 @@ public class SimpleKeyAgreement {
 				cookie.length);
 		return doubleSHA256(dhSharedModified);
 	}
-
 }

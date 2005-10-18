@@ -2,23 +2,26 @@ package org.eu.mayrhofer.authentication;
 
 import java.net.*;
 
+/**
+ * This interface defines a listener for authentication events. 
+ * @author Rene Mayrhofer
+ */
 public interface AuthenticationProgressHandler {
-    // / <summary>
-    // / Upon successful authentication, the established shared key can be used
-	// with the remote host.
-    // / </summary>
-    // / <param name="remote"></param>
-    // / <param name="sharedSessionKey"></param>
-    public void AuthenticationSuccess(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey);
+	/**
+	 * Upon successful authentication, the established shared key can be used
+	 * with the remote host.
+	 */
+	public void AuthenticationSuccess(InetAddress remote,
+			byte[] sharedSessionKey, byte[] sharedAuthenticationKey);
 
-    // / <summary>
-    // / Upon authentication failure, an exception might have been thrown and a
-	// message might have been created.
-    // / </summary>
-    // / <param name="remote"></param>
-    // / <param name="e">Can be null</param>
-    // / <param name="msg">Can be null</param>
-    public void AuthenticationFailure(InetAddress remote, Exception e, String msg);
+	/**
+	 Upon authentication failure, an exception might have been thrown and a
+	 message might have been created.
+	 @param e Reason for the failue, can be null.
+	 @param msg Reaseon for the failue, can be null */
+	public void AuthenticationFailure(InetAddress remote, Exception e,
+			String msg);
 
-    public void AuthenticationProgress(InetAddress remote, int cur, int max, String msg);
+	public void AuthenticationProgress(InetAddress remote, int cur, int max,
+			String msg);
 }
