@@ -11,7 +11,7 @@ public interface AuthenticationProgressHandler {
 	 * Upon successful authentication, the established shared key can be used
 	 * with the remote host.
 	 */
-	public void AuthenticationSuccess(InetAddress remote,
+	public void AuthenticationSuccess(InetAddress remoteHost, 
 			byte[] sharedSessionKey, byte[] sharedAuthenticationKey);
 
 	/**

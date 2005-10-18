@@ -10,21 +10,29 @@ import java.io.*;
 import java.util.*;
 
 /**
- * * This class handles communication protocols, data's exchange and parsing
- * between a Relate dongle and its host device (laptop, desktop, PDA, projector) *
+ * This is a helper class for SerialConnector and encapsulates the low-level communication with the dongle. It offers a 
+ * simple interface to send messages to the dongle and receive its output in normal (monitoring) mode. All communication
+ * with the serial port is handled through this helper. It also manages the javax.comm API. 
  * 
- * @author Chris Kray, Henoc Agbota
+ * @author Rene Mayrhofer
  */
+class SerialCommunicationHelper {
+	/** List of available ports returned by the javax.comm API.  */
+	private String[] portNames = null;
 
-public class SerialConnector/* implements Runnable */{
+	/** Holds the CommPortIdentifier objects associated with the portNames. */
+	private Vector availablePorts = null;
+
 	/**
-	 * At the moment, there can only be a single instance of SerialConnector.
-	 * This singleton is held here and returned by getSerialConnector.
-	 * 
-	 * @see getSerialConnector
+	 * The port identifier used to reference the serial port used by the dongle.
+	 * From this object, the serialPort object is reconstructed every time after
+	 * changing the baud rate.
 	 */
-	private static SerialConnector sConn = null;
+	private CommPortIdentifier portId = null;
 
+	/** The main serial port object. It gets reconstructed from the portId by prepareMode whenever the current mode is changed. */
+	private SerialPort serialPort = null;
+	
 	/**
 	 * The initialization of fis and fos depends on the state variable
 	 * interacting. In interacting mode (i.e. interacting = true), both fos and
@@ -41,6 +49,316 @@ public class SerialConnector/* implements Runnable */{
 	 * 57600 baud), true for command/interacting mode (19200 baud).
 	 */
 	public boolean interacting = false;
+	
+	/** Stored the local dongle id that has been reported last. */
+	private int myRelateId = -1;
+
+	/**
+	 * acknowledgement bytes sent by dongle; also served as prefixed bytes to
+	 * the dongle's relate id
+	 */
+	private final static byte[] ACK = { 65, 65 };
+	
+	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
+	public SerialCommunicationHelper() {
+		CommPortIdentifier id;
+		Enumeration portList;
+
+		portList = CommPortIdentifier.getPortIdentifiers();
+		availablePorts = new Vector();
+		/* generate list of (available) ports */
+		while ((portList.hasMoreElements()) && (portId == null)) {
+			id = (CommPortIdentifier) portList.nextElement();
+			log("port " + id + " (" + id.getName() + ") is "
+					+ (id.isCurrentlyOwned() ? " not " : "") + " available.");
+			if (!(id.isCurrentlyOwned())) {
+				availablePorts.addElement(id);
+			}
+		}
+		if (availablePorts.size() > 0) {
+			portNames = new String[availablePorts.size()];
+			for (int i = 0; i < availablePorts.size(); i++) {
+				portNames[i] = ((CommPortIdentifier) availablePorts
+						.elementAt(i)).getName();
+			}
+		} else {
+			log("no ports available");
+		}
+	}
+
+	/** return list of available serial ports */
+	public String[] getPorts() {
+		return portNames;
+	}
+
+	/** Prepares the dongle for either interacting mode (used to send commands to the dongle and get its status) or read-only monitoring mode.
+	 * 
+	 * @param interacting true for interacting mode, false for monitoring mode
+	 */
+	private void prepareMode(boolean interacting) throws IOException, PortInUseException {
+		if (this.interacting == interacting) {
+			// already in the requested mode, nothing to do
+			return;
+		}
+		else {
+			if (fis != null) {
+				fis.close();
+				fis = null;
+			}
+			if (fis != null) {
+				fos.close();
+				fos = null;
+			}
+			if (serialPort != null)
+				serialPort.close();
+			
+			serialPort = (SerialPort) portId.open("RelatePort", 500);
+			try { 
+				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
+						SerialPort.DATABITS_8,
+						SerialPort.STOPBITS_1,
+						SerialPort.PARITY_NONE);
+				//serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+			} catch (UnsupportedCommOperationException e) {
+				log("UnsupportedCommOperationException") ;
+				e.printStackTrace();
+			}
+			if (interacting) 
+				fos = serialPort.getOutputStream();
+			fis = serialPort.getInputStream();
+			this.interacting = interacting;
+		}
+	}
+	
+	/** Send raw data to the dongle.
+	 * This implicitly switches the dongle to interactive mode.
+	 */
+	private void sendToDongle(byte[] data) throws IOException, PortInUseException {
+		prepareMode(true);
+		try {
+			fos.write(data) ;
+			fos.flush();
+		} catch (IOException ex) {
+			log("sending info to dongle failed due to " + ex);
+			ex.printStackTrace();
+			throw ex;
+		}
+	}
+	
+	/**
+	/** Receive data from the dongle. Works in both modes and does not affect the current mode setting. 
+	 *  @param bytes The number of bytes to read from the dongle. 
+	 *  @param timeout Maximum time in milliseconds to wait for the data.
+	 *  @return The data received from the dongle or null if unable to receive (due to timeout or unable to read). 
+	 */
+	/*private byte[] receiveFromDongle(int bytes, long timeout) {
+		return receiveFromDongle(bytes, null, timeout);
+	}*/
+
+	/** This method also resceives from the dongle, but skips bytes until they match an expected start header (e.g. acknowledge).
+	 * @param bytesToRead The number of bytes to read from the dongle.
+	 * @param expectedStart The expected bytes that the dongle should return. On success, the returned data will start with exactly these bytes.
+	 *  @param timeout Maximum time in milliseconds to wait for the data.
+	 *  @return The data received from the dongle or null if unable to receive (due to timeout, unable to read, or expectedStart not found within timeout). 
+	 */
+	private byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, long timeout) {
+		byte[] received = new byte[bytesToRead];
+		int alreadyRead = 0, readBytes;
+		long startTime = System.currentTimeMillis();
+		boolean wait = true;
+		
+		try {
+			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
+			if (expectedStart != null && expectedStart.length > 0) {
+				int recv = fis.read();
+				while(recv != expectedStart[0] && recv != -1 && wait) {
+					recv = fis.read();
+					wait = (System.currentTimeMillis() - startTime) < timeout;
+				}
+				if (recv == expectedStart[0]) {
+					alreadyRead++;
+					received[0] = (byte) recv;
+				}
+				else {
+					//log("Could not find first expected byte, returning");
+					// unable to find even our first expected byte, either due to timeout or to read error
+					return null;
+				}
+			}
+			do {
+				readBytes = fis.read(received, alreadyRead, bytesToRead - alreadyRead);
+				wait = (System.currentTimeMillis() - startTime) < timeout;
+				if (readBytes > 0)
+					alreadyRead += readBytes;
+			} while (alreadyRead < bytesToRead && readBytes != -1 && wait);
+			if (alreadyRead != bytesToRead) {
+				//log("Didn't get enough bytes from dongle, wanted " + bytesToRead + " but got " + alreadyRead);
+				return null;
+			}
+			// before returning, check the remaining expected bytes (if there are any)
+			if (expectedStart != null) {
+				for (int i=alreadyRead; i<expectedStart.length; i++)
+					if (received[i] != expectedStart[i]) {
+						log("Received bytes didn't match");
+						// error in comparison
+						return null;
+					}
+			}
+			// finally: read all bytes that have been requested and compared ok to the expected start
+			return received;
+		} catch (IOException ex) {
+			log("sending info to dongle failed due to " + ex);
+			ex.printStackTrace();
+			return null;
+		}
+	}
+
+	/**
+	 * Try to catch the dongle's attention by
+	 * repeatedly sending '10101...'
+	 * @return the dongle ID
+	 */
+	private int getDongleAttention() throws PortInUseException {
+		int localId = -1;
+		byte[] recv;
+		int counter = 0;
+		boolean unacknowledged = true ;
+		long startTime = 0 ;
+		long lastTry = 0;
+		
+		try {
+			startTime =  System.currentTimeMillis();
+			
+			// special case here: need to call it manually so that fis.skip will work
+			prepareMode(true);
+			while (unacknowledged) {
+				counter++ ;
+				/*Discard everything currently in the serial input buffer.*/
+				fis.skip(fis.available());
+				/*Send garbage..*/
+				sendToDongle(new byte[] {(byte) 0xAA});
+				/*Discard everything currently in the serial input buffer.*/
+				fis.skip(fis.available());
+				lastTry = System.currentTimeMillis();
+				// why is this inner loop necessary??
+//				do {
+					recv = receiveFromDongle(3, ACK, 100); 
+					if (recv != null) {
+						unacknowledged = false;
+						localId = recv[2];
+						log("Got first ACK and Id: "+localId+"\n");
+						log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+" ms");
+					}
+//				} while ((System.currentTimeMillis() - lastTry < 3) && unacknowledged);
+			}
+		} catch (IOException ex) {
+			log("Geting dongle's attention failed due to " + ex);
+			ex.printStackTrace();
+		}
+		log("Number of trials before getting ACK:"+counter) ;
+		log("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));
+		return localId ;
+	}
+	
+	/** Sends a complete message to the dongle:
+	 * 1. Gets the dongle's attention (by switching to interactive mode and sending garbage)
+	 * 2. Waits for the dongle to acknowledge entering the interactive mode and reporting its id (loops to 1 until ack is received).
+	 *    The reported local dongle ID is stored in the myRelateId member variable.
+	 * 3. Sends the passed message to the dongle, assuming that it should now be listening.
+	 * 
+	 * @param msg The message/command to send to the dongle.
+	 * @param expectedMsgAck If passed, this method loops until the dongle acknowledges the message/command with these bytes.
+	 *                       In every loop, the msg is sent again to the dongle.
+	 *                       Ignored if null (no looping then, since the method will not wait for any acknowledge.)
+	 * @see myRelateId;
+	 */ 
+	public void sendMessage(byte[] msg, byte[] expectedMsgAck) throws IOException, PortInUseException {
+		// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
+		myRelateId = getDongleAttention() ;
+		// bad hack: this is for hostinfo
+		// FIXME TODO
+		// no no no no this is bad bad bad
+		if (expectedMsgAck != null)
+			expectedMsgAck[0] = (byte) myRelateId;
+		
+		do {
+			log("Sending message to dongle" + (expectedMsgAck != null ? " and waiting for ack" : ""));
+			sendToDongle(msg);
+		} while (expectedMsgAck != null &&
+				// if there is some acknowledge expected, try to read it from the dongle
+				// the timeout here is just a heuristic
+				receiveFromDongle(expectedMsgAck.length, expectedMsgAck, 100*expectedMsgAck.length) == null);
+	}
+
+	public boolean connect(String port) {
+		// initialize the portId object based on the objects gathered from the javax.comm API and the passed port name
+		if (port != null) {
+			for (int i=0; i<availablePorts.size(); i++) {
+				if (port.equals(((CommPortIdentifier) availablePorts.elementAt(i)).getName())) {
+					portId = (CommPortIdentifier) availablePorts.elementAt(i);
+					break;
+				}
+			}
+			if (portId == null) {
+				log("no port named '" + port + "' found!");
+			} else {
+				if (portId.isCurrentlyOwned()) {
+					log("port " + port + " is currently in use by " +
+							portId.getCurrentOwner());
+				} else {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public void disconnect() {
+		/*b = null;*/
+		if (serialPort != null) {
+			serialPort.close();
+			serialPort = null;
+		}
+	}
+	
+	/** Returns the local dongle id that was reported by the dongle during sending the last message to it. It will be invalid
+	 * before the first call to sendMessage, because it is only initialized in that method. However, connect already initializes
+	 * it.
+	 * @return
+	 */
+	public int getLocalRelateId() {
+		return myRelateId;
+	}
+	
+	// TODO: this method is only temporary and will go away once there is a proper interface for reading from the dongle in
+	// monitoring mode!
+	public void switchToReceive() throws IOException, PortInUseException {
+		prepareMode(false);
+	}
+	
+	private void log(String msg) {
+		System.out.println("[SerialCommunicationHelper] " + msg);
+	}
+}
+
+/**
+ * * This class handles communication protocols, data's exchange and parsing
+ * between a Relate dongle and its host device (laptop, desktop, PDA, projector) *
+ * 
+ * @author Chris Kray, Henoc Agbota, extensively restructured by Rene Mayrhofer
+ */
+
+public class SerialConnector/* implements Runnable */{
+	/**
+	 * At the moment, there can only be a single instance of SerialConnector.
+	 * This singleton is held here and returned by getSerialConnector.
+	 * 
+	 * @see getSerialConnector
+	 */
+	private static SerialConnector sConn = null;
+	
+	/** This helper class is used to communicate with the serial port. */
+	private SerialCommunicationHelper commHelper = null;
 
 	/**
 	 * Flag indicating wether this instance should continue to run. Used by
@@ -77,21 +395,6 @@ public class SerialConnector/* implements Runnable */{
 	/** flag indicating wether still waiting for calibration info */
 	private boolean calibrated = false;
 
-	/** list of available ports */
-	private String[] portNames = null;
-
-	private Vector availablePorts = null;
-
-	/**
-	 * The port identifier used to reference the serial port used by the dongle.
-	 * From this object, the serialPort object is reconstructed every time after
-	 * changing the baud rate.
-	 */
-	private CommPortIdentifier portId = null;
-
-	/** serial port object */
-	private SerialPort serialPort = null;
-
 	/** Configuration object used to obtain and send host info */
 	// private Configuration configuration = null;
 	/** queue to push new measurements onto */
@@ -109,12 +412,6 @@ public class SerialConnector/* implements Runnable */{
 
 	/** bytes to send to awake dongle from sleep mode */
 	private final static byte[] DIAGNOSTIC_OFF = { 67, 51 };
-
-	/**
-	 * acknowledgement bytes sent by dongle; also served as prefixed bytes to
-	 * the dongle's relate id
-	 */
-	private final static byte[] ACK = { 65, 65 };
 
 	/* private final static int END_COMM = 90 ; */
 	/** number of bytes for the host info */
@@ -161,9 +458,6 @@ public class SerialConnector/* implements Runnable */{
 
 	/** Prefix to measurement bytes 'M' */
 	private final static int DEVICE_MEASUREMENT_SIGN = 77;
-
-	/** this host relate id */
-	private int myRelateId = -1;
 
 	/** bytes array containing host information */
 	public byte[] hostInfo = new byte[HOST_INFO_LENGTH];
@@ -215,33 +509,13 @@ public class SerialConnector/* implements Runnable */{
 	/** Prefix to firmware version */
 	private static final int DN_STATE_SIGN = 78;
 
+	/** Initializes the SerialCommunicationHelper object in commHelper. */
 	protected SerialConnector(boolean loggingOn) {
-		CommPortIdentifier id;
-		Enumeration portList;
-
 		logging = loggingOn;
 		operational = false;
-		portList = CommPortIdentifier.getPortIdentifiers();
-		availablePorts = new Vector();
-		/* generate list of (available) ports */
-		while ((portList.hasMoreElements()) && (portId == null)) {
-			id = (CommPortIdentifier) portList.nextElement();
-			log("port " + id + " (" + id.getName() + ") is "
-					+ (id.isCurrentlyOwned() ? " not " : "") + " available.");
-			if (!(id.isCurrentlyOwned())) {
-				availablePorts.addElement(id);
-			}
-		}
-		if (availablePorts.size() > 0) {
-			portNames = new String[availablePorts.size()];
-			for (int i = 0; i < availablePorts.size(); i++) {
-				portNames[i] = ((CommPortIdentifier) availablePorts
-						.elementAt(i)).getName();
-			}
-		} else {
-			log("no ports available");
-		}
-
+		
+		commHelper = new SerialCommunicationHelper();
+		
 		initialised = true;
 	}
 
@@ -265,9 +539,9 @@ public class SerialConnector/* implements Runnable */{
 	
 	/** return list of available serial ports */
 	public String[] getPorts() {
-		return portNames;
+		return commHelper.getPorts();
 	}
-
+	
 	/** return Calibration object */
 	public Calibration getCalibration() {
 		return calibration ;
@@ -279,207 +553,58 @@ public class SerialConnector/* implements Runnable */{
 	public void stopLogging() {
 		logging = false;
 	}
-	
-	/** Prepares the dongle for either interacting mode (used to send commands to the dongle and get its status) or read-only monitoring mode.
-	 * 
-	 * @param interacting true for interacting mode, false for monitoring mode
-	 * @return true if successful, false otherwise
-	 */
-	private boolean prepareMode(boolean interacting) {
-		if (this.interacting == interacting) {
-			// already in the requested mode, nothing to do
-			return true;
-		}
-		else {
-			try { 
-				if (fis != null) {
-					fis.close();
-					fis = null;
-				}
-				if (fis != null) {
-					fos.close();
-					fos = null;
-				}
-				if (serialPort != null)
-					serialPort.close();
-				
-				serialPort = (SerialPort) portId.open("RelatePort", 500);
-				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
-						SerialPort.DATABITS_8,
-						SerialPort.STOPBITS_1,
-						SerialPort.PARITY_NONE);
-				//serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
-				if (interacting) 
-					fos = serialPort.getOutputStream();
-				fis = serialPort.getInputStream();
-				this.interacting = interacting;
-				return true;
-			} catch (UnsupportedCommOperationException e) {
-				log("UnsupportedCommOperationException") ;
-				e.printStackTrace();
-				return false;
-			}
-			catch (PortInUseException e) {
-				log("PortInUseException") ;
-				e.printStackTrace();
-				return false;
-			}
-			catch (IOException e) {
-				log("IOException") ;
-				e.printStackTrace();
-				return false;
-			}
-			/*catch (Exception e) {
-				log("not all parameters supported? ingnoring exception") ;
-				e.printStackTrace();
-				return true;
-			}*/
-		}
-	}
-	
-	/** Send data to the dongle.
-	 * This implicitly switches the dongle to interactive mode.
-	 */
-	private boolean sendToDongle(byte[] data) {
-		prepareMode(true);
-		try {
-			fos.write(data) ;
-			fos.flush();
-			return true;
-		} catch (IOException ex) {
-			log("sending info to dongle failed due to " + ex);
-			ex.printStackTrace();
-			return false;
-		}
-	}
 
-	/** Receive data from the dongle. Works in both modes and does not affect the current mode setting. 
-	 *  @param bytes The number of bytes to read from the dongle. 
-	 *  @param timeout Maximum time in milliseconds to wait for the data.
-	 *  @return The data received from the dongle or null if unable to receive (due to timeout or unable to read). 
-	 */
-	private byte[] receiveFromDongle(int bytes, long timeout) {
-		return receiveFromDongle(bytes, null, timeout);
-	}
-
-	/** This method also resceives from the dongle, but skips bytes until they match an expected start header (e.g. acknowledge).
-	 * @param bytesToRead The number of bytes to read from the dongle.
-	 * @param expectedStart The expected bytes that the dongle should return. On success, the returned data will start with exactly these bytes.
-	 *  @param timeout Maximum time in milliseconds to wait for the data.
-	 *  @return The data received from the dongle or null if unable to receive (due to timeout, unable to read, or expectedStart not found within timeout). 
-	 */
-	private byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, long timeout) {
-		byte[] received = new byte[bytesToRead];
-		int alreadyRead = 0, readBytes;
-		long startTime = System.currentTimeMillis();
-		boolean wait = true;
-		
-		try {
-			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
-			if (expectedStart != null && expectedStart.length > 0) {
-				int recv = fis.read();
-				while(recv != expectedStart[0] && recv != -1 && wait) {
-					recv = fis.read();
-					wait = (System.currentTimeMillis() - startTime) < timeout;
-				}
-				if (recv == expectedStart[0]) {
-					alreadyRead++;
-					received[0] = (byte) recv;
-				}
-				else {
-					log("Could not find first expected byte, returning");
-					// unable to find even our first expected byte, either due to timeout or to read error
-					return null;
-				}
-			}
-			do {
-				readBytes = fis.read(received, alreadyRead, bytesToRead - alreadyRead);
-				wait = (System.currentTimeMillis() - startTime) < timeout;
-				if (readBytes > 0)
-					alreadyRead += readBytes;
-			} while (alreadyRead < bytesToRead && readBytes != -1 && wait);
-			if (alreadyRead != bytesToRead) {
-				log("Didn't get enough bytes from dongle, wanted " + (bytesToRead-alreadyRead) + " but got " + readBytes);
-				return null;
-			}
-			// before returning, check the remaining expected bytes (if there are any)
-			if (expectedStart != null) {
-				for (int i=alreadyRead; i<expectedStart.length; i++)
-					if (received[i] != expectedStart[i]) {
-						log("Received bytes didn't match");
-						// error in comparison
-						return null;
-					}
-			}
-			// finally: read all bytes that have been requested and compared ok to the expected start
-			return received;
-		} catch (IOException ex) {
-			log("sending info to dongle failed due to " + ex);
-			ex.printStackTrace();
-			return null;
-		}
-	}
-	
-	/** initialise connector.
+	/** initialise connector, first handshake with the dongle takes place here. This method fetches the dongle's Relate ID.
 	 * @param port		  the port to connect with 
 	 @param minID         the lowest valid ID for relate objects
 	 @param maxID         the highest valid ID for relate objects
 	 @return the ID of the attached dongle or -1 if something went wrong
 	 **/
 	public int connect(String port, int minID, int maxID) {
-		int result = -1;
 		int i;
-//		this.hostInfo = configuration.getFormat(); 
-		
+		// this.hostInfo = configuration.getFormat();
+
 		this.MIN_ID = minID;
 		this.MAX_ID = maxID;
-		/*System.out.print("hostInfo: \n");
-		 printByteArray(hostInfo) ;*/
-		if (port != null) {
-			for (i=0; i<availablePorts.size(); i++) {
-				if (port.equals(((CommPortIdentifier) availablePorts.elementAt(i)).getName())) {
-					portId = (CommPortIdentifier) availablePorts.elementAt(i);
-					break;
-				}
-			}
-			if (portId == null) {
-				log("no port named '" + port + "' found!");
-			} else {
-				if (portId.isCurrentlyOwned()) {
-					log("port " + port + " is currently in use by " +
-							portId.getCurrentOwner());
-				} else {
-					// this implicitly sends the host info and gets the local device id
-					result = pcSend(null, true);
-					log("local device id: "+result+"\n") ;
-					
-					/*temporary fix to turn on diagnostic mode*/
-					pcSend(DIAGNOSTIC_ON, false);
-					diagnosticMode = true ;
-					
-					/*temporary fix to turn off diagnostic mode*/
-					/*pcSend(DIAGNOSTIC_OFF, false);
-					 diagnosticMode = false ;*/
-					
-					prepareMode(false);
+		/*
+		 * System.out.print("hostInfo: \n"); printByteArray(hostInfo) ;
+		 */
+		if (commHelper.connect(port)) {
+			try {
+				// send the host info to the dongle
+				/*byte[] hostInfoMsg = new byte[hostInfo.length + 1];
+				// the command byte
+				hostInfoMsg[0] = (byte) 72;
+				System.arraycopy(hostInfo, 0, hostInfoMsg, 1, hostInfo.length);
+				log("Sending hostinfo to dongle and waiting for it to ack");
+				commHelper.sendMessage(hostInfoMsg, hostInfo);
+				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 
-					operational = true;
-				}
+				/* temporary fix to turn on diagnostic mode */
+				commHelper.sendMessage(DIAGNOSTIC_ON, null);
+				diagnosticMode = true;
+
+				/* temporary fix to turn off diagnostic mode */
+				/*
+				 * pcSend(DIAGNOSTIC_OFF, false); diagnosticMode = false ;
+				 */
+
+				// switch to receiving mode
+				commHelper.switchToReceive();
+
+				operational = true;
+			} catch (Exception e) {
+				log("Could not connect to dongle!");
+				e.printStackTrace();
+				return -1;
 			}
 		}
-		if (result != -1)
-			// remember the local relate Id
-			myRelateId = result;
-		return result;
+		return commHelper.getLocalRelateId();
 	}
 	
 	public void disconnect() {
-		/*b = null;*/
-		if (serialPort != null) {
-			serialPort.close();
-			serialPort = null;
-			operational = false;
-		}
+		commHelper.disconnect();
+		operational = false;
 	}
 	
 	public void log(Object o) {
@@ -622,7 +747,7 @@ public class SerialConnector/* implements Runnable */{
 						new Boolean(true)) ;
 				
 				if ((0 <= angle) && (angle <= 360)) {
-					if(rxId == myRelateId && diagnosticMode &&
+					if(rxId == commHelper.getLocalRelateId() && diagnosticMode &&
 							bytes.length == (MES_SIZE+US_SENSOR_INFO_LENGTH)){
 						/*log("Got uS sensor info..!!") ;
 						 printByteArray(bytes) ;*/
@@ -838,77 +963,6 @@ null,calibration);*/
 		return result ;
 	}
 	
-	/**
-	 * Try to catch the dongle's attention by
-	 * repeatedly sending '10101...'
-	 * @return the dongle ID
-	 */
-	private int getDongleAttention() {
-		int localId = -1;
-		byte[] recv;
-		int counter = 0;
-		boolean unacknowledged = true ;
-		long startTime = 0 ;
-		long lastTry = 0;
-		
-		try {
-			startTime =  System.currentTimeMillis();
-			
-			// special case here: need to call it manually so that fis.skip will work
-			prepareMode(true);
-			while (unacknowledged) {
-				counter++ ;
-				/*Discard everything currently in the serial input buffer.*/
-				fis.skip(fis.available());
-				/*Send garbage..*/
-				sendToDongle(new byte[] {(byte) 0xAA});
-				lastTry = System.currentTimeMillis();
-				// why is this inner loop necessary??
-//				do {
-					recv = receiveFromDongle(3, ACK, 100); 
-					if (recv != null) {
-						unacknowledged = false;
-						localId = recv[2];
-						log("Got first ACK and Id: "+localId+"\n");
-						log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+" ms");
-					}
-//				} while ((System.currentTimeMillis() - lastTry < 3) && unacknowledged);
-			}
-		} catch (IOException ex) {
-			log("Geting dongle's attention failed due to " + ex);
-			ex.printStackTrace();
-		}
-		log("Number of trials before getting ACK:"+counter) ;
-		log("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));
-		return localId ;
-	}
-	
-	/**
-	 * Sends the host information to the dongle and receives ID of
-	 * the dongle.
-	 * @param data, the data to be sent; ackBack, true if acknowledgment required
-	 * @return the dongle ID or -1 if something went wrong.
-	 */
-	public int pcSend(byte[] data, boolean ackBack) {
-		boolean stop = false ;
-		
-		do {
-			myRelateId = getDongleAttention() ;
-			if(!ackBack)
-				stop = sendToDongle(data) ;
-			else {
-				hostInfo[0] = (byte)myRelateId ;
-				log("Sending host info") ;
-				sendToDongle(new byte[] {(byte) 72});
-				sendToDongle(hostInfo);
-				log("Host Info sent, waiting for reply") ;
-				// as an acknowledge to the host info, we expect the same data to be sent back
-				stop =  receiveFromDongle(hostInfo.length, hostInfo, 5000) != null;
-			}
-		}while(!stop) ;
-		return myRelateId;
-	}
-	
 	/** set the state of the dongle
 	 *  @param on if true, turn dongle on, if false, turn it off
 	 */
@@ -927,11 +981,11 @@ null,calibration);*/
 		try {
 			if (dongle_on) {
 				/* starting up */
-				pcSend(UNBLOCK_DONGLE,false) ;
+				commHelper.sendMessage(UNBLOCK_DONGLE, null);
 				awaken = true ;
 			} else {
 				/* shutting down */
-				pcSend(BLOCK_DONGLE,false) ;
+				commHelper.sendMessage(BLOCK_DONGLE, null);
 				awaken = false ;
 				log("shut down dongle");
 			}

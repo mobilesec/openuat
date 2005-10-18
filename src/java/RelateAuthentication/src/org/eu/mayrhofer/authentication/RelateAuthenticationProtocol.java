@@ -4,6 +4,11 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 
+import java.security.KeyFactory;
+import java.security.SecureRandom;
+import javax.crypto.*;
+import javax.crypto.spec.*;
+
 /// <summary>
 /// This is the main class of the relate authentication software: it ties together
 /// the host and dongle protocol handlers. Since both handlers work asynchronously
@@ -35,7 +40,7 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
 	{
     	HostProtocolHandler.addAuthenticationProgressHandler(new RelateAuthenticationProtocol());
         
-        if (args.length > 0 && args[0].equals("server"))
+        /*if (args.length > 0 && args[0].equals("server"))
         {
             HostServerSocket h1 = new HostServerSocket(54321);
             h1.startListening();
@@ -45,12 +50,25 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
         if (args.length > 0 && args[0].equals("client"))
         {
             HostProtocolHandler.startAuthenticationWith("localhost", 54321);
-        }
+        }*/
         //Environment.Exit(0);
         //System.Diagnostics.Process.GetCurrentProcess().Kill();
 
+        // temporary test code
         DongleProtocolHandler h = new DongleProtocolHandler("/dev/ttyUSB0");
-        h.startAuthenticationWith(0, null, null, 2);
+        SecureRandom r = new SecureRandom();
+        byte[] sharedKey = new byte[16];
+        byte[] nonce = new byte[16];
+        r.nextBytes(sharedKey);
+        r.nextBytes(nonce);
+        // need to specifically request no padding or padding would enlarge the one 128 bits block to two
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(sharedKey, "AES"));
+        byte[] rfMessage = cipher.doFinal(nonce);
+        if (rfMessage.length != 16)
+        	System.out.println("Encryption went wrong, got " + rfMessage.length + " bytes");
+        
+        h.authenticateWith(1, nonce, rfMessage, 2);
         
         /*try
         {
