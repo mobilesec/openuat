@@ -6,6 +6,8 @@ package uk.ac.lancs.relate;
 
 import javax.comm.*;
 
+import org.eu.mayrhofer.authentication.RelateAuthenticationProtocol;
+
 import java.io.*;
 import java.util.*;
 
@@ -146,22 +148,36 @@ class SerialCommunicationHelper {
 	}
 	
 	/**
-	/** Receive data from the dongle. Works in both modes and does not affect the current mode setting. 
-	 *  @param bytes The number of bytes to read from the dongle. 
-	 *  @param timeout Maximum time in milliseconds to wait for the data.
-	 *  @return The data received from the dongle or null if unable to receive (due to timeout or unable to read). 
+	 * /** Receive data from the dongle. Works in both modes and does not affect
+	 * the current mode setting.
+	 * 
+	 * @param bytes
+	 *            The number of bytes to read from the dongle.
+	 * @param timeout
+	 *            Maximum time in milliseconds to wait for the data.
+	 * @return The data received from the dongle or null if unable to receive
+	 *         (due to timeout or unable to read).
 	 */
 	/*private byte[] receiveFromDongle(int bytes, long timeout) {
 		return receiveFromDongle(bytes, null, timeout);
 	}*/
 
-	/** This method also resceives from the dongle, but skips bytes until they match an expected start header (e.g. acknowledge).
-	 * @param bytesToRead The number of bytes to read from the dongle.
-	 * @param expectedStart The expected bytes that the dongle should return. On success, the returned data will start with exactly these bytes.
-	 *  @param timeout Maximum time in milliseconds to wait for the data.
-	 *  @return The data received from the dongle or null if unable to receive (due to timeout, unable to read, or expectedStart not found within timeout). 
+	/**
+	 * This method also resceives from the dongle, but skips bytes until they
+	 * match an expected start header (e.g. acknowledge).
+	 * 
+	 * @param bytesToRead
+	 *            The number of bytes to read from the dongle.
+	 * @param expectedStart
+	 *            The expected bytes that the dongle should return. On success,
+	 *            the returned data will start with exactly these bytes.
+	 * @param timeout
+	 *            Maximum time in milliseconds to wait for the data.
+	 * @return The data received from the dongle or null if unable to receive
+	 *         (due to timeout, unable to read, or expectedStart not found
+	 *         within timeout).
 	 */
-	private byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, long timeout) {
+	public byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, long timeout) {
 		byte[] received = new byte[bytesToRead];
 		int alreadyRead = 0, readBytes;
 		long startTime = System.currentTimeMillis();
@@ -237,8 +253,8 @@ class SerialCommunicationHelper {
 				/*Discard everything currently in the serial input buffer.*/
 				fis.skip(fis.available());
 				/*Send garbage..*/
-				// MAGIC VALUE NUMBER 1: send the 10 garbage bytes, seems to work well
-				int MAGIC_1 = 10;
+				// MAGIC VALUE NUMBER 1: send 20 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud)
+				int MAGIC_1 = RelateAuthenticationProtocol.MAGIC_1;
 				byte[] garbage = new byte[MAGIC_1];
 				for (int i=0; i<garbage.length; i++)
 					garbage[i] = (byte) 0xAA;
@@ -247,8 +263,8 @@ class SerialCommunicationHelper {
 				// why is this inner loop necessary??
 //				do {
 					// MAGIC VALUE NUMBER 2: wait for 100 ms for the dongle to realize we sent garbage. also seems to work reasonably well
-					int MAGIC_2 = 200;
-					recv = receiveFromDongle(3, ACK, 100); 
+					int MAGIC_2 = RelateAuthenticationProtocol.MAGIC_2;
+					recv = receiveFromDongle(3, ACK, 150); 
 					if (recv != null) {
 						unacknowledged = false;
 						localId = recv[2];
@@ -811,9 +827,9 @@ public class SerialConnector/* implements Runnable */{
 										timestamp,inMotion,sensorReading),
 										System.currentTimeMillis()
 /*,null*/);
-						/*log(sensorReading.toString()) ;	
+						log(sensorReading.toString()) ;	
 						 log("Got uS sensor info..!!") ;
-						 printByteArray(bytes) ;	*/				
+						 printByteArray(bytes) ;				
 					}else {
 						result = new RelateEvent(RelateEvent.NEW_MEASUREMENT, d,
 								new Measurement(rxId, txId,
@@ -824,13 +840,13 @@ public class SerialConnector/* implements Runnable */{
 										System.currentTimeMillis()
 /*,null*/);
 					}
-					//log(result);
+					log(result);
 					/* filter events */
 					if (invalidID(rxId) || invalidID(txId)) {
-						/*
+						
 						 System.out.println("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
 						 (invalidID(txId) ? "" + txId : ""));
-						 */
+						 
 						result = null;
 					}
 				}
@@ -846,11 +862,11 @@ public class SerialConnector/* implements Runnable */{
 				result = new RelateEvent(RelateEvent.DEVICE_INFO, d,null,
 						System.currentTimeMillis()
 /*,null*/);
-				//printHostInfo(bytes) ;
+				printHostInfo(bytes) ;
 				/* filter events */
 				if (invalidID(unsign(bytes[0]))) {
-					/*System.out.println("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
-					 (invalidID(txId) ? "" + txId : ""));*/
+					System.out.println("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
+					 (invalidID(txId) ? "" + txId : ""));
 					result = null;
 				}
 			}
@@ -873,9 +889,9 @@ public class SerialConnector/* implements Runnable */{
 				calibration = new Calibration(ablUs1,ablUs2,ablUs4,
 						mblUs1,mblUs2,mblUs4,thlUs1,thlUs2,thlUs4) ;
 				log(calibration.toString()) ;
-/*				result = new RelateEvent(RelateEvent.CALIBRATION_INFO, relate.getLocalDevice(),
+				result = new RelateEvent(RelateEvent.CALIBRATION_INFO, /*relate.getLocalDevice(),*/ null,
 						null,System.currentTimeMillis(),
-null,calibration);*/
+/*null,*/calibration);
 				calibrated = true ;
 			}if(bytes[0] == DN_STATE_SIGN && bytes.length == DN_STATE_LENGTH) {
 				dicoveryListIds = new Vector() ;
@@ -891,20 +907,20 @@ null,calibration);*/
 				awareconSyncRate = unsign(bytes[DN_STATE_LENGTH-1]) ;
 				dnState = new DongleNetworkState(relateTime,numberOfEntries,
 						dicoveryListIds,dicoveryListTimes,awareconSyncRate) ;
-/*				result = new RelateEvent(RelateEvent.DN_STATE, relate.getLocalDevice(),
-						null,System.currentTimeMillis(),null,dnState);*/
+				result = new RelateEvent(RelateEvent.DN_STATE, /*relate.getLocalDevice(),*/ null,
+						null,System.currentTimeMillis(),null,dnState);
 			}
 		}
 		return result;
 	}
 	
-/*	public static void printByteArray(byte[] a) {
+	public static void printByteArray(byte[] a) {
 		for (int i = 0; i < a.length; i++){
 			System.out.println("["+i+"]: "+unsign(a[i])+"\n") ;
 		}
-	}*/
+	}
 	
-/*	public void printHostInfo(byte[] a) {
+	public void printHostInfo(byte[] a) {
 		int i ;
 		String hostInfo = "Host info:";
 		if (a.length == HOST_INFO_LENGTH)
@@ -915,7 +931,7 @@ null,calibration);*/
 		hostInfo += (" Machine Name: "+getHostInfoMachineName(a)) ;
 		hostInfo += (" Side: "+a[50]) ;
 		log(hostInfo);
-	}*/
+	}
 	
 	public static String getHostInfoIp(byte[] a) {
 		int i, imax ;
@@ -1018,13 +1034,14 @@ null,calibration);*/
 		return res ;
 	}
 	
-/*	public void run() {
+	public void run() {
 		int theByte;
 		int i=0, relateTime, numberOfEntries;
 		boolean newLine = false;
 		String line = null;
 		String garbage = "grrrrrr" ;
-		byte[] bytes = null; 
+		byte[] bytes = null;
+		byte[] tmp;
 		byte[] mesbytes = null, dnStateBytes = null;
 		byte[] hostInfoBytes = null, calibrationInfoBytes = null, 
 		usSensorInfoBytes = null, firmwareVersionBytes = null;
@@ -1042,25 +1059,25 @@ null,calibration);*/
 						changeDongleState();
 					}
 					if(awaken) {
-						prepareMode(false);
-						theByte = fis.read();					
+						commHelper.switchToReceive();
+						tmp = commHelper.receiveFromDongle(1, null, 100);
+						if (tmp == null)
+							continue;
+						theByte = tmp[0];
 						//System.out.print(theByte + " ") ;
 						if(theByte == DEVICE_MEASUREMENT_SIGN) {
-							mesbytes = new byte[MES_SIZE] ;
-							for (int j = 0 ;j < MES_SIZE; j++){
-								mesbytes[j] = (byte)fis.read() ;
-							}
+							mesbytes = commHelper.receiveFromDongle(MES_SIZE, null, MES_SIZE*100); 
 							//If local measurement, check for sensor info..
-							if(mesbytes[0] == myRelateId && diagnosticMode){
-								theByte = fis.read();
+							if(mesbytes[0] == commHelper.getLocalRelateId() && diagnosticMode){
+								tmp = commHelper.receiveFromDongle(1, null, 100);
+								if (tmp == null)
+									continue;
+								
 								if(theByte == US_SENSOR_INFO_SIGN) {
 									usSensorInfoBytes = new byte[MES_SIZE+US_SENSOR_INFO_LENGTH] ;
-									for (int j = MES_SIZE ;j < MES_SIZE+US_SENSOR_INFO_LENGTH; j++){
-										usSensorInfoBytes[j] = (byte)fis.read() ;
-									}
-									for (int j = 0 ;j < MES_SIZE; j++){
-										usSensorInfoBytes[j] = mesbytes[j] ;
-									}
+									tmp = commHelper.receiveFromDongle(US_SENSOR_INFO_LENGTH, null, US_SENSOR_INFO_LENGTH*100);
+									System.arraycopy(tmp, 0, usSensorInfoBytes, MES_SIZE, tmp.length);
+									System.arraycopy(mesbytes, 0, usSensorInfoBytes, 0, mesbytes.length);
 									event = parseEvent(usSensorInfoBytes);
 								}else {
 									//log("could not get uS sensor info event");
@@ -1076,14 +1093,11 @@ null,calibration);*/
 //							} else {
 //								//log("could not parse measurement event");
 //							}
-//						} else if (theByte == END_COMM) {
-//						log("dongle is sleeping.");
+/*						} else if (theByte == END_COMM) {
+						log("dongle is sleeping.");*/
 						} 
 						else if(theByte == HOST_INFO_SIGN){
-							hostInfoBytes = new byte[HOST_INFO_LENGTH] ;
-							for (int j = 0 ;j < HOST_INFO_LENGTH; j++){
-								hostInfoBytes[j] = (byte)fis.read() ;
-							}
+							hostInfoBytes = commHelper.receiveFromDongle(HOST_INFO_LENGTH, null, HOST_INFO_LENGTH*100);
 							event = parseEvent(hostInfoBytes);
 //							if (event != null) {
 //								if (event.getType() == RelateEvent.DEVICE_INFO) {
@@ -1094,10 +1108,7 @@ null,calibration);*/
 //								log("could not parse host info event");
 //							}
 						}else if(theByte == CALIBRATION_INFO_SIGN && !calibrated) {
-							calibrationInfoBytes = new byte[CALIBRATION_INFO_LENGTH] ;
-							for (int j = 0 ;j < CALIBRATION_INFO_LENGTH; j++){
-								calibrationInfoBytes[j] = (byte)fis.read() ;
-							}
+							calibrationInfoBytes = commHelper.receiveFromDongle(CALIBRATION_INFO_LENGTH, null, CALIBRATION_INFO_LENGTH*100);
 							event = parseEvent(calibrationInfoBytes);
 //							if (event != null) {
 //								if (event.getType() == RelateEvent.CALIBRATION_INFO) {
@@ -1108,17 +1119,14 @@ null,calibration);*/
 //								log("could not parse calibration info event");
 //							}
 						}else if(theByte == FIRMWARE_VERSION_SIGN && firmwareVersion == null) {
-							firmwareVersionBytes = new byte[FIRMWARE_VERSION_LENGTH] ;
-							for (int j = 0 ;j < FIRMWARE_VERSION_LENGTH; j++){
-								firmwareVersionBytes[j] = (byte)fis.read() ;
-							}
+							firmwareVersionBytes = commHelper.receiveFromDongle(FIRMWARE_VERSION_LENGTH, null, FIRMWARE_VERSION_LENGTH*100);
 							firmwareVersion = ""+unsign(firmwareVersionBytes[0])+"."+
 							+unsign(firmwareVersionBytes[1]) ;
-							log("The firmware version for dongle "+myRelateId+" is "+
+							log("The firmware version for dongle "+commHelper.getLocalRelateId()+" is "+
 									firmwareVersion+".") ;
 						}else if(theByte == ERROR_CODE_SIGN && diagnosticMode) {
-							errorCode = unsign((byte)fis.read()) ;
-							event = new RelateEvent(RelateEvent.ERROR_CODE, relate.getLocalDevice(),
+							errorCode = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
+							event = new RelateEvent(RelateEvent.ERROR_CODE, /*relate.getLocalDevice(),*/null,
 									null,System.currentTimeMillis(),null,new Integer(errorCode));
 //							if (event != null) {
 //								queue.addMessage(event);
@@ -1126,15 +1134,12 @@ null,calibration);*/
 //							} else {
 //								log("could not error code event");
 //							}
-							//log("error code: "+errorCode) ;
+							log("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN && diagnosticMode) {
-							relateTime = unsign((byte)fis.read()) ;
-							numberOfEntries = unsign((byte)fis.read()) ;
+							relateTime = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
+							numberOfEntries = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
 							DN_STATE_LENGTH = 3+(2*numberOfEntries)+1 ;
-							dnStateBytes = new byte[DN_STATE_LENGTH] ;
-							for (int j = 0 ;j < DN_STATE_LENGTH-3; j++){
-								dnStateBytes[j+3] = (byte)fis.read() ;
-							}
+							dnStateBytes = commHelper.receiveFromDongle(DN_STATE_LENGTH, null, DN_STATE_LENGTH*100);
 							dnStateBytes[0] = (byte)DN_STATE_SIGN ;
 							dnStateBytes[1] = (byte)relateTime ;
 							dnStateBytes[2] = (byte)numberOfEntries ;
@@ -1149,12 +1154,12 @@ null,calibration);*/
 //								log("could not parse dongle network state event");
 //							}
 						}
-//					}else {       //Dongle probably sleeping..
-//						if (dongle_on != last_dongle_state) {
-//							last_dongle_state = dongle_on;
-//							log("nothing to read..!!");
-//							changeDongleState();
-//						}
+					}else {       //Dongle probably sleeping..
+						if (dongle_on != last_dongle_state) {
+							last_dongle_state = dongle_on;
+							log("nothing to read..!!");
+							changeDongleState();
+						}
 					}
 				} 
 			}catch (Exception ex) {
@@ -1168,7 +1173,7 @@ null,calibration);*/
 			}
 		}	
 		disconnect();
-	}*/
+	}
 	
 	//Testing
 /*	public static void main(String args[]){
