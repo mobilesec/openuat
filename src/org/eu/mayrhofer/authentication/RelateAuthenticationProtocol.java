@@ -16,6 +16,9 @@ import javax.crypto.spec.*;
 /// all events coming in from them.
 /// </summary>
 public class RelateAuthenticationProtocol implements AuthenticationProgressHandler {
+	// temporary test code
+	static public int MAGIC_1, MAGIC_2;
+	
     public void AuthenticationSuccess(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey)
     {
         System.out.println("Received authentication success event with " + remote);
@@ -55,6 +58,9 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
         //System.Diagnostics.Process.GetCurrentProcess().Kill();
 
         // temporary test code
+    	MAGIC_1 = args.length >= 1 ? Integer.parseInt(args[0]) : 20;
+    	MAGIC_2 = args.length >= 2 ? Integer.parseInt(args[1]) : 100;
+    	
         DongleProtocolHandler h = new DongleProtocolHandler("/dev/ttyUSB0");
         SecureRandom r = new SecureRandom();
         byte[] sharedKey = new byte[16];
