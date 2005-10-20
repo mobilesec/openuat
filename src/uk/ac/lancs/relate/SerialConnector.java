@@ -16,7 +16,7 @@ import java.util.*;
  * simple interface to send messages to the dongle and receive its output in normal (monitoring) mode. All communication
  * with the serial port is handled through this helper. It also manages the javax.comm API. 
  * 
- * @author Rene Mayrhofer
+ * @author Rene Mayrhofer, based on code by Chris Kray and Henoc Agbota 
  */
 class SerialCommunicationHelper {
 	/** List of available ports returned by the javax.comm API.  */
@@ -158,7 +158,7 @@ class SerialCommunicationHelper {
 	 * @return The data received from the dongle or null if unable to receive
 	 *         (due to timeout or unable to read).
 	 */
-	/*private byte[] receiveFromDongle(int bytes, long timeout) {
+	/*public byte[] receiveFromDongle(int bytes, long timeout) {
 		return receiveFromDongle(bytes, null, timeout);
 	}*/
 
@@ -181,15 +181,13 @@ class SerialCommunicationHelper {
 		byte[] received = new byte[bytesToRead];
 		int alreadyRead = 0, readBytes;
 		long startTime = System.currentTimeMillis();
-		boolean wait = true;
 		
 		try {
 			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
 			if (expectedStart != null && expectedStart.length > 0) {
 				int recv = fis.read();
-				while(recv != expectedStart[0] && recv != -1 && wait) {
+				while(recv != expectedStart[0] && recv != -1 && (System.currentTimeMillis() - startTime) < timeout) {
 					recv = fis.read();
-					wait = (System.currentTimeMillis() - startTime) < timeout;
 				}
 				if (recv == expectedStart[0]) {
 					alreadyRead++;
@@ -203,10 +201,9 @@ class SerialCommunicationHelper {
 			}
 			do {
 				readBytes = fis.read(received, alreadyRead, bytesToRead - alreadyRead);
-				wait = (System.currentTimeMillis() - startTime) < timeout;
 				if (readBytes > 0)
 					alreadyRead += readBytes;
-			} while (alreadyRead < bytesToRead && readBytes != -1 && wait);
+			} while (alreadyRead < bytesToRead && readBytes != -1 && (System.currentTimeMillis() - startTime) < timeout);
 			if (alreadyRead != bytesToRead) {
 				//log("Didn't get enough bytes from dongle, wanted " + bytesToRead + " but got " + alreadyRead);
 				return null;
@@ -233,9 +230,10 @@ class SerialCommunicationHelper {
 	/**
 	 * Try to catch the dongle's attention by
 	 * repeatedly sending '10101...'
-	 * @return the dongle ID
+	 * @param timeout The maximum time in ms that this method will try to catch the dongle's attention.
+	 * @return The dongle ID as returned by its acknowledge or -1 if the dongle's attention could not be caught.
 	 */
-	private int getDongleAttention() throws PortInUseException {
+	private int getDongleAttention(long timeout) throws PortInUseException {
 		int localId = -1;
 		byte[] recv;
 		int counter = 0;
@@ -248,7 +246,7 @@ class SerialCommunicationHelper {
 			
 			// special case here: need to call it manually so that fis.skip will work
 			prepareMode(true);
-			while (unacknowledged) {
+			while (unacknowledged && (System.currentTimeMillis() - startTime) < timeout) {
 				counter++ ;
 				/*Discard everything currently in the serial input buffer.*/
 				fis.skip(fis.available());
@@ -260,18 +258,15 @@ class SerialCommunicationHelper {
 					garbage[i] = (byte) 0xAA;
 				sendToDongle(garbage);
 				lastTry = System.currentTimeMillis();
-				// why is this inner loop necessary??
-//				do {
-					// MAGIC VALUE NUMBER 2: wait for 100 ms for the dongle to realize we sent garbage. also seems to work reasonably well
-					int MAGIC_2 = RelateAuthenticationProtocol.MAGIC_2;
-					recv = receiveFromDongle(3, ACK, 150); 
-					if (recv != null) {
-						unacknowledged = false;
-						localId = recv[2];
-						log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
-						log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+" ms");
-					}
-//				} while ((System.currentTimeMillis() - lastTry < 3) && unacknowledged);
+				// MAGIC VALUE NUMBER 2: wait for 100 ms for the dongle to realize we sent garbage. also seems to work reasonably well
+				int MAGIC_2 = RelateAuthenticationProtocol.MAGIC_2;
+				recv = receiveFromDongle(3, ACK, MAGIC_2); 
+				if (recv != null) {
+					unacknowledged = false;
+					localId = recv[2];
+					log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
+					log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+" ms");
+				}
 			}
 		} catch (IOException ex) {
 			log("Geting dongle's attention failed due to " + ex);
@@ -292,11 +287,16 @@ class SerialCommunicationHelper {
 	 * @param expectedMsgAck If passed, this method loops until the dongle acknowledges the message/command with these bytes.
 	 *                       In every loop, the msg is sent again to the dongle.
 	 *                       Ignored if null (no looping then, since the method will not wait for any acknowledge.)
+	 * @param timeout The maximum number of milliseconds allowed to pass.
 	 * @see myRelateId;
 	 */ 
-	public void sendMessage(byte[] msg, byte[] expectedMsgAck) throws IOException, PortInUseException {
+	public boolean sendMessage(byte[] msg, byte[] expectedMsgAck, long timeout) throws IOException, PortInUseException {
+		long startTime = System.currentTimeMillis(), curTime;
+
 		// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
-		myRelateId = getDongleAttention() ;
+		myRelateId = getDongleAttention(timeout) ;
+		if (myRelateId == -1)
+			return false;
 		// bad hack: this is for hostinfo
 		// FIXME TODO
 		// no no no no this is bad bad bad
@@ -306,12 +306,22 @@ class SerialCommunicationHelper {
 		do {
 			log("Sending message to dongle" + (expectedMsgAck != null ? " and waiting for ack" : ""));
 			sendToDongle(msg);
-		} while (expectedMsgAck != null &&
+			curTime = System.currentTimeMillis();
+		} while (expectedMsgAck != null && curTime - startTime < timeout &&
 				// if there is some acknowledge expected, try to read it from the dongle
 				// the timeout here is just a heuristic
 				receiveFromDongle(expectedMsgAck.length, expectedMsgAck, 100*expectedMsgAck.length) == null);
+		return curTime - startTime < timeout;
 	}
 
+	/** Connect to a dongle at the given port. This method just initializes the portId member to point to 
+	 * a valid CommPortIdentifier object corresponding to the specified port, but does not open the hardware port.
+	 * The portId member will be used by prepareMode to open the hardware port. 
+	 * @param port The port to use.
+	 * @return true if the port is available and not owned by another application, false otherwise.
+	 * @see portId
+	 * @see prepareMode
+	 */
 	public boolean connect(String port) {
 		// initialize the portId object based on the objects gathered from the javax.comm API and the passed port name
 		if (port != null) {
@@ -335,6 +345,7 @@ class SerialCommunicationHelper {
 		return false;
 	}
 
+	/** Disconnect from the hardware port. */
 	public void disconnect() {
 		/*b = null;*/
 		if (serialPort != null) {
@@ -352,8 +363,13 @@ class SerialCommunicationHelper {
 		return myRelateId;
 	}
 	
-	// TODO: this method is only temporary and will go away once there is a proper interface for reading from the dongle in
-	// monitoring mode!
+	/** Switches the communication mode to the non-interactice receive-only mode used to transmit measurements and
+	 * status information from the dongle to the host. Use this method after sending commands to the dongle and before
+	 * using receiveFromDongle to get measurements or status messages in its normal (non-interactive) mode.
+	 * @throws IOException
+	 * @throws PortInUseException
+	 * @see receiveFromDongle
+	 */
 	public void switchToReceive() throws IOException, PortInUseException {
 		prepareMode(false);
 	}
@@ -509,6 +525,9 @@ public class SerialConnector/* implements Runnable */{
 
 	/** Prefix to firmware version */
 	private static final int FIRMWARE_VERSION_SIGN = 86;
+	
+	/** Prefix to authentication data */
+	private static final int AUTHENTICATION_PACKET_SIGN = 75;
 
 	/** Firmware version */
 	public String firmwareVersion = null;
@@ -603,7 +622,8 @@ public class SerialConnector/* implements Runnable */{
 				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 
 				/* temporary fix to turn on diagnostic mode */
-				commHelper.sendMessage(DIAGNOSTIC_ON, null);
+				if (! commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000))
+					return -1;
 				diagnosticMode = true;
 
 				/* temporary fix to turn off diagnostic mode */
@@ -638,11 +658,11 @@ public class SerialConnector/* implements Runnable */{
 		alive = false;
 	}
 	
-	/* convert one byte to int */
+	/** convert one byte to int */
 	private static int unsign(byte b) {
 		return (b<0?256+b:b);
 	}
-	/* convert two bytes to int */
+	/** convert two bytes to int */
 	private static int unsign2(byte hi, byte lo) {
 		return (unsign(hi)*256+unsign(lo));
 	}
@@ -662,7 +682,7 @@ public class SerialConnector/* implements Runnable */{
 	}
 	
 	/** parse bytes read over the serial port and try to recognise an event
-	 * 	@author Henoc AGBOTA
+	 * 	@author Henoc AGBOTA, modified (extended and cleaned up) by Rene Mayrhofer
 	 ** @return the event that was parsed from the bytes, or null if no event
 	 ** was recognised */
 	public RelateEvent parseEvent(byte[] bytes) {
@@ -1003,11 +1023,11 @@ public class SerialConnector/* implements Runnable */{
 		try {
 			if (dongle_on) {
 				/* starting up */
-				commHelper.sendMessage(UNBLOCK_DONGLE, null);
+				commHelper.sendMessage(UNBLOCK_DONGLE, null, 50000);
 				awaken = true ;
 			} else {
 				/* shutting down */
-				commHelper.sendMessage(BLOCK_DONGLE, null);
+				commHelper.sendMessage(BLOCK_DONGLE, null, 50000);
 				awaken = false ;
 				log("shut down dongle");
 			}
@@ -1037,15 +1057,15 @@ public class SerialConnector/* implements Runnable */{
 	public void run() {
 		int theByte;
 		int i=0, relateTime, numberOfEntries;
-		boolean newLine = false;
+		/*boolean newLine = false;
 		String line = null;
 		String garbage = "grrrrrr" ;
-		byte[] bytes = null;
+		byte[] bytes = null;*/
 		byte[] tmp;
 		byte[] mesbytes = null, dnStateBytes = null;
 		byte[] hostInfoBytes = null, calibrationInfoBytes = null, 
 		usSensorInfoBytes = null, firmwareVersionBytes = null;
-		byte[] stringDelimiters = {13,10} ;
+		/*byte[] stringDelimiters = {13,10} ;*/
 		RelateEvent event = null;
 		boolean last_dongle_state = dongle_on;
 		
@@ -1153,6 +1173,14 @@ public class SerialConnector/* implements Runnable */{
 //							} else {
 //								log("could not parse dongle network state event");
 //							}
+						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
+							int remoteRelateId = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
+							int curRound = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
+							int numMsgBytes = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
+							byte[] msgPart = commHelper.receiveFromDongle(numMsgBytes, null, numMsgBytes*100);
+							log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
+									": ") ;
+							printByteArray(msgPart);
 						}
 					}else {       //Dongle probably sleeping..
 						if (dongle_on != last_dongle_state) {

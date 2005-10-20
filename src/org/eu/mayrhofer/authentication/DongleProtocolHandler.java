@@ -67,7 +67,7 @@ public class DongleProtocolHandler {
 		else
 			System.out.println("-------- failed to connect to dongle, didn't get my ID.");
 		
-		serialConn.run();
+		//serialConn.run();
 		
 		serialConn.disconnect();
 		
