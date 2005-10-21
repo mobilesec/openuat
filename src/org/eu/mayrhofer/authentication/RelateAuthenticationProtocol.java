@@ -64,17 +64,8 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
         DongleProtocolHandler h = new DongleProtocolHandler("/dev/ttyUSB0");
         SecureRandom r = new SecureRandom();
         byte[] sharedKey = new byte[16];
-        byte[] nonce = new byte[16];
         r.nextBytes(sharedKey);
-        r.nextBytes(nonce);
-        // need to specifically request no padding or padding would enlarge the one 128 bits block to two
-        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(sharedKey, "AES"));
-        byte[] rfMessage = cipher.doFinal(nonce);
-        if (rfMessage.length != 16)
-        	System.out.println("Encryption went wrong, got " + rfMessage.length + " bytes");
-        
-        h.authenticateWith(1, nonce, rfMessage, 2);
+        h.authenticateWith(7, sharedKey, 2);
         
         // problem with the javax.comm API - doesn't release its native thread
         System.exit(0);

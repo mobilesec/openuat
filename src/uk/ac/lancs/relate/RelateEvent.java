@@ -20,17 +20,18 @@ public class RelateEvent implements Cloneable {
 	public final static int IP_SHARED = 800;
 	public final static int ERROR_CODE = 600;
 	public final static int DN_STATE = 700;
+	public final static int AUTHENTICATION_INFO = 1100;
 	
 	public final static int[] TYPES = {
 		UNDEFINED, NEW_MEASUREMENT, DEVICE_ADDED, DEVICE_REMOVED,
 		DEVICE_MOVED, NEW_MODEL, DEVICE_INFO, CALIBRATION_INFO, 
-		IP_SHARED, ERROR_CODE, DN_STATE
+		IP_SHARED, ERROR_CODE, DN_STATE, AUTHENTICATION_INFO
 	};
 		
 	public final static String[] TYPE_NAMES = {
 		"UNDEFINED", "NEW_MEASUREMENT", "DEVICE_ADDED", "DEVICE_REMOVED",
 		"DEVICE_MOVED", "NEW_MODEL", "DEVICE_INFO", "CALIBRATION_INFO",
-		"IP_SHARED", "ERROR_CODE", "DN_STATE"
+		"IP_SHARED", "ERROR_CODE", "DN_STATE", "AUTHENTICATION_INFO"
 	};
 	
 	/** type of the event */
@@ -49,6 +50,9 @@ public class RelateEvent implements Cloneable {
 	protected Integer errorCode;
 	/** DongleNetworkState object */
 	protected DongleNetworkState dnState;
+	/** authentication key part received from the remote end */
+	public byte[] authenticationPart;
+	public int round;
 	
 	/** Default (empty) constructor */
 	public RelateEvent() {
@@ -60,6 +64,7 @@ public class RelateEvent implements Cloneable {
 		calibration = null ;
 		errorCode = null ;
 		dnState = null ;
+		authenticationPart = null;
 	}
 	
 	/** Fully qualified constructor 
@@ -80,6 +85,17 @@ public class RelateEvent implements Cloneable {
 		calibration = null ;
 	}
 
+	public RelateEvent(int t, Device d, long ts, byte[] authentication, int round
+			/*, 
+						Model mo*/) {
+					type = t;
+					device = d;
+					timeStamp = ts;
+//					model = mo;
+					authenticationPart = authentication;
+					this.round = round;
+				}
+	
 	/** Fully qualified constructor 
 		@param t  type of the event
 		@param d  device this event relates to (null if N/A)
