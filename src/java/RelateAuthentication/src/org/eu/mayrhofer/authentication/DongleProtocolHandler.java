@@ -60,15 +60,31 @@ public class DongleProtocolHandler {
 		
 		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
 		int localRelateId = serialConn.connect(serialPort, 0, 255);
-		if (localRelateId != -1) {
+		if (localRelateId != -1)
 			System.out.println("-------- connected successfully to dongle, including first handshake. My ID is " + localRelateId);
+		else {
+			System.out.println("-------- failed to connect to dongle, didn't get my ID.");
 			return false;
 		}
-		else
-			System.out.println("-------- failed to connect to dongle, didn't get my ID.");
 		
-		//serialConn.run();
+		// start the backgroud thread for getting messages from the dongle
+		Thread serialThread = new Thread(serialConn);
+		serialThread.start();
 		
+		// wait for the first reference measurements to come in (needed to compute the delays)
+		int referenceMeasurement = 0;
+		
+		// construct the start-of-authentication message and sent it to the dongle
+		serialConn.startAuthenticationWith(remoteRelateId, nonce, rfMessage, rounds, EntropyBitsPerRound, referenceMeasurement);
+		
+		// and wait for the measurements and authentication data to be received
+		
+		serialConn.die();
+		try {
+			serialThread.join();
+		}
+		catch (InterruptedException e) {
+		}
 		serialConn.disconnect();
 		
 		return true;

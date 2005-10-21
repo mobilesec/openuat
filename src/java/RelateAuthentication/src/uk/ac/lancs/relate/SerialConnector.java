@@ -120,6 +120,10 @@ class SerialCommunicationHelper {
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
 						SerialPort.PARITY_NONE);
+				// so that read on the getInputStream does not hang indefinitely but times out
+				serialPort.enableReceiveTimeout(1000);
+				if (!serialPort.isReceiveTimeoutEnabled())
+					log("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
 				//serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			} catch (UnsupportedCommOperationException e) {
 				log("UnsupportedCommOperationException") ;
@@ -386,7 +390,7 @@ class SerialCommunicationHelper {
  * @author Chris Kray, Henoc Agbota, extensively restructured by Rene Mayrhofer
  */
 
-public class SerialConnector/* implements Runnable */{
+public class SerialConnector implements Runnable {
 	/**
 	 * At the moment, there can only be a single instance of SerialConnector.
 	 * This singleton is held here and returned by getSerialConnector.
@@ -439,6 +443,13 @@ public class SerialConnector/* implements Runnable */{
 	// private MessageQueue queue = null;
 	/** relate's event queue */
 	// private MessageQueue relateQueue = null;
+
+	/** The list of MessageQueues to send new events to. 
+	 * @see registerEventQueue
+	 * @see unregisterEventQueue
+	 * @see postEvent */
+	private LinkedList eventQueues = null;
+	
 	/** bytes to send to bring dongle into sleep mode */
 	private final static byte[] BLOCK_DONGLE = { 67, 48 };
 
@@ -525,8 +536,11 @@ public class SerialConnector/* implements Runnable */{
 
 	/** Prefix to firmware version */
 	private static final int FIRMWARE_VERSION_SIGN = 86;
-	
-	/** Prefix to authentication data */
+
+	/** Prefix to start-of-authentication packet */
+	private static final int AUTHENTICATION_START_SIGN = 65;
+
+	/** Prefix to authentication data (received key material from a remote dongle) */
 	private static final int AUTHENTICATION_PACKET_SIGN = 75;
 
 	/** Firmware version */
@@ -556,6 +570,8 @@ public class SerialConnector/* implements Runnable */{
 		operational = false;
 		
 		commHelper = new SerialCommunicationHelper();
+		
+		eventQueues = new LinkedList();
 		
 		initialised = true;
 	}
@@ -644,6 +660,48 @@ public class SerialConnector/* implements Runnable */{
 		return commHelper.getLocalRelateId();
 	}
 	
+	public boolean startAuthenticationWith(int remoteRelateId, byte[] nonce, byte[] rfMessage, int rounds, int bitsPerRound, int referenceMeasurement) {
+		if (nonce.length != 16 || rfMessage.length != 16 || rounds < 2 || rounds > 255 
+				|| remoteRelateId < 0 || remoteRelateId > 255 || bitsPerRound < 1 
+				|| referenceMeasurement > 2500)
+			// TODO: this should actually be an exception, since this is a sanity check for something that shouldn't happen
+			return false;
+		
+		byte msg[] = new byte[37];
+		msg[0] = AUTHENTICATION_START_SIGN;
+		msg[1] = (byte) remoteRelateId;
+		System.arraycopy(nonce, 0, msg, 2, nonce.length);
+		System.arraycopy(rfMessage, 0, msg, 2+nonce.length, rfMessage.length);
+		msg[2+nonce.length+rfMessage.length] = (byte) rounds;
+		msg[3+nonce.length+rfMessage.length] = (byte) bitsPerRound; 
+		msg[3+nonce.length+rfMessage.length] = (byte) (referenceMeasurement >> 8); 
+		msg[4+nonce.length+rfMessage.length] = (byte) (referenceMeasurement % 0x100); 
+		try {
+			return commHelper.sendMessage(msg, null, 100*msg.length);
+		}
+		catch (PortInUseException e) {
+			return false;
+		}
+		catch (IOException e) {
+			return false;
+		}
+	}
+	
+	// TODO: this should be a thread-safe message queue!
+	public void registerEventQueue(MessageQueue eventQueue) {
+		if (!eventQueues.contains(eventQueue))
+			eventQueues.add(eventQueue);
+	}
+	
+	public boolean unregisterEventQueue(MessageQueue eventQueue) {
+		return eventQueues.remove(eventQueue);
+	}
+	
+	private void postEvent(RelateEvent e) {
+		for (ListIterator i = eventQueues.listIterator(); i.hasNext(); )
+			((MessageQueue) i.next()).addMessage(e);
+	}
+	
 	public void disconnect() {
 		commHelper.disconnect();
 		operational = false;
@@ -685,7 +743,7 @@ public class SerialConnector/* implements Runnable */{
 	 * 	@author Henoc AGBOTA, modified (extended and cleaned up) by Rene Mayrhofer
 	 ** @return the event that was parsed from the bytes, or null if no event
 	 ** was recognised */
-	public RelateEvent parseEvent(byte[] bytes) {
+	private RelateEvent parseEvent(byte[] bytes) {
 		RelateEvent result = null;
 		Device d ;
 		int i, 
@@ -934,13 +992,13 @@ public class SerialConnector/* implements Runnable */{
 		return result;
 	}
 	
-	public static void printByteArray(byte[] a) {
+	private static void printByteArray(byte[] a) {
 		for (int i = 0; i < a.length; i++){
 			System.out.println("["+i+"]: "+unsign(a[i])+"\n") ;
 		}
 	}
 	
-	public void printHostInfo(byte[] a) {
+	private void printHostInfo(byte[] a) {
 		int i ;
 		String hostInfo = "Host info:";
 		if (a.length == HOST_INFO_LENGTH)
@@ -953,7 +1011,7 @@ public class SerialConnector/* implements Runnable */{
 		log(hostInfo);
 	}
 	
-	public static String getHostInfoIp(byte[] a) {
+	private static String getHostInfoIp(byte[] a) {
 		int i, imax ;
 		String result = "" ;
 		if(a[5] != 0)
@@ -969,7 +1027,7 @@ public class SerialConnector/* implements Runnable */{
 		return result ;
 	}
 	
-	public static String getHostInfoUserName(byte[] a) {
+	private static String getHostInfoUserName(byte[] a) {
 		int i ;
 		String result = "" ;
 		if (a.length == HOST_INFO_LENGTH)
@@ -980,7 +1038,7 @@ public class SerialConnector/* implements Runnable */{
 		return result ;
 	}
 	
-	public static String getHostInfoMachineName(byte[] a) {
+	private static String getHostInfoMachineName(byte[] a) {
 		int i ;
 		String result = "" ;
 		if (a.length == HOST_INFO_LENGTH)
@@ -992,7 +1050,7 @@ public class SerialConnector/* implements Runnable */{
 	}
 	
 	
-	public static String getHostInfoDeviceType(byte[] a) {
+	private static String getHostInfoDeviceType(byte[] a) {
 		String result = "" ;
 		if(a[29] == 1)
 			result = "desktop" ;
@@ -1008,7 +1066,7 @@ public class SerialConnector/* implements Runnable */{
 	/** set the state of the dongle
 	 *  @param on if true, turn dongle on, if false, turn it off
 	 */
-	public void setDongleState(boolean on) {
+	private void setDongleState(boolean on) {
 		dongle_on = on;
 		synchronized(changeStateWaiter) {
 			try {
@@ -1105,39 +1163,30 @@ public class SerialConnector/* implements Runnable */{
 							}else {
 								event = parseEvent(mesbytes);
 							}
-//							if (event != null) {							
-//								if (event.getType() == RelateEvent.NEW_MEASUREMENT) {
-//									queue.addMessage(event);
-//								}
-//								relateQueue.addMessage(event.clone());
-//							} else {
-//								//log("could not parse measurement event");
-//							}
+							if (event != null) {
+								postEvent(event);
+							} else {
+								log("could not parse measurement event");
+							}
 /*						} else if (theByte == END_COMM) {
 						log("dongle is sleeping.");*/
 						} 
 						else if(theByte == HOST_INFO_SIGN){
 							hostInfoBytes = commHelper.receiveFromDongle(HOST_INFO_LENGTH, null, HOST_INFO_LENGTH*100);
 							event = parseEvent(hostInfoBytes);
-//							if (event != null) {
-//								if (event.getType() == RelateEvent.DEVICE_INFO) {
-//									queue.addMessage(event);
-//								}
-//								relateQueue.addMessage(event.clone());
-//							} else {
-//								log("could not parse host info event");
-//							}
+							if (event != null) {
+								postEvent(event);
+							} else {
+								log("could not parse host info event");
+							}
 						}else if(theByte == CALIBRATION_INFO_SIGN && !calibrated) {
 							calibrationInfoBytes = commHelper.receiveFromDongle(CALIBRATION_INFO_LENGTH, null, CALIBRATION_INFO_LENGTH*100);
 							event = parseEvent(calibrationInfoBytes);
-//							if (event != null) {
-//								if (event.getType() == RelateEvent.CALIBRATION_INFO) {
-//									queue.addMessage(event);
-//								}
-//								relateQueue.addMessage(event.clone());
-//							} else {
-//								log("could not parse calibration info event");
-//							}
+							if (event != null) {
+								postEvent(event);
+							} else {
+								log("could not parse calibration info event");
+							}
 						}else if(theByte == FIRMWARE_VERSION_SIGN && firmwareVersion == null) {
 							firmwareVersionBytes = commHelper.receiveFromDongle(FIRMWARE_VERSION_LENGTH, null, FIRMWARE_VERSION_LENGTH*100);
 							firmwareVersion = ""+unsign(firmwareVersionBytes[0])+"."+
@@ -1148,12 +1197,11 @@ public class SerialConnector/* implements Runnable */{
 							errorCode = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
 							event = new RelateEvent(RelateEvent.ERROR_CODE, /*relate.getLocalDevice(),*/null,
 									null,System.currentTimeMillis(),null,new Integer(errorCode));
-//							if (event != null) {
-//								queue.addMessage(event);
-//								relateQueue.addMessage(event.clone());
-//							} else {
-//								log("could not error code event");
-//							}
+							if (event != null) {
+								postEvent(event);
+							} else {
+								log("could not parse error code event");
+							}
 							log("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN && diagnosticMode) {
 							relateTime = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
@@ -1165,14 +1213,11 @@ public class SerialConnector/* implements Runnable */{
 							dnStateBytes[2] = (byte)numberOfEntries ;
 							//printByteArray(dnStateBytes) ;
 							event = parseEvent(dnStateBytes);
-//							if (event != null) {
-//								if (event.getType() == RelateEvent.DN_STATE) {
-//									queue.addMessage(event);
-//								}
-//								relateQueue.addMessage(event.clone());
-//							} else {
-//								log("could not parse dongle network state event");
-//							}
+							if (event != null) {
+								postEvent(event);
+							} else {
+								log("could not parse dongle network state event");
+							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
 							int remoteRelateId = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
 							int curRound = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
@@ -1181,6 +1226,7 @@ public class SerialConnector/* implements Runnable */{
 							log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
 									": ") ;
 							printByteArray(msgPart);
+							// TODO: create event
 						}
 					}else {       //Dongle probably sleeping..
 						if (dongle_on != last_dongle_state) {
