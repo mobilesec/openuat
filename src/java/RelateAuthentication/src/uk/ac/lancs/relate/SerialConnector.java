@@ -1234,7 +1234,11 @@ public class SerialConnector implements Runnable {
 							log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
 									": ") ;
 							printByteArray(msgPart);
-							// TODO: create event
+
+							event = new RelateEvent(RelateEvent.AUTHENTICATION_INFO, 
+									new Device(remoteRelateId, System.currentTimeMillis(), null, null, null, null, 0, new Boolean(true)), 
+									System.currentTimeMillis(), msgPart, curRound);
+							postEvent(event);
 						}
 					}else {       //Dongle probably sleeping..
 						if (dongle_on != last_dongle_state) {
