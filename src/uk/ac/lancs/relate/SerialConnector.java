@@ -181,12 +181,20 @@ class SerialCommunicationHelper {
 	 *         (due to timeout, unable to read, or expectedStart not found
 	 *         within timeout).
 	 */
-	public byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, long timeout) {
+	public byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, int timeout) {
 		byte[] received = new byte[bytesToRead];
 		int alreadyRead = 0, readBytes;
 		long startTime = System.currentTimeMillis();
 		
 		try {
+			// set the read timeout
+			try {
+				serialPort.enableReceiveTimeout(timeout);
+			} catch (UnsupportedCommOperationException e) {
+				log("UnsupportedCommOperationException") ;
+				e.printStackTrace();
+			}
+			
 			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
 			if (expectedStart != null && expectedStart.length > 0) {
 				int recv = fis.read();
