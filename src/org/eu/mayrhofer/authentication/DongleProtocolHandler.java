@@ -34,13 +34,13 @@ public class DongleProtocolHandler {
 	/** With the current Relate dongle hard-/firmware, each round of the dongle authentication protocol transports 3 bits
 	 * of entropy.
 	 */
-	private int EntropyBitsPerRound = 3;
+	private static final int EntropyBitsPerRound = 3;
 	
 	/** The offset of the bits carrying the delay information in the reported measurement. */
-	private int EntropyBitsOffset = 7;
+	private static final int EntropyBitsOffset = 7;
 	
 	/** The current length in byte of the nonce (and implicitly the RF messages) expected by all parameters. */
-	private int NonceByteLength = 16;
+	private static final int NonceByteLength = 16;
 	
 	/** This message queue is used to receive events from the dongle. */
 	MessageQueue eventQueue;
@@ -173,12 +173,15 @@ public class DongleProtocolHandler {
 	}
 	
 	/** Small helper function to add a part to a byte array.
+	 * 
+	 * This method is only public for the JUnit tests, there's probably not much use for it elsewhere.
+	 * 
 	 * @param dest The byte array to add to. It is assumed that it has been allocated with sufficient length.
 	 * @param src The part to add to dest. It will be added from the LSB part.
 	 * @param bitOffset The number of bits to shift src before adding to dest.
 	 * @param bitLen The number of bits to add from src to dest.
 	 */ 
-	private void addPart(byte[] dest, byte[] src, int bitOffset, int bitLen) {
+	static public void addPart(byte[] dest, byte[] src, int bitOffset, int bitLen) {
 		if (src.length * 8 < bitLen)
 			// TODO: throw exception
 			return;
@@ -207,12 +210,15 @@ public class DongleProtocolHandler {
 	
 	/**
 	 * Compares a number of bits starting at LSB.
+	 * 
+	 * This method is only public for the JUnit tests, there's probably not much use for it elsewhere.
+	 * 
 	 * @param s The first bit string.
 	 * @param t The second bit string.
 	 * @param numBits The number of bits to compare (starting at LSB).
 	 * @return true if all numBits are equal, false otherwise.
 	 */
-	private boolean compareBits(byte[] s, byte[] t, int numBits) {
+	static public boolean compareBits(byte[] s, byte[] t, int numBits) {
 		for (int i=0; i<numBits; i++)
 			if (((s[i/8]) & (1 << (i%8))) != ((t[i/8]) & (1 << (i%8))))
 				return false;
