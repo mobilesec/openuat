@@ -123,12 +123,16 @@ public class DongleProtocolHandler {
 		int referenceMeasurement = -1;
 		while (referenceMeasurement == -1) {
 			while (eventQueue.isEmpty())
-				eventQueue.waitForMessage(100);
+				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
 			if (e == null) {
 				System.out.println("Warning: got null message out of message queue! This should not happen.");
 				continue;
 			}
+			
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT)
+				System.out.println("Got measurement to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+			
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId) {
 				referenceMeasurement = (int) e.getMeasurement().getDistance();
 				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + referenceMeasurement);
@@ -145,7 +149,7 @@ public class DongleProtocolHandler {
 			messageBitsPerRound++;
 		while (lastCompletedRound < rounds) {
 			while (eventQueue.isEmpty())
-				eventQueue.waitForMessage(100);
+				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
 			if (e == null) {
 				System.out.println("Warning: got null message out of message queue! This should not happen.");

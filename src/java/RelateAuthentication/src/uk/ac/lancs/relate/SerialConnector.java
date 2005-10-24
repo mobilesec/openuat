@@ -711,13 +711,13 @@ public class SerialConnector implements Runnable {
 		if (commHelper.connect(port)) {
 			try {
 				// send the host info to the dongle
-				byte[] hostInfoMsg = new byte[hostInfo.length + 1];
+				/*byte[] hostInfoMsg = new byte[hostInfo.length + 1];
 				// the command byte
 				hostInfoMsg[0] = (byte) 72;
 				System.arraycopy(hostInfo, 0, hostInfoMsg, 1, hostInfo.length);
 				log("Sending hostinfo to dongle and waiting for it to ack");
 				commHelper.sendMessage(hostInfoMsg, hostInfo, 10000);
-				log("local device id: " + commHelper.getLocalRelateId() + "\n");
+				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 
 				/* temporary fix to turn on diagnostic mode */
 				if (! commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000))
@@ -1241,7 +1241,9 @@ public class SerialConnector implements Runnable {
 					if(awaken) {
 						commHelper.switchToReceive();
 						theByte = receiveHelper(1)[0];
+						//System.out.println("theByte: " + unsign((byte) theByte));
 						if(theByte == DEVICE_MEASUREMENT_SIGN) {
+							log("Measurement message from dongle");
 							mesbytes = commHelper.receiveFromDongle(MES_SIZE, null, MES_SIZE*MAGIC_1);
 							//If local measurement, check for sensor info..
 							if(mesbytes[0] == commHelper.getLocalRelateId() && diagnosticMode){
@@ -1259,6 +1261,7 @@ public class SerialConnector implements Runnable {
 								event = parseEvent(mesbytes);
 							}
 							if (event != null) {
+								log("Sending measurement event");
 								postEvent(event);
 							} else {
 								log("could not parse measurement event");
@@ -1322,9 +1325,9 @@ public class SerialConnector implements Runnable {
 							int curRound = unsign(tmp[1]);
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
-							log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
+							/*log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
 									": ") ;
-							printByteArray(msgPart);
+							printByteArray(msgPart);*/
 
 							event = new RelateEvent(RelateEvent.AUTHENTICATION_INFO, 
 									new Device(remoteRelateId, System.currentTimeMillis(), null, null, null, null, 0, new Boolean(true)), 
