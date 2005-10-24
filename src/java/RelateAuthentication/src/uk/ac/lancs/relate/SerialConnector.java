@@ -270,7 +270,7 @@ class SerialCommunicationHelper {
 				// the first byte must already match, but checking is cheap so do it anyway
 				for (int i=0; i<expectedStart.length; i++)
 					if (received[i] != expectedStart[i]) {
-						log("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
+						//log("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
 						// error in comparison
 						return null;
 					}
