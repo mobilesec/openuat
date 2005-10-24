@@ -131,7 +131,7 @@ public class SensorReading implements Cloneable, Serializable  {
 	/**
 	 * set new TOF value
 	 * @param sensorId The id of the corresponding sensor.
-	 * @param tofUS new TOF for the corresponding sensor.
+	 * @param tofUs new TOF for the corresponding sensor.
 	 */
 	public void setTOF(int sensorId, int tofUs) {
 		if (sensorId == 1)

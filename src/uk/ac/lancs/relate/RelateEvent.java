@@ -297,7 +297,7 @@ public class RelateEvent implements Cloneable {
 	}
 	
 	/**
-	 * @param c The errorCode to set.
+	 * @param errorCode The errorCode to set.
 	 */
 	public void setErrorCode(Integer errorCode) {
 		this.errorCode = errorCode;
