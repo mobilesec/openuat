@@ -3,7 +3,6 @@ package org.eu.mayrhofer.authentication;
 import org.eu.mayrhofer.authentication.exceptions.*;
 import java.net.*;
 import java.io.*;
-import java.util.*;
 
 import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.*;
@@ -18,7 +17,7 @@ import org.apache.commons.codec.binary.*;
  * 
  * @author Rene Mayrhofer
  */
-public class HostProtocolHandler {
+public class HostProtocolHandler extends ProtocolHandler {
 	/** These are the messages of the ASCII authentication protocol. */
     public static final String Protocol_Hello = "HELO RelateAuthentication";
     /** @see #Protocol_Hello */
@@ -36,9 +35,6 @@ public class HostProtocolHandler {
     /** The stream to receive messages from the remote end. */
     private BufferedReader fromRemote;
     
-    /** The list of listeners that are notified of authentication events. */
-    private static LinkedList eventsHandlers = new LinkedList();
-
     /**
 	 * This class should only be instantiated by HostServerSocket for incoming
 	 * connections or with the static startAuthenticatingWith method for
@@ -59,38 +55,6 @@ public class HostProtocolHandler {
 		socket = soc;
     }
     
-    /** Register a listener for receiving events. */
-    static public void addAuthenticationProgressHandler(AuthenticationProgressHandler h) {
-    	if (! eventsHandlers.contains(h))
-    		eventsHandlers.add(h);
-    }
-
-    /** De-register a listener for receiving events. */
-    static public boolean removeAuthenticationProgressHandler(AuthenticationProgressHandler h) {
-   		return eventsHandlers.remove(h);
-    }
-
-    /** Helper method for sending an AuthenticationSuccess event to all registered listeners (if any). */
-    static private void raiseAuthenticationSuccessEvent(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey) {
-    	if (eventsHandlers != null)
-    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-    			((AuthenticationProgressHandler) i.next()).AuthenticationSuccess(remote, sharedSessionKey, sharedAuthenticationKey);
-    }
-
-    /** Helper method for sending an AuthenticationFailure event to all registered listeners (if any). */
-    static private void raiseAuthenticationFailureEvent(InetAddress remote, Exception e, String msg) {
-    	if (eventsHandlers != null)
-    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-    			((AuthenticationProgressHandler) i.next()).AuthenticationFailure(remote, e, msg);
-    }
-
-    /** Helper method for sending an AuthenticationProgress event to all registered listeners (if any). */
-    static private void raiseAuthenticationProgressEvent(InetAddress remote, int cur, int max, String msg) {
-    	if (eventsHandlers != null)
-    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-    			((AuthenticationProgressHandler) i.next()).AuthenticationProgress(remote, cur, max, msg);
-    }
-
     /**
 	 * Helper method used for closing the socket and its connected streams
 	 * cleanly.
@@ -218,12 +182,12 @@ public class HostProtocolHandler {
                 String msg = fromRemote.readLine();
                 if (!msg.equals(Protocol_Hello))
                 {
-                	HostProtocolHandler.raiseAuthenticationFailureEvent(remote, null, "Protocol error: did not get greeting from server");
+                	raiseAuthenticationFailureEvent(remote, null, "Protocol error: did not get greeting from server");
                     shutdownSocketsCleanly();
                     return;
                 }
         	}
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
+            raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
             byte[] remotePubKey = null;
             if (serverSide) {
@@ -239,7 +203,7 @@ public class HostProtocolHandler {
             	ka = new SimpleKeyAgreement();
             	toRemote.println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())));
             }
-        	HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
+        	raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
         	if (serverSide) {
                 // for performance reasons: only now start the DH phase
@@ -254,12 +218,13 @@ public class HostProtocolHandler {
                     return;
                 }
         	}
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
+            raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
             ka.addRemotePublicKey(remotePubKey);
-            HostProtocolHandler.raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
+            raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
-            HostProtocolHandler.raiseAuthenticationSuccessEvent(remote, ka.getSessionKey(), ka.getAuthenticationKey());
+            // the authentication success event sent here is just an array of two keys
+            raiseAuthenticationSuccessEvent(remote, new byte[][] {ka.getSessionKey(), ka.getAuthenticationKey()});
         }
         catch (InternalApplicationException e)
         {
