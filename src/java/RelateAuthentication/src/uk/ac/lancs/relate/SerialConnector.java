@@ -60,6 +60,44 @@ class SerialCommunicationHelper {
 	 * the dongle's relate id
 	 */
 	private final static byte[] ACK = { 65, 65 };
+
+	/** MAGIC VALUE NUMBER 1: Send 26 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud). 
+	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
+	 * search of possible parameter combinations).
+	 *  
+	 * Used in getDongleAttention.
+	 * @see getDongleAttention
+	 */
+	private final static int MAGIC_1 = 26;
+
+	/** MAGIC VALUE NUMBER 2: Wait for 75 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
+	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
+	 * search of possible parameter combinations).
+	 *  
+	 * Used in getDongleAttention.
+	 * @see getDongleAttention
+	 */
+	private final static int MAGIC_2 = 75;
+	
+	/** MAGIC VALUE NUMBER 3: Set the serial port read timeout to 5 times the timeout passed to the receive method. I am really not 
+	 * sure why this is necessary at all (the normal timeout should be enough), but elongating that time should not matter too much.
+	 * It is only a safeguard against a "dead" dongle that does not want to send anything, anyway.
+	 * It's magic because there's no real reason for that specific number other than trial&error.
+	 *  
+	 * Used in receiveFromDongle.
+	 * @see receiveFromDongle 
+	 */ 
+	private final static int MAGIC_3 = 5;
+
+	/** MAGIC VALUE NUMBER 4: Wait for 1000 ms by default, if no other receive timeout is specified. This will be overwritten
+	 * anyway by the next call to receiveFromDongle (which uses MAGIC_3), so it doesn't matter too much.
+	 * It's magic because there's no real reason for that specific number other than trial&error.
+	 *
+	 * Used in prepareMode.
+	 * @see prepareMode
+	 */  
+	private final static int MAGIC_4 = 1000;
+	
 	
 	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
 	public SerialCommunicationHelper() {
@@ -121,7 +159,7 @@ class SerialCommunicationHelper {
 						SerialPort.STOPBITS_1,
 						SerialPort.PARITY_NONE);
 				// so that read on the getInputStream does not hang indefinitely but times out
-				serialPort.enableReceiveTimeout(1000);
+				serialPort.enableReceiveTimeout(MAGIC_4);
 				if (!serialPort.isReceiveTimeoutEnabled())
 					log("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
 				//serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
@@ -189,7 +227,7 @@ class SerialCommunicationHelper {
 		try {
 			// set the read timeout
 			try {
-				serialPort.enableReceiveTimeout(timeout);
+				serialPort.enableReceiveTimeout(timeout * MAGIC_3);
 			} catch (UnsupportedCommOperationException e) {
 				log("UnsupportedCommOperationException") ;
 				e.printStackTrace();
@@ -206,7 +244,7 @@ class SerialCommunicationHelper {
 					received[0] = (byte) recv;
 				}
 				else {
-					log("Could not find first expected byte, returning");
+					//log("Could not find first expected byte, returning");
 					// unable to find even our first expected byte, either due to timeout or to read error
 					return null;
 				}
@@ -263,15 +301,11 @@ class SerialCommunicationHelper {
 				/*Discard everything currently in the serial input buffer.*/
 				fis.skip(fis.available());
 				/*Send garbage..*/
-				// MAGIC VALUE NUMBER 1: send 20 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud)
-				int MAGIC_1 = RelateAuthenticationProtocol.MAGIC_1;
 				byte[] garbage = new byte[MAGIC_1];
 				for (int i=0; i<garbage.length; i++)
 					garbage[i] = (byte) 0xAA;
 				sendToDongle(garbage);
 				lastTry = System.currentTimeMillis();
-				// MAGIC VALUE NUMBER 2: wait for 100 ms for the dongle to realize we sent garbage. also seems to work reasonably well
-				int MAGIC_2 = RelateAuthenticationProtocol.MAGIC_2;
 				recv = receiveFromDongle(3, ACK, MAGIC_2); 
 				if (recv != null) {
 					unacknowledged = false;
@@ -551,6 +585,19 @@ public class SerialConnector implements Runnable {
 	/** Prefix to authentication data (received key material from a remote dongle) */
 	private static final int AUTHENTICATION_PACKET_SIGN = 75;
 
+	/** MAGIC VALUE NUMBER 1: Wait for a maximum of 5000 ms for each byte to receive from the dongle. It should definitely be
+	 * enough to receive a byte (and even more so when waiting for multiple bytes and this is the average maximum value for each
+	 * of them) and we don't expect to hit this limit at all. It is just a safety belt in case the dongle fails to repsond that
+	 * prevents the methods from waiting indefinitely.
+	 * It's magic because there's no real reason for that specific number other than trial&error. This number silently includes
+	 * the (emperically determined) maximum time it takes the dongle to start sending bytes in monitor mode after interaction mode
+	 * has been left (i.e. baud rate switch, entering a Relate RF network, etc.).
+	 *  
+	 * Used in receiveHelper.
+	 * @see receiveHelper
+	 */
+	private final static int MAGIC_1 = 5000;
+	
 	/** Firmware version */
 	public String firmwareVersion = null;
 
@@ -571,6 +618,9 @@ public class SerialConnector implements Runnable {
 
 	/** Prefix to firmware version */
 	private static final int DN_STATE_SIGN = 78;
+	
+	/** The number of errors upon trying to receive bytes from the dongle. This is only used for debugging/statistics, nothing else. */
+	private int numReceiveErrors = 0;
 
 	/** Initializes the SerialCommunicationHelper object in commHelper. */
 	protected SerialConnector(boolean loggingOn) {
@@ -706,6 +756,11 @@ public class SerialConnector implements Runnable {
 	}
 	
 	private void postEvent(RelateEvent e) {
+		if (e == null) {
+			log("Warning: cowardly refusing to send a null message to the event queues.");
+			return;
+		}
+		
 		for (ListIterator i = eventQueues.listIterator(); i.hasNext(); )
 			((MessageQueue) i.next()).addMessage(e);
 	}
@@ -1120,14 +1175,32 @@ public class SerialConnector implements Runnable {
 		return res ;
 	}
 	
+	/** This is only a convenience wrapper around commHelper.receiveFromDongle that sets the timeouts, passes null for the 
+	 * expected acknowledgement bytes etc. If bytes can't be receives, this method will throw an exception instead of returning
+	 * null so that the return value does not need to be checked for being null. If there is no exception, this method guarantees
+	 * to return as many bytes as requested.
+	 */
+	private byte[] receiveHelper(int numBytes) {
+		byte[] ret = commHelper.receiveFromDongle(numBytes, null, numBytes * MAGIC_1);
+		if (ret == null) { 
+			try {
+				commHelper.sendMessage(DIAGNOSTIC_OFF, null, 10000);
+				commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000);
+			} 
+			catch (IOException e) {
+			}
+			catch (PortInUseException e) {
+			}
+			throw new NullPointerException("Did not receive enough bytes from the dongle (error number " + (++numReceiveErrors) +
+					" since atartup). Timeout? Tried to switch diagnostic mode on and off to reset dongle");
+		}
+		else
+			return ret;
+	}
+	
 	public void run() {
 		int theByte;
 		int i=0, relateTime, numberOfEntries;
-		/*boolean newLine = false;
-		String line = null;
-		String garbage = "grrrrrr" ;
-		byte[] bytes = null;*/
-		byte[] tmp;
 		byte[] mesbytes = null, dnStateBytes = null;
 		byte[] hostInfoBytes = null, calibrationInfoBytes = null, 
 		usSensorInfoBytes = null, firmwareVersionBytes = null;
@@ -1136,7 +1209,6 @@ public class SerialConnector implements Runnable {
 		boolean last_dongle_state = dongle_on;
 		
 		while (alive) {
-			// testing the raw stream 
 			try {
 				i = 0;
 				while(alive) {
@@ -1146,22 +1218,15 @@ public class SerialConnector implements Runnable {
 					}
 					if(awaken) {
 						commHelper.switchToReceive();
-						tmp = commHelper.receiveFromDongle(1, null, 100);
-						if (tmp == null)
-							continue;
-						theByte = tmp[0];
-						//System.out.print(theByte + " ") ;
+						theByte = receiveHelper(1)[0];
 						if(theByte == DEVICE_MEASUREMENT_SIGN) {
-							mesbytes = commHelper.receiveFromDongle(MES_SIZE, null, MES_SIZE*100); 
+							mesbytes = commHelper.receiveFromDongle(MES_SIZE, null, MES_SIZE*MAGIC_1);
 							//If local measurement, check for sensor info..
 							if(mesbytes[0] == commHelper.getLocalRelateId() && diagnosticMode){
-								tmp = commHelper.receiveFromDongle(1, null, 100);
-								if (tmp == null)
-									continue;
-								
+								theByte = receiveHelper(1)[0];
 								if(theByte == US_SENSOR_INFO_SIGN) {
 									usSensorInfoBytes = new byte[MES_SIZE+US_SENSOR_INFO_LENGTH] ;
-									tmp = commHelper.receiveFromDongle(US_SENSOR_INFO_LENGTH, null, US_SENSOR_INFO_LENGTH*100);
+									byte[] tmp = receiveHelper(US_SENSOR_INFO_LENGTH);
 									System.arraycopy(tmp, 0, usSensorInfoBytes, MES_SIZE, tmp.length);
 									System.arraycopy(mesbytes, 0, usSensorInfoBytes, 0, mesbytes.length);
 									event = parseEvent(usSensorInfoBytes);
@@ -1180,7 +1245,7 @@ public class SerialConnector implements Runnable {
 						log("dongle is sleeping.");*/
 						} 
 						else if(theByte == HOST_INFO_SIGN){
-							hostInfoBytes = commHelper.receiveFromDongle(HOST_INFO_LENGTH, null, HOST_INFO_LENGTH*100);
+							hostInfoBytes = receiveHelper(HOST_INFO_LENGTH);
 							event = parseEvent(hostInfoBytes);
 							if (event != null) {
 								postEvent(event);
@@ -1188,7 +1253,9 @@ public class SerialConnector implements Runnable {
 								log("could not parse host info event");
 							}
 						}else if(theByte == CALIBRATION_INFO_SIGN && !calibrated) {
-							calibrationInfoBytes = commHelper.receiveFromDongle(CALIBRATION_INFO_LENGTH, null, CALIBRATION_INFO_LENGTH*100);
+							calibrationInfoBytes = receiveHelper(CALIBRATION_INFO_LENGTH);
+							if (calibrationInfoBytes == null)
+								continue;
 							event = parseEvent(calibrationInfoBytes);
 							if (event != null) {
 								postEvent(event);
@@ -1196,13 +1263,13 @@ public class SerialConnector implements Runnable {
 								log("could not parse calibration info event");
 							}
 						}else if(theByte == FIRMWARE_VERSION_SIGN && firmwareVersion == null) {
-							firmwareVersionBytes = commHelper.receiveFromDongle(FIRMWARE_VERSION_LENGTH, null, FIRMWARE_VERSION_LENGTH*100);
+							firmwareVersionBytes = receiveHelper(FIRMWARE_VERSION_LENGTH);
 							firmwareVersion = ""+unsign(firmwareVersionBytes[0])+"."+
 							+unsign(firmwareVersionBytes[1]) ;
 							log("The firmware version for dongle "+commHelper.getLocalRelateId()+" is "+
 									firmwareVersion+".") ;
 						}else if(theByte == ERROR_CODE_SIGN && diagnosticMode) {
-							errorCode = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
+							errorCode = unsign(receiveHelper(1)[0]) ;
 							event = new RelateEvent(RelateEvent.ERROR_CODE, /*relate.getLocalDevice(),*/null,
 									null,System.currentTimeMillis(),null,new Integer(errorCode));
 							if (event != null) {
@@ -1212,10 +1279,11 @@ public class SerialConnector implements Runnable {
 							}
 							log("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN && diagnosticMode) {
-							relateTime = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
-							numberOfEntries = unsign(commHelper.receiveFromDongle(1, null, 100)[0]) ;
+							byte[] tmp = receiveHelper(2);
+							relateTime = unsign(tmp[0]) ;
+							numberOfEntries = unsign(tmp[1]) ;
 							DN_STATE_LENGTH = 3+(2*numberOfEntries)+1 ;
-							dnStateBytes = commHelper.receiveFromDongle(DN_STATE_LENGTH, null, DN_STATE_LENGTH*100);
+							dnStateBytes = receiveHelper(DN_STATE_LENGTH);
 							dnStateBytes[0] = (byte)DN_STATE_SIGN ;
 							dnStateBytes[1] = (byte)relateTime ;
 							dnStateBytes[2] = (byte)numberOfEntries ;
@@ -1227,10 +1295,11 @@ public class SerialConnector implements Runnable {
 								log("could not parse dongle network state event");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
-							int remoteRelateId = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
-							int curRound = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
-							int numMsgBytes = unsign(commHelper.receiveFromDongle(1, null, 100)[0]);
-							byte[] msgPart = commHelper.receiveFromDongle(numMsgBytes, null, numMsgBytes*100);
+							byte[] tmp = receiveHelper(3);
+							int remoteRelateId = unsign(tmp[0]);
+							int curRound = unsign(tmp[1]);
+							int numMsgBytes = unsign(tmp[2]);
+							byte[] msgPart = receiveHelper(numMsgBytes);
 							log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
 									": ") ;
 							printByteArray(msgPart);
