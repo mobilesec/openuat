@@ -136,7 +136,7 @@ public class DongleProtocolHandler {
 		}
 		
 		// construct the start-of-authentication message and sent it to the dongle
-		serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement);
+		//serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement);
 		
 		// and wait for the measurements and authentication data to be received
 		int lastCompletedRound = -1;

@@ -585,18 +585,27 @@ public class SerialConnector implements Runnable {
 	/** Prefix to authentication data (received key material from a remote dongle) */
 	private static final int AUTHENTICATION_PACKET_SIGN = 75;
 
-	/** MAGIC VALUE NUMBER 1: Wait for a maximum of 5000 ms for each byte to receive from the dongle. It should definitely be
+	/** MAGIC VALUE NUMBER 1: Wait for a maximum of 200 ms for each byte to receive from the dongle. It should definitely be
 	 * enough to receive a byte (and even more so when waiting for multiple bytes and this is the average maximum value for each
 	 * of them) and we don't expect to hit this limit at all. It is just a safety belt in case the dongle fails to repsond that
 	 * prevents the methods from waiting indefinitely.
-	 * It's magic because there's no real reason for that specific number other than trial&error. This number silently includes
-	 * the (emperically determined) maximum time it takes the dongle to start sending bytes in monitor mode after interaction mode
-	 * has been left (i.e. baud rate switch, entering a Relate RF network, etc.).
+	 * It's magic because there's no real reason for that specific number other than trial&error. 
 	 *  
 	 * Used in receiveHelper.
 	 * @see receiveHelper
 	 */
-	private final static int MAGIC_1 = 5000;
+	private final static int MAGIC_1 = 200;
+	
+	/** MAGIC VALUE NUMBER 2: The number of tries for receiving a single byte from the dongle (e.g. the first byte of a 
+	 * message). This number silently includes the (emperically determined) maximum time it takes the dongle to start 
+	 * sending bytes in monitor mode after interaction mode has been left (i.e. baud rate switch, entering a Relate 
+	 * RF network, etc.).
+	 * It's magic because there's no real reason for that specific number other than trial&error. 
+	 * 
+	 * Used in receiveHelper.
+	 * @see receiveHelper
+	 */
+	private final static int MAGIC_2 = 10;
 	
 	/** Firmware version */
 	public String firmwareVersion = null;
@@ -1181,18 +1190,25 @@ public class SerialConnector implements Runnable {
 	 * to return as many bytes as requested.
 	 */
 	private byte[] receiveHelper(int numBytes) {
-		byte[] ret = commHelper.receiveFromDongle(numBytes, null, numBytes * MAGIC_1);
+		int tries = MAGIC_2;
+		byte[] ret;
+		// workaround for getting just 1 byte: try it a number of times since the dongle might be busy switching mode
+		do
+			ret = commHelper.receiveFromDongle(numBytes, null, numBytes * MAGIC_1);
+		while (ret == null && numBytes == 1 && --tries > 0);
 		if (ret == null) { 
-			try {
+			/*try {
 				commHelper.sendMessage(DIAGNOSTIC_OFF, null, 10000);
-				commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000);
+				if (diagnosticMode)
+					commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000);
 			} 
 			catch (IOException e) {
 			}
 			catch (PortInUseException e) {
-			}
-			throw new NullPointerException("Did not receive enough bytes from the dongle (error number " + (++numReceiveErrors) +
-					" since atartup). Timeout? Tried to switch diagnostic mode on and off to reset dongle");
+			}*/
+			throw new NullPointerException("Did not receive enough bytes (wanted " + numBytes + 
+					") from the dongle (error number " + (++numReceiveErrors) +
+					" since startup). Timeout? Tried to switch diagnostic mode off and on (if it was on previously) to reset dongle");
 		}
 		else
 			return ret;
