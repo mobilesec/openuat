@@ -70,14 +70,21 @@ class SerialCommunicationHelper {
 	 */
 	private final static int MAGIC_1 = 26;
 
-	/** MAGIC VALUE NUMBER 2: Wait for 75 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
+	/** MAGIC VALUE NUMBER 2: Wait for 200 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
 	 * search of possible parameter combinations).
+	 * Warning: Don't set this too low (i.e. too aggressively trying to get the dongle's attention) or the dongle will take a
+	 * <b>long</b> time to wake up again. The suspected reason for this is that some part in the host-USB-USB/serial-PIC chain is
+	 * buffering the garbage sent to the dongle and continues sending it even after the dongle responded. That in turn puts
+	 * the dongle back into interactive mode without the host listening. Although the parameter search suggests that lower values
+	 * (specifically 75) produce lower delays in getting the dongle's attention, they also lead to <b>many</b> more retries and
+	 * thus fill up the buffer. The real question is though: Why is the javax.comm API's send method not really synchronous when
+	 * it's supposed to be? Which part of the chain buffers without the send method noticing and thus causing it to wait? 
 	 *  
 	 * Used in getDongleAttention.
 	 * @see getDongleAttention
 	 */
-	private final static int MAGIC_2 = 75;
+	private final static int MAGIC_2 = 200;
 	
 	/** MAGIC VALUE NUMBER 3: Set the serial port read timeout to 5 times the timeout passed to the receive method. I am really not 
 	 * sure why this is necessary at all (the normal timeout should be enough), but elongating that time should not matter too much.
