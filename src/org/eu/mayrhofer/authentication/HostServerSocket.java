@@ -2,6 +2,7 @@ package org.eu.mayrhofer.authentication;
 
 import org.eu.mayrhofer.authentication.exceptions.*;
 import java.net.*;
+import java.util.ListIterator;
 import java.io.*;
 
 /** This class represents a listener on a TCP port which responds to incoming authentication requests by delegating any incoming
@@ -13,7 +14,7 @@ import java.io.*;
  *  
  * @author Rene Mayrhofer
  */
-public class HostServerSocket implements Runnable {
+public class HostServerSocket extends AuthenticationEventSender implements Runnable {
 	/** This is the (bound but unconnected) TCP socket for listening for incoming connections. */
 	private ServerSocket listener;
 
@@ -77,6 +78,9 @@ public class HostServerSocket implements Runnable {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				Socket s = listener.accept();
 				HostProtocolHandler h = new HostProtocolHandler(s);
+				// before starting the background thread, register all our own listeners with this new event sender
+	    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
+	    			h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
 				h.startIncomingAuthenticationThread();
 			}
 		} catch(SocketException e) {

@@ -21,14 +21,7 @@ import uk.ac.lancs.relate.RelateEvent;
  * @author Rene Mayrhofer
  *
  */
-public class DongleProtocolHandler extends ProtocolHandler {
-	/** 
-	 * The serial port used by this instance. Needs to be set in the constructor.
-	 */
-	private String serialPort;
-	/** This is the SerialConnector instance used to communicate with the dongle. */
-	private SerialConnector serialConn;
-	
+public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** With the current Relate dongle hard-/firmware, each round of the dongle authentication protocol transports 3 bits
 	 * of entropy.
 	 */
@@ -40,19 +33,23 @@ public class DongleProtocolHandler extends ProtocolHandler {
 	/** The current length in byte of the nonce (and implicitly the RF messages) expected by all parameters. */
 	private static final int NonceByteLength = 16;
 	
-	/** This message queue is used to receive events from the dongle. */
-	MessageQueue eventQueue;
-
-	 /** 
-	  * We use a pseudo-singleton pattern here: for each port, only one instance can exist. This map holds the known instances.
-	  */
-	//private static HashMap instances;
-
-	/** Initializes the serialConn object. */
-	public DongleProtocolHandler(String serial) {
-		serialPort = serial;
-		serialConn = SerialConnector.getSerialConnector(true);
-		eventQueue = new MessageQueue();
+	/** The number of authentication steps, not including the rounds of the dongles. */
+	private static final int AuthenticationSteps = 4;
+	
+	/** The serial port to use for connecting to the dongle. */
+	private String serialPort;
+	
+	/** The remote relate id to perform the authentication with. */
+	private byte remoteRelateId;
+	
+	/** Initializes the dongle protocol handler by setting the serialPort and remoteRelateId members.
+	 * 
+	 * @param serialPort The serial port to use for connecting to the dongle.
+	 * @param remoteRelateId The remote relate id to perform the authentication with.
+	 */
+	public DongleProtocolHandler(String serialPort, byte remoteRelateId) {
+		this.serialPort = serialPort;
+		this.remoteRelateId = remoteRelateId;
 	}
 	
 	/**
@@ -64,8 +61,6 @@ public class DongleProtocolHandler extends ProtocolHandler {
 	 * background thread to send events. If this thread blocks, the
 	 * authentication will fail with a timeout.
 	 * 
-	 * @param remoteRelateId
-	 *            The remote dongle id to authenticate with.
 	 * @param nonce
 	 *            The random nonce used to derive the ultrasound delays from.
 	 * @param sentRfMessage
@@ -92,7 +87,7 @@ public class DongleProtocolHandler extends ProtocolHandler {
 	 *         If true, returns the received RF message in receivedRfMessage
 	 * @throws DongleAuthenticationProtocolException
 	 */
-	private boolean handleDongleCommunication(int remoteRelateId, byte[] nonce, byte[] sentRfMessage, int rounds, byte[] receivedNonce, byte[] receivedRfMessage) throws DongleAuthenticationProtocolException {
+	private boolean handleDongleCommunication(byte[] nonce, byte[] sentRfMessage, int rounds, byte[] receivedNonce, byte[] receivedRfMessage) throws DongleAuthenticationProtocolException {
 		// first check the parameters
 		if (remoteRelateId < 0)
 			throw new DongleAuthenticationProtocolException("Remote relate id must be >= 0.");
@@ -104,6 +99,8 @@ public class DongleProtocolHandler extends ProtocolHandler {
 			throw new DongleAuthenticationProtocolException("Received RF message will have 16 Bytes, expecting pre-allocated array.");
 		if (rounds < 2)
 			throw new DongleAuthenticationProtocolException("Need at least 2 rounds for the interlock protocol to be secure.");
+
+		SerialConnector serialConn = SerialConnector.getSerialConnector(true);
 		
 		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
 		int localRelateId = serialConn.connect(serialPort, 0, 255);
@@ -114,10 +111,15 @@ public class DongleProtocolHandler extends ProtocolHandler {
 			return false;
 		}
 		
+		// This message queue is used to receive events from the dongle.
+		MessageQueue eventQueue = new MessageQueue();
+
 		// start the backgroud thread for getting messages from the dongle
 		Thread serialThread = new Thread(serialConn);
 		serialConn.registerEventQueue(eventQueue);
 		serialThread.start();
+
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationSteps + rounds, "Connected to dongle.");
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		int referenceMeasurement = -1;
@@ -245,8 +247,7 @@ public class DongleProtocolHandler extends ProtocolHandler {
 	/**
 	 * This method performs a full authentication of the pre-established shared
 	 * secrets with another Relate dongle.
-	 * @param remoteRelateId
-	 *            The remote dongle id to authenticate with.
+     *
 	 * @param sharedKey The secret authentication key shared with the remote host.
 	 * @param rounds
 	 *            The number of rounds to use. Due to the protocol and hardware
@@ -254,7 +255,7 @@ public class DongleProtocolHandler extends ProtocolHandler {
 	 *            rounds * EnropyBitsPerRound.
 	 * @return true if the authentication succeeded, false otherwise.
 	 */
-	public boolean authenticateWith(int remoteRelateId, byte[] sharedKey, int rounds) throws InternalApplicationException, DongleAuthenticationProtocolException {
+	public void startAuthenticationWith(byte[] sharedKey, int rounds) throws InternalApplicationException, DongleAuthenticationProtocolException {
 		// first create the local nonce
         SecureRandom r = new SecureRandom();
         byte[] nonce = new byte[16];
@@ -269,16 +270,26 @@ public class DongleProtocolHandler extends ProtocolHandler {
 				System.out.println("Encryption went wrong, got "
 						+ rfMessage.length + " bytes");
 
+			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationSteps + rounds, "Encrypted nonce");
+			
 			byte[] receivedNonce = new byte[16], receivedRfMessage = new byte[16];
-			if (!handleDongleCommunication(remoteRelateId, nonce, rfMessage, rounds,
-					receivedNonce, receivedRfMessage))
-				return false;
+			if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedNonce, receivedRfMessage)) {
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
+				return;
+			}
 			// check that the delays match the (encrypted) message sent by the remote
 			cipher.init(Cipher.DECRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] decryptedRfMessage = cipher.doFinal(receivedRfMessage);
+
+			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + rounds, AuthenticationSteps + rounds, "Connected to dongle.");
+
 			// the lower bits must match
-			return compareBits(receivedNonce, decryptedRfMessage, EntropyBitsPerRound * rounds);
+			if (compareBits(receivedNonce, decryptedRfMessage, EntropyBitsPerRound * rounds))
+				raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
+			else
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
+				
 		} catch (NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Unable to get cipher object from crypto provider.", e);

@@ -67,9 +67,9 @@ public class HostProtocolHandlerTest extends TestCase {
     public void testCompleteAuthentication() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
     {
         EventHelper h = new EventHelper();
-        HostProtocolHandler.addAuthenticationProgressHandler(h);
-
-        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT);
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -83,19 +83,12 @@ public class HostProtocolHandlerTest extends TestCase {
 
         Assert.assertEquals(2, h.getReceivedSecrets());
         Assert.assertTrue(h.areSharedSecretsEqual());
-        
-        HostProtocolHandler.removeAuthenticationProgressHandler(h);
     }
 
     private class EventHelper implements AuthenticationProgressHandler
     {
         private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0;
         private byte[][] sharedSessionKeys = new byte[2][], sharedAuthenticationKeys = new byte[2][];
-
-        EventHelper() 
-        {
-            HostProtocolHandler.addAuthenticationProgressHandler(this);
-        }
 
         public void AuthenticationSuccess(Object remote, Object result)
         {

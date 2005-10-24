@@ -1,5 +1,6 @@
 package org.eu.mayrhofer.authentication;
 
+import java.io.*;
 import java.security.SecureRandom;
 
 /// <summary>
@@ -9,11 +10,17 @@ import java.security.SecureRandom;
 /// all events coming in from them.
 /// </summary>
 public class RelateAuthenticationProtocol implements AuthenticationProgressHandler {
+	public static final int TcpPort = 54321;
+	public static final String SerialPort = "/dev/ttyUSB0";
+	
+	private int remoteRelateId = 7;
+	
     public void AuthenticationSuccess(Object remote, Object result)
     {
         System.out.println("Received authentication success event with " + remote);
         byte[][] keys = (byte[][]) result;
         System.out.println("Shared session key is now '" + keys[0] + "', shared authentication key is now '" + keys[1] + "'");
+        System.out.println("Starting dongle authentication with remote relate id " + remoteRelateId);
     }
 
     public void AuthenticationFailure(Object remote, Exception e, String msg)
@@ -32,48 +39,26 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
 
     public static void main(String[] args) throws Exception
 	{
-    	HostProtocolHandler.addAuthenticationProgressHandler(new RelateAuthenticationProtocol());
-        
-        /*if (args.length > 0 && args[0].equals("server"))
+        if (args.length > 0 && args[0].equals("server"))
         {
-            HostServerSocket h1 = new HostServerSocket(54321);
+            HostServerSocket h1 = new HostServerSocket(TcpPort);
+        	h1.addAuthenticationProgressHandler(new RelateAuthenticationProtocol());
             h1.startListening();
             new BufferedReader(new InputStreamReader(System.in)).readLine();
             h1.stopListening();
         }
-        if (args.length > 0 && args[0].equals("client"))
+        if (args.length > 1 && args[0].equals("client"))
         {
-            HostProtocolHandler.startAuthenticationWith("localhost", 54321);
-        }*/
-        //Environment.Exit(0);
-        //System.Diagnostics.Process.GetCurrentProcess().Kill();
+            HostProtocolHandler.startAuthenticationWith(args[1], TcpPort, new RelateAuthenticationProtocol());
+        }
 
-        DongleProtocolHandler h = new DongleProtocolHandler("/dev/ttyUSB0");
         SecureRandom r = new SecureRandom();
         byte[] sharedKey = new byte[16];
         r.nextBytes(sharedKey);
-        h.authenticateWith(7, sharedKey, 2);
+        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, (byte) 7);
+        dh.startAuthenticationWith(sharedKey, 2);
         
         // problem with the javax.comm API - doesn't release its native thread
         System.exit(0);
-        
-        /*try
-        {
-            DongleProtocolHandler.StartAuthenticationWith("COM3", -1, null, null);
-        }
-        catch (ConfigurationErrorException e)
-        {
-            Console.WriteLine("Caught exception, is the device present and not yet in use?");
-            Console.WriteLine(e.Message);
-            Console.WriteLine(e.StackTrace);
-            Exception f = e.InnerException;
-            while (f != null)
-            {
-                Console.WriteLine(f.Message);
-                Console.WriteLine(f.StackTrace);
-                f = f.InnerException;
-            }
-        }*/
 	}
-
 }

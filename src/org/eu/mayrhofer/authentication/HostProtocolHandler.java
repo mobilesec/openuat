@@ -17,7 +17,7 @@ import org.apache.commons.codec.binary.*;
  * 
  * @author Rene Mayrhofer
  */
-public class HostProtocolHandler extends ProtocolHandler {
+public class HostProtocolHandler extends AuthenticationEventSender {
 	/** These are the messages of the ASCII authentication protocol. */
     public static final String Protocol_Hello = "HELO RelateAuthentication";
     /** @see #Protocol_Hello */
@@ -285,13 +285,20 @@ public class HostProtocolHandler extends ProtocolHandler {
 	 * authenticate with the host given as remote. Callers need to subscribe to
 	 * the Authentication* events to get notifications of authentication
 	 * success, failure and progress.
+	 * @param remoteAddress The remote host to try to connect to.
+	 * @param remotePort The remote TCP port to try to connect to.
+	 * @param eventHandler The event handler that should be notified of authentication events. Can be null 
+	 * (in which case no events are sent). 
 	 */
     static public void startAuthenticationWith(String remoteAddress,
-			int remotePort) throws UnknownHostException, IOException {
+			int remotePort, AuthenticationProgressHandler eventHandler) throws UnknownHostException, IOException {
 		Socket clientSocket = new Socket(remoteAddress, remotePort);
 
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(
-				clientSocket);
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket);
+		if (eventHandler != null)
+			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
+		
+		// start the authentication protocol ni the background
 		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
 				tmpProtocolHandler) {
 			public void run() {
