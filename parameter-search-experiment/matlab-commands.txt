@@ -1,0 +1,46 @@
+mean values:
+
+d=dlmread('attention-magic-values.log');
+for i=1:252
+l=d(i,1)-2;
+c=(d(i,2)-50)/25+1;
+d_mean(l,c)=mean(d(i,3:46));
+d_max(l,c)=max(d(i,3:46));
+d_stddev(l,c)=std(d(i,3:46));
+end
+
+bar3(d_mean);
+bar3(d_max);
+bar3(d_stddev);
+
+for i=1:252
+o(i,1:2) = d(i,1:2);
+o(i,3) = mean(d(i,3:46));
+o(i,4) = max(d(i,3:46));
+o(i,5) = std(d(i,3:46));
+end
+
+min_mean=10000;
+min_max=10000;
+min_stddev=10000;
+for i=1:252
+if o(i,3) < min_mean
+min_mean = o(i,3);
+min_mean_ind = o(i,1:2);
+end
+if o(i,4) < min_max
+min_max = o(i,4);
+min_max_ind = o(i,1:2);
+end
+if o(i,5) < min_stddev
+min_stddev = o(i,5);
+min_stddev_ind = o(i,1:2);
+end
+end
+
+min_mean --> 156,9773
+min_mean_ind --> 26 75
+min_max --> 3444
+min_max_ind --> 26 75
+min_stddev --> 619,7726
+min_stddev_ind --> 26 75

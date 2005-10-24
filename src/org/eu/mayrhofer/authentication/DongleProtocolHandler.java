@@ -54,6 +54,7 @@ public class DongleProtocolHandler {
 	public DongleProtocolHandler(String serial) {
 		serialPort = serial;
 		serialConn = SerialConnector.getSerialConnector(true);
+		eventQueue = new MessageQueue();
 	}
 	
 	/**
@@ -123,9 +124,13 @@ public class DongleProtocolHandler {
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		int referenceMeasurement = -1;
 		while (referenceMeasurement == -1) {
-			if (eventQueue.isEmpty())
+			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(100);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
+			if (e == null) {
+				System.out.println("Warning: got null message out of message queue! This should not happen.");
+				continue;
+			}
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId)
 				referenceMeasurement = (int) e.getMeasurement().getDistance();
 		}
@@ -139,9 +144,13 @@ public class DongleProtocolHandler {
 		if (sentRfMessage.length > messageBitsPerRound * rounds)
 			messageBitsPerRound++;
 		while (lastCompletedRound < rounds) {
-			if (eventQueue.isEmpty())
+			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(100);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
+			if (e == null) {
+				System.out.println("Warning: got null message out of message queue! This should not happen.");
+				continue;
+			}
 			if (e.getType() == RelateEvent.AUTHENTICATION_INFO && e.getDevice().getId() == remoteRelateId) {
 				// authentication info event: just remember the bits received with it
 				addPart(receivedRfMessage, e.authenticationPart, e.round * messageBitsPerRound,
