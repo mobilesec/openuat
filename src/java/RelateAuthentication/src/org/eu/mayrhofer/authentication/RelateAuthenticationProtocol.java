@@ -1,13 +1,8 @@
 package org.eu.mayrhofer.authentication;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
 
-import java.security.KeyFactory;
 import java.security.SecureRandom;
-import javax.crypto.*;
-import javax.crypto.spec.*;
 
 /// <summary>
 /// This is the main class of the relate authentication software: it ties together

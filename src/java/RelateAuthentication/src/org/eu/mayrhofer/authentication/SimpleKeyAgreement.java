@@ -25,9 +25,9 @@ public class SimpleKeyAgreement {
 	 - completed means that we have received the remote part and thus completed the protocol.
 	 */
 	private static final int STATE_INITIALIZED = 1;
-	/** @see STATE_INITIALIZED */
+	/** @see #STATE_INITIALIZED */
 	private static final int STATE_INTRANSIT = 2;
-	/** @see STATE_INITIALIZED */
+	/** @see #STATE_INITIALIZED */
 	private static final int STATE_COMPLETED = 3;
 
 	/** The current state of the protocol, i.e. one of STATE_INITIALIZED, STATE_INTRANSIT, or STATE_COMPLETED. */
@@ -108,7 +108,7 @@ public class SimpleKeyAgreement {
 	private byte[] sharedKey;
 
 	/** Initialized a fresh key agreement, simply by calling init(). 
-	 * @see init
+	 * @see #init
 	 */
 	public SimpleKeyAgreement() throws InternalApplicationException {
 		init();
@@ -116,7 +116,7 @@ public class SimpleKeyAgreement {
 
 	/** Initializes the random nonce of this side for generating the shared session key.
 	 * This method can be called in any state and wipes all old values (by calling wipe()).
-	 * @see wipe
+	 * @see #wipe
 	 */
 	public void init() throws InternalApplicationException {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
@@ -159,9 +159,9 @@ public class SimpleKeyAgreement {
 	 * TODO: This method is not yet secure! It can't access the internal data structures of myKeypair and dh, which do not
 	 * offer wipe methods themselves.
 	 * 
-	 * @see sharedKey
-	 * @see myKeypair
-	 * @see dh
+	 * @see #sharedKey
+	 * @see #myKeypair
+	 * @see #dh
 	 */
 	public void wipe() {
 		if (sharedKey != null) {

@@ -5,7 +5,6 @@ import org.eu.mayrhofer.authentication.exceptions.*;
 import java.security.SecureRandom;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
-import java.util.HashMap;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,7 +15,6 @@ import javax.crypto.BadPaddingException;
 import uk.ac.lancs.relate.SerialConnector;
 import uk.ac.lancs.relate.MessageQueue;
 import uk.ac.lancs.relate.RelateEvent;
-import uk.ac.lancs.relate.Measurement;
 
 /**
  * 
@@ -131,8 +129,10 @@ public class DongleProtocolHandler {
 				System.out.println("Warning: got null message out of message queue! This should not happen.");
 				continue;
 			}
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId)
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId) {
 				referenceMeasurement = (int) e.getMeasurement().getDistance();
+				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + referenceMeasurement);
+			}
 		}
 		
 		// construct the start-of-authentication message and sent it to the dongle
@@ -157,6 +157,8 @@ public class DongleProtocolHandler {
 						// if it is the last round, it might have less bits
 						e.round < rounds ? messageBitsPerRound : (sentRfMessage.length - messageBitsPerRound * rounds));
 				lastCompletedRound = e.round;
+				System.out.println("Received authentication part from dongle " + remoteRelateId + 
+						": round " + lastCompletedRound + " out of " + rounds);
 			}
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId) {
 				// measurement event for the authentication partner: re-use the round from the authentication info event
@@ -166,6 +168,8 @@ public class DongleProtocolHandler {
 				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
 				// and add to the receivedNonce for later comparison
 				addPart(receivedNonce, new byte[] {delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
+				System.out.println("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
+						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
 			}
 		}
 

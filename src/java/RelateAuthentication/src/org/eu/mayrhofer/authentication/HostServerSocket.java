@@ -2,7 +2,6 @@ package org.eu.mayrhofer.authentication;
 
 import org.eu.mayrhofer.authentication.exceptions.*;
 import java.net.*;
-import java.util.HashMap;
 import java.io.*;
 
 /** This class represents a listener on a TCP port which responds to incoming authentication requests by delegating any incoming

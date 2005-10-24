@@ -6,8 +6,6 @@ package uk.ac.lancs.relate;
 
 import javax.comm.*;
 
-import org.eu.mayrhofer.authentication.RelateAuthenticationProtocol;
-
 import java.io.*;
 import java.util.*;
 
@@ -43,7 +41,7 @@ class SerialCommunicationHelper {
 	 */
 	private InputStream fis;
 
-	/** @see fis */
+	/** @see #fis */
 	private OutputStream fos;
 
 	/**
@@ -66,7 +64,7 @@ class SerialCommunicationHelper {
 	 * search of possible parameter combinations).
 	 *  
 	 * Used in getDongleAttention.
-	 * @see getDongleAttention
+	 * @see #getDongleAttention
 	 */
 	private final static int MAGIC_1 = 26;
 
@@ -82,7 +80,7 @@ class SerialCommunicationHelper {
 	 * it's supposed to be? Which part of the chain buffers without the send method noticing and thus causing it to wait? 
 	 *  
 	 * Used in getDongleAttention.
-	 * @see getDongleAttention
+	 * @see #getDongleAttention
 	 */
 	private final static int MAGIC_2 = 200;
 	
@@ -92,7 +90,7 @@ class SerialCommunicationHelper {
 	 * It's magic because there's no real reason for that specific number other than trial&error.
 	 *  
 	 * Used in receiveFromDongle.
-	 * @see receiveFromDongle 
+	 * @see #receiveFromDongle 
 	 */ 
 	private final static int MAGIC_3 = 5;
 
@@ -101,7 +99,7 @@ class SerialCommunicationHelper {
 	 * It's magic because there's no real reason for that specific number other than trial&error.
 	 *
 	 * Used in prepareMode.
-	 * @see prepareMode
+	 * @see #prepareMode
 	 */  
 	private final static int MAGIC_4 = 1000;
 	
@@ -341,7 +339,7 @@ class SerialCommunicationHelper {
 	 *                       In every loop, the msg is sent again to the dongle.
 	 *                       Ignored if null (no looping then, since the method will not wait for any acknowledge.)
 	 * @param timeout The maximum number of milliseconds allowed to pass.
-	 * @see myRelateId;
+	 * @see #myRelateId
 	 */ 
 	public boolean sendMessage(byte[] msg, byte[] expectedMsgAck, long timeout) throws IOException, PortInUseException {
 		long startTime = System.currentTimeMillis(), curTime;
@@ -372,8 +370,8 @@ class SerialCommunicationHelper {
 	 * The portId member will be used by prepareMode to open the hardware port. 
 	 * @param port The port to use.
 	 * @return true if the port is available and not owned by another application, false otherwise.
-	 * @see portId
-	 * @see prepareMode
+	 * @see #portId
+	 * @see #prepareMode
 	 */
 	public boolean connect(String port) {
 		// initialize the portId object based on the objects gathered from the javax.comm API and the passed port name
@@ -409,8 +407,11 @@ class SerialCommunicationHelper {
 	
 	/** Returns the local dongle id that was reported by the dongle during sending the last message to it. It will be invalid
 	 * before the first call to sendMessage, because it is only initialized in that method. However, connect already initializes
-	 * it.
-	 * @return
+	 * it. It is updated every time the dongle's attention is successfully caught, i.e. in every call to the public sendMessage
+	 * (which calls the private getDongleAttention that really updates this variable).
+	 * @return The dongle ID reported during the last try to get the dongle's attention.
+	 * @see #getDongleAttention
+	 * @see #sendMessage
 	 */
 	public int getLocalRelateId() {
 		return myRelateId;
@@ -421,7 +422,7 @@ class SerialCommunicationHelper {
 	 * using receiveFromDongle to get measurements or status messages in its normal (non-interactive) mode.
 	 * @throws IOException
 	 * @throws PortInUseException
-	 * @see receiveFromDongle
+	 * @see #receiveFromDongle
 	 */
 	public void switchToReceive() throws IOException, PortInUseException {
 		prepareMode(false);
@@ -444,7 +445,7 @@ public class SerialConnector implements Runnable {
 	 * At the moment, there can only be a single instance of SerialConnector.
 	 * This singleton is held here and returned by getSerialConnector.
 	 * 
-	 * @see getSerialConnector
+	 * @see #getSerialConnector(boolean)
 	 */
 	private static SerialConnector sConn = null;
 	
@@ -452,7 +453,7 @@ public class SerialConnector implements Runnable {
 	private SerialCommunicationHelper commHelper = null;
 	
 	/** The serial port name this connector refers to. Used to reconnect to the dongle if it fails to respond.
-	 * @see receiveHelper
+	 * @see #receiveHelper
 	 */
 	private String serialPort;
 
@@ -460,7 +461,7 @@ public class SerialConnector implements Runnable {
 	 * Flag indicating wether this instance should continue to run. Used by
 	 * die() to signal the thread to terminate.
 	 * 
-	 * @see die
+	 * @see #die
 	 */
 	private boolean alive = true;
 
@@ -472,8 +473,8 @@ public class SerialConnector implements Runnable {
 	 * getSerialConnector to wait for an instance to be initialised before
 	 * returning it.
 	 * 
-	 * @see getSerialConnector
-	 * @see SerialConnector
+	 * @see #getSerialConnector(boolean)
+	 * @see #SerialConnector(boolean)
 	 */
 	private boolean initialised = false;
 
@@ -499,9 +500,10 @@ public class SerialConnector implements Runnable {
 	// private MessageQueue relateQueue = null;
 
 	/** The list of MessageQueues to send new events to. 
-	 * @see registerEventQueue
-	 * @see unregisterEventQueue
-	 * @see postEvent */
+	 * @see #registerEventQueue(MessageQueue)
+	 * @see #unregisterEventQueue(MessageQueue)
+	 * @see #postEvent(RelateEvent) 
+	 */
 	private LinkedList eventQueues = null;
 	
 	/** bytes to send to bring dongle into sleep mode */
@@ -604,7 +606,7 @@ public class SerialConnector implements Runnable {
 	 * It's magic because there's no real reason for that specific number other than trial&error. 
 	 *  
 	 * Used in receiveHelper.
-	 * @see receiveHelper
+	 * @see #receiveHelper
 	 */
 	private final static int MAGIC_1 = 200;
 	
@@ -615,7 +617,7 @@ public class SerialConnector implements Runnable {
 	 * It's magic because there's no real reason for that specific number other than trial&error. 
 	 * 
 	 * Used in receiveHelper.
-	 * @see receiveHelper
+	 * @see #receiveHelper
 	 */
 	private final static int MAGIC_2 = 50;
 	
@@ -697,7 +699,7 @@ public class SerialConnector implements Runnable {
 	 @return the ID of the attached dongle or -1 if something went wrong
 	 **/
 	public int connect(String port, int minID, int maxID) {
-		int i;
+		// TODO: get the hostinfo from somewhere
 		// this.hostInfo = configuration.getFormat();
 
 		this.MIN_ID = minID;
@@ -709,13 +711,13 @@ public class SerialConnector implements Runnable {
 		if (commHelper.connect(port)) {
 			try {
 				// send the host info to the dongle
-				/*byte[] hostInfoMsg = new byte[hostInfo.length + 1];
+				byte[] hostInfoMsg = new byte[hostInfo.length + 1];
 				// the command byte
 				hostInfoMsg[0] = (byte) 72;
 				System.arraycopy(hostInfo, 0, hostInfoMsg, 1, hostInfo.length);
 				log("Sending hostinfo to dongle and waiting for it to ack");
-				commHelper.sendMessage(hostInfoMsg, hostInfo);
-				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
+				commHelper.sendMessage(hostInfoMsg, hostInfo, 10000);
+				log("local device id: " + commHelper.getLocalRelateId() + "\n");
 
 				/* temporary fix to turn on diagnostic mode */
 				if (! commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000))
@@ -1084,7 +1086,6 @@ public class SerialConnector implements Runnable {
 	}
 	
 	private void printHostInfo(byte[] a) {
-		int i ;
 		String hostInfo = "Host info:";
 		if (a.length == HOST_INFO_LENGTH)
 			hostInfo += (" ID: "+a[0]) ;
@@ -1222,7 +1223,7 @@ public class SerialConnector implements Runnable {
 	
 	public void run() {
 		int theByte;
-		int i=0, relateTime, numberOfEntries;
+		int relateTime, numberOfEntries;
 		byte[] mesbytes = null, dnStateBytes = null;
 		byte[] hostInfoBytes = null, calibrationInfoBytes = null, 
 		usSensorInfoBytes = null, firmwareVersionBytes = null;
@@ -1232,7 +1233,6 @@ public class SerialConnector implements Runnable {
 		
 		while (alive) {
 			try {
-				i = 0;
 				while(alive) {
 					if (dongle_on != last_dongle_state) {
 						last_dongle_state = dongle_on;

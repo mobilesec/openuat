@@ -21,9 +21,9 @@ import org.apache.commons.codec.binary.*;
 public class HostProtocolHandler {
 	/** These are the messages of the ASCII authentication protocol. */
     public static final String Protocol_Hello = "HELO RelateAuthentication";
-    /** @see Protocol_Hello */
+    /** @see #Protocol_Hello */
     public static final String Protocol_AuthenticationRequest = "AUTHREQ ";
-    /** @see Protocol_Hello */
+    /** @see #Protocol_Hello */
     public static final String Protocol_AuthenticationAcknowledge = "AUTHACK ";
 
     /** At the moment, the whole protocol consists of 4 stages. */
@@ -95,9 +95,9 @@ public class HostProtocolHandler {
 	 * Helper method used for closing the socket and its connected streams
 	 * cleanly.
 	 * 
-	 * @see fromRemote
-	 * @see toRemote
-	 * @see socket
+	 * @see #fromRemote
+	 * @see #toRemote
+	 * @see #socket
 	 */
     void shutdownSocketsCleanly()
     {
