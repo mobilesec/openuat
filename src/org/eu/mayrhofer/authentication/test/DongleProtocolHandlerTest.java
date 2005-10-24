@@ -45,4 +45,19 @@ public class DongleProtocolHandlerTest extends TestCase {
 		Assert.assertEquals((byte) 0xfc, dest[5]);
 		Assert.assertEquals((byte) 0x01, dest[6]);
 	}
+	
+	public void testCompareBits() {
+		byte[] a1 = {0x01, 0x02, 0x03};
+		byte[] a2 = {0x01, 0x02, 0x07};
+		byte[] a3 = {0x01, 0x02, 0x27};
+		byte[] a4 = {0x00, 0x02, 0x27};
+		
+		Assert.assertTrue(DongleProtocolHandler.compareBits(a1, a2, 18));
+		Assert.assertFalse(DongleProtocolHandler.compareBits(a1, a2, 19));
+		Assert.assertTrue(DongleProtocolHandler.compareBits(a2, a3, 19));
+		Assert.assertTrue(DongleProtocolHandler.compareBits(a2, a3, 20));
+		Assert.assertTrue(DongleProtocolHandler.compareBits(a2, a3, 21));
+		Assert.assertFalse(DongleProtocolHandler.compareBits(a2, a3, 22));
+		Assert.assertFalse(DongleProtocolHandler.compareBits(a3, a4, 22));
+	}
 }
