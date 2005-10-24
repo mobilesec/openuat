@@ -97,17 +97,18 @@ public class HostProtocolHandlerTest extends TestCase {
             HostProtocolHandler.addAuthenticationProgressHandler(this);
         }
 
-        public void AuthenticationSuccess(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey)
+        public void AuthenticationSuccess(Object remote, Object result)
         {
             synchronized (this)
             {
             	int r = receivedSecrets++;
-                sharedSessionKeys[r] = sharedSessionKey;
-                sharedAuthenticationKeys[r] = sharedAuthenticationKey;
+            	byte[][] keys = (byte[][]) result;
+                sharedSessionKeys[r] = keys[0];
+                sharedAuthenticationKeys[r] = keys[1];
             }
         }
 
-        public void AuthenticationFailure(InetAddress remote, Exception e, String msg)
+        public void AuthenticationFailure(Object remote, Exception e, String msg)
         {
             synchronized (this)
             {
@@ -115,7 +116,7 @@ public class HostProtocolHandlerTest extends TestCase {
             }
         }
 
-        public void AuthenticationProgress(InetAddress remote, int cur, int max, String msg)
+        public void AuthenticationProgress(Object remote, int cur, int max, String msg)
         {
             synchronized (this)
             {

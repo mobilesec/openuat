@@ -1,7 +1,5 @@
 package org.eu.mayrhofer.authentication;
 
-import java.net.InetAddress;
-
 import java.security.SecureRandom;
 
 /// <summary>
@@ -11,13 +9,14 @@ import java.security.SecureRandom;
 /// all events coming in from them.
 /// </summary>
 public class RelateAuthenticationProtocol implements AuthenticationProgressHandler {
-    public void AuthenticationSuccess(InetAddress remote, byte[] sharedSessionKey, byte[] sharedAuthenticationKey)
+    public void AuthenticationSuccess(Object remote, Object result)
     {
         System.out.println("Received authentication success event with " + remote);
-        System.out.println("Shared session key is now '" + sharedSessionKey + "', shared authentication key is now '" + sharedAuthenticationKey + "'");
+        byte[][] keys = (byte[][]) result;
+        System.out.println("Shared session key is now '" + keys[0] + "', shared authentication key is now '" + keys[1] + "'");
     }
 
-    public void AuthenticationFailure(InetAddress remote, Exception e, String msg)
+    public void AuthenticationFailure(Object remote, Exception e, String msg)
     {
         System.out.println("Received authentication failure event with " + remote);
         if (e != null)
@@ -26,7 +25,7 @@ public class RelateAuthenticationProtocol implements AuthenticationProgressHandl
             System.out.println("Message: " + msg);
     }
 
-    public void AuthenticationProgress(InetAddress remote, int cur, int max, String msg)
+    public void AuthenticationProgress(Object remote, int cur, int max, String msg)
     {
         System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
     }

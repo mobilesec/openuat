@@ -21,7 +21,7 @@ import uk.ac.lancs.relate.RelateEvent;
  * @author Rene Mayrhofer
  *
  */
-public class DongleProtocolHandler {
+public class DongleProtocolHandler extends ProtocolHandler {
 	/** 
 	 * The serial port used by this instance. Needs to be set in the constructor.
 	 */
