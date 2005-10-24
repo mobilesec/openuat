@@ -443,6 +443,11 @@ public class SerialConnector implements Runnable {
 	
 	/** This helper class is used to communicate with the serial port. */
 	private SerialCommunicationHelper commHelper = null;
+	
+	/** The serial port name this connector refers to. Used to reconnect to the dongle if it fails to respond.
+	 * @see receiveHelper
+	 */
+	private String serialPort;
 
 	/**
 	 * Flag indicating wether this instance should continue to run. Used by
@@ -605,7 +610,7 @@ public class SerialConnector implements Runnable {
 	 * Used in receiveHelper.
 	 * @see receiveHelper
 	 */
-	private final static int MAGIC_2 = 10;
+	private final static int MAGIC_2 = 50;
 	
 	/** Firmware version */
 	public String firmwareVersion = null;
@@ -690,6 +695,7 @@ public class SerialConnector implements Runnable {
 
 		this.MIN_ID = minID;
 		this.MAX_ID = maxID;
+		this.serialPort = port;
 		/*
 		 * System.out.print("hostInfo: \n"); printByteArray(hostInfo) ;
 		 */
@@ -1196,19 +1202,12 @@ public class SerialConnector implements Runnable {
 		do
 			ret = commHelper.receiveFromDongle(numBytes, null, numBytes * MAGIC_1);
 		while (ret == null && numBytes == 1 && --tries > 0);
-		if (ret == null) { 
-			/*try {
-				commHelper.sendMessage(DIAGNOSTIC_OFF, null, 10000);
-				if (diagnosticMode)
-					commHelper.sendMessage(DIAGNOSTIC_ON, null, 10000);
-			} 
-			catch (IOException e) {
-			}
-			catch (PortInUseException e) {
-			}*/
+		if (ret == null) {
+			disconnect();
+			connect(serialPort, MIN_ID, MAX_ID);
 			throw new NullPointerException("Did not receive enough bytes (wanted " + numBytes + 
 					") from the dongle (error number " + (++numReceiveErrors) +
-					" since startup). Timeout? Tried to switch diagnostic mode off and on (if it was on previously) to reset dongle");
+					" since startup). Timeout? Tried to reconnect serial port to reset dongle");
 		}
 		else
 			return ret;
