@@ -34,7 +34,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	private static final int NonceByteLength = 16;
 	
 	/** The number of authentication steps, not including the rounds of the dongles. */
-	private static final int AuthenticationSteps = 4;
+	private static final int AuthenticationSteps = 5;
 	
 	/** The serial port to use for connecting to the dongle. */
 	private String serialPort;
@@ -140,9 +140,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + referenceMeasurement);
 			}
 		}
+
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationSteps + rounds, "Got reference measurement");
 		
 		// construct the start-of-authentication message and sent it to the dongle
-		//serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement);
+		serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement);
+
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4, AuthenticationSteps + rounds, "Initiated authentication mode in dongle");
 		
 		// and wait for the measurements and authentication data to be received
 		int lastCompletedRound = -1;
@@ -176,6 +180,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				addPart(receivedNonce, new byte[] {delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
 				System.out.println("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
+				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + lastCompletedRound, AuthenticationSteps + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
 		}
 
@@ -282,7 +287,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] decryptedRfMessage = cipher.doFinal(receivedRfMessage);
 
-			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + rounds, AuthenticationSteps + rounds, "Connected to dongle.");
+			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 5 + rounds, AuthenticationSteps + rounds, "Connected to dongle.");
 
 			// the lower bits must match
 			if (compareBits(receivedNonce, decryptedRfMessage, EntropyBitsPerRound * rounds))
