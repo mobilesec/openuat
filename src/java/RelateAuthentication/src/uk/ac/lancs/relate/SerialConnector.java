@@ -48,7 +48,7 @@ class SerialCommunicationHelper {
 	 * Specifies the current mode: false for receiving only mode (measurements,
 	 * 57600 baud), true for command/interacting mode (19200 baud).
 	 */
-	public boolean interacting = false;
+	private boolean interacting = false;
 	
 	/** Stored the local dongle id that has been reported last. */
 	private int myRelateId = -1;
@@ -158,7 +158,8 @@ class SerialCommunicationHelper {
 				serialPort.close();
 			
 			serialPort = (SerialPort) portId.open("RelatePort", 500);
-			try { 
+			try {
+				log("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
@@ -234,10 +235,11 @@ class SerialCommunicationHelper {
 			try {
 				serialPort.enableReceiveTimeout(timeout * MAGIC_3);
 			} catch (UnsupportedCommOperationException e) {
+				// this can be ignored - it won't kill if timeout doesn't work. but it will just miss the protection against a "dead" dongle
 				log("UnsupportedCommOperationException") ;
 				e.printStackTrace();
 			}
-			
+
 			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
 			if (expectedStart != null && expectedStart.length > 0) {
 				int recv = fis.read();
@@ -276,7 +278,7 @@ class SerialCommunicationHelper {
 			// finally: read all bytes that have been requested and compared ok to the expected start
 			return received;
 		} catch (IOException ex) {
-			log("sending info to dongle failed due to " + ex);
+			log("receiving from dongle failed due to " + ex);
 			ex.printStackTrace();
 			return null;
 		}
@@ -426,6 +428,28 @@ class SerialCommunicationHelper {
 	 */
 	public void switchToReceive() throws IOException, PortInUseException {
 		prepareMode(false);
+	}
+
+	/** The USB to serial bridge seems to be really nasty in losing its baud rate setting when only 
+	 * receiving. Therefore it needs to be reset periodically by calling this method while in
+	 * non-interactive mode.
+	 */
+	public void forceBaudrateReset() {
+		// This is _really_ nasty! Why do we need to reset the baud rate continuously?
+		// The baud rate just resets itself to 19200 if we don't do that pariodically!
+		try {
+			serialPort.setSerialPortParams(this.interacting ? 19200 : 57600,
+				SerialPort.DATABITS_8,
+				SerialPort.STOPBITS_1,
+				SerialPort.PARITY_NONE);
+			/*fis = serialPort.getInputStream();
+			 if (this.interacting) 
+			 	fos = serialPort.getOutputStream();*/
+		} catch (Exception e) {
+			// sometimes there are just exceptions from the native routines - ignore them
+			// dirty hack
+			//e.printStackTrace();
+		}
 	}
 	
 	private void log(String msg) {
@@ -992,9 +1016,9 @@ public class SerialConnector implements Runnable {
 										timestamp,inMotion,sensorReading),
 										System.currentTimeMillis()
 /*,null*/);
-						log(sensorReading.toString()) ;	
-						 log("Got uS sensor info..!!") ;
-						 printByteArray(bytes) ;				
+						/*log(sensorReading.toString()) ;*/	
+						/* log("Got uS sensor info..!!") ;
+						 printByteArray(bytes) ;*/				
 					}else {
 						result = new RelateEvent(RelateEvent.NEW_MEASUREMENT, d,
 								new Measurement(rxId, txId,
@@ -1005,7 +1029,7 @@ public class SerialConnector implements Runnable {
 										System.currentTimeMillis()
 /*,null*/);
 					}
-					log(result);
+					/*log(result);*/
 					/* filter events */
 					if (invalidID(rxId) || invalidID(txId)) {
 						
@@ -1053,7 +1077,7 @@ public class SerialConnector implements Runnable {
 				thlUs4 = unsign2(bytes[16],bytes[17]) ;
 				calibration = new Calibration(ablUs1,ablUs2,ablUs4,
 						mblUs1,mblUs2,mblUs4,thlUs1,thlUs2,thlUs4) ;
-				log(calibration.toString()) ;
+				/*log(calibration.toString()) ;*/
 				result = new RelateEvent(RelateEvent.CALIBRATION_INFO, /*relate.getLocalDevice(),*/ null,
 						null,System.currentTimeMillis(),
 /*null,*/calibration);
@@ -1234,17 +1258,22 @@ public class SerialConnector implements Runnable {
 		while (alive) {
 			try {
 				while(alive) {
+					commHelper.switchToReceive();
+					commHelper.forceBaudrateReset();
 					if (dongle_on != last_dongle_state) {
 						last_dongle_state = dongle_on;
+						log("Setting dongle state to " + dongle_on);
 						changeDongleState();
 					}
 					if(awaken) {
-						commHelper.switchToReceive();
-						theByte = receiveHelper(1)[0];
+						theByte = unsign(receiveHelper(1)[0]);
+						/*System.out.println(commHelper.serialPort.getBaudRate() + " " + commHelper.serialPort.getDataBits() + " " +
+								commHelper.serialPort.getStopBits() + " " + commHelper.serialPort.getParity());*/
+						
 						//System.out.println("theByte: " + unsign((byte) theByte));
 						if(theByte == DEVICE_MEASUREMENT_SIGN) {
-							log("Measurement message from dongle");
-							mesbytes = commHelper.receiveFromDongle(MES_SIZE, null, MES_SIZE*MAGIC_1);
+							//log("Measurement message from dongle");
+							mesbytes = receiveHelper(MES_SIZE);
 							//If local measurement, check for sensor info..
 							if(mesbytes[0] == commHelper.getLocalRelateId() && diagnosticMode){
 								theByte = receiveHelper(1)[0];
@@ -1255,13 +1284,12 @@ public class SerialConnector implements Runnable {
 									System.arraycopy(mesbytes, 0, usSensorInfoBytes, 0, mesbytes.length);
 									event = parseEvent(usSensorInfoBytes);
 								}else {
-									//log("could not get uS sensor info event");
+									log("could not get uS sensor info event");
 								}
 							}else {
 								event = parseEvent(mesbytes);
 							}
 							if (event != null) {
-								log("Sending measurement event");
 								postEvent(event);
 							} else {
 								log("could not parse measurement event");
@@ -1270,6 +1298,7 @@ public class SerialConnector implements Runnable {
 						log("dongle is sleeping.");*/
 						} 
 						else if(theByte == HOST_INFO_SIGN){
+							//log("Host info message from dongle");
 							hostInfoBytes = receiveHelper(HOST_INFO_LENGTH);
 							event = parseEvent(hostInfoBytes);
 							if (event != null) {
@@ -1278,6 +1307,7 @@ public class SerialConnector implements Runnable {
 								log("could not parse host info event");
 							}
 						}else if(theByte == CALIBRATION_INFO_SIGN && !calibrated) {
+							//log("Calibration info message from dongle");
 							calibrationInfoBytes = receiveHelper(CALIBRATION_INFO_LENGTH);
 							if (calibrationInfoBytes == null)
 								continue;
@@ -1288,6 +1318,7 @@ public class SerialConnector implements Runnable {
 								log("could not parse calibration info event");
 							}
 						}else if(theByte == FIRMWARE_VERSION_SIGN && firmwareVersion == null) {
+							//log("Firmware version message from dongle");
 							firmwareVersionBytes = receiveHelper(FIRMWARE_VERSION_LENGTH);
 							firmwareVersion = ""+unsign(firmwareVersionBytes[0])+"."+
 							+unsign(firmwareVersionBytes[1]) ;
@@ -1304,6 +1335,7 @@ public class SerialConnector implements Runnable {
 							}
 							log("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN && diagnosticMode) {
+							//log("Dongle network state message from dongle");
 							byte[] tmp = receiveHelper(2);
 							relateTime = unsign(tmp[0]) ;
 							numberOfEntries = unsign(tmp[1]) ;
@@ -1320,6 +1352,7 @@ public class SerialConnector implements Runnable {
 								log("could not parse dongle network state event");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
+							log("Authentication packet message from dongle");
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
 							int curRound = unsign(tmp[1]);
@@ -1334,7 +1367,10 @@ public class SerialConnector implements Runnable {
 									System.currentTimeMillis(), msgPart, curRound);
 							postEvent(event);
 						}
+						/*else
+							log("Unkown message from dongle: " + theByte);*/
 					}else {       //Dongle probably sleeping..
+						//log("Dongle sleeping?");
 						if (dongle_on != last_dongle_state) {
 							last_dongle_state = dongle_on;
 							log("nothing to read..!!");
