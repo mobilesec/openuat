@@ -34,13 +34,22 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	private static final int NonceByteLength = 16;
 	
 	/** The number of authentication steps, not including the rounds of the dongles. */
-	private static final int AuthenticationSteps = 5;
+	public static final int AuthenticationStages = 5;
 	
 	/** The serial port to use for connecting to the dongle. */
 	private String serialPort;
 	
 	/** The remote relate id to perform the authentication with. */
 	private byte remoteRelateId;
+	
+	/** A temporary variable holding the shared key. It is used for passing data from
+	 * startAuthentication to the Thread's run method.
+	 */
+	private byte[] sharedKey;
+	/** A temporary variable holding the number of rounds. It is used for passing data from
+	 * startAuthentication to the Thread's run method.
+	 */
+	private int rounds;
 	
 	/** Initializes the dongle protocol handler by setting the serialPort and remoteRelateId members.
 	 * 
@@ -119,7 +128,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		serialConn.registerEventQueue(eventQueue);
 		serialThread.start();
 
-		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationSteps + rounds, "Connected to dongle.");
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationStages + rounds, "Connected to dongle.");
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		int referenceMeasurement = -1;
@@ -141,12 +150,12 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			}
 		}
 
-		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationSteps + rounds, "Got reference measurement");
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationStages + rounds, "Got reference measurement");
 		
 		// construct the start-of-authentication message and sent it to the dongle
 		serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement);
 
-		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4, AuthenticationSteps + rounds, "Initiated authentication mode in dongle");
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4, AuthenticationStages + rounds, "Initiated authentication mode in dongle");
 		
 		// and wait for the measurements and authentication data to be received
 		int lastCompletedRound = -1;
@@ -180,7 +189,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				addPart(receivedNonce, new byte[] {delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
 				System.out.println("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
-				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + lastCompletedRound, AuthenticationSteps + rounds, "Got delayed measurement at round " + lastCompletedRound);
+				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + lastCompletedRound, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
 		}
 
@@ -194,6 +203,62 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		serialConn.disconnect();
 		
 		return true;
+	}
+
+	/** A helper method called in the background thread. Exists for the sole purpose of
+	 * better code structure.
+	 */
+	private void handleCompleteProtocol() throws InternalApplicationException, DongleAuthenticationProtocolException {
+		// first create the local nonce
+        SecureRandom r = new SecureRandom();
+        byte[] nonce = new byte[16];
+        r.nextBytes(nonce);
+        // need to specifically request no padding or padding would enlarge the one 128 bits block to two
+        try {
+			Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+			cipher.init(Cipher.ENCRYPT_MODE,
+					new SecretKeySpec(sharedKey, "AES"));
+			byte[] rfMessage = cipher.doFinal(nonce);
+			if (rfMessage.length != 16)
+				System.out.println("Encryption went wrong, got "
+						+ rfMessage.length + " bytes");
+
+			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
+			
+			byte[] receivedNonce = new byte[16], receivedRfMessage = new byte[16];
+			if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedNonce, receivedRfMessage)) {
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
+				return;
+			}
+			// check that the delays match the (encrypted) message sent by the remote
+			cipher.init(Cipher.DECRYPT_MODE,
+					new SecretKeySpec(sharedKey, "AES"));
+			byte[] decryptedRfMessage = cipher.doFinal(receivedRfMessage);
+
+			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 5 + rounds, AuthenticationStages + rounds, "Connected to dongle.");
+
+			// the lower bits must match
+			if (compareBits(receivedNonce, decryptedRfMessage, EntropyBitsPerRound * rounds))
+				raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
+			else
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
+				
+		} catch (NoSuchAlgorithmException e) {
+			throw new InternalApplicationException(
+					"Unable to get cipher object from crypto provider.", e);
+		} catch (NoSuchPaddingException e) {
+			throw new InternalApplicationException(
+					"Unable to get requested padding from crypto provider.", e);
+		} catch (InvalidKeyException e) {
+			throw new InternalApplicationException(
+					"Cipher does not accept its key.", e);
+		} catch (IllegalBlockSizeException e) {
+			throw new InternalApplicationException(
+					"Cipher does not accept requested block size.", e);
+		} catch (BadPaddingException e) {
+			throw new InternalApplicationException(
+					"Cipher does not accept requested padding.", e);
+		}
 	}
 	
 	/** Small helper function to add a part to a byte array.
@@ -248,68 +313,41 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				return false;
 		return true;
 	}
-
+	
 	/**
 	 * This method performs a full authentication of the pre-established shared
-	 * secrets with another Relate dongle.
+	 * secrets with another Relate dongle.The authentication is started as a 
+	 * background thread. 
      *
 	 * @param sharedKey The secret authentication key shared with the remote host.
 	 * @param rounds
 	 *            The number of rounds to use. Due to the protocol and hardware
 	 *            limitations, the security of this authentication is given by
 	 *            rounds * EnropyBitsPerRound.
-	 * @return true if the authentication succeeded, false otherwise.
 	 */
-	public void startAuthenticationWith(byte[] sharedKey, int rounds) throws InternalApplicationException, DongleAuthenticationProtocolException {
-		// first create the local nonce
-        SecureRandom r = new SecureRandom();
-        byte[] nonce = new byte[16];
-        r.nextBytes(nonce);
-        // need to specifically request no padding or padding would enlarge the one 128 bits block to two
-        try {
-			Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-			cipher.init(Cipher.ENCRYPT_MODE,
-					new SecretKeySpec(sharedKey, "AES"));
-			byte[] rfMessage = cipher.doFinal(nonce);
-			if (rfMessage.length != 16)
-				System.out.println("Encryption went wrong, got "
-						+ rfMessage.length + " bytes");
-
-			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationSteps + rounds, "Encrypted nonce");
-			
-			byte[] receivedNonce = new byte[16], receivedRfMessage = new byte[16];
-			if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedNonce, receivedRfMessage)) {
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
-				return;
+	public void startAuthentication(byte[] sharedKey, int rounds) {
+		this.sharedKey = sharedKey;
+		this.rounds = rounds;
+		
+		new Thread(new AsynchronousCallHelper(this) { public void run() {
+			try {
+				outer.handleCompleteProtocol();
 			}
-			// check that the delays match the (encrypted) message sent by the remote
-			cipher.init(Cipher.DECRYPT_MODE,
-					new SecretKeySpec(sharedKey, "AES"));
-			byte[] decryptedRfMessage = cipher.doFinal(receivedRfMessage);
-
-			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 5 + rounds, AuthenticationSteps + rounds, "Connected to dongle.");
-
-			// the lower bits must match
-			if (compareBits(receivedNonce, decryptedRfMessage, EntropyBitsPerRound * rounds))
-				raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
-			else
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
-				
-		} catch (NoSuchAlgorithmException e) {
-			throw new InternalApplicationException(
-					"Unable to get cipher object from crypto provider.", e);
-		} catch (NoSuchPaddingException e) {
-			throw new InternalApplicationException(
-					"Unable to get requested padding from crypto provider.", e);
-		} catch (InvalidKeyException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept its key.", e);
-		} catch (IllegalBlockSizeException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested block size.", e);
-		} catch (BadPaddingException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested padding.", e);
-		}
+			catch (InternalApplicationException e) {
+				outer.raiseAuthenticationFailureEvent(new Integer(outer.remoteRelateId), e, "Dongle authentication protocol failed");
+			}
+			catch (DongleAuthenticationProtocolException e) {
+				outer.raiseAuthenticationFailureEvent(new Integer(outer.remoteRelateId), e, "Dongle authentication protocol failed");
+			}
+		}}).start();
 	}
+
+    /** Hack to just allow one method to be called asynchronously while still having access to the outer class. */
+    private abstract class AsynchronousCallHelper implements Runnable {
+    	protected DongleProtocolHandler outer;
+    	
+    	protected AsynchronousCallHelper(DongleProtocolHandler outer) {
+    		this.outer = outer;
+    	}
+    }
 }

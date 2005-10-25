@@ -288,7 +288,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @param remoteAddress The remote host to try to connect to.
 	 * @param remotePort The remote TCP port to try to connect to.
 	 * @param eventHandler The event handler that should be notified of authentication events. Can be null 
-	 * (in which case no events are sent). 
+	 * (in which case no events are sent). If not null, it will be registered with a new
+	 * HostProtocolHandler object before starting the authentication protocol so that
+	 * it is guaranteed that all events are posted to the event handler.
 	 */
     static public void startAuthenticationWith(String remoteAddress,
 			int remotePort, AuthenticationProgressHandler eventHandler) throws UnknownHostException, IOException {
