@@ -223,7 +223,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         }
         if (args.length > 1 && args[0].equals("client"))
         {
-        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) 7);
+        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) 100);
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler());
         	r.startAuthentication(2);
             new BufferedReader(new InputStreamReader(System.in)).readLine();
