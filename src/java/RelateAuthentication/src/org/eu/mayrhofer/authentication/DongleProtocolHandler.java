@@ -129,6 +129,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		serialThread.start();
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationStages + rounds, "Connected to dongle.");
+
+		// test code
+		class ThreeInts { public long sum = 0, n = 0, sum2 = 0; };
+		ThreeInts[] s = new ThreeInts[256]; for(int i=0; i<256; i++) s[i] = new ThreeInts();
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		int referenceMeasurement = -1;
@@ -141,10 +145,25 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				continue;
 			}
 			
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT)
-				System.out.println("Got measurement to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
+				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
+					System.out.println("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					ThreeInts x = s[e.getMeasurement().getId()];
+					x.n++;
+					x.sum += (int) e.getMeasurement().getDistance();
+					x.sum2 += ((int) e.getMeasurement().getDistance() * (int) e.getMeasurement().getDistance());
+					//System.out.println("To dongle " + e.getMeasurement().getId() + ": n=" + x.n + ", sum=" + x.sum + ", sum2=" + x.sum2);
+					System.out.println("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
+							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );
+				}
+				else {
+					System.out.println("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+				}
+			}
+			// test code end
 			
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId) {
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
+					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
 				referenceMeasurement = (int) e.getMeasurement().getDistance();
 				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + referenceMeasurement);
 			}
@@ -179,7 +198,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				System.out.println("Received authentication part from dongle " + remoteRelateId + 
 						": round " + lastCompletedRound + " out of " + rounds);
 			}
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getId() == remoteRelateId) {
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
+					e.getMeasurement().getId() == remoteRelateId) {
+				/*if (e.getMeasurement().getTransducers() == 0)
+					System.out.println("WARNING: got measurement with 0 valid transducers during authentication! Not discarding it.");*/
+				if (e.getMeasurement().getDistance() == 4094) {
+					System.out.println("CRITICAL ERROR: got invalid measurement during authentication! Can not complete the nonce.");
+					continue;
+				}
 				// measurement event for the authentication partner: re-use the round from the authentication info event
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();

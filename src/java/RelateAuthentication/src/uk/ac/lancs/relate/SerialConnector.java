@@ -442,9 +442,6 @@ class SerialCommunicationHelper {
 				SerialPort.DATABITS_8,
 				SerialPort.STOPBITS_1,
 				SerialPort.PARITY_NONE);
-			/*fis = serialPort.getInputStream();
-			 if (this.interacting) 
-			 	fos = serialPort.getOutputStream();*/
 		} catch (Exception e) {
 			// sometimes there are just exceptions from the native routines - ignore them
 			// dirty hack
@@ -589,9 +586,9 @@ public class SerialConnector implements Runnable {
 	private final static int DEVICE_MEASUREMENT_SIGN = 77;
 
 	/** bytes array containing host information */
-	public byte[] hostInfo = new byte[HOST_INFO_LENGTH];
+	private byte[] hostInfo = new byte[HOST_INFO_LENGTH];
 
-	Object changeStateWaiter = new Object();
+	private Object changeStateWaiter = new Object();
 
 	/** Minimal value for a relate id */
 	private int MIN_ID = 0;
@@ -609,7 +606,7 @@ public class SerialConnector implements Runnable {
 	private static final int US_SENSOR_INFO_SIGN = 85;
 
 	/** flag indicating wether the diagnostic mode is turned on */
-	public boolean diagnosticMode = false;
+	private boolean diagnosticMode = false;
 
 	/** number of bytes for the firmware version */
 	private static final int FIRMWARE_VERSION_LENGTH = 2;
@@ -646,7 +643,7 @@ public class SerialConnector implements Runnable {
 	private final static int MAGIC_2 = 50;
 	
 	/** Firmware version */
-	public String firmwareVersion = null;
+	private String firmwareVersion = null;
 
 	/** Calibration object */
 	private Calibration calibration = null;
@@ -658,7 +655,7 @@ public class SerialConnector implements Runnable {
 	private static final int ERROR_CODE_SIGN = 69;
 
 	/** Firmware version */
-	public int errorCode = -1;
+	private int errorCode = -1;
 
 	/** */
 	private static int DN_STATE_LENGTH = 0;
@@ -668,6 +665,10 @@ public class SerialConnector implements Runnable {
 	
 	/** The number of errors upon trying to receive bytes from the dongle. This is only used for debugging/statistics, nothing else. */
 	private int numReceiveErrors = 0;
+	/** The number of errors that decoding a received message failed. */ 
+	private int numDecodeErrors = 0;
+	/** The number of unkown messages received from the dongle. */
+	private int numUnknownMessages = 0;
 
 	/** Initializes the SerialCommunicationHelper object in commHelper. */
 	protected SerialConnector(boolean loggingOn) {
@@ -749,9 +750,10 @@ public class SerialConnector implements Runnable {
 				diagnosticMode = true;
 
 				/* temporary fix to turn off diagnostic mode */
-				/*
-				 * pcSend(DIAGNOSTIC_OFF, false); diagnosticMode = false ;
-				 */
+				if (! commHelper.sendMessage(DIAGNOSTIC_OFF, null, 10000))
+					return -1;
+				diagnosticMode = false;
+				
 
 				// switch to receiving mode
 				commHelper.switchToReceive();
@@ -1255,6 +1257,9 @@ public class SerialConnector implements Runnable {
 		RelateEvent event = null;
 		boolean last_dongle_state = dongle_on;
 		
+		// temp code
+		int i=0; 
+		
 		while (alive) {
 			try {
 				while(alive) {
@@ -1266,6 +1271,9 @@ public class SerialConnector implements Runnable {
 						changeDongleState();
 					}
 					if(awaken) {
+						if (++i % 100 == 0)
+							System.out.println("### Statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
+						
 						theByte = unsign(receiveHelper(1)[0]);
 						/*System.out.println(commHelper.serialPort.getBaudRate() + " " + commHelper.serialPort.getDataBits() + " " +
 								commHelper.serialPort.getStopBits() + " " + commHelper.serialPort.getParity());*/
@@ -1275,7 +1283,7 @@ public class SerialConnector implements Runnable {
 							//log("Measurement message from dongle");
 							mesbytes = receiveHelper(MES_SIZE);
 							//If local measurement, check for sensor info..
-							if(mesbytes[0] == commHelper.getLocalRelateId() && diagnosticMode){
+							/*if(mesbytes[0] == commHelper.getLocalRelateId() && diagnosticMode){
 								theByte = receiveHelper(1)[0];
 								if(theByte == US_SENSOR_INFO_SIGN) {
 									usSensorInfoBytes = new byte[MES_SIZE+US_SENSOR_INFO_LENGTH] ;
@@ -1286,13 +1294,13 @@ public class SerialConnector implements Runnable {
 								}else {
 									log("could not get uS sensor info event");
 								}
-							}else {
+							}else {*/
 								event = parseEvent(mesbytes);
-							}
+							/*}*/
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse measurement event");
+								log("could not parse measurement event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 /*						} else if (theByte == END_COMM) {
 						log("dongle is sleeping.");*/
@@ -1304,7 +1312,7 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse host info event");
+								log("could not parse host info event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == CALIBRATION_INFO_SIGN && !calibrated) {
 							//log("Calibration info message from dongle");
@@ -1315,7 +1323,7 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse calibration info event");
+								log("could not parse calibration info event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == FIRMWARE_VERSION_SIGN && firmwareVersion == null) {
 							//log("Firmware version message from dongle");
@@ -1331,7 +1339,7 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse error code event");
+								log("could not parse error code event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 							log("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN && diagnosticMode) {
@@ -1349,7 +1357,7 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse dongle network state event");
+								log("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
 							log("Authentication packet message from dongle");
@@ -1367,8 +1375,10 @@ public class SerialConnector implements Runnable {
 									System.currentTimeMillis(), msgPart, curRound);
 							postEvent(event);
 						}
-						/*else
-							log("Unkown message from dongle: " + theByte);*/
+						else {
+//							log("Unkown message from dongle: " + theByte + " (now " + (++numDecodeErrors) + " decoding errors)");
+							numUnknownMessages++;
+						}
 					}else {       //Dongle probably sleeping..
 						//log("Dongle sleeping?");
 						if (dongle_on != last_dongle_state) {
