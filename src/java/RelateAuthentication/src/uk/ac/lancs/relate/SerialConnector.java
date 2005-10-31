@@ -151,7 +151,6 @@ class SerialCommunicationHelper {
 				fis = null;
 			}
 			if (fos != null) {
-				fos.flush();
 				fos.close();
 				fos = null;
 			}
