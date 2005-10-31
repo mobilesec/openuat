@@ -221,15 +221,15 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();
 				// WATCHME: at the moment we use only 3 bits, but that might change....
-				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
+				int delay = (delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset;
 				// still do a sanity check (within our accuracy range)
-				if (delay > (1 << (EntropyBitsPerRound+1))) {
+				if (delay > (1 << (EntropyBitsPerRound+1)) || delay < 0) {
 					//System.out.println("Error: delayed measurement arrived earlier than reference measurement! Discarding this reading.");
 					System.out.println("Discarding invalid measurement in authentication mode: smaller than reference");
 					continue;
 				}
 				// and add to the receivedNonce for later comparison
-				addPart(receivedNonce, new byte[] {delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
+				addPart(receivedNonce, new byte[] {(byte) delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
 				System.out.println("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + lastCompletedRound, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
