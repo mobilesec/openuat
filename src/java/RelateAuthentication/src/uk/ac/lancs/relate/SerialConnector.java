@@ -1376,16 +1376,18 @@ public class SerialConnector implements Runnable {
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
-							int curRound = unsign(tmp[1]);
+							// this uppermost bit indicates if we had an acknowledge
+							int curRound = unsign(tmp[1]) % 0x7f;
+							boolean ack = (unsign(tmp[1]) & 0x80) != 0;
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
 							log("---------- Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
-									" (" + numMsgBytes + " bytes): ");
-							/*printByteArray(msgPart);*/
+									(ack ? " with" : " without") + "ack  (" + numMsgBytes + " bytes): ");
+							printByteArray(msgPart);
 
 							event = new RelateEvent(RelateEvent.AUTHENTICATION_INFO, 
 									new Device(remoteRelateId, System.currentTimeMillis(), null, null, null, null, 0, new Boolean(true)), 
-									System.currentTimeMillis(), msgPart, curRound);
+									System.currentTimeMillis(), msgPart, curRound, ack);
 							postEvent(event);
 						}
 						else {

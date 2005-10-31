@@ -53,6 +53,7 @@ public class RelateEvent implements Cloneable {
 	/** authentication key part received from the remote end */
 	public byte[] authenticationPart;
 	public int round;
+	public boolean ack;
 	
 	/** Default (empty) constructor */
 	public RelateEvent() {
@@ -85,7 +86,7 @@ public class RelateEvent implements Cloneable {
 		calibration = null ;
 	}
 
-	public RelateEvent(int t, Device d, long ts, byte[] authentication, int round
+	public RelateEvent(int t, Device d, long ts, byte[] authentication, int round, boolean ack
 			/*, 
 						Model mo*/) {
 					type = t;
@@ -94,6 +95,7 @@ public class RelateEvent implements Cloneable {
 //					model = mo;
 					authenticationPart = authentication;
 					this.round = round;
+					this.ack = ack;
 				}
 	
 	/** Fully qualified constructor 
