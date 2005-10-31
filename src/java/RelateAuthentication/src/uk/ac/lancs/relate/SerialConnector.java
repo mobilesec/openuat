@@ -159,7 +159,7 @@ class SerialCommunicationHelper {
 			
 			serialPort = (SerialPort) portId.open("RelatePort", 500);
 			try {
-				log("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
+				//log("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
@@ -323,7 +323,7 @@ class SerialCommunicationHelper {
 				if (recv != null) {
 					unacknowledged = false;
 					localId = recv[2];
-					log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
+					//log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
 					log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+" ms");
 				}
 			}
@@ -331,8 +331,8 @@ class SerialCommunicationHelper {
 			log("Geting dongle's attention failed due to " + ex);
 			ex.printStackTrace();
 		}
-		log("Number of trials before getting ACK:"+counter) ;
-		log("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));
+		/*log("Number of trials before getting ACK:"+counter) ;
+		log("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));*/
 		return localId ;
 	}
 	
@@ -363,7 +363,7 @@ class SerialCommunicationHelper {
 			expectedMsgAck[0] = (byte) myRelateId;
 		
 		do {
-			log("Sending message to dongle" + (expectedMsgAck != null ? " and waiting for ack" : ""));
+			//log("Sending message to dongle" + (expectedMsgAck != null ? " and waiting for ack" : ""));
 			sendToDongle(msg);
 			curTime = System.currentTimeMillis();
 		} while (expectedMsgAck != null && curTime - startTime < timeout &&
@@ -624,7 +624,7 @@ public class SerialConnector implements Runnable {
 	private static final int AUTHENTICATION_START_SIGN = 65;
 
 	/** Prefix to authentication data (received key material from a remote dongle) */
-	private static final int AUTHENTICATION_PACKET_SIGN = 75;
+	private static final int AUTHENTICATION_PACKET_SIGN = (byte) 'K';
 
 	/** MAGIC VALUE NUMBER 1: Wait for a maximum of 200 ms for each byte to receive from the dongle. It should definitely be
 	 * enough to receive a byte (and even more so when waiting for multiple bytes and this is the average maximum value for each
@@ -1366,15 +1366,14 @@ public class SerialConnector implements Runnable {
 								log("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
-							log("Authentication packet message from dongle");
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
 							int curRound = unsign(tmp[1]);
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
-							/*log("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
-									": ") ;
-							printByteArray(msgPart);*/
+							log("---------- Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
+									" (" + numMsgBytes + " bytes): ");
+							/*printByteArray(msgPart);*/
 
 							event = new RelateEvent(RelateEvent.AUTHENTICATION_INFO, 
 									new Device(remoteRelateId, System.currentTimeMillis(), null, null, null, null, 0, new Boolean(true)), 
