@@ -135,6 +135,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		ThreeInts[] s = new ThreeInts[256]; for(int i=0; i<256; i++) s[i] = new ThreeInts();
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
+		System.out.println("Trying to get reference measurement to relate id " + remoteRelateId);
 		int referenceMeasurement = -1;
 		while (referenceMeasurement == -1) {
 			while (eventQueue.isEmpty())
@@ -145,6 +146,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				continue;
 			}
 			
+			// test code begin
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
 				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
 					System.out.println("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
