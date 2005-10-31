@@ -776,19 +776,26 @@ public class SerialConnector implements Runnable {
 	public boolean startAuthenticationWith(int remoteRelateId, byte[] nonce, byte[] rfMessage, int rounds, int bitsPerRound, int referenceMeasurement) {
 		if (nonce.length != 16 || rfMessage.length != 16 || rounds < 2 || rounds > 255 
 				|| remoteRelateId < 0 || remoteRelateId > 255 || bitsPerRound < 1 
-				|| referenceMeasurement > 2500)
+				|| referenceMeasurement > 2500) {
+			System.out.println("ERROR in parameters while constructing start-of-auth packet!");
 			// TODO: this should actually be an exception, since this is a sanity check for something that shouldn't happen
 			return false;
+		}
 		
-		byte msg[] = new byte[37];
-		msg[0] = AUTHENTICATION_START_SIGN;
-		msg[1] = (byte) remoteRelateId;
-		System.arraycopy(nonce, 0, msg, 2, nonce.length);
-		System.arraycopy(rfMessage, 0, msg, 2+nonce.length, rfMessage.length);
-		msg[2+nonce.length+rfMessage.length] = (byte) rounds;
-		msg[3+nonce.length+rfMessage.length] = (byte) bitsPerRound; 
-		msg[3+nonce.length+rfMessage.length] = (byte) (referenceMeasurement >> 8); 
-		msg[4+nonce.length+rfMessage.length] = (byte) (referenceMeasurement & 0xff); 
+		byte msg[] = new byte[38];
+		int ind=0;
+		msg[ind++] = AUTHENTICATION_START_SIGN;
+		msg[ind++] = (byte) remoteRelateId;
+		System.arraycopy(nonce, 0, msg, ind, nonce.length); ind += nonce.length;
+		System.arraycopy(rfMessage, 0, msg, ind, rfMessage.length); ind += rfMessage.length;
+		msg[ind++] = (byte) rounds;
+		msg[ind++] = (byte) bitsPerRound; 
+		msg[ind++] = (byte) (referenceMeasurement >> 8); 
+		msg[ind++] = (byte) (referenceMeasurement & 0xff);
+		
+		System.out.println("_________ constructed authentication packet: ___________");
+		printByteArray(msg);
+		
 		try {
 			return commHelper.sendMessage(msg, 100*msg.length);
 		}
@@ -1374,6 +1381,7 @@ public class SerialConnector implements Runnable {
 								log("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
+							System.out.println("_________________________ Hit one ____________________________");
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
 							// this uppermost bit indicates if we had an acknowledge
