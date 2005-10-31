@@ -140,7 +140,7 @@ class SerialCommunicationHelper {
 	 * 
 	 * @param interacting true for interacting mode, false for monitoring mode
 	 */
-	private void prepareMode(boolean interacting) throws IOException, PortInUseException {
+	private synchronized void prepareMode(boolean interacting) throws IOException, PortInUseException {
 		if (this.interacting == interacting) {
 			// already in the requested mode, nothing to do
 			return;
@@ -183,7 +183,7 @@ class SerialCommunicationHelper {
 	/** Send raw data to the dongle.
 	 * This implicitly switches the dongle to interactive mode.
 	 */
-	private void sendToDongle(byte[] data) throws IOException, PortInUseException {
+	private synchronized void sendToDongle(byte[] data) throws IOException, PortInUseException {
 		prepareMode(true);
 		try {
 			fos.write(data) ;
@@ -225,10 +225,16 @@ class SerialCommunicationHelper {
 	 *         (due to timeout, unable to read, or expectedStart not found
 	 *         within timeout).
 	 */
-	public byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, int timeout) {
+	public synchronized byte[] receiveFromDongle(int bytesToRead, byte[] expectedStart, int timeout) {
 		byte[] received = new byte[bytesToRead];
 		int alreadyRead = 0, readBytes;
 		long startTime = System.currentTimeMillis();
+		
+		// sanity check: the input stream must have been initialized
+		if (fis == null) {
+			log("Error: trying to read from serial port while it has not been opened yet correctly. This should not happen!");
+			return null;
+		}
 		
 		try {
 			// set the read timeout
@@ -290,7 +296,7 @@ class SerialCommunicationHelper {
 	 * @param timeout The maximum time in ms that this method will try to catch the dongle's attention.
 	 * @return The dongle ID as returned by its acknowledge or -1 if the dongle's attention could not be caught.
 	 */
-	private int getDongleAttention(long timeout) throws PortInUseException {
+	private synchronized int getDongleAttention(long timeout) throws PortInUseException {
 		int localId = -1;
 		byte[] recv;
 		int counter = 0;
@@ -343,7 +349,7 @@ class SerialCommunicationHelper {
 	 * @param timeout The maximum number of milliseconds allowed to pass.
 	 * @see #myRelateId
 	 */ 
-	public boolean sendMessage(byte[] msg, byte[] expectedMsgAck, long timeout) throws IOException, PortInUseException {
+	public synchronized boolean sendMessage(byte[] msg, byte[] expectedMsgAck, long timeout) throws IOException, PortInUseException {
 		long startTime = System.currentTimeMillis(), curTime;
 
 		// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
@@ -375,7 +381,7 @@ class SerialCommunicationHelper {
 	 * @see #portId
 	 * @see #prepareMode
 	 */
-	public boolean connect(String port) {
+	public synchronized boolean connect(String port) {
 		// initialize the portId object based on the objects gathered from the javax.comm API and the passed port name
 		if (port != null) {
 			for (int i=0; i<availablePorts.size(); i++) {
@@ -399,7 +405,7 @@ class SerialCommunicationHelper {
 	}
 
 	/** Disconnect from the hardware port. */
-	public void disconnect() {
+	public synchronized void disconnect() {
 		/*b = null;*/
 		if (serialPort != null) {
 			serialPort.close();
@@ -426,7 +432,7 @@ class SerialCommunicationHelper {
 	 * @throws PortInUseException
 	 * @see #receiveFromDongle
 	 */
-	public void switchToReceive() throws IOException, PortInUseException {
+	public synchronized void switchToReceive() throws IOException, PortInUseException {
 		prepareMode(false);
 	}
 
@@ -434,7 +440,7 @@ class SerialCommunicationHelper {
 	 * receiving. Therefore it needs to be reset periodically by calling this method while in
 	 * non-interactive mode.
 	 */
-	public void forceBaudrateReset() {
+	public synchronized void forceBaudrateReset() {
 		// This is _really_ nasty! Why do we need to reset the baud rate continuously?
 		// The baud rate just resets itself to 19200 if we don't do that pariodically!
 		try {
