@@ -136,8 +136,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		System.out.println("Trying to get reference measurement to relate id " + remoteRelateId);
-		int referenceMeasurement = -1;
-		while (referenceMeasurement == -1) {
+		int referenceMeasurement = 0, numMeasurements = 0;
+		while (numMeasurements < 10) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
@@ -149,14 +149,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			// test code begin
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
 				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
-					System.out.println("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					//System.out.println("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
 					ThreeInts x = s[e.getMeasurement().getId()];
 					x.n++;
 					x.sum += (int) e.getMeasurement().getDistance();
 					x.sum2 += ((int) e.getMeasurement().getDistance() * (int) e.getMeasurement().getDistance());
 					//System.out.println("To dongle " + e.getMeasurement().getId() + ": n=" + x.n + ", sum=" + x.sum + ", sum2=" + x.sum2);
-					System.out.println("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
-							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );
+					/*System.out.println("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
+							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );*/
 				}
 				else {
 					System.out.println("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
@@ -166,10 +166,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
-				referenceMeasurement = (int) e.getMeasurement().getDistance();
-				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + referenceMeasurement);
+				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
+				referenceMeasurement += (int) e.getMeasurement().getDistance();
+				numMeasurements++;
 			}
 		}
+		referenceMeasurement /= numMeasurements;
+		System.out.println("Mean over reference measurements to dongle " + remoteRelateId + ": " + referenceMeasurement);
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationStages + rounds, "Got reference measurement");
 		
@@ -205,12 +208,17 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				/*if (e.getMeasurement().getTransducers() == 0)
 					System.out.println("WARNING: got measurement with 0 valid transducers during authentication! Not discarding it.");*/
 				if (e.getMeasurement().getDistance() == 4094) {
-					System.out.println("CRITICAL ERROR: got invalid measurement during authentication! Can not complete the nonce.");
+					System.out.println("CRITICAL ERROR: got invalid measurement during authentication! Depending on dongle to resend it now.");
 					continue;
 				}
 				// measurement event for the authentication partner: re-use the round from the authentication info event
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();
+				// still do a sanity check (within our accuracy range)
+				if (delayedMeasurement - referenceMeasurement < -(1<<EntropyBitsOffset)) {
+					System.out.println("Error: delayed measurement arrived earlier than reference measurement! Discarding this reading.");
+					continue;
+				}
 				// WATCHME: at the moment we use only 3 bits, but that might change....
 				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
 				// and add to the receivedNonce for later comparison

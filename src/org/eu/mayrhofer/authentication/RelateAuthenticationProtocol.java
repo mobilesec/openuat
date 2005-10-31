@@ -134,7 +134,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        System.out.println("Received authentication failure event with " + remote);
+	        //System.out.println("Received authentication failure event with " + remote);
 	        if (e != null)
 	            System.out.println("Exception: " + e);
 	        if (msg != null)
@@ -146,7 +146,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        //System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        		msg);
@@ -170,7 +170,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        System.out.println("Received authentication failure event with " + remote);
+	        //System.out.println("Received authentication failure event with " + remote);
 	        if (e != null)
 	            System.out.println("Exception: " + e);
 	        if (msg != null)
@@ -182,7 +182,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        //System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, HostProtocolHandler.AuthenticationStages + cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        		msg);
@@ -196,7 +196,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     		
     	    public void AuthenticationSuccess(Object remote, Object result)
     	    {
-    	        System.out.println("Received authentication success event with host " + remote);
+    	        System.out.println("Received authentication success event with " + remote);
     	        byte[][] keys = (byte[][]) result;
     	        System.out.println("Shared session key is now '" + keys[0] + "' with length " + keys[0].length + ", shared authentication key is now '" + keys[1] + "' with length " + keys[1].length);
     	        System.out.println("Starting dongle authentication with remote relate id " + outer.remoteRelateId);
