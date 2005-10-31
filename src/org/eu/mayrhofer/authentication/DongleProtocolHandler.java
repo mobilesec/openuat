@@ -214,13 +214,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				// measurement event for the authentication partner: re-use the round from the authentication info event
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();
+				// WATCHME: at the moment we use only 3 bits, but that might change....
+				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
 				// still do a sanity check (within our accuracy range)
-				if (delayedMeasurement - referenceMeasurement < -(1<<EntropyBitsOffset)) {
+				if (delay > (1 << (EntropyBitsPerRound+1))) {
 					System.out.println("Error: delayed measurement arrived earlier than reference measurement! Discarding this reading.");
 					continue;
 				}
-				// WATCHME: at the moment we use only 3 bits, but that might change....
-				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
 				// and add to the receivedNonce for later comparison
 				addPart(receivedNonce, new byte[] {delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
 				System.out.println("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
