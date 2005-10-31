@@ -127,7 +127,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, remoteRelateId);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler());
         	state = STATE_DONGLE_AUTH_RUNNING;
-        	dh.startAuthentication(keys[1], rounds);
+        	dh.startAuthentication(keys[1], rounds, 0);
 	    }
 
 	    public void AuthenticationFailure(Object remote, Exception e, String msg)
@@ -205,7 +205,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	        // and use the agreed authentication key to start the dongle authentication
     	        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, outer.remoteRelateId);
     	        dh.addAuthenticationProgressHandler(outer.new DongleAuthenticationEventHandler());
-            	dh.startAuthentication(keys[1], outer.rounds);
+            	dh.startAuthentication(keys[1], outer.rounds, 0);
     	    }
     	    public void AuthenticationFailure(Object remote, Exception e, String msg)
     	    {

@@ -42,6 +42,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** The remote relate id to perform the authentication with. */
 	private byte remoteRelateId;
 	
+	/** The reference measurement to use when examining the delayed US pulses from the remote. This is is millimeters. */
+	private int referenceMeasurement;
+	
 	/** A temporary variable holding the shared key. It is used for passing data from
 	 * startAuthentication to the Thread's run method.
 	 */
@@ -136,7 +139,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		System.out.println("Trying to get reference measurement to relate id " + remoteRelateId);
-		int referenceMeasurement = 0, numMeasurements = 0;
+		int numMeasurements = 0;
+		referenceMeasurement = 0;
 		while (numMeasurements < 10) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
@@ -186,6 +190,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		int messageBitsPerRound = sentRfMessage.length / rounds;
 		if (sentRfMessage.length > messageBitsPerRound * rounds)
 			messageBitsPerRound++;
+		
 		while (lastCompletedRound < rounds) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
@@ -208,7 +213,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				/*if (e.getMeasurement().getTransducers() == 0)
 					System.out.println("WARNING: got measurement with 0 valid transducers during authentication! Not discarding it.");*/
 				if (e.getMeasurement().getDistance() == 4094) {
-					System.out.println("CRITICAL ERROR: got invalid measurement during authentication! Depending on dongle to resend it now.");
+					//System.out.println("CRITICAL ERROR: got invalid measurement during authentication! Depending on dongle to resend it now.");
+					System.out.println("Discarding invalid measurement in authentication mode: reported by dongle");
 					continue;
 				}
 				// measurement event for the authentication partner: re-use the round from the authentication info event
@@ -218,7 +224,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
 				// still do a sanity check (within our accuracy range)
 				if (delay > (1 << (EntropyBitsPerRound+1))) {
-					System.out.println("Error: delayed measurement arrived earlier than reference measurement! Discarding this reading.");
+					//System.out.println("Error: delayed measurement arrived earlier than reference measurement! Discarding this reading.");
+					System.out.println("Discarding invalid measurement in authentication mode: smaller than reference");
 					continue;
 				}
 				// and add to the receivedNonce for later comparison
@@ -360,10 +367,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *            The number of rounds to use. Due to the protocol and hardware
 	 *            limitations, the security of this authentication is given by
 	 *            rounds * EnropyBitsPerRound.
+	 * @param referenceMeasurement The reference measurement to the remote relate
+	 * dongle. It is assumed that the real distance between the dongles will not 
+	 * change during the authentication.
 	 */
-	public void startAuthentication(byte[] sharedKey, int rounds) {
+	public void startAuthentication(byte[] sharedKey, int rounds, int referenceMeasurement) {
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
+		this.referenceMeasurement = referenceMeasurement;
 		
 		new Thread(new AsynchronousCallHelper(this) { public void run() {
 			try {
