@@ -621,7 +621,7 @@ public class SerialConnector implements Runnable {
 	private static final int FIRMWARE_VERSION_SIGN = (byte) 'V';
 
 	/** Prefix to start-of-authentication packet */
-	private static final int AUTHENTICATION_START_SIGN = (byte) 'K';
+	private static final int AUTHENTICATION_START_SIGN = (byte) 'A';
 
 	/** Prefix to authentication data (received key material from a remote dongle) */
 	private static final int AUTHENTICATION_PACKET_SIGN = (byte) 'K';
@@ -750,12 +750,12 @@ public class SerialConnector implements Runnable {
 				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 
 				/* temporary fix to turn on diagnostic mode */
-				if (! commHelper.sendMessage(DIAGNOSTIC_ON, 10000))
+				/*if (! commHelper.sendMessage(DIAGNOSTIC_ON, 20000))
 					return -1;
-				diagnosticMode = true;
+				diagnosticMode = true;*/
 
 				/* temporary fix to turn off diagnostic mode */
-				if (! commHelper.sendMessage(DIAGNOSTIC_OFF, 10000))
+				if (! commHelper.sendMessage(DIAGNOSTIC_OFF, 20000))
 					return -1;
 				diagnosticMode = false;
 				
@@ -788,7 +788,7 @@ public class SerialConnector implements Runnable {
 		msg[2+nonce.length+rfMessage.length] = (byte) rounds;
 		msg[3+nonce.length+rfMessage.length] = (byte) bitsPerRound; 
 		msg[3+nonce.length+rfMessage.length] = (byte) (referenceMeasurement >> 8); 
-		msg[4+nonce.length+rfMessage.length] = (byte) (referenceMeasurement % 0x100); 
+		msg[4+nonce.length+rfMessage.length] = (byte) (referenceMeasurement & 0xff); 
 		try {
 			return commHelper.sendMessage(msg, 100*msg.length);
 		}
