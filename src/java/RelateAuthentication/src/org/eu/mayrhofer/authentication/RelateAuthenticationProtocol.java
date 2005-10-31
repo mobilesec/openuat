@@ -224,21 +224,22 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	    }
     	}
     	
-        if (args.length > 1 && args[0].equals("server"))
+        if (args.length > 2 && args[0].equals("server"))
         {
             HostServerSocket h1 = new HostServerSocket(TcpPort);
             TempAuthenticationEventHandler h = new TempAuthenticationEventHandler();
             h.outer = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
+            h.outer.rounds = (byte) Integer.parseInt(args[2]);
         	h1.addAuthenticationProgressHandler(h);
             h1.startListening();
             new BufferedReader(new InputStreamReader(System.in)).readLine();
             h1.stopListening();
         }
-        if (args.length > 2 && args[0].equals("client"))
+        if (args.length > 3 && args[0].equals("client"))
         {
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler());
-        	r.startAuthentication(2);
+        	r.startAuthentication((byte) Integer.parseInt(args[3]));
             new BufferedReader(new InputStreamReader(System.in)).readLine();
         }
         
