@@ -358,6 +358,7 @@ class SerialCommunicationHelper {
 			return false;
 		
 		// the dongle always first sends the number of bytes and then echos the complete message
+		// TODO: listening for the number of bytes doesn't work. Just ignore it for now, but FIXME
 		byte[] expectedMsgAck = new byte[msg.length/*+1*/];
 		//expectedMsgAck[0] = (byte) msg.length;
 		System.arraycopy(msg, 0, expectedMsgAck, 0/*1*/, msg.length);
@@ -1312,7 +1313,7 @@ public class SerialConnector implements Runnable {
 								} else {
 									log("could not parse US info event (now " + (++numDecodeErrors) + " decoding errors)");
 								}
-								System.out.println("Got US info");
+								//System.out.println("Got US info");
 /*						} else if (theByte == END_COMM) {
 						log("dongle is sleeping.");*/
 						} 
@@ -1355,22 +1356,24 @@ public class SerialConnector implements Runnable {
 							log("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN) {
 							//log("Dongle network state message from dongle");
-							byte[] tmp = receiveHelper(2);
-							relateTime = unsign(tmp[0]) ;
-							numberOfEntries = unsign(tmp[1]) ;
-							// FIXME
-							//DN_STATE_LENGTH = 3+(2*numberOfEntries)+1 ;
-							dnStateBytes = receiveHelper(2*numberOfEntries+1);
-							/*dnStateBytes[0] = (byte)DN_STATE_SIGN ;
+							byte[] tmp1 = receiveHelper(2);
+							relateTime = unsign(tmp1[0]) ;
+							numberOfEntries = unsign(tmp1[1]) ;
+							DN_STATE_LENGTH = 3+(2*numberOfEntries)+1 ;
+							byte[] tmp2 = receiveHelper(2*numberOfEntries+1);
+							// FIXME: this is a bad hack - passing parameters to parseEvent this way is not good...
+							dnStateBytes = new byte[3+2*numberOfEntries+1];
+							dnStateBytes[0] = (byte)DN_STATE_SIGN ;
 							dnStateBytes[1] = (byte)relateTime ;
 							dnStateBytes[2] = (byte)numberOfEntries ;
+							System.arraycopy(tmp2, 0, dnStateBytes, 3, tmp2.length);
 							//printByteArray(dnStateBytes) ;
 							event = parseEvent(dnStateBytes);
 							if (event != null) {
 								postEvent(event);
 							} else {
 								log("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
-							}*/
+							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
