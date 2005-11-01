@@ -52,6 +52,18 @@ class SerialCommunicationHelper {
 	
 	/** Stored the local dongle id that has been reported last. */
 	private int myRelateId = -1;
+	
+	/** Stores the last time when we interrupted the dongle. getDongleAttention sets this variable
+	 * and uses it to sleep when this method is called in quick succession. The dongle doesn't like to
+	 * be interrupted twice in a row and on the whole, it's even quicker when we wait for a bit before 
+	 * trying to interrupt it again. 
+	 * 
+	 * This variable is only modified and read by getDongleAttention.
+	 * 
+	 * @see #getDongleAttention
+	 * @see #MAGIC_5
+	 */
+	private long lastTimeDongleInterrupted = 0;
 
 	/**
 	 * acknowledgement bytes sent by dongle; also served as prefixed bytes to
@@ -102,6 +114,15 @@ class SerialCommunicationHelper {
 	 * @see #prepareMode
 	 */  
 	private final static int MAGIC_4 = 1000;
+	
+	/** MAGIC VALUE NUMBER 5: Leave at least 2000 ms between two tries to interrupt the dongle. It doesn't like that so we
+	 * prevent it.
+	 * It's magic because there's no real reason for that specific number other than trial&error.
+	 * 
+	 * @see #getDongleAttention
+	 * @see #lastTimeDongleInterrupted
+	 */
+	private final static int MAGIC_5 = 2000;
 	
 	
 	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
@@ -306,8 +327,18 @@ class SerialCommunicationHelper {
 		long lastTry = 0;
 		
 		try {
-			log("Trying to get dongle's attention now");
 			startTime =  System.currentTimeMillis();
+			// check that we don't interrupt the dongle two quickly again
+			if (startTime - lastTimeDongleInterrupted < MAGIC_5) {
+				log("Trying to interrupt dongle again in quick succession. Waiting for " + MAGIC_5 + "ms to give the dongle time to recover.");
+				try {
+					Thread.sleep(MAGIC_5 - (startTime - lastTimeDongleInterrupted));
+				} catch (InterruptedException e) {}
+				startTime =  System.currentTimeMillis();
+			}
+			lastTimeDongleInterrupted = startTime;
+			
+			log("Trying to get dongle's attention now");
 			
 			// special case here: need to call it manually so that fis.skip will work
 			prepareMode(true);
@@ -1569,8 +1600,6 @@ public class SerialConnector implements Runnable {
 		System.out.println("My relate id is " + myId);
 		
 		if (args.length > 1) {
-			Thread.sleep(1000);
-			
 			if (args[1].equals("start_auth")) {
 				byte[] tmpMsg = new byte[16];
 				for (int i=0; i<tmpMsg.length; i++) tmpMsg[i] = (byte) 0xaa;
