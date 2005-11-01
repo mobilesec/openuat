@@ -115,7 +115,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		SerialConnector serialConn = SerialConnector.getSerialConnector(true);
 		
 		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-		int localRelateId = serialConn.connect(serialPort, 0, 255);
+		int localRelateId = serialConn.connect(serialPort, 0, 255, 20000);
 		if (localRelateId != -1)
 			System.out.println("-------- connected successfully to dongle, including first handshake. My ID is " + localRelateId);
 		else {
