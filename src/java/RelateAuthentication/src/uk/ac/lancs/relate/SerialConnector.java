@@ -257,7 +257,7 @@ class SerialCommunicationHelper {
 					received[0] = (byte) recv;
 				}
 				else {
-					//log("Could not find first expected byte, returning");
+					log("Could not find first expected byte, returning");
 					// unable to find even our first expected byte, either due to timeout or to read error
 					return null;
 				}
@@ -268,7 +268,7 @@ class SerialCommunicationHelper {
 					alreadyRead += readBytes;
 			} while (alreadyRead < bytesToRead && readBytes != -1 && (System.currentTimeMillis() - startTime) < timeout);
 			if (alreadyRead != bytesToRead) {
-				//log("Didn't get enough bytes from dongle, wanted " + bytesToRead + " but got " + alreadyRead);
+				log("Didn't get enough bytes from dongle, wanted " + bytesToRead + " but got " + alreadyRead);
 				return null;
 			}
 			// before returning, check the remaining expected bytes (if there are any)
@@ -276,7 +276,7 @@ class SerialCommunicationHelper {
 				// the first byte must already match, but checking is cheap so do it anyway
 				for (int i=0; i<expectedStart.length; i++)
 					if (received[i] != expectedStart[i]) {
-						//log("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
+						log("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
 						// error in comparison
 						return null;
 					}
@@ -348,7 +348,7 @@ class SerialCommunicationHelper {
 	 * @param timeout The maximum number of milliseconds allowed to pass.
 	 * @see #myRelateId
 	 */ 
-	public synchronized boolean sendMessage(byte[] msg, long timeout) throws IOException, PortInUseException {
+	public synchronized boolean sendMessage(byte[] msg, int timeout) throws IOException, PortInUseException {
 		long startTime = System.currentTimeMillis(), curTime;
 
 		// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
@@ -369,7 +369,7 @@ class SerialCommunicationHelper {
 		} while (curTime - startTime < timeout &&
 				// if there is some acknowledge expected, try to read it from the dongle
 				// the timeout here is just a heuristic
-				receiveFromDongle(expectedMsgAck.length, expectedMsgAck, 100*expectedMsgAck.length) == null);
+				receiveFromDongle(expectedMsgAck.length, expectedMsgAck, timeout) == null);
 		return curTime - startTime < timeout;
 	}
 
@@ -797,7 +797,7 @@ public class SerialConnector implements Runnable {
 		printByteArray(msg);
 		
 		try {
-			return commHelper.sendMessage(msg, 100*msg.length);
+			return commHelper.sendMessage(msg, 300*msg.length);
 		}
 		catch (PortInUseException e) {
 			return false;
