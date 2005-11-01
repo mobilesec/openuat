@@ -115,14 +115,14 @@ class SerialCommunicationHelper {
 	 */  
 	private final static int MAGIC_4 = 1000;
 	
-	/** MAGIC VALUE NUMBER 5: Leave at least 2000 ms between two tries to interrupt the dongle. It doesn't like that so we
+	/** MAGIC VALUE NUMBER 5: Leave at least 3000 ms between two tries to interrupt the dongle. It doesn't like that so we
 	 * prevent it.
 	 * It's magic because there's no real reason for that specific number other than trial&error.
 	 * 
 	 * @see #getDongleAttention
 	 * @see #lastTimeDongleInterrupted
 	 */
-	private final static int MAGIC_5 = 2000;
+	private final static int MAGIC_5 = 3000;
 	
 	
 	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
@@ -344,6 +344,7 @@ class SerialCommunicationHelper {
 			prepareMode(true);
 			while (unacknowledged && (System.currentTimeMillis() - startTime) < timeout) {
 				counter++ ;
+				
 				/*Discard everything currently in the serial input buffer.*/
 				fis.skip(fis.available());
 				/*Send garbage..*/
@@ -399,13 +400,6 @@ class SerialCommunicationHelper {
 		long startTime = System.currentTimeMillis(), curTime;
 		int retries = 0;
 
-		// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
-		myRelateId = getDongleAttention(timeout);
-		if (myRelateId == -1) {
-			log("Error sending message: could not get dongle's attention");
-			return false;
-		}
-		
 		// the dongle always first sends the number of bytes and then echos the complete message
 		// TODO: listening for the number of bytes doesn't work. Just ignore it for now, but FIXME
 		byte[] expectedMsgAck = new byte[msg.length/*+1*/];
@@ -414,7 +408,12 @@ class SerialCommunicationHelper {
 		
 		log("Sending message to dongle and waiting for ack");
 		do {
-			sendToDongle(msg);
+			// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
+			myRelateId = getDongleAttention(timeout);
+			if (myRelateId == -1)
+				log("Warning: could not get dongle's attention, skipping sending of message for this retry");
+			else
+				sendToDongle(msg);
 			curTime = System.currentTimeMillis();
 			retries++;
 		} while (curTime - startTime < timeout &&
@@ -724,7 +723,7 @@ public class SerialConnector implements Runnable {
 	 * dongle longer than this to respond to any command or to provide the next message, something is wrong an a TimeoutException
 	 * will be thrown by the respective method.
 	 */
-	private final static int MAXIMUM_TIMEOUT = 10000;
+	private final static int MAXIMUM_TIMEOUT = 20000;
 	
 	/** Firmware version */
 	private String firmwareVersion = null;
@@ -898,7 +897,7 @@ public class SerialConnector implements Runnable {
 		setMonitoring(false);
 		
 		try {
-			ret = commHelper.sendMessage(msg, 300*msg.length);
+			ret = commHelper.sendMessage(msg, MAXIMUM_TIMEOUT);
 		}
 		catch (PortInUseException e) {
 			return false;
