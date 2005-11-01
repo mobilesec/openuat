@@ -550,6 +550,12 @@ public class SerialConnector implements Runnable {
 	 * @see #monitoring
 	 */
 	private Object changeMonitoringWaiter = new Object();
+	
+	/** This flag inidcates if the monitoring thread has been started yet. It is used by setMonitoring to 
+	 * check if the thread should be suspended.
+	 * @see #setMonitoring(boolean)
+	 */
+	private boolean monitoringThreadRunning = false;
 
 	/** flag indicating wether still waiting for calibration info */
 	private boolean calibrated = false;
@@ -683,6 +689,12 @@ public class SerialConnector implements Runnable {
 	 */
 	private final static int MAGIC_2 = 50;
 	
+	/** The maximum timeout for any public method that does not provide a timeout from the application. When it takes the 
+	 * dongle longer than this to respond to any command or to provide the next message, something is wrong an a TimeoutException
+	 * will be thrown by the respective method.
+	 */
+	private final static int MAXIMUM_TIMEOUT = 10000;
+	
 	/** Firmware version */
 	private String firmwareVersion = null;
 
@@ -761,10 +773,9 @@ public class SerialConnector implements Runnable {
 	 * @param port		  the port to connect with 
 	 @param minID         the lowest valid ID for relate objects
 	 @param maxID         the highest valid ID for relate objects
-	 @param timeout		  The maximum time in ms to wait for the dongle to respond.
 	 @return the ID of the attached dongle or -1 if something went wrong
 	 **/
-	public int connect(String port, int minID, int maxID, int timeout) {
+	public int connect(String port, int minID, int maxID) {
 		// TODO: get the hostinfo from somewhere
 		// this.hostInfo = configuration.getFormat();
 
@@ -786,7 +797,7 @@ public class SerialConnector implements Runnable {
 				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 				
 				// this just get's the dongle's attention to see if it's there and implicitly reads its id
-				if (! commHelper.interruptDongle(timeout))
+				if (! commHelper.interruptDongle(MAXIMUM_TIMEOUT))
 					return -1;
 
 				// switch to receiving mode
@@ -808,10 +819,13 @@ public class SerialConnector implements Runnable {
 	 * @param timeout The maximum time in ms to wait for the command to be sent.
 	 * @return true if successful
 	 */
-	public boolean switchDiagnosticMode(boolean diagnostic, int timeout) {
+	public boolean switchDiagnosticMode(boolean diagnostic) {
 		log("Switching diagnostic mode " + (diagnostic ? "on" : "off"));
 		try {
-			if (! commHelper.sendMessage(diagnostic ? DIAGNOSTIC_ON : DIAGNOSTIC_OFF, timeout))
+			setMonitoring(false);
+			boolean ret = commHelper.sendMessage(diagnostic ? DIAGNOSTIC_ON : DIAGNOSTIC_OFF, MAXIMUM_TIMEOUT);
+			setMonitoring(true);
+			if (!ret)
 				return false;
 		} 
 		catch (IOException e) {
@@ -1266,16 +1280,18 @@ public class SerialConnector implements Runnable {
 	 * @param monitoring If false, the thread will be suspended. If true, the thread will be woken up again.
 	 */
 	private void setMonitoring(boolean monitoring) {
-		log("Requesting monitoring thread to " + (monitoring ? "wake up" : "suspend"));
-		this.monitoring = monitoring;
-		synchronized(changeMonitoringWaiter) {
-			changeMonitoringWaiter.notify();
-			try {
-				changeMonitoringWaiter.wait();
-			} catch (InterruptedException e) {
+		if (monitoringThreadRunning) {
+			log("Requesting monitoring thread to " + (monitoring ? "wake up" : "suspend"));
+			this.monitoring = monitoring;
+			synchronized(changeMonitoringWaiter) {
+				changeMonitoringWaiter.notify();
+				try {
+					changeMonitoringWaiter.wait();
+				} catch (InterruptedException e) {
+				}
 			}
+			log("Monitoring thread signalled its " + (monitoring ? "wake up" : "suspend"));
 		}
-		log("Monitoring thread signalled its " + (monitoring ? "wake up" : "suspend"));
 	}
 	
 	/** change the dongle state according to dongle_on */
@@ -1328,7 +1344,7 @@ public class SerialConnector implements Runnable {
 		while (ret == null && numBytes == 1 && --tries > 0);
 		if (ret == null) {
 			disconnect();
-			connect(serialPort, MIN_ID, MAX_ID, numBytes * MAGIC_1 * 2);
+			connect(serialPort, MIN_ID, MAX_ID);
 			throw new NullPointerException("Did not receive enough bytes (wanted " + numBytes + 
 					") from the dongle (error number " + (++numReceiveErrors) +
 					" since startup). Timeout? Tried to reconnect serial port to reset dongle");
@@ -1353,6 +1369,8 @@ public class SerialConnector implements Runnable {
 		int i=0; 
 		
 		while (alive) {
+			monitoringThreadRunning = true;
+			
 			try {
 					if (dongle_on != last_dongle_state) {
 						last_dongle_state = dongle_on;
@@ -1547,7 +1565,7 @@ public class SerialConnector implements Runnable {
 			System.exit(1);
 		}
 		
-		int myId = connector.connect(args[0], 0, 50, 10000);
+		int myId = connector.connect(args[0], 0, 50);
 		System.out.println("My relate id is " + myId);
 		
 		if (args.length > 1) {
@@ -1559,10 +1577,10 @@ public class SerialConnector implements Runnable {
 				connector.startAuthenticationWith(12, tmpMsg, tmpMsg, 43, 3, 0);
 			}
 			else if (args[1].equals("diag_on")) {
-				connector.switchDiagnosticMode(true, 10000);
+				connector.switchDiagnosticMode(true);
 			}
 			else if (args[1].equals("diag_off")) {
-				connector.switchDiagnosticMode(false, 10000);
+				connector.switchDiagnosticMode(false);
 			}
 			else if (args[1].equals("monitoring")) {
 				connector.run();
