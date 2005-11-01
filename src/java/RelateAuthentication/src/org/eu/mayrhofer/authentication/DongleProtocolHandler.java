@@ -181,8 +181,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationStages + rounds, "Got reference measurement");
 		
 		// construct the start-of-authentication message and sent it to the dongle
-		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement))
+		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement)) {
 			System.out.println("ERROR: could not send start-of-authentication packet to dongle");
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle.");
+			return false;
+		}
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4, AuthenticationStages + rounds, "Initiated authentication mode in dongle");
 		
