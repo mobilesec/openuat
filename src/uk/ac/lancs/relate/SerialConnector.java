@@ -180,7 +180,7 @@ class SerialCommunicationHelper {
 			
 			serialPort = (SerialPort) portId.open("RelatePort", 500);
 			try {
-				//log("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
+				log("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
@@ -895,6 +895,10 @@ public class SerialConnector implements Runnable {
 		
 		// before sending a message to the dongle, need to suspend the reading thread
 		setMonitoring(false);
+		// and wait for the dongle to settle down - why o why is this necessary?
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {}
 		
 		try {
 			ret = commHelper.sendMessage(msg, MAXIMUM_TIMEOUT);
