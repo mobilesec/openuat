@@ -6,6 +6,7 @@ import java.io.*;
 
 import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.*;
+import org.apache.log4j.Logger;
 
 /**
  * This class handles the key agreement protocol between two hosts on the TCP/IP
@@ -18,6 +19,9 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  */
 public class HostProtocolHandler extends AuthenticationEventSender {
+	/** Our primary logger. */
+	private static Logger logger = Logger.getLogger(HostProtocolHandler.class);
+	
 	/** These are the messages of the ASCII authentication protocol. */
     public static final String Protocol_Hello = "HELO RelateAuthentication";
     /** @see #Protocol_Hello */
@@ -65,6 +69,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     void shutdownSocketsCleanly()
     {
+    	logger.debug("Shutting down sockets");
     	try {
     	if (fromRemote != null)
     		fromRemote.close();
@@ -109,6 +114,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	byte[] remotePubKey;
         if (msg == null)
         {
+        	logger.warn("Helper_EtractPublicKey called with null argument");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: no message received");
             return null;
         }
@@ -116,6 +122,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         // try to extract the remote key from it
         if (!msg.startsWith(expectedMsg))
         {
+        	logger.warn("Protocol error: unkown message '" + msg + "'");
             toRemote.println("Protocol error: unknown message: '" + msg + "'");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: unknown message");
             return null;
@@ -125,12 +132,14 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         	remotePubKey = Hex.decodeHex(remotePubKeyStr.toCharArray());
         }
         catch (DecoderException e) {
+            logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
             toRemote.println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
             raiseAuthenticationFailureEvent(remote, e, "Protocol error: can not decode remote public key");
             return null;
         }
         if (remotePubKey.length < 128)
         {
+            logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
             toRemote.println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: remote key too short (only " + remotePubKey.length + " bytes instead of 128)");
             return null;
@@ -156,6 +165,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		// we can no longer access it
         InetAddress remote = socket.getInetAddress();
         String inOrOut, serverToClient, clientToServer;
+        
+        logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
+        logger.debug("Remote address is " + remote);
 
         if (serverSide) {
         	inOrOut = "Incoming";
@@ -244,7 +256,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (Exception e)
         {
-            System.out.println("UNEXPECTED EXCEPTION: " + e);
+            logger.fatal("UNEXPECTED EXCEPTION: " + e);
         }
         finally {
             shutdownSocketsCleanly();
@@ -294,8 +306,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     static public void startAuthenticationWith(String remoteAddress,
 			int remotePort, AuthenticationProgressHandler eventHandler) throws UnknownHostException, IOException {
-		Socket clientSocket = new Socket(remoteAddress, remotePort);
+		logger.info("Starting authentication with " + remoteAddress);
 
+    	Socket clientSocket = new Socket(remoteAddress, remotePort);
+
+		logger.info("Connected successfully to " + remoteAddress);
+    	
 		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket);
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);

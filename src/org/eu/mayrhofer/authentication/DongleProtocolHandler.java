@@ -1,5 +1,6 @@
 package org.eu.mayrhofer.authentication;
 
+import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.security.SecureRandom;
@@ -22,6 +23,9 @@ import uk.ac.lancs.relate.RelateEvent;
  *
  */
 public class DongleProtocolHandler extends AuthenticationEventSender {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(DongleProtocolHandler.class);
+
 	/** With the current Relate dongle hard-/firmware, each round of the dongle authentication protocol transports 3 bits
 	 * of entropy.
 	 */
@@ -117,9 +121,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
 		int localRelateId = serialConn.connect(serialPort, 0, 255);
 		if (localRelateId != -1)
-			System.out.println("-------- connected successfully to dongle, including first handshake. My ID is " + localRelateId);
+			logger.info("-------- connected successfully to dongle, including first handshake. My ID is " + localRelateId);
 		else {
-			System.out.println("-------- failed to connect to dongle, didn't get my ID.");
+			logger.error("-------- failed to connect to dongle, didn't get my ID.");
 			return false;
 		}
 		
@@ -138,7 +142,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		ThreeInts[] s = new ThreeInts[256]; for(int i=0; i<256; i++) s[i] = new ThreeInts();
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
-		System.out.println("Trying to get reference measurement to relate id " + remoteRelateId);
+		logger.debug("Trying to get reference measurement to relate id " + remoteRelateId);
 		int numMeasurements = 0;
 		referenceMeasurement = 0;
 		while (numMeasurements < 10) {
@@ -146,43 +150,43 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
 			if (e == null) {
-				System.out.println("Warning: got null message out of message queue! This should not happen.");
+				logger.warn("Warning: got null message out of message queue! This should not happen.");
 				continue;
 			}
 			
 			// test code begin
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
 				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
-					//System.out.println("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					//logger.debug("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
 					ThreeInts x = s[e.getMeasurement().getId()];
 					x.n++;
 					x.sum += (int) e.getMeasurement().getDistance();
 					x.sum2 += ((int) e.getMeasurement().getDistance() * (int) e.getMeasurement().getDistance());
-					//System.out.println("To dongle " + e.getMeasurement().getId() + ": n=" + x.n + ", sum=" + x.sum + ", sum2=" + x.sum2);
-					/*System.out.println("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
+					//logger.debug("To dongle " + e.getMeasurement().getId() + ": n=" + x.n + ", sum=" + x.sum + ", sum2=" + x.sum2);
+					/*logger.debug("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
 							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );*/
 				}
 				else {
-					System.out.println("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					logger.info("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
 				}
 			}
 			// test code end
 			
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
-				System.out.println("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
+				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
 				referenceMeasurement += (int) e.getMeasurement().getDistance();
 				numMeasurements++;
 			}
 		}
 		referenceMeasurement /= numMeasurements;
-		System.out.println("Mean over reference measurements to dongle " + remoteRelateId + ": " + referenceMeasurement);
+		logger.info("Mean over reference measurements to dongle " + remoteRelateId + ": " + referenceMeasurement);
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationStages + rounds, "Got reference measurement");
 		
 		// construct the start-of-authentication message and sent it to the dongle
 		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement)) {
-			System.out.println("ERROR: could not send start-of-authentication packet to dongle");
+			logger.error("ERROR: could not send start-of-authentication packet to dongle");
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle.");
 			return false;
 		}
@@ -200,7 +204,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
 			if (e == null) {
-				System.out.println("Warning: got null message out of message queue! This should not happen.");
+				logger.warn("Warning: got null message out of message queue! This should not happen.");
 				continue;
 			}
 			if (e.getType() == RelateEvent.AUTHENTICATION_INFO && e.getDevice().getId() == remoteRelateId) {
@@ -209,16 +213,15 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 						// if it is the last round, it might have less bits
 						e.round < rounds ? messageBitsPerRound : (sentRfMessage.length - messageBitsPerRound * rounds));
 				lastCompletedRound = e.round;
-				System.out.println("Received authentication part from dongle " + remoteRelateId + 
+				logger.info("Received authentication part from dongle " + remoteRelateId + 
 						": round " + lastCompletedRound + " out of " + rounds);
 			}
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId) {
-				/*if (e.getMeasurement().getTransducers() == 0)
-					System.out.println("WARNING: got measurement with 0 valid transducers during authentication! Not discarding it.");*/
+				if (e.getMeasurement().getTransducers() == 0)
+					logger.debug("WARNING: got measurement with 0 valid transducers during authentication! Not discarding it.");
 				if (e.getMeasurement().getDistance() == 4094) {
-					//System.out.println("CRITICAL ERROR: got invalid measurement during authentication! Depending on dongle to resend it now.");
-					System.out.println("Discarding invalid measurement in authentication mode: reported by dongle");
+					logger.debug("Discarding invalid measurement in authentication mode: reported by dongle");
 					continue;
 				}
 				// measurement event for the authentication partner: re-use the round from the authentication info event
@@ -228,13 +231,12 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				int delay = (delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset;
 				// still do a sanity check (within our accuracy range)
 				if (delay > (1 << (EntropyBitsPerRound+1)) || delay < 0) {
-					//System.out.println("Error: delayed measurement arrived earlier than reference measurement! Discarding this reading.");
-					System.out.println("Discarding invalid measurement in authentication mode: smaller than reference");
+					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference");
 					continue;
 				}
 				// and add to the receivedNonce for later comparison
 				addPart(receivedNonce, new byte[] {(byte) delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
-				System.out.println("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
+				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + lastCompletedRound, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
@@ -267,7 +269,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] rfMessage = cipher.doFinal(nonce);
 			if (rfMessage.length != 16)
-				System.out.println("Encryption went wrong, got "
+				logger.error("Encryption went wrong, got "
 						+ rfMessage.length + " bytes");
 
 			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
