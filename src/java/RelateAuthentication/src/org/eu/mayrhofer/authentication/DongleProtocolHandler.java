@@ -112,7 +112,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		if (rounds < 2)
 			throw new DongleAuthenticationProtocolException("Need at least 2 rounds for the interlock protocol to be secure.");
 
-		SerialConnector serialConn = SerialConnector.getSerialConnector(true);
+		SerialConnector serialConn = SerialConnector.getSerialConnector();
 		
 		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
 		int localRelateId = serialConn.connect(serialPort, 0, 255);
