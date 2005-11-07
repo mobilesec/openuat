@@ -226,6 +226,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	
         if (args.length > 2 && args[0].equals("server"))
         {
+        	System.out.println("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort);
             TempAuthenticationEventHandler h = new TempAuthenticationEventHandler();
             h.outer = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
@@ -237,6 +238,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         }
         if (args.length > 3 && args[0].equals("client"))
         {
+        	System.out.println("Starting client mode");
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler());
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
