@@ -9,6 +9,8 @@ import javax.comm.*;
 import java.io.*;
 import java.util.*;
 
+import org.apache.log4j.Logger;
+
 /**
  * This is a helper class for SerialConnector and encapsulates the low-level communication with the dongle. It offers a 
  * simple interface to send messages to the dongle and receive its output in normal (monitoring) mode. All communication
@@ -17,6 +19,9 @@ import java.util.*;
  * @author Rene Mayrhofer, based on code by Chris Kray and Henoc Agbota 
  */
 class SerialCommunicationHelper {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(SerialCommunicationHelper.class.toString());
+	
 	/** List of available ports returned by the javax.comm API.  */
 	private String[] portNames = null;
 
@@ -71,14 +76,17 @@ class SerialCommunicationHelper {
 	 */
 	private final static byte[] ACK = { (byte) 'A', (byte) 'C', (byte) 'K' };
 
-	/** MAGIC VALUE NUMBER 1: Send 26 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud). 
+	/** MAGIC VALUE NUMBER 1: Send 10 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud). 
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
 	 * search of possible parameter combinations).
+	 * Warning: don't set this too high. The dongle currently has a statically sized receive buffer of 100 bytes, which will
+	 * take all the garbage <b>and</b> the commands sent after the garbage. So this number must be set to at most 100 minus 
+	 * the size of the largest message being sent from the host to the dongle.
 	 *  
 	 * Used in getDongleAttention.
 	 * @see #getDongleAttention
 	 */
-	private final static int MAGIC_1 = 26;
+	private final static int MAGIC_1 = 10;
 
 	/** MAGIC VALUE NUMBER 2: Wait for 200 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
@@ -115,14 +123,14 @@ class SerialCommunicationHelper {
 	 */  
 	private final static int MAGIC_4 = 1000;
 	
-	/** MAGIC VALUE NUMBER 5: Leave at least 3000 ms between two tries to interrupt the dongle. It doesn't like that so we
+	/** MAGIC VALUE NUMBER 5: Leave at least 5000 ms between two tries to interrupt the dongle. It doesn't like that so we
 	 * prevent it.
 	 * It's magic because there's no real reason for that specific number other than trial&error.
 	 * 
 	 * @see #getDongleAttention
 	 * @see #lastTimeDongleInterrupted
 	 */
-	private final static int MAGIC_5 = 3000;
+	private final static int MAGIC_5 = 5000;
 	
 	
 	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
@@ -135,7 +143,7 @@ class SerialCommunicationHelper {
 		/* generate list of (available) ports */
 		while ((portList.hasMoreElements()) && (portId == null)) {
 			id = (CommPortIdentifier) portList.nextElement();
-			log("port " + id + " (" + id.getName() + ") is "
+			logger.info("port " + id + " (" + id.getName() + ") is "
 					+ (id.isCurrentlyOwned() ? " not " : "") + " available.");
 			if (!(id.isCurrentlyOwned())) {
 				availablePorts.addElement(id);
@@ -148,7 +156,7 @@ class SerialCommunicationHelper {
 						.elementAt(i)).getName();
 			}
 		} else {
-			log("no ports available");
+			logger.error("no ports available");
 		}
 	}
 
@@ -180,7 +188,7 @@ class SerialCommunicationHelper {
 			
 			serialPort = (SerialPort) portId.open("RelatePort", 500);
 			try {
-				log("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
+				logger.info("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
@@ -188,10 +196,10 @@ class SerialCommunicationHelper {
 				// so that read on the getInputStream does not hang indefinitely but times out
 				serialPort.enableReceiveTimeout(MAGIC_4);
 				if (!serialPort.isReceiveTimeoutEnabled())
-					log("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
+					logger.warn("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
 				//serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			} catch (UnsupportedCommOperationException e) {
-				log("UnsupportedCommOperationException") ;
+				logger.error("UnsupportedCommOperationException") ;
 				e.printStackTrace();
 			}
 			if (interacting) 
@@ -210,7 +218,7 @@ class SerialCommunicationHelper {
 			fos.write(data) ;
 			fos.flush();
 		} catch (IOException ex) {
-			log("sending info to dongle failed due to " + ex);
+			logger.error("sending info to dongle failed due to " + ex);
 			ex.printStackTrace();
 			throw ex;
 		}
@@ -251,9 +259,17 @@ class SerialCommunicationHelper {
 		int alreadyRead = 0, readBytes, retries = 0;
 		long startTime = System.currentTimeMillis();
 		
+		/*try {
+			throw new Exception();
+		}
+		catch (Exception e) {
+			System.out.println("!!!!!! receiveFromDongle called from: ");
+			e.printStackTrace();
+		}*/
+		
 		// sanity check: the input stream must have been initialized
 		if (fis == null) {
-			log("Error: trying to read from serial port while it has not been opened yet correctly. This should not happen!");
+			logger.error("Error: trying to read from serial port while it has not been opened yet correctly. This should not happen!");
 			return null;
 		}
 		
@@ -263,7 +279,7 @@ class SerialCommunicationHelper {
 				serialPort.enableReceiveTimeout(timeout * MAGIC_3);
 			} catch (UnsupportedCommOperationException e) {
 				// this can be ignored - it won't kill if timeout doesn't work. but it will just miss the protection against a "dead" dongle
-				log("UnsupportedCommOperationException") ;
+				logger.warn("UnsupportedCommOperationException") ;
 				e.printStackTrace();
 			}
 
@@ -278,8 +294,11 @@ class SerialCommunicationHelper {
 					alreadyRead++;
 					received[0] = (byte) recv;
 				}
-				else {
-					//log("Could not find first expected byte, returning with timeout after receiving " + retries + " bytes");
+				else if (recv == -1 ){
+					logger.debug("Got EOF after receiving " + retries + " bytes");
+					return null;
+				} else {
+					logger.debug("Could not find first expected byte, returning with timeout after receiving " + retries + " bytes");
 					// unable to find even our first expected byte, either due to timeout or to read error
 					return null;
 				}
@@ -290,7 +309,7 @@ class SerialCommunicationHelper {
 					alreadyRead += readBytes;
 			} while (alreadyRead < bytesToRead && readBytes != -1 && (System.currentTimeMillis() - startTime) < timeout);
 			if (alreadyRead != bytesToRead) {
-				//log("Didn't get enough bytes from dongle within timeout, wanted " + bytesToRead + " but got " + alreadyRead);
+				logger.debug("Didn't get enough bytes from dongle within timeout, wanted " + bytesToRead + " but got " + alreadyRead);
 				return null;
 			}
 			// before returning, check the remaining expected bytes (if there are any)
@@ -298,7 +317,7 @@ class SerialCommunicationHelper {
 				// the first byte must already match, but checking is cheap so do it anyway
 				for (int i=0; i<expectedStart.length; i++)
 					if (received[i] != expectedStart[i]) {
-						//log("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
+						logger.debug("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
 						// error in comparison
 						return null;
 					}
@@ -306,7 +325,7 @@ class SerialCommunicationHelper {
 			// finally: read all bytes that have been requested and compared ok to the expected start
 			return received;
 		} catch (IOException ex) {
-			log("receiving from dongle failed due to " + ex);
+			logger.warn("receiving from dongle failed due to " + ex);
 			ex.printStackTrace();
 			return null;
 		}
@@ -330,7 +349,7 @@ class SerialCommunicationHelper {
 			startTime =  System.currentTimeMillis();
 			// check that we don't interrupt the dongle two quickly again
 			if (startTime - lastTimeDongleInterrupted < MAGIC_5) {
-				log("Trying to interrupt dongle again in quick succession. Waiting for " + MAGIC_5 + "ms to give the dongle time to recover.");
+				logger.info("Trying to interrupt dongle again in quick succession. Waiting for " + MAGIC_5 + "ms to give the dongle time to recover.");
 				try {
 					Thread.sleep(MAGIC_5 - (startTime - lastTimeDongleInterrupted));
 				} catch (InterruptedException e) {}
@@ -338,12 +357,15 @@ class SerialCommunicationHelper {
 			}
 			lastTimeDongleInterrupted = startTime;
 			
-			log("Trying to get dongle's attention now");
+			logger.info("Trying to get dongle's attention now");
 			
 			// special case here: need to call it manually so that fis.skip will work
 			prepareMode(true);
 			while (unacknowledged && (System.currentTimeMillis() - startTime) < timeout) {
 				counter++ ;
+				
+				// another safety belt: sometimes it falls back to 57600 if it was set to that earlier!
+				forceBaudrateReset();
 				
 				/*Discard everything currently in the serial input buffer.*/
 				fis.skip(fis.available());
@@ -358,19 +380,19 @@ class SerialCommunicationHelper {
 					unacknowledged = false;
 					localId = recv[ACK.length];
 					//log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
-					log("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+"ms");
+					logger.info("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+"ms");
 				}
 			}
 		} catch (IOException ex) {
-			log("Geting dongle's attention failed due to " + ex);
+			logger.error("Geting dongle's attention failed due to " + ex);
 			ex.printStackTrace();
 		}
 		if (localId != -1) {
-			log("Number of trials before getting ACK:"+counter) ;
-			log("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));
+			logger.info("Number of trials before getting ACK:"+counter) ;
+			logger.info("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));
 		}
 		else
-			log("Could not get dongle's attention after " + counter + " tries and " + (System.currentTimeMillis()-startTime) + "ms");
+			logger.error("Could not get dongle's attention after " + counter + " tries and " + (System.currentTimeMillis()-startTime) + "ms");
 		return localId ;
 	}
 	
@@ -406,12 +428,12 @@ class SerialCommunicationHelper {
 		//expectedMsgAck[0] = (byte) msg.length;
 		System.arraycopy(msg, 0, expectedMsgAck, 0/*1*/, msg.length);
 		
-		log("Sending message to dongle and waiting for ack");
+		logger.info("Sending message to dongle and waiting for ack");
 		do {
 			// get the dongle to communicate and remember the ID it reported back (switches implicitly to interactive mode)
 			myRelateId = getDongleAttention(timeout);
 			if (myRelateId == -1)
-				log("Warning: could not get dongle's attention, skipping sending of message for this retry");
+				logger.info("Warning: could not get dongle's attention, skipping sending of message for this retry");
 			else
 				sendToDongle(msg);
 			curTime = System.currentTimeMillis();
@@ -421,9 +443,9 @@ class SerialCommunicationHelper {
 				// the timeout here is just a heuristic
 				receiveFromDongle(expectedMsgAck.length, expectedMsgAck, timeout) == null);
 		if (curTime - startTime < timeout)
-			log("Sent message successfully after " + retries + " tries");
+			logger.info("Sent message successfully after " + retries + " tries");
 		else
-			log("Timeout sending message after " + retries + " tries");
+			logger.error("Timeout sending message after " + retries + " tries");
 		
 		return curTime - startTime < timeout;
 	}
@@ -446,10 +468,10 @@ class SerialCommunicationHelper {
 				}
 			}
 			if (portId == null) {
-				log("no port named '" + port + "' found!");
+				logger.error("no port named '" + port + "' found!");
 			} else {
 				if (portId.isCurrentlyOwned()) {
-					log("port " + port + " is currently in use by " +
+					logger.error("port " + port + " is currently in use by " +
 							portId.getCurrentOwner());
 				} else {
 					return true;
@@ -499,6 +521,9 @@ class SerialCommunicationHelper {
 		// This is _really_ nasty! Why do we need to reset the baud rate continuously?
 		// The baud rate just resets itself to 19200 if we don't do that pariodically!
 		try {
+			if (serialPort.getBaudRate() != (this.interacting ? 19200 : 57600))
+				logger.warn("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to " + (this.interacting ? 19200 : 57600));
+				
 			serialPort.setSerialPortParams(this.interacting ? 19200 : 57600,
 				SerialPort.DATABITS_8,
 				SerialPort.STOPBITS_1,
@@ -508,10 +533,6 @@ class SerialCommunicationHelper {
 			// dirty hack
 			//e.printStackTrace();
 		}
-	}
-	
-	private void log(String msg) {
-		System.out.println("[SerialCommunicationHelper] " + msg);
 	}
 }
 
@@ -523,6 +544,9 @@ class SerialCommunicationHelper {
  */
 
 public class SerialConnector implements Runnable {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(SerialConnector.class.toString());
+
 	/**
 	 * At the moment, there can only be a single instance of SerialConnector.
 	 * This singleton is held here and returned by getSerialConnector.
@@ -559,8 +583,6 @@ public class SerialConnector implements Runnable {
 	 * @see #SerialConnector(boolean)
 	 */
 	private boolean initialised = false;
-
-	private boolean logging = true;
 
 	/** flag indicating the dongle's state */
 	private boolean dongle_on = true;
@@ -616,7 +638,7 @@ public class SerialConnector implements Runnable {
 	/** bytes to send to awake dongle from sleep mode */
 	private final static byte[] DIAGNOSTIC_OFF = { (byte) 'C', (byte) '3' };
 
-	/* private final static int END_COMM = 90 ; */
+	private final static int END_COMM = 90 ; 
 	/** number of bytes for the host info */
 	private final static int HOST_INFO_LENGTH = 51;
 
@@ -753,10 +775,7 @@ public class SerialConnector implements Runnable {
 	private int numUnknownMessages = 0;
 
 	/** Initializes the SerialCommunicationHelper object in commHelper. */
-	protected SerialConnector(boolean loggingOn) {
-		logging = loggingOn;
-		operational = false;
-		
+	protected SerialConnector() {
 		commHelper = new SerialCommunicationHelper();
 		
 		eventQueues = new LinkedList();
@@ -766,13 +785,8 @@ public class SerialConnector implements Runnable {
 
 	/** Get the only instance of the SerialConnector. */
 	public static SerialConnector getSerialConnector() {
-		return getSerialConnector(false);
-	}
-
-	/** Get the only instance of the SerialConnector. */
-	public static SerialConnector getSerialConnector(boolean loggingOn) {
 		if (sConn == null)
-			sConn = new SerialConnector(loggingOn);
+			sConn = new SerialConnector();
 		while (!(sConn.initialised))
 			try {
 				Thread.sleep(100);
@@ -781,7 +795,7 @@ public class SerialConnector implements Runnable {
 			}
 		return sConn;
 	}
-	
+
 	/** return list of available serial ports */
 	public String[] getPorts() {
 		return commHelper.getPorts();
@@ -792,13 +806,6 @@ public class SerialConnector implements Runnable {
 		return calibration ;
 	}
 	
-	public void startLogging() {
-		logging = true;
-	}
-	public void stopLogging() {
-		logging = false;
-	}
-
 	/** initialise connector, first handshake with the dongle takes place here. This method fetches the dongle's Relate ID.
 	 * @param port		  the port to connect with 
 	 @param minID         the lowest valid ID for relate objects
@@ -822,12 +829,16 @@ public class SerialConnector implements Runnable {
 				// the command byte
 				hostInfoMsg[0] = (byte) 72;
 				System.arraycopy(hostInfo, 0, hostInfoMsg, 1, hostInfo.length);
-				log("Sending hostinfo to dongle and waiting for it to ack");
+				logger.info("Sending hostinfo to dongle and waiting for it to ack");
 				commHelper.sendMessage(hostInfoMsg, hostInfo, 10000);
-				log("local device id: " + commHelper.getLocalRelateId() + "\n");*/
+				logger.info("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 				
 				// this just get's the dongle's attention to see if it's there and implicitly reads its id
-				if (! commHelper.interruptDongle(MAXIMUM_TIMEOUT))
+				/*if (! commHelper.interruptDongle(MAXIMUM_TIMEOUT))
+					return -1;*/
+				
+				// send a wakeup command to the dongle so that it will definitely start sending measurements
+				if (! commHelper.sendMessage(UNBLOCK_DONGLE, MAXIMUM_TIMEOUT))
 					return -1;
 
 				// switch to receiving mode
@@ -835,7 +846,7 @@ public class SerialConnector implements Runnable {
 
 				operational = true;
 			} catch (Exception e) {
-				log("Could not connect to dongle!");
+				logger.fatal("Could not connect to dongle!");
 				e.printStackTrace();
 				return -1;
 			}
@@ -850,7 +861,7 @@ public class SerialConnector implements Runnable {
 	 * @return true if successful
 	 */
 	public boolean switchDiagnosticMode(boolean diagnostic) {
-		log("Switching diagnostic mode " + (diagnostic ? "on" : "off"));
+		logger.info("Switching diagnostic mode " + (diagnostic ? "on" : "off"));
 		try {
 			setMonitoring(false);
 			boolean ret = commHelper.sendMessage(diagnostic ? DIAGNOSTIC_ON : DIAGNOSTIC_OFF, MAXIMUM_TIMEOUT);
@@ -872,7 +883,7 @@ public class SerialConnector implements Runnable {
 		if (nonce.length != 16 || rfMessage.length != 16 || rounds < 2 || rounds > 255 
 				|| remoteRelateId < 0 || remoteRelateId > 255 || bitsPerRound < 1 
 				|| referenceMeasurement > 2500) {
-			log("ERROR in parameters while constructing start-of-auth packet!");
+			logger.fatal("ERROR in parameters while constructing start-of-auth packet!");
 			// TODO: this should actually be an exception, since this is a sanity check for something that shouldn't happen
 			return false;
 		}
@@ -927,7 +938,7 @@ public class SerialConnector implements Runnable {
 	
 	private void postEvent(RelateEvent e) {
 		if (e == null) {
-			log("Warning: cowardly refusing to send a null message to the event queues.");
+			logger.warn("Warning: cowardly refusing to send a null message to the event queues.");
 			return;
 		}
 		
@@ -938,11 +949,6 @@ public class SerialConnector implements Runnable {
 	public void disconnect() {
 		commHelper.disconnect();
 		operational = false;
-	}
-	
-	public void log(Object o) {
-	    if (logging)
-	        System.out.println("[SerialConnector] " + o);
 	}
 	
 	public void die() {
@@ -1082,8 +1088,8 @@ public class SerialConnector implements Runnable {
 				if ((0 <= angle) && (angle <= 360)) {
 					if(rxId == commHelper.getLocalRelateId() && diagnosticMode &&
 							bytes.length == (MES_SIZE+US_SENSOR_INFO_LENGTH)){
-						/*log("Got uS sensor info..!!") ;
-						 printByteArray(bytes) ;*/
+						logger.debug("Got uS sensor info..!!") ;
+						/* printByteArray(bytes) ;*/
 						
 						/* From higher to lower bits, 
 						 * 2 bytes respectively for uS1,uS2,uS4 TOFs
@@ -1138,9 +1144,9 @@ public class SerialConnector implements Runnable {
 										timestamp,inMotion,sensorReading),
 										System.currentTimeMillis()
 /*,null*/);
-						/*log(sensorReading.toString()) ;*/	
-						/* log("Got uS sensor info..!!") ;
-						 printByteArray(bytes) ;*/				
+						logger.debug(sensorReading.toString()) ;	
+						 logger.debug("Got uS sensor info..!!") ;
+						 /*printByteArray(bytes) ;*/				
 					}else {
 						result = new RelateEvent(RelateEvent.NEW_MEASUREMENT, d,
 								new Measurement(rxId, txId,
@@ -1151,7 +1157,7 @@ public class SerialConnector implements Runnable {
 										System.currentTimeMillis()
 /*,null*/);
 					}
-					/*log(result);*/
+					logger.debug(result);
 					/* filter events */
 					if (invalidID(rxId) || invalidID(txId)) {
 						
@@ -1199,7 +1205,7 @@ public class SerialConnector implements Runnable {
 				thlUs4 = unsign2(bytes[16],bytes[17]) ;
 				calibration = new Calibration(ablUs1,ablUs2,ablUs4,
 						mblUs1,mblUs2,mblUs4,thlUs1,thlUs2,thlUs4) ;
-				/*log(calibration.toString()) ;*/
+				logger.debug(calibration.toString()) ;
 				result = new RelateEvent(RelateEvent.CALIBRATION_INFO, /*relate.getLocalDevice(),*/ null,
 						null,System.currentTimeMillis(),
 /*null,*/calibration);
@@ -1241,7 +1247,7 @@ public class SerialConnector implements Runnable {
 		hostInfo += (" Device type: "+getHostInfoDeviceType(a)) ;
 		hostInfo += (" Machine Name: "+getHostInfoMachineName(a)) ;
 		hostInfo += (" Side: "+a[50]) ;
-		log(hostInfo);
+		logger.info(hostInfo);
 	}
 	
 	private static String getHostInfoIp(byte[] a) {
@@ -1315,7 +1321,7 @@ public class SerialConnector implements Runnable {
 	 */
 	private void setMonitoring(boolean monitoring) {
 		if (monitoringThreadRunning) {
-			log("Requesting monitoring thread to " + (monitoring ? "wake up" : "suspend"));
+			logger.info("Requesting monitoring thread to " + (monitoring ? "wake up" : "suspend"));
 			this.monitoring = monitoring;
 			synchronized(changeMonitoringWaiter) {
 				changeMonitoringWaiter.notify();
@@ -1324,7 +1330,7 @@ public class SerialConnector implements Runnable {
 				} catch (InterruptedException e) {
 				}
 			}
-			log("Monitoring thread signalled its " + (monitoring ? "wake up" : "suspend"));
+			logger.info("Monitoring thread signalled its " + (monitoring ? "wake up" : "suspend"));
 		}
 	}
 	
@@ -1339,10 +1345,10 @@ public class SerialConnector implements Runnable {
 				/* shutting down */
 				commHelper.sendMessage(BLOCK_DONGLE, 50000);
 				awaken = false ;
-				log("shut down dongle");
+				logger.info("shut down dongle");
 			}
 		} catch (Exception e) {
-			log("changing dongle state to " + (dongle_on ? "on" : "off") + "failed!");
+			logger.error("changing dongle state to " + (dongle_on ? "on" : "off") + "failed!");
 			e.printStackTrace();
 		}
 		synchronized(changeStateWaiter) {
@@ -1408,19 +1414,19 @@ public class SerialConnector implements Runnable {
 			try {
 					if (dongle_on != last_dongle_state) {
 						last_dongle_state = dongle_on;
-						log("Setting dongle state to " + dongle_on);
+						logger.info("Setting dongle state to " + dongle_on);
 						changeDongleState();
 					}
 					
 					synchronized(changeMonitoringWaiter) {
 						// if we are not in monitoring mode, block until woken up again
 						if (!monitoring) {
-							log("Monitoring thread now suspending");
+							logger.info("------- Monitoring thread now suspending");
 							// first notify setMonitoring that we received the signal to block
 							changeMonitoringWaiter.notify();
 							// block until setMonitoring notifies us
 							changeMonitoringWaiter.wait();
-							log("Monitoring thread now waking up again");
+							logger.info("+++++++ Monitoring thread now waking up again");
 							// and then again notify setMonitoring that we received the signal
 							changeMonitoringWaiter.notify();
 						}
@@ -1432,7 +1438,7 @@ public class SerialConnector implements Runnable {
 						commHelper.forceBaudrateReset();
 
 						if (++i % 100 == 0) {
-							log("### Statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
+							logger.info("### Statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
 							/*for (Iterator iter=unknownMessages.keySet().iterator(); iter.hasNext(); ) {
 								Integer key = (Integer) iter.next();
 								System.out.println(key + " --> " + unknownMessages.get(key));
@@ -1445,13 +1451,13 @@ public class SerialConnector implements Runnable {
 						
 						//System.out.println("theByte: " + unsign((byte) theByte));
 						if(theByte == DEVICE_MEASUREMENT_SIGN) {
-							//log("Measurement message from dongle");
+							logger.debug("Measurement message from dongle");
 							mesbytes = receiveHelper(MES_SIZE);
 							event = parseEvent(mesbytes);
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse measurement event (now " + (++numDecodeErrors) + " decoding errors)");
+								logger.warn("could not parse measurement event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						} else if(theByte == US_SENSOR_INFO_SIGN) {
 								usSensorInfoBytes = new byte[MES_SIZE+US_SENSOR_INFO_LENGTH] ;
@@ -1463,11 +1469,11 @@ public class SerialConnector implements Runnable {
 								if (event != null) {
 									postEvent(event);
 								} else {
-									log("could not parse US info event (now " + (++numDecodeErrors) + " decoding errors)");
+									logger.warn("could not parse US info event (now " + (++numDecodeErrors) + " decoding errors)");
 								}
 								//System.out.println("Got US info");
-/*						} else if (theByte == END_COMM) {
-						log("dongle is sleeping.");*/
+						} else if (theByte == END_COMM) {
+							logger.info("dongle is sleeping.");
 						} 
 						else if(theByte == HOST_INFO_SIGN){
 							//log("Host info message from dongle");
@@ -1476,7 +1482,7 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse host info event (now " + (++numDecodeErrors) + " decoding errors)");
+								logger.warn("could not parse host info event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == CALIBRATION_INFO_SIGN && !calibrated) {
 							//log("Calibration info message from dongle");
@@ -1487,14 +1493,14 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse calibration info event (now " + (++numDecodeErrors) + " decoding errors)");
+								logger.warn("could not parse calibration info event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == FIRMWARE_VERSION_SIGN && firmwareVersion == null) {
 							//log("Firmware version message from dongle");
 							firmwareVersionBytes = receiveHelper(FIRMWARE_VERSION_LENGTH);
 							firmwareVersion = ""+unsign(firmwareVersionBytes[0])+"."+
 							+unsign(firmwareVersionBytes[1]) ;
-							log("The firmware version for dongle "+commHelper.getLocalRelateId()+" is "+
+							logger.warn("The firmware version for dongle "+commHelper.getLocalRelateId()+" is "+
 									firmwareVersion+".") ;
 						}else if(theByte == ERROR_CODE_SIGN) {
 							errorCode = unsign(receiveHelper(1)[0]) ;
@@ -1503,9 +1509,9 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse error code event (now " + (++numDecodeErrors) + " decoding errors)");
+								logger.warn("could not parse error code event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
-							log("error code: "+errorCode) ;
+							logger.debug("error code: "+errorCode) ;
 						}else if(theByte == DN_STATE_SIGN) {
 							//log("Dongle network state message from dongle");
 							byte[] tmp1 = receiveHelper(2);
@@ -1524,7 +1530,7 @@ public class SerialConnector implements Runnable {
 							if (event != null) {
 								postEvent(event);
 							} else {
-								log("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
+								logger.warn("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
 							System.out.println("_________________________ Hit one ____________________________");
@@ -1535,7 +1541,7 @@ public class SerialConnector implements Runnable {
 							boolean ack = (unsign(tmp[1]) & 0x80) != 0;
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
-							log("---------- Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
+							logger.info("---------- Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
 									(ack ? " with" : " without") + "ack  (" + numMsgBytes + " bytes): ");
 							printByteArray(msgPart);
 
@@ -1545,7 +1551,7 @@ public class SerialConnector implements Runnable {
 							postEvent(event);
 						}
 						else {
-//							log("Unkown message from dongle: " + theByte + " (now " + (++numDecodeErrors) + " decoding errors)");
+							logger.warn("Unkown message from dongle: " + theByte + " (now " + (++numDecodeErrors) + " decoding errors)");
 							numUnknownMessages++;
 							Integer count;
 							if (unknownMessages.containsKey(new Integer(theByte)))
@@ -1556,15 +1562,15 @@ public class SerialConnector implements Runnable {
 							unknownMessages.put(new Integer(theByte), count);
 						}
 					}else {       //Dongle probably sleeping..
-						//log("Dongle sleeping?");
+						logger.info("Dongle sleeping?");
 						if (dongle_on != last_dongle_state) {
 							last_dongle_state = dongle_on;
-							log("nothing to read..!!");
+							logger.error("nothing to read..!!");
 							changeDongleState();
 						}
 					}
 			}catch (Exception ex) {
-				log("failure in main loop: " + ex);
+				logger.fatal("failure in main loop: " + ex);
 				ex.printStackTrace();
 				try {
 					Thread.sleep(2000);
@@ -1614,6 +1620,9 @@ public class SerialConnector implements Runnable {
 			else if (args[1].equals("diag_off")) {
 				connector.switchDiagnosticMode(false);
 			}
+			else if (args[1].equals("wakeup")) {
+				boolean ret = connector.commHelper.sendMessage(new byte[] {'C', '1'}, MAXIMUM_TIMEOUT);
+			}
 			else if (args[1].equals("monitoring")) {
 				connector.run();
 			}
@@ -1624,3 +1633,4 @@ public class SerialConnector implements Runnable {
 	}
 	
 }
+
