@@ -909,11 +909,6 @@ public class SerialConnector implements Runnable {
 		
 		// before sending a message to the dongle, need to suspend the reading thread
 		setMonitoring(false);
-		// and wait for the dongle to settle down - why o why is this necessary?
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {}
-		
 		try {
 			ret = commHelper.sendMessage(msg, MAXIMUM_TIMEOUT);
 		}
