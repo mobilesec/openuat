@@ -206,7 +206,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
         
         // need to specifically request no padding or padding would enlarge the one 128 bits block to two
         try {
-			Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+			Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
 			cipher.init(Cipher.ENCRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] rfMessage = cipher.doFinal(nonce);
@@ -230,7 +230,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToString(receivedDelays));
 			
 			// check that the delays match the (encrypted) message sent by the remote
-			cipher = Cipher.getInstance("AES/CBC/NoPadding");
 			cipher.init(Cipher.DECRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] receivedNonce = cipher.doFinal(receivedRfMessage);
