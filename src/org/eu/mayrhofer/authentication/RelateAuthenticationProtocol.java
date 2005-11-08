@@ -145,7 +145,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );
 				}
 				else {
-					logger.info("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					logger.debug("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
 				}
 			}
 			// test code end
