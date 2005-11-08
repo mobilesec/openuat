@@ -1,7 +1,15 @@
 package org.eu.mayrhofer.authentication;
 
+import org.eu.mayrhofer.authentication.exceptions.*;
+
 import java.io.*;
 import java.net.UnknownHostException;
+
+import org.apache.log4j.Logger;
+
+import uk.ac.lancs.relate.MessageQueue;
+import uk.ac.lancs.relate.RelateEvent;
+import uk.ac.lancs.relate.SerialConnector;
 
 /// <summary>
 /// This is the main class of the relate authentication software: it ties together
@@ -10,6 +18,9 @@ import java.net.UnknownHostException;
 /// all events coming in from them.
 /// </summary>
 public class RelateAuthenticationProtocol extends AuthenticationEventSender {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class);
+
 	public static final int TcpPort = 54321;
 	// TODO: make configurable!
 	public static final String SerialPort = "/dev/ttyUSB0";
@@ -61,14 +72,108 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 */
 	private byte[] sharedKey = null;
 	
+	/** The serial connector object (singleton) used to talk to the dongle. */
+	private SerialConnector serialConn;
+	
+	/** Temporary: hold the background thread for the serial connector, needs better integration. */
+	private Thread serialThread;
+	/** Also temporary, needs better integration. */
+	private int referenceMeasurement;
+	
 	/** Initialized the authentication object with the contact data of the remote device to authenticate with.
+	 * This constructor also gets a reference measurement to the remote relate id by itself. This needs better
+	 * integration with the Relate framework, the reference measurement should come from "the outside".
 	 * 
 	 * @param remoteHost The hostname/IP address of the remote device.
 	 * @param remoteRelateId The relate id of the remote device.
 	 */
-	public RelateAuthenticationProtocol(String remoteHost, byte remoteRelateId) {
+	public RelateAuthenticationProtocol(String remoteHost, byte remoteRelateId) 
+			throws ConfigurationErrorException, InternalApplicationException {
 		this.remoteHost = remoteHost;
 		this.remoteRelateId = remoteRelateId;
+
+		serialConn = SerialConnector.getSerialConnector();
+		
+		// immediately get the reference measurement to the specific remote relate dongle
+		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
+		if (serialConn.connect(SerialPort, 0, 255))
+			logger.info("-------- connected successfully to dongle, including first handshake. My ID is " + serialConn.getLocalRelateId());
+		else {
+			logger.error("-------- failed to connect to dongle, didn't get my ID.");
+			throw new ConfigurationErrorException("Can't connect to dongle.");
+		}
+		
+		int localRelateId = serialConn.getLocalRelateId();
+		if (localRelateId == -1)
+			throw new InternalApplicationException("Dongle reports id -1, which is an error case.");
+		
+		// start the backgroud thread for getting messages from the dongle
+		serialThread = new Thread(serialConn);
+		serialThread.start();
+		
+		// This message queue is used to receive events from the dongle, in this case the reference measurements.
+		MessageQueue eventQueue = new MessageQueue();
+		serialConn.registerEventQueue(eventQueue);
+
+		// test code begin
+		class ThreeInts { public long sum = 0, n = 0, sum2 = 0; };
+		ThreeInts[] s = new ThreeInts[256]; for(int i=0; i<256; i++) s[i] = new ThreeInts();
+		// test code end
+		
+		// wait for the first reference measurements to come in (needed to compute the delays)
+		logger.debug("Trying to get reference measurement to relate id " + remoteRelateId);
+		int numMeasurements = 0;
+		referenceMeasurement = 0;
+		while (numMeasurements < 10) {
+			while (eventQueue.isEmpty())
+				eventQueue.waitForMessage(500);
+			RelateEvent e = (RelateEvent) eventQueue.getMessage();
+			if (e == null) {
+				logger.warn("Warning: got null message out of message queue! This should not happen.");
+				continue;
+			}
+			
+			// test code begin
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
+				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
+					logger.debug("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					ThreeInts x = s[e.getMeasurement().getId()];
+					x.n++;
+					x.sum += (int) e.getMeasurement().getDistance();
+					x.sum2 += ((int) e.getMeasurement().getDistance() * (int) e.getMeasurement().getDistance());
+					logger.debug("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
+							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );
+				}
+				else {
+					logger.info("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+				}
+			}
+			// test code end
+			
+			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
+					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
+				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
+				referenceMeasurement += (int) e.getMeasurement().getDistance();
+				numMeasurements++;
+			}
+		}
+		referenceMeasurement /= numMeasurements;
+		logger.info("Mean over reference measurements to dongle " + remoteRelateId + ": " + referenceMeasurement);
+		
+		serialConn.unregisterEventQueue(eventQueue);
+	}
+
+	/** Currently this causes the serial connector to be shut down properly. TODO: Needs better integration with
+	 * the Relate framework.
+	 */
+	public void dispose() {
+		serialConn.die();
+		try {
+			serialThread.join();
+		}
+		catch (InterruptedException e) {
+		}
+		serialConn.disconnect();
 	}
 	
 	/** Starts the spatial authentication protocol in the background. Listeners should subscribe to
@@ -124,7 +229,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        // remember the secret key shared with the other device
 	        sharedKey = keys[0];
 	        // and use the agreed authentication key to start the dongle authentication
-	        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, remoteRelateId);
+	        DongleProtocolHandler dh = new DongleProtocolHandler(remoteRelateId);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler());
         	state = STATE_DONGLE_AUTH_RUNNING;
         	dh.startAuthentication(keys[1], rounds, 0);
@@ -203,7 +308,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	        // remember the secret key shared with the other device
     	        outer.sharedKey = keys[0];
     	        // and use the agreed authentication key to start the dongle authentication
-    	        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, outer.remoteRelateId);
+    	        DongleProtocolHandler dh = new DongleProtocolHandler(outer.remoteRelateId);
     	        dh.addAuthenticationProgressHandler(outer.new DongleAuthenticationEventHandler());
             	dh.startAuthentication(keys[1], outer.rounds, 0);
     	    }

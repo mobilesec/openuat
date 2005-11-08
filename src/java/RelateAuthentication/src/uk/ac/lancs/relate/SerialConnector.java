@@ -225,21 +225,6 @@ class SerialCommunicationHelper {
 	}
 	
 	/**
-	 * /** Receive data from the dongle. Works in both modes and does not affect
-	 * the current mode setting.
-	 * 
-	 * @param bytes
-	 *            The number of bytes to read from the dongle.
-	 * @param timeout
-	 *            Maximum time in milliseconds to wait for the data.
-	 * @return The data received from the dongle or null if unable to receive
-	 *         (due to timeout or unable to read).
-	 */
-	/*public byte[] receiveFromDongle(int bytes, long timeout) {
-		return receiveFromDongle(bytes, null, timeout);
-	}*/
-
-	/**
 	 * This method also resceives from the dongle, but skips bytes until they
 	 * match an expected start header (e.g. acknowledge).
 	 * 
@@ -247,7 +232,9 @@ class SerialCommunicationHelper {
 	 *            The number of bytes to read from the dongle.
 	 * @param expectedStart
 	 *            The expected bytes that the dongle should return. On success,
-	 *            the returned data will start with exactly these bytes.
+	 *            the returned data will start with exactly these bytes. This
+	 *            parameter can be null to indicate that there is no expectation.
+	 *            In this case, any data sent by the dongle will be returned.
 	 * @param timeout
 	 *            Maximum time in milliseconds to wait for the data.
 	 * @return The data received from the dongle or null if unable to receive
@@ -575,7 +562,13 @@ public class SerialConnector implements Runnable {
 	 */
 	private boolean alive = true;
 
-	/** Flag indicating wether this instance is running */
+	/** Flag indicating wether this instance is connected to a dongle. 
+	 * It is changed by connect (setting it to true on success) and disconnect (setting it to false).
+	 * 
+	 * @see #connect
+	 * @see #disconnect
+	 * @see #isOperational
+	 */
 	private boolean operational = false;
 
 	/**
@@ -583,8 +576,8 @@ public class SerialConnector implements Runnable {
 	 * getSerialConnector to wait for an instance to be initialised before
 	 * returning it.
 	 * 
-	 * @see #getSerialConnector(boolean)
-	 * @see #SerialConnector(boolean)
+	 * @see #getSerialConnector
+	 * @see #SerialConnector
 	 */
 	private boolean initialised = false;
 
@@ -814,9 +807,11 @@ public class SerialConnector implements Runnable {
 	 * @param port		  the port to connect with 
 	 @param minID         the lowest valid ID for relate objects
 	 @param maxID         the highest valid ID for relate objects
-	 @return the ID of the attached dongle or -1 if something went wrong
+	 @return true if connection could be established, false otherwise.
+	 
+	 @see getLocalRelateId
 	 **/
-	public int connect(String port, int minID, int maxID) {
+	public boolean connect(String port, int minID, int maxID) {
 		// TODO: get the hostinfo from somewhere
 		// this.hostInfo = configuration.getFormat();
 
@@ -826,8 +821,9 @@ public class SerialConnector implements Runnable {
 		/*
 		 * System.out.print("hostInfo: \n"); printByteArray(hostInfo) ;
 		 */
-		if (commHelper.connect(port)) {
+		if (!operational && commHelper.connect(port)) {
 			try {
+				logger.info("Connecting to dongle on port " + port);
 				// send the host info to the dongle
 				/*byte[] hostInfoMsg = new byte[hostInfo.length + 1];
 				// the command byte
@@ -842,26 +838,30 @@ public class SerialConnector implements Runnable {
 					return -1;*/
 				
 				// send a wakeup command to the dongle so that it will definitely start sending measurements
-				if (! commHelper.sendMessage(UNBLOCK_DONGLE, MAXIMUM_TIMEOUT))
-					return -1;
+				if (! commHelper.sendMessage(UNBLOCK_DONGLE, MAXIMUM_TIMEOUT)) {
+					logger.error("Could not send UNBLOCK_DONGLE message to dongle, initialization failed.");
+					return false;
+				}
 
 				// switch to receiving mode
 				commHelper.switchToReceive();
+				logger.info("Switched dongle to receive mode, local id is " + commHelper.getLocalRelateId());
 
 				operational = true;
 			} catch (Exception e) {
 				logger.fatal("Could not connect to dongle!");
 				e.printStackTrace();
-				return -1;
+				return false;
 			}
 		}
-		return commHelper.getLocalRelateId();
+		if (commHelper.getLocalRelateId() == -1)
+			logger.error("Reported dongle id is -1, connect failed.");
+		return commHelper.getLocalRelateId() != -1;
 	}
 	
 	/** Switches the diagnostic mode on or off
 	 * 
 	 * @param diagnostic If true, dongle is switched to diagnostic mode.
-	 * @param timeout The maximum time in ms to wait for the command to be sent.
 	 * @return true if successful
 	 */
 	public boolean switchDiagnosticMode(boolean diagnostic) {
@@ -950,10 +950,41 @@ public class SerialConnector implements Runnable {
 			((MessageQueue) i.next()).addMessage(e);
 	}
 	
+	/** Disconnects the serial port to free the ressource. */
 	public void disconnect() {
 		commHelper.disconnect();
 		operational = false;
 	}
+	
+	/** Returns the status of this serial connector object. It is changed by connect (setting
+	 * it to true on success) and disconnect (setting it to false).
+	 * 
+	 * @return true when successfully connected to a dongle, false otherwise.
+	 * 
+	 * @see #operational
+	 * @see #connect
+	 * @see #disconnect
+	 */
+	public boolean isOperational() {
+		return operational;
+	}
+	
+	/** Returns the relate id of the locally attached dongle. It is the id
+	 * reported by the dongle when the host last got its attention.
+	 * It is guaranteed to be set after a call to connect() (even if it might
+	 * be erroneous because of communication problems with the dongle, although 
+	 * this is highly unlikely).
+	 * 
+	 * @return The local dongle id or -1 if unknown (e.g. when not connected
+	 *         to a dongle or when the last command failed to get the dongle's
+	 *         attention).
+	 *         
+	 * @see #connect
+	 * @see SerialCommunicationHelper#getLocalRelateId
+	 */
+	public int getLocalRelateId() {
+		return commHelper.getLocalRelateId();
+	}	
 	
 	public void die() {
 		alive = false;
@@ -1608,8 +1639,11 @@ public class SerialConnector implements Runnable {
 			System.exit(1);
 		}
 		
-		int myId = connector.connect(args[0], 0, 50);
-		System.out.println("My relate id is " + myId);
+		if (!connector.connect(args[0], 0, 50)) {
+			System.out.println("Error connecting to dongle!");
+			System.exit(1);
+		}
+		System.out.println("My relate id is " + connector.getLocalRelateId());
 		
 		if (args.length > 1) {
 			if (args[1].equals("start_auth")) {

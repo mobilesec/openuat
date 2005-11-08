@@ -38,10 +38,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	private static final int NonceByteLength = 16;
 	
 	/** The number of authentication steps, not including the rounds of the dongles. */
-	public static final int AuthenticationStages = 5;
-	
-	/** The serial port to use for connecting to the dongle. */
-	private String serialPort;
+	public static final int AuthenticationStages = 3;
 	
 	/** The remote relate id to perform the authentication with. */
 	private byte remoteRelateId;
@@ -60,11 +57,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	
 	/** Initializes the dongle protocol handler by setting the serialPort and remoteRelateId members.
 	 * 
-	 * @param serialPort The serial port to use for connecting to the dongle.
 	 * @param remoteRelateId The remote relate id to perform the authentication with.
 	 */
-	public DongleProtocolHandler(String serialPort, byte remoteRelateId) {
-		this.serialPort = serialPort;
+	public DongleProtocolHandler(byte remoteRelateId) {
 		this.remoteRelateId = remoteRelateId;
 	}
 	
@@ -103,7 +98,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *         If true, returns the received RF message in receivedRfMessage
 	 * @throws DongleAuthenticationProtocolException
 	 */
-	private boolean handleDongleCommunication(byte[] nonce, byte[] sentRfMessage, int rounds, byte[] receivedNonce, byte[] receivedRfMessage) throws DongleAuthenticationProtocolException {
+	private boolean handleDongleCommunication(byte[] nonce, byte[] sentRfMessage, 
+			int rounds, byte[] receivedNonce, byte[] receivedRfMessage) 
+			throws DongleAuthenticationProtocolException, InternalApplicationException {
 		// first check the parameters
 		if (remoteRelateId < 0)
 			throw new DongleAuthenticationProtocolException("Remote relate id must be >= 0.");
@@ -118,72 +115,17 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		SerialConnector serialConn = SerialConnector.getSerialConnector();
 		
-		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-		int localRelateId = serialConn.connect(serialPort, 0, 255);
-		if (localRelateId != -1)
-			logger.info("-------- connected successfully to dongle, including first handshake. My ID is " + localRelateId);
-		else {
-			logger.error("-------- failed to connect to dongle, didn't get my ID.");
-			return false;
-		}
+		// fetch our own relate id from the serial connector (which must be connected by now)
+		if (! serialConn.isOperational())
+			throw new InternalApplicationException("Error: connection to dongle has not yet been established!");
+		int localRelateId = serialConn.getLocalRelateId();
+		if (localRelateId == -1)
+			throw new InternalApplicationException("Error: local relate id is reported as -1, which is an error case!!");
 		
 		// This message queue is used to receive events from the dongle.
 		MessageQueue eventQueue = new MessageQueue();
-
-		// start the backgroud thread for getting messages from the dongle
-		Thread serialThread = new Thread(serialConn);
 		serialConn.registerEventQueue(eventQueue);
-		serialThread.start();
 
-		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationStages + rounds, "Connected to dongle.");
-
-		// test code
-		class ThreeInts { public long sum = 0, n = 0, sum2 = 0; };
-		ThreeInts[] s = new ThreeInts[256]; for(int i=0; i<256; i++) s[i] = new ThreeInts();
-		
-		// wait for the first reference measurements to come in (needed to compute the delays)
-		logger.debug("Trying to get reference measurement to relate id " + remoteRelateId);
-		int numMeasurements = 0;
-		referenceMeasurement = 0;
-		while (numMeasurements < 10) {
-			while (eventQueue.isEmpty())
-				eventQueue.waitForMessage(500);
-			RelateEvent e = (RelateEvent) eventQueue.getMessage();
-			if (e == null) {
-				logger.warn("Warning: got null message out of message queue! This should not happen.");
-				continue;
-			}
-			
-			// test code begin
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
-				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
-					//logger.debug("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
-					ThreeInts x = s[e.getMeasurement().getId()];
-					x.n++;
-					x.sum += (int) e.getMeasurement().getDistance();
-					x.sum2 += ((int) e.getMeasurement().getDistance() * (int) e.getMeasurement().getDistance());
-					//logger.debug("To dongle " + e.getMeasurement().getId() + ": n=" + x.n + ", sum=" + x.sum + ", sum2=" + x.sum2);
-					/*logger.debug("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
-							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );*/
-				}
-				else {
-					logger.info("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
-				}
-			}
-			// test code end
-			
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
-					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
-				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
-				referenceMeasurement += (int) e.getMeasurement().getDistance();
-				numMeasurements++;
-			}
-		}
-		referenceMeasurement /= numMeasurements;
-		logger.info("Mean over reference measurements to dongle " + remoteRelateId + ": " + referenceMeasurement);
-
-		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3, AuthenticationStages + rounds, "Got reference measurement");
-		
 		// construct the start-of-authentication message and sent it to the dongle
 		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound, referenceMeasurement)) {
 			logger.error("ERROR: could not send start-of-authentication packet to dongle");
@@ -191,7 +133,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			return false;
 		}
 
-		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4, AuthenticationStages + rounds, "Initiated authentication mode in dongle");
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationStages + rounds, "Initiated authentication mode in dongle");
 		
 		// and wait for the measurements and authentication data to be received
 		int lastCompletedRound = -1;
@@ -238,18 +180,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				addPart(receivedNonce, new byte[] {(byte) delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
-				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 4 + lastCompletedRound, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
+				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
 		}
 
 		serialConn.unregisterEventQueue(eventQueue);
-		serialConn.die();
-		try {
-			serialThread.join();
-		}
-		catch (InterruptedException e) {
-		}
-		serialConn.disconnect();
 		
 		return true;
 	}
@@ -284,7 +219,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] decryptedRfMessage = cipher.doFinal(receivedRfMessage);
 
-			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 5 + rounds, AuthenticationStages + rounds, "Connected to dongle.");
+			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + rounds, AuthenticationStages + rounds, "Received all dongle messages");
 
 			// the lower bits must match
 			if (compareBits(receivedNonce, decryptedRfMessage, EntropyBitsPerRound * rounds))
