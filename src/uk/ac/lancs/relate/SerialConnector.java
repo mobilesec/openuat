@@ -20,7 +20,7 @@ import org.apache.log4j.Logger;
  */
 class SerialCommunicationHelper {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(SerialCommunicationHelper.class.toString());
+	private static Logger logger = Logger.getLogger(SerialCommunicationHelper.class);
 	
 	/** List of available ports returned by the javax.comm API.  */
 	private String[] portNames = null;
@@ -545,7 +545,11 @@ class SerialCommunicationHelper {
 
 public class SerialConnector implements Runnable {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(SerialConnector.class.toString());
+	private static Logger logger = Logger.getLogger(SerialConnector.class);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics");
 
 	/**
 	 * At the moment, there can only be a single instance of SerialConnector.
@@ -1161,7 +1165,7 @@ public class SerialConnector implements Runnable {
 					/* filter events */
 					if (invalidID(rxId) || invalidID(txId)) {
 						
-						 System.out.println("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
+						 logger.debug("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
 						 (invalidID(txId) ? "" + txId : ""));
 						 
 						result = null;
@@ -1438,7 +1442,7 @@ public class SerialConnector implements Runnable {
 						commHelper.forceBaudrateReset();
 
 						if (++i % 100 == 0) {
-							logger.info("### Statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
+							statisticsLogger.info("### Statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
 							/*for (Iterator iter=unknownMessages.keySet().iterator(); iter.hasNext(); ) {
 								Integer key = (Integer) iter.next();
 								System.out.println(key + " --> " + unknownMessages.get(key));
@@ -1551,8 +1555,7 @@ public class SerialConnector implements Runnable {
 							postEvent(event);
 						}
 						else {
-							logger.warn("Unkown message from dongle: " + theByte + " (now " + (++numDecodeErrors) + " decoding errors)");
-							numUnknownMessages++;
+							logger.debug("Unkown message from dongle: " + theByte + " (now " + (++numUnknownMessages) + " decoding errors)");
 							Integer count;
 							if (unknownMessages.containsKey(new Integer(theByte)))
 								count = (Integer) unknownMessages.get(new Integer(theByte));
