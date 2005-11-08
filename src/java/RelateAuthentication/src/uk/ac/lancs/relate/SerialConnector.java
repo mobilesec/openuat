@@ -189,15 +189,24 @@ class SerialCommunicationHelper {
 			serialPort = (SerialPort) portId.open("RelatePort", 500);
 			try {
 				logger.info("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
+				/* according to http://forum.java.sun.com/thread.jspa?threadID=673793&tstart=0, this fixes the params not supported IOException
+				 * that can't be caught because it occurs in native code.
+				 */
+				//Thread.sleep(10);
+				System.out.println("horrible hack line 1");
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
 						SerialPort.PARITY_NONE);
 				// so that read on the getInputStream does not hang indefinitely but times out
+				//Thread.sleep(10);
+				System.out.println("horrible hack line 2");
 				serialPort.enableReceiveTimeout(MAGIC_4);
 				if (!serialPort.isReceiveTimeoutEnabled())
 					logger.warn("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
-				//serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+				//Thread.sleep(10);
+				System.out.println("horrible hack line 3");
+				serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			} catch (UnsupportedCommOperationException e) {
 				logger.error("UnsupportedCommOperationException") ;
 				e.printStackTrace();
@@ -372,7 +381,7 @@ class SerialCommunicationHelper {
 			}
 		} catch (IOException ex) {
 			logger.error("Geting dongle's attention failed due to " + ex);
-			ex.printStackTrace();
+			//ex.printStackTrace();
 		}
 		if (localId != -1) {
 			logger.info("Number of trials before getting ACK:"+counter) ;
@@ -507,18 +516,23 @@ class SerialCommunicationHelper {
 	public synchronized void forceBaudrateReset() {
 		// This is _really_ nasty! Why do we need to reset the baud rate continuously?
 		// The baud rate just resets itself to 19200 if we don't do that pariodically!
-		try {
-			if (serialPort.getBaudRate() != (this.interacting ? 19200 : 57600))
-				logger.warn("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to " + (this.interacting ? 19200 : 57600));
-				
-			serialPort.setSerialPortParams(this.interacting ? 19200 : 57600,
-				SerialPort.DATABITS_8,
-				SerialPort.STOPBITS_1,
-				SerialPort.PARITY_NONE);
-		} catch (Exception e) {
-			// sometimes there are just exceptions from the native routines - ignore them
-			// dirty hack
-			//e.printStackTrace();
+		if (serialPort.getBaudRate() != (this.interacting ? 19200 : 57600)) {
+			try {
+				logger.warn("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to "
+								+ (this.interacting ? 19200 : 57600));
+
+				// Thread.sleep(10);
+				System.out.println("horrible hack line 4");
+				serialPort.setSerialPortParams(
+						this.interacting ? 19200 : 57600,
+						SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
+						SerialPort.PARITY_NONE);
+			} catch (Exception e) {
+				// sometimes there are just exceptions from the native routines
+				// - ignore them
+				// dirty hack
+				// e.printStackTrace();
+			}
 		}
 	}
 }
