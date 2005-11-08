@@ -905,8 +905,7 @@ public class SerialConnector implements Runnable {
 		msg[ind++] = (byte) (referenceMeasurement >> 8); 
 		msg[ind++] = (byte) (referenceMeasurement & 0xff);
 		
-		System.out.println("_________ constructed authentication packet: ___________");
-		printByteArray(msg);
+		logger.debug("Constructed authentication packet: " + byteArrayToString(msg));
 		
 		// before sending a message to the dongle, need to suspend the reading thread
 		setMonitoring(false);
@@ -1266,11 +1265,13 @@ public class SerialConnector implements Runnable {
 		return result;
 	}
 	
-	private static void printByteArray(byte[] a) {
+	/** This is just a small helper function used to convert a byte array to a string for debugging purposes. */
+	public static String byteArrayToString(byte[] a) {
+		String ret = "";
 		for (int i = 0; i < a.length; i++){
-			System.out.print("["+i+"]="+unsign(a[i])+" ") ;
+			ret += ("["+i+"]="+unsign(a[i])+" ") ;
 		}
-		System.out.println();
+		return ret;
 	}
 	
 	private void printHostInfo(byte[] a) {
@@ -1568,7 +1569,6 @@ public class SerialConnector implements Runnable {
 								logger.warn("could not parse dongle network state event (now " + (++numDecodeErrors) + " decoding errors)");
 							}
 						}else if(theByte == AUTHENTICATION_PACKET_SIGN) {
-							System.out.println("_________________________ Hit one ____________________________");
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
 							// this uppermost bit indicates if we had an acknowledge
@@ -1576,9 +1576,8 @@ public class SerialConnector implements Runnable {
 							boolean ack = (unsign(tmp[1]) & 0x80) != 0;
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
-							logger.info("---------- Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
-									(ack ? " with" : " without") + "ack  (" + numMsgBytes + " bytes): ");
-							printByteArray(msgPart);
+							logger.debug("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
+									(ack ? " with" : " without") + " ack  (" + numMsgBytes + " bytes): " + byteArrayToString(msgPart));
 
 							event = new RelateEvent(RelateEvent.AUTHENTICATION_INFO, 
 									new Device(remoteRelateId, System.currentTimeMillis(), null, null, null, null, 0, new Boolean(true)), 
