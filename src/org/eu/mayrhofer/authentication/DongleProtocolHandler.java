@@ -82,7 +82,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *            The number of rounds to use. Due to the protocol and hardware
 	 *            limitations, the security of this authentication is given by
 	 *            rounds * EnropyBitsPerRound.
-	 * @param receivedNonce
+	 * @param receivedDelays
 	 *            The received nonce transported by the ultrasond delays from
 	 *            the remote dongle. It is assumed that this array is
 	 *            initialized by the caller with the same length as nonce, but

@@ -1283,7 +1283,7 @@ public class SerialConnector implements Runnable {
 		hostInfo += (" Device type: "+getHostInfoDeviceType(a)) ;
 		hostInfo += (" Machine Name: "+getHostInfoMachineName(a)) ;
 		hostInfo += (" Side: "+a[50]) ;
-		logger.info(hostInfo);
+		logger.debug(hostInfo);
 	}
 	
 	private static String getHostInfoIp(byte[] a) {
