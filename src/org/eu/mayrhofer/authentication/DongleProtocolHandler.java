@@ -157,7 +157,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				lastCompletedRound = e.round;
 				logger.info("Received authentication part from dongle " + remoteRelateId + 
 						": round " + lastCompletedRound + 
-						(e.ack ? " with" : "without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+						(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
 						SerialConnector.byteArrayToString(e.authenticationPart));
 			}
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
@@ -230,6 +230,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToString(receivedDelays));
 			
 			// check that the delays match the (encrypted) message sent by the remote
+			cipher = Cipher.getInstance("AES/CBC/NoPadding");
 			cipher.init(Cipher.DECRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] receivedNonce = cipher.doFinal(receivedRfMessage);
