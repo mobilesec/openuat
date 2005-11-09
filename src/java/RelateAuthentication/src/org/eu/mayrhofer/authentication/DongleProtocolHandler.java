@@ -137,9 +137,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		
 		// and wait for the measurements and authentication data to be received
 		int lastCompletedRound = -1;
-		int messageBitsPerRound = sentRfMessage.length / rounds;
-		if (sentRfMessage.length > messageBitsPerRound * rounds)
+		int messageBitsPerRound = (sentRfMessage.length * 8) / rounds;
+		if (sentRfMessage.length * 8 > messageBitsPerRound * rounds)
 			messageBitsPerRound++;
+		logger.error("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
 		
 		while (lastCompletedRound < rounds) {
 			while (eventQueue.isEmpty())
@@ -151,7 +152,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			}
 			if (e.getType() == RelateEvent.AUTHENTICATION_INFO && e.getDevice().getId() == remoteRelateId) {
 				// if it is the last round, it might have less bits
-				int curBits = e.round < rounds ? messageBitsPerRound : (sentRfMessage.length - messageBitsPerRound * rounds); 
+				int curBits = e.round < rounds ? messageBitsPerRound : (sentRfMessage.length * 8 - messageBitsPerRound * rounds); 
 				// authentication info event: just remember the bits received with it
 				addPart(receivedRfMessage, e.authenticationPart, e.round * messageBitsPerRound, curBits);
 				lastCompletedRound = e.round;
