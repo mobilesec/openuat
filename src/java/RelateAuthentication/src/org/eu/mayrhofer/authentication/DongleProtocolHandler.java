@@ -159,7 +159,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				logger.info("Received authentication part from dongle " + remoteRelateId + 
 						": round " + lastCompletedRound + 
 						(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-						SerialConnector.byteArrayToString(e.authenticationPart));
+						SerialConnector.byteArrayToHexString(e.authenticationPart));
 			}
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId) {
@@ -202,8 +202,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
         r.nextBytes(nonce);
 
     	logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
-    	logger.debug("My shared authentication key is " + SerialConnector.byteArrayToString(sharedKey));
-    	logger.debug("My nonce is " + SerialConnector.byteArrayToString(nonce));
+    	logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
+    	logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
         
         // need to specifically request no padding or padding would enlarge the one 128 bits block to two
         try {
@@ -217,7 +217,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Encryption went wrong, got " + rfMessage.length + " bytes instead of 16.");
 				return;
 			}
-			logger.debug("My RF packet is " + SerialConnector.byteArrayToString(rfMessage));
+			logger.debug("My RF packet is " + SerialConnector.byteArrayToBinaryString(rfMessage));
 
 			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
 			
@@ -227,15 +227,15 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				return;
 			}
 
-			logger.debug("Received RF packet is " + SerialConnector.byteArrayToString(receivedRfMessage));
-			logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToString(receivedDelays));
+			logger.debug("Received RF packet is " + SerialConnector.byteArrayToBinaryString(receivedRfMessage));
+			logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToBinaryString(receivedDelays));
 			
 			// check that the delays match the (encrypted) message sent by the remote
 			cipher.init(Cipher.DECRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] receivedNonce = cipher.doFinal(receivedRfMessage);
 
-			logger.debug("Received nonce is " + SerialConnector.byteArrayToString(receivedNonce));
+			logger.debug("Received nonce is " + SerialConnector.byteArrayToBinaryString(receivedNonce));
 
 			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + rounds, AuthenticationStages + rounds, "Decrypted remote message");
 

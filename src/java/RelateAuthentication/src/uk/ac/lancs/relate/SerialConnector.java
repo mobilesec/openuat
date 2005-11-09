@@ -919,7 +919,7 @@ public class SerialConnector implements Runnable {
 		msg[ind++] = (byte) (referenceMeasurement >> 8); 
 		msg[ind++] = (byte) (referenceMeasurement & 0xff);
 		
-		logger.debug("Constructed authentication packet: " + byteArrayToString(msg));
+		logger.debug("Constructed authentication packet: " + byteArrayToDecString(msg));
 		
 		// before sending a message to the dongle, need to suspend the reading thread
 		setMonitoring(false);
@@ -1274,11 +1274,29 @@ public class SerialConnector implements Runnable {
 		return result;
 	}
 	
-	/** This is just a small helper function used to convert a byte array to a string for debugging purposes. */
-	public static String byteArrayToString(byte[] a) {
+	/** This is just a small helper function used to convert a byte array to a string of decimals for debugging purposes. */
+	public static String byteArrayToDecString(byte[] a) {
 		String ret = "";
 		for (int i = 0; i < a.length; i++){
 			ret += ("["+i+"]="+unsign(a[i])+" ") ;
+		}
+		return ret;
+	}
+
+	/** This is just a small helper function used to convert a byte array to a string of hex for debugging purposes. */
+	public static String byteArrayToHexString(byte[] a) {
+		String ret = "";
+		for (int i = 0; i < a.length; i++){
+			ret += ("["+i+"]="+Integer.toHexString(unsign(a[i]))+" ") ;
+		}
+		return ret;
+	}
+	
+	/** This is just a small helper function used to convert a byte array to a binary string. */
+	public static String byteArrayToBinaryString(byte[] a) {
+		String ret = "";
+		for (int i = 0; i < a.length; i++){
+			ret += Integer.toBinaryString(unsign(a[i]));
 		}
 		return ret;
 	}
@@ -1586,7 +1604,7 @@ public class SerialConnector implements Runnable {
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
 							logger.debug("Got RF authentication packet from remote relate id " + remoteRelateId + " at round " + curRound +
-									(ack ? " with" : " without") + " ack  (" + numMsgBytes + " bytes): " + byteArrayToString(msgPart));
+									(ack ? " with" : " without") + " ack  (" + numMsgBytes + " bytes): " + byteArrayToDecString(msgPart));
 
 							event = new RelateEvent(RelateEvent.AUTHENTICATION_INFO, 
 									new Device(remoteRelateId, System.currentTimeMillis(), null, null, null, null, 0, new Boolean(true)), 
