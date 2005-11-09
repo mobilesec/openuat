@@ -1292,10 +1292,11 @@ public class SerialConnector implements Runnable {
 		return ret;
 	}
 	
-	/** This is just a small helper function used to convert a byte array to a binary string. */
+	/** This is just a small helper function used to convert a byte array to a binary string. 
+	 * Attention: this binary string is printed in "normal" form, i.e. MSB first, LSB last. */
 	public static String byteArrayToBinaryString(byte[] a) {
 		String ret = "";
-		for (int i = 0; i < a.length; i++){
+		for (int i = a.length-1; i >=0; i--){
 			ret += Integer.toBinaryString(unsign(a[i]));
 		}
 		return ret;
