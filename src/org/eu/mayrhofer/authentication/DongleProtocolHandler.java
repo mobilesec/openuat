@@ -203,20 +203,21 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				receivedRoundsUS.set(lastAuthPart, true);
 				
 				// measurement event for the authentication partner: re-use the round from the authentication info event
-				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();
-				// WATCHME: at the moment we use only 3 bits, but that might change....
-				int delay = (delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset;
 				// still do a sanity check (within our accuracy range)
-				if (delay > (1 << (EntropyBitsPerRound+1)) || delay < 0) {
+				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
 					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference");
 					continue;
 				}
+				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
+				// WATCHME: at the moment we use only 3 bits, but that might change....
+				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
 				// and add to the receivedNonce for later comparison
-				addPart(receivedDelays, new byte[] {(byte) delay}, lastAuthPart * EntropyBitsPerRound, EntropyBitsPerRound);
+				addPart(receivedDelays, new byte[] {delay}, lastAuthPart * EntropyBitsPerRound, EntropyBitsPerRound);
 				lastCompletedRound = lastAuthPart;
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
-						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
+						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay & 0x07) + 
+						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}));
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
 		}
