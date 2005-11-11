@@ -541,7 +541,26 @@ class SerialCommunicationHelper {
  * * This class handles communication protocols, data's exchange and parsing
  * between a Relate dongle and its host device (laptop, desktop, PDA, projector) *
  * 
- * @author Chris Kray, Henoc Agbota, extensively restructured by Rene Mayrhofer
+ * To use this class, only a few steps are necessary:<br>
+ * 1. Call the static method getSerialConnector to get the singleton object.<br>
+ * 2. Call the connect method with the serial port name to use.<br>
+ * 3. Register (at least) one event queue that will receive decoded events with registerEventQueue.
+ * 4. Create a thread object for the SerialConnector object and start the thread.<br>
+ * Optionally, the setHostInfo, switchDiagnosticMode and startAuthenticationWith methods
+ * can be used to talk to the dongle at any time. When using one of these methods, the
+ * background thread will be suspended until the dongle interaction has been completed.<br>
+ * The getLocalRelateId method can be used at any time to query the local id reported by the
+ * connected dongle (after connect has been called).
+ * 
+ * @see #getSerialConnector()
+ * @see #connect
+ * @see #registerEventQueue
+ * @see #setHostInfo
+ * @see #switchDiagnosticMode
+ * @see #startAuthenticationWith
+ * @see #getLocalRelateId
+ * 
+ * @author Rene Mayrhofer, heavily based on code by Chris Kray, Henoc Agbota, especially the parseEvent method
  */
 
 public class SerialConnector implements Runnable {
@@ -556,7 +575,7 @@ public class SerialConnector implements Runnable {
 	 * At the moment, there can only be a single instance of SerialConnector.
 	 * This singleton is held here and returned by getSerialConnector.
 	 * 
-	 * @see #getSerialConnector(boolean)
+	 * @see #getSerialConnector
 	 */
 	private static SerialConnector sConn = null;
 	
@@ -591,7 +610,7 @@ public class SerialConnector implements Runnable {
 	 * returning it.
 	 * 
 	 * @see #getSerialConnector
-	 * @see #SerialConnector
+	 * @see #SerialConnector()
 	 */
 	private boolean initialised = false;
 
@@ -622,13 +641,6 @@ public class SerialConnector implements Runnable {
 
 	/** flag indicating wether still waiting for calibration info */
 	private boolean calibrated = false;
-
-	/** Configuration object used to obtain and send host info */
-	// private Configuration configuration = null;
-	/** queue to push new measurements onto */
-	// private MessageQueue queue = null;
-	/** relate's event queue */
-	// private MessageQueue relateQueue = null;
 
 	/** The list of MessageQueues to send new events to. 
 	 * @see #registerEventQueue(MessageQueue)
