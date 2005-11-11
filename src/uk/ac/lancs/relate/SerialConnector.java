@@ -897,16 +897,15 @@ public class SerialConnector implements Runnable {
 		return true;
 	}
 	
-	public boolean startAuthenticationWith(int remoteRelateId, byte[] nonce, byte[] rfMessage, int rounds, int bitsPerRound, int referenceMeasurement) {
+	public boolean startAuthenticationWith(int remoteRelateId, byte[] nonce, byte[] rfMessage, int rounds, int bitsPerRound) {
 		if (nonce.length != 16 || rfMessage.length != 16 || rounds < 2 || rounds > 255 
-				|| remoteRelateId < 0 || remoteRelateId > 255 || bitsPerRound < 1 
-				|| referenceMeasurement > 2500) {
+				|| remoteRelateId < 0 || remoteRelateId > 255 || bitsPerRound < 1) {
 			logger.fatal("ERROR in parameters while constructing start-of-auth packet!");
 			// TODO: this should actually be an exception, since this is a sanity check for something that shouldn't happen
 			return false;
 		}
 		
-		byte msg[] = new byte[38];
+		byte msg[] = new byte[36];
 		int ind=0;
 		boolean ret = false;
 		
@@ -915,11 +914,9 @@ public class SerialConnector implements Runnable {
 		System.arraycopy(nonce, 0, msg, ind, nonce.length); ind += nonce.length;
 		System.arraycopy(rfMessage, 0, msg, ind, rfMessage.length); ind += rfMessage.length;
 		msg[ind++] = (byte) rounds;
-		msg[ind++] = (byte) bitsPerRound; 
-		msg[ind++] = (byte) (referenceMeasurement >> 8); 
-		msg[ind++] = (byte) (referenceMeasurement & 0xff);
+		msg[ind++] = (byte) bitsPerRound;
 		
-		logger.debug("Constructed authentication packet: " + byteArrayToDecString(msg));
+		logger.debug("Constructed authentication packet: " + byteArrayToHexString(msg));
 		
 		// before sending a message to the dongle, need to suspend the reading thread
 		setMonitoring(false);
@@ -1600,7 +1597,7 @@ public class SerialConnector implements Runnable {
 							byte[] tmp = receiveHelper(3);
 							int remoteRelateId = unsign(tmp[0]);
 							// this uppermost bit indicates if we had an acknowledge
-							int curRound = unsign(tmp[1]) % 0x7f;
+							int curRound = unsign(tmp[1]) & 0x7f;
 							boolean ack = (unsign(tmp[1]) & 0x80) != 0;
 							int numMsgBytes = unsign(tmp[2]);
 							byte[] msgPart = receiveHelper(numMsgBytes);
@@ -1676,7 +1673,7 @@ public class SerialConnector implements Runnable {
 			if (args[1].equals("start_auth")) {
 				byte[] tmpMsg = new byte[16];
 				for (int i=0; i<tmpMsg.length; i++) tmpMsg[i] = (byte) 0xaa;
-				connector.startAuthenticationWith(12, tmpMsg, tmpMsg, 43, 3, 0);
+				connector.startAuthenticationWith(Integer.parseInt(args[2]), tmpMsg, tmpMsg, 43, 3);
 			}
 			else if (args[1].equals("diag_on")) {
 				connector.switchDiagnosticMode(true);
@@ -1691,6 +1688,7 @@ public class SerialConnector implements Runnable {
 				connector.run();
 			}
 		}
+		connector.run();
 		
 		System.out.println("done");
 		System.exit(0);
