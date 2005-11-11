@@ -1334,7 +1334,9 @@ public class SerialConnector implements Runnable {
 	public static String byteArrayToBinaryString(byte[] a) {
 		String ret = "";
 		for (int i = a.length-1; i >=0; i--){
-			ret += Integer.toBinaryString(unsign(a[i]));
+			for (int j=7; j >= 0; j--)
+				ret += (a[i] >> j) & 0x1;
+			ret += " ";
 		}
 		return ret;
 	}

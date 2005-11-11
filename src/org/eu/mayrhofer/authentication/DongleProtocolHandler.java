@@ -107,11 +107,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		if (remoteRelateId < 0)
 			throw new DongleAuthenticationProtocolException("Remote relate id must be >= 0.");
 		if (nonce == null || nonce.length != NonceByteLength)
-			throw new DongleAuthenticationProtocolException("Expecting random nonce with a length of 16 Bytes.");
+			throw new DongleAuthenticationProtocolException("Expecting random nonce with a length of " + NonceByteLength + " Bytes.");
 		if (sentRfMessage == null || sentRfMessage.length != NonceByteLength)
-			throw new DongleAuthenticationProtocolException("Expecting RF message with a length of 16 Bytes.");
+			throw new DongleAuthenticationProtocolException("Expecting RF message with a length of " + NonceByteLength + " Bytes.");
 		if (receivedRfMessage == null || receivedRfMessage.length != NonceByteLength)
-			throw new DongleAuthenticationProtocolException("Received RF message will have 16 Bytes, expecting pre-allocated array.");
+			throw new DongleAuthenticationProtocolException("Received RF message will have " + NonceByteLength + " Bytes, expecting pre-allocated array.");
 		if (rounds < 2)
 			throw new DongleAuthenticationProtocolException("Need at least 2 rounds for the interlock protocol to be secure.");
 
@@ -138,14 +138,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationStages + rounds, "Initiated authentication mode in dongle");
 		
 		// and wait for the measurements and authentication data to be received
-		int lastCompletedRound = -1;
+		int lastAuthPart = -1, lastCompletedRound = -1;
 		BitSet receivedRoundsRF = new BitSet(rounds), receivedRoundsUS = new BitSet(rounds);
 		int messageBitsPerRound = (sentRfMessage.length * 8) / rounds;
 		if (sentRfMessage.length * 8 > messageBitsPerRound * rounds)
 			messageBitsPerRound++;
 		logger.error("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
 		
-		while (lastCompletedRound < rounds) {
+		while (lastCompletedRound < rounds-1) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
@@ -170,9 +170,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				int curBits = e.round < rounds ? messageBitsPerRound : (sentRfMessage.length * 8 - messageBitsPerRound * (rounds-1)); 
 				// authentication info event: just remember the bits received with it
 				addPart(receivedRfMessage, e.authenticationPart, (e.round-1) * messageBitsPerRound, curBits);
-				lastCompletedRound = e.round-1;
+				lastAuthPart = e.round-1;
 				logger.info("Received authentication part from dongle " + remoteRelateId + 
-						": round " + lastCompletedRound + 
+						": round " + (lastAuthPart+1) + 
 						(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
 						SerialConnector.byteArrayToHexString(e.authenticationPart));
 			}
@@ -186,21 +186,21 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					continue;
 				}
 				// sanity check
-				if (lastCompletedRound >= rounds) {
+				if (lastAuthPart >= rounds) {
 					logger.warn("Ignoring received delayed measurement for round number " + (lastCompletedRound+1) + ", only expected " + rounds + " rounds");
 					continue;
 				}
 				// even more sanity...
-				if (lastCompletedRound < 0) {
+				if (lastAuthPart < 0) {
 					logger.info("Got measurement event before getting an authentication packet - ignoring");
 					continue;
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				if (lastCompletedRound >= 0 && receivedRoundsUS.get(lastCompletedRound)) {
+				if (receivedRoundsUS.get(lastAuthPart)) {
 					logger.warn("Ignoring received delayed measurement for round " + (lastCompletedRound+1) + " since it was already received earlier.");
 					continue;
 				}
-				receivedRoundsUS.set(lastCompletedRound, true);
+				receivedRoundsUS.set(lastAuthPart, true);
 				
 				// measurement event for the authentication partner: re-use the round from the authentication info event
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
@@ -213,10 +213,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					continue;
 				}
 				// and add to the receivedNonce for later comparison
-				addPart(receivedDelays, new byte[] {(byte) delay}, lastCompletedRound * EntropyBitsPerRound, EntropyBitsPerRound);
+				addPart(receivedDelays, new byte[] {(byte) delay}, lastAuthPart * EntropyBitsPerRound, EntropyBitsPerRound);
+				lastCompletedRound = lastAuthPart;
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", computed nonce part from delay: " + (delay >= 0 ? delay : delay + 0xff));
-				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
+				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
 		}
 		serialConn.unregisterEventQueue(eventQueue);
@@ -240,7 +241,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	private void handleCompleteProtocol() throws InternalApplicationException, DongleAuthenticationProtocolException {
 		// first create the local nonce
         SecureRandom r = new SecureRandom();
-        byte[] nonce = new byte[16];
+        byte[] nonce = new byte[NonceByteLength];
         r.nextBytes(nonce);
 
     	logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
@@ -253,17 +254,17 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			cipher.init(Cipher.ENCRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] rfMessage = cipher.doFinal(nonce);
-			if (rfMessage.length != 16) {
+			if (rfMessage.length != NonceByteLength) {
 				logger.error("Encryption went wrong, got "
 						+ rfMessage.length + " bytes");
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Encryption went wrong, got " + rfMessage.length + " bytes instead of 16.");
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Encryption went wrong, got " + rfMessage.length + " bytes instead of " + NonceByteLength + ".");
 				return;
 			}
 			logger.debug("My RF packet is " + SerialConnector.byteArrayToBinaryString(rfMessage));
 
 			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
 			
-			byte[] receivedDelays = new byte[16], receivedRfMessage = new byte[16];
+			byte[] receivedDelays = new byte[NonceByteLength], receivedRfMessage = new byte[NonceByteLength];
 			if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedDelays, receivedRfMessage)) {
 				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
 				return;
@@ -276,16 +277,34 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			cipher.init(Cipher.DECRYPT_MODE,
 					new SecretKeySpec(sharedKey, "AES"));
 			byte[] receivedNonce = cipher.doFinal(receivedRfMessage);
+			if (receivedNonce.length != NonceByteLength) {
+				logger.error("Decryption went wrong, got "
+						+ receivedNonce.length + " bytes");
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Decryption went wrong, got " + receivedNonce.length + " bytes instead of " + NonceByteLength + ".");
+				return;
+			}
 
 			logger.debug("Received nonce is " + SerialConnector.byteArrayToBinaryString(receivedNonce));
 
 			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + rounds, AuthenticationStages + rounds, "Decrypted remote message");
 
 			// the lower bits must match
-			if (compareBits(receivedNonce, receivedDelays, EntropyBitsPerRound * rounds))
+			int numBitsToCheck = EntropyBitsPerRound * rounds <= rfMessage.length * 8 ? 
+						EntropyBitsPerRound * rounds : 
+						rfMessage.length * 8;
+			if (compareBits(receivedNonce, receivedDelays, numBitsToCheck)) {
+				logger.info("Ultrasound delays match received nonce, authentication succeeded");
 				raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
-			else
+			}
+			else {
+				logger.warn("Received RF packet length is " + receivedRfMessage.length);
+				logger.warn("Decrypted nonce length is " + receivedNonce.length);
+				logger.warn("Received delays length is " + receivedDelays.length);
+				logger.warn("Ultrasound delays do not match received nonce (checking " + numBitsToCheck + " bits)!");
+				logger.warn("Expected: " + SerialConnector.byteArrayToBinaryString(receivedNonce));
+				logger.warn("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
 				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
+			}
 				
 		} catch (NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
