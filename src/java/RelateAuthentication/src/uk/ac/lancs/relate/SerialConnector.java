@@ -695,9 +695,6 @@ public class SerialConnector implements Runnable {
 	/** Prefix to measurement bytes 'M' */
 	private final static int DEVICE_MEASUREMENT_SIGN = (byte) 'M';
 
-	/** bytes array containing host information */
-	private byte[] hostInfo = new byte[HOST_INFO_LENGTH];
-
 	private Object changeStateWaiter = new Object();
 
 	/** Minimal value for a relate id */
@@ -823,7 +820,7 @@ public class SerialConnector implements Runnable {
 	 @param maxID         the highest valid ID for relate objects
 	 @return true if connection could be established, false otherwise.
 	 
-	 @see getLocalRelateId
+	 @see #getLocalRelateId
 	 **/
 	public boolean connect(String port, int minID, int maxID) {
 		// TODO: get the hostinfo from somewhere
@@ -832,20 +829,10 @@ public class SerialConnector implements Runnable {
 		this.MIN_ID = minID;
 		this.MAX_ID = maxID;
 		this.serialPort = port;
-		/*
-		 * System.out.print("hostInfo: \n"); printByteArray(hostInfo) ;
-		 */
+
 		if (!operational && commHelper.connect(port)) {
 			try {
 				logger.info("Connecting to dongle on port " + port);
-				// send the host info to the dongle
-				/*byte[] hostInfoMsg = new byte[hostInfo.length + 1];
-				// the command byte
-				hostInfoMsg[0] = (byte) 72;
-				System.arraycopy(hostInfo, 0, hostInfoMsg, 1, hostInfo.length);
-				logger.info("Sending hostinfo to dongle and waiting for it to ack");
-				commHelper.sendMessage(hostInfoMsg, hostInfo, 10000);
-				logger.info("local device id: " + commHelper.getLocalRelateId() + "\n");*/
 				
 				// this just get's the dongle's attention to see if it's there and implicitly reads its id
 				/*if (! commHelper.interruptDongle(MAXIMUM_TIMEOUT))
@@ -897,6 +884,25 @@ public class SerialConnector implements Runnable {
 		return true;
 	}
 	
+	/** This method switches the dongle into authentication mode with the specified remote dongle.
+	 * During authentication mode, it will report the authentication info parts and delayed measurements
+	 * from the remote, but will not send valid US pulses itself. Therefore, during authentication mode,
+	 * other dongles will not get any measurements from this one.
+	 * 
+	 * @param remoteRelateId The remote relate id to authenticate with. It must be a valid relate id and
+	 * 			the other dongle needs to be put into authentication mode too.
+	 * @param nonce The nonce that is is used for deriving the US delays. Currently, it must have a length
+	 *          of 16 bytes.
+	 * @param rfMessage The RF message to be sent to the remote dongle, split into multiple parts.
+	 *          Currently, it must have a length of 16 bytes.
+	 * @param rounds The number of rounds of the interlock protocol to use. Must be >= 2. 
+	 * @param bitsPerRound The number of bits of the nonce that are used for deriving the delays at 
+	 *          each round. With the current hardware, this needs to be 1 <= rounds <= 3.
+	 * 
+	 * @return true if the start-of-authentication message could be sent to the dongle. false otherwise.
+	 *
+	 * @author Rene Mayrhofer
+	 */
 	public boolean startAuthenticationWith(int remoteRelateId, byte[] nonce, byte[] rfMessage, int rounds, int bitsPerRound) {
 		if (nonce.length != 16 || rfMessage.length != 16 || rounds < 2 || rounds > 255 
 				|| remoteRelateId < 0 || remoteRelateId > 255 || bitsPerRound < 1) {
@@ -922,6 +928,40 @@ public class SerialConnector implements Runnable {
 		setMonitoring(false);
 		try {
 			ret = commHelper.sendMessage(msg, MAXIMUM_TIMEOUT);
+		}
+		catch (PortInUseException e) {
+			return false;
+		}
+		catch (IOException e) {
+			return false;
+		}
+		
+		// start the reading again
+		setMonitoring(true);
+		return ret;
+	}
+	
+	/** Sets the current host info by sending the appropriate message to the dongle. The dongle
+	 * will then start broadcasting this host info.
+	 *
+	 * @param hostInfo The properly formatted host info.
+	 * @return true if the host info message could be sent to the dongle. false otherwise.
+	 */ 
+	public boolean setHostInfo(byte[] hostInfo) {
+		boolean ret = false;
+		
+		// send the host info to the dongle
+		byte[] hostInfoMsg = new byte[hostInfo.length + 1];
+		// the command byte
+		hostInfoMsg[0] = HOST_INFO_SIGN;
+		System.arraycopy(hostInfo, 0, hostInfoMsg, 1, hostInfo.length);
+		logger.debug("Host info packet: " + byteArrayToHexString(hostInfoMsg));
+		logger.info("Sending hostinfo to dongle and waiting for it to ack");
+		
+		// before sending a message to the dongle, need to suspend the reading thread
+		setMonitoring(false);
+		try {
+			commHelper.sendMessage(hostInfoMsg, MAXIMUM_TIMEOUT);
 		}
 		catch (PortInUseException e) {
 			return false;
