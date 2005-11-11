@@ -167,7 +167,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				receivedRoundsRF.set(e.round-1, true);
 
 				// if it is the last round, it might have less bits
-				int curBits = e.round < rounds ? messageBitsPerRound : (sentRfMessage.length * 8 - messageBitsPerRound * rounds); 
+				int curBits = e.round < rounds ? messageBitsPerRound : (sentRfMessage.length * 8 - messageBitsPerRound * (rounds-1)); 
 				// authentication info event: just remember the bits received with it
 				addPart(receivedRfMessage, e.authenticationPart, (e.round-1) * messageBitsPerRound, curBits);
 				lastCompletedRound = e.round-1;
@@ -188,6 +188,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				// sanity check
 				if (lastCompletedRound >= rounds) {
 					logger.warn("Ignoring received delayed measurement for round number " + (lastCompletedRound+1) + ", only expected " + rounds + " rounds");
+					continue;
+				}
+				// even more sanity...
+				if (lastCompletedRound < 0) {
+					logger.info("Got measurement event before getting an authentication packet - ignoring");
 					continue;
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
