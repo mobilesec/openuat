@@ -313,7 +313,11 @@ class SerialCommunicationHelper {
 				// the first byte must already match, but checking is cheap so do it anyway
 				for (int i=0; i<expectedStart.length; i++)
 					if (received[i] != expectedStart[i]) {
-						logger.debug("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
+						logger.info("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
+						String correctBytes = "";
+						for (int j=0; j<i; j++)
+							correctBytes += Integer.toString(received[j]) + " ";
+						logger.info("Earlier (correct) bytes were " + correctBytes);
 						// error in comparison
 						return null;
 					}
