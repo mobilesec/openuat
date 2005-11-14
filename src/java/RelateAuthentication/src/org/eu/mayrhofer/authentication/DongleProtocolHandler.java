@@ -33,8 +33,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 */
 	private static final int EntropyBitsPerRound = 3;
 	
-	/** The offset of the bits carrying the delay information in the reported measurement. */
-	private static final int EntropyBitsOffset = 7;
+	/** The offset of the bits carrying the delay information in the reported measurement. 
+	 * This is 8 bits because the SerialConnector already converts the dongle measurements to 
+	 * millimeter instead of providing the 11-bit field the dongle reports. */
+	private static final int EntropyBitsOffset = 8;
 	
 	/** The current length in byte of the nonce (and implicitly the RF messages) expected by all parameters. */
 	private static final int NonceByteLength = 16;
