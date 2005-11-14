@@ -393,6 +393,7 @@ class SerialCommunicationHelper {
 		}
 		else
 			logger.error("Could not get dongle's attention after " + counter + " tries and " + (System.currentTimeMillis()-startTime) + "ms");
+		
 		return localId ;
 	}
 	
@@ -474,6 +475,33 @@ class SerialCommunicationHelper {
 					logger.error("port " + port + " is currently in use by " +
 							portId.getCurrentOwner());
 				} else {
+					/* Set serial port parameters directly that are not yet accessible via the (deeply broken) javax.comm API.
+					 * This is of course very OS specific, but hopefully only needs to be done once and not each time the port
+					 * is opened (i.e. in prepareMode).
+					 */
+					if (System.getProperty("os.name").startsWith("Linux")) {
+						logger.info("Using Linux-specific configuration of the serial port.");
+						try {
+							// WATCHME: sometimes, the option -opost fixes the "10" duplication, but is not enough 
+							// ("255" duplication still happens and seems to be solved by the raw option)
+							String[] cmdArgs = new String[] {"stty", "-F", port, "raw"};
+							int exitCode = Runtime.getRuntime().exec(cmdArgs).waitFor();
+							if (exitCode != 0) {
+								logger.error("Unable to set serial port parameters to prohibit post-processing of received characters. " +
+										"Exit code of 'stty -F " + port + " raw' was " + exitCode + ". " +
+								        "This is non-fatal, but the dongle communication might now be subtly broken.");
+							}
+						}
+						catch (InterruptedException e) {
+							logger.error("The process was interrupted while trying to set serial port parameters with " + e + ". " +
+							    "This is non-fatal, but the dongle communication might now be subtly broken.");
+						}
+						catch (IOException e) {
+							logger.error("The process execution failed while trying to set serial port parameters with " + e + ". " +
+						    "This is non-fatal, but the dongle communication might now be subtly broken.");
+						}
+					}
+					
 					return true;
 				}
 			}
