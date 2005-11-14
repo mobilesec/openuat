@@ -313,11 +313,11 @@ class SerialCommunicationHelper {
 				// the first byte must already match, but checking is cheap so do it anyway
 				for (int i=0; i<expectedStart.length; i++)
 					if (received[i] != expectedStart[i]) {
-						logger.info("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
-						String correctBytes = "";
-						for (int j=0; j<i; j++)
-							correctBytes += Integer.toString(received[j]) + " ";
-						logger.info("Earlier (correct) bytes were " + correctBytes);
+						logger.warn("Received bytes didn't match: byte " + i + " is " + received[i] + " but expected " + expectedStart[i]);
+						String echoBytes = "";
+						for (int j=0; j<expectedStart.length; j++)
+							echoBytes += Integer.toHexString(received[j]) + " ";
+						logger.debug("Echoed bytes were " + echoBytes);
 						// error in comparison
 						return null;
 					}
@@ -522,7 +522,7 @@ class SerialCommunicationHelper {
 		// The baud rate just resets itself to 19200 if we don't do that pariodically!
 		if (serialPort.getBaudRate() != (this.interacting ? 19200 : 57600)) {
 			try {
-				logger.warn("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to "
+				logger.debug("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to "
 								+ (this.interacting ? 19200 : 57600));
 
 				// Thread.sleep(10);
