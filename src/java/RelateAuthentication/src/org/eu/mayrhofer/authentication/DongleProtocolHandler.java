@@ -213,12 +213,16 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				// WATCHME: at the moment we use only 3 bits, but that might change....
-				byte delay = (byte) ((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
+				// if it's negative because of noise, we'll just get the 2's complement, so correct that
+				byte delay = (byte) Math.abs((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
+				// special case: a bit error can carry over
+				if ((delayedMeasurement & 0x80) != 0)
+					delay++;
 				// and add to the receivedNonce for later comparison
 				addPart(receivedDelays, new byte[] {delay}, lastAuthPart * EntropyBitsPerRound, EntropyBitsPerRound);
 				lastCompletedRound = lastAuthPart;
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
-						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay & 0x07) + 
+						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
 						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}));
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
 			}
