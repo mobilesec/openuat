@@ -162,10 +162,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					continue;
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				/*if (receivedRoundsRF.get(e.round-1)) {
+				if (receivedRoundsRF.get(e.round-1)) {
 					logger.warn("Ignoring received authentication part for round " + e.round + " since it was already received earlier.");
 					continue;
-				}*/
+				}
 				receivedRoundsRF.set(e.round-1, true);
 
 				// if it is the last round, it might have less bits
@@ -198,10 +198,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					continue;
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				/*if (receivedRoundsUS.get(lastAuthPart)) {
+				if (receivedRoundsUS.get(lastAuthPart)) {
 					logger.warn("Ignoring received delayed measurement for round " + (lastCompletedRound+1) + " since it was already received earlier.");
 					continue;
-				}*/
+				}
 				receivedRoundsUS.set(lastAuthPart, true);
 				
 				// measurement event for the authentication partner: re-use the round from the authentication info event
@@ -218,6 +218,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				// special case: a bit error can carry over
 				if ((delayedMeasurement & 0x80) != 0)
 					delay++;
+				delay--;
 				// and add to the receivedNonce for later comparison
 				addPart(receivedDelays, new byte[] {delay}, lastAuthPart * EntropyBitsPerRound, EntropyBitsPerRound);
 				lastCompletedRound = lastAuthPart;
@@ -231,11 +232,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		// check if everything has been received correctly
 		if (receivedRoundsRF.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required authentication parts from remote dongle.");
+			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + receivedRoundsRF.nextClearBit(0)+1);
 			return false;
 		}
 		if (receivedRoundsUS.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required delayed authentications from remote dongle.");
+			logger.error("ERROR: Did not receive all required delayed authentications from remote dongle, first missing is round " + receivedRoundsUS.nextClearBit(0)+1);
 			return false;
 		}
 		
