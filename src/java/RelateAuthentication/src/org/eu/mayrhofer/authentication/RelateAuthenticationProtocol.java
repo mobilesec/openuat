@@ -302,15 +302,20 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	    public void AuthenticationSuccess(Object remote, Object result)
     	    {
     	        System.out.println("Received authentication success event with " + remote);
-    	        byte[][] keys = (byte[][]) result;
-    	        System.out.println("Shared session key is now '" + keys[0] + "' with length " + keys[0].length + ", shared authentication key is now '" + keys[1] + "' with length " + keys[1].length);
-    	        System.out.println("Starting dongle authentication with remote relate id " + outer.remoteRelateId);
-    	        // remember the secret key shared with the other device
-    	        outer.sharedKey = keys[0];
-    	        // and use the agreed authentication key to start the dongle authentication
-    	        DongleProtocolHandler dh = new DongleProtocolHandler(outer.remoteRelateId);
-    	        dh.addAuthenticationProgressHandler(outer.new DongleAuthenticationEventHandler());
-            	dh.startAuthentication(keys[1], outer.rounds, 0);
+    	        if (result != null) {
+    	        	byte[][] keys = (byte[][]) result;
+    	        	System.out.println("Shared session key is now '" + keys[0] + "' with length " + keys[0].length + ", shared authentication key is now '" + keys[1] + "' with length " + keys[1].length);
+    	        	System.out.println("Starting dongle authentication with remote relate id " + outer.remoteRelateId);
+    	        	// remember the secret key shared with the other device
+    	        	outer.sharedKey = keys[0];
+    	        	// and use the agreed authentication key to start the dongle authentication
+    	        	DongleProtocolHandler dh = new DongleProtocolHandler(outer.remoteRelateId);
+    	        	dh.addAuthenticationProgressHandler(outer.new DongleAuthenticationEventHandler());
+    	        	dh.startAuthentication(keys[1], outer.rounds, 0);
+    	        } 
+    	        else {
+    	        	System.out.println("SUCCESS");
+    	        }
     	    }
     	    public void AuthenticationFailure(Object remote, Exception e, String msg)
     	    {
