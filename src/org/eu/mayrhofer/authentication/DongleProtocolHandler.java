@@ -311,6 +311,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				logger.warn("Ultrasound delays do not match received nonce (checking " + numBitsToCheck + " bits)!");
 				logger.warn("Expected: " + SerialConnector.byteArrayToBinaryString(receivedNonce));
 				logger.warn("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
+				logger.warn("Hamming distance between the strings is " + hammingDistance(receivedNonce, receivedDelays, numBitsToCheck));
 				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
 			}
 				
@@ -379,10 +380,29 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * @return true if all numBits are equal, false otherwise.
 	 */
 	static public boolean compareBits(byte[] s, byte[] t, int numBits) {
-		for (int i=0; i<numBits; i++)
+		// this variant is usually faster when the strings are different
+		/*for (int i=0; i<numBits; i++)
 			if (((s[i/8]) & (1 << (i%8))) != ((t[i/8]) & (1 << (i%8))))
 				return false;
-		return true;
+		return true;*/
+		return hammingDistance(s, t, numBits) == 0;
+	}
+	
+	/** Computes the hamming distance between two bit strings, starting from the LSB.
+	 * 
+	 * This method is only public for the JUnit tests, there's probably not much use for it elsewhere.
+	 * 
+	 * @param s The first bit string.
+	 * @param t The second bit string.
+	 * @param numBits The number of bits to compare (starting at LSB).
+	 * @return The hamming distance between the strings s and t (for numBits), i.e. the number of different bits.
+	 */
+	static public int hammingDistance(byte[]s, byte[] t, int numBits) {
+		int dist=0;
+		for (int i=0; i<numBits; i++)
+			if (((s[i/8]) & (1 << (i%8))) != ((t[i/8]) & (1 << (i%8))))
+				dist++;
+		return dist;
 	}
 	
 	/**
