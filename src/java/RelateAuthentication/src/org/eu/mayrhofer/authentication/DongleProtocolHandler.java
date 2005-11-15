@@ -232,11 +232,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		// check if everything has been received correctly
 		if (receivedRoundsRF.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + receivedRoundsRF.nextClearBit(0)+1);
+			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + (receivedRoundsRF.nextClearBit(0)+1));
 			return false;
 		}
 		if (receivedRoundsUS.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required delayed authentications from remote dongle, first missing is round " + receivedRoundsUS.nextClearBit(0)+1);
+			logger.error("ERROR: Did not receive all required delayed authentications from remote dongle, first missing is round " + (receivedRoundsUS.nextClearBit(0)+1));
 			return false;
 		}
 		
