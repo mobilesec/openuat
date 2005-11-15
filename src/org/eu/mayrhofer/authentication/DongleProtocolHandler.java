@@ -145,7 +145,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		int messageBitsPerRound = (sentRfMessage.length * 8) / rounds;
 		if (sentRfMessage.length * 8 > messageBitsPerRound * rounds)
 			messageBitsPerRound++;
-		logger.error("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
+		logger.info("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
 		
 		while (lastCompletedRound < rounds-1) {
 			while (eventQueue.isEmpty())
@@ -174,7 +174,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				addPart(receivedRfMessage, e.authenticationPart, (e.round-1) * messageBitsPerRound, curBits);
 				lastAuthPart = e.round-1;
 				logger.info("Received authentication part from dongle " + remoteRelateId + 
-						": round " + (lastAuthPart+1) + 
+						": round " + e.round + 
 						(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
 						SerialConnector.byteArrayToHexString(e.authenticationPart));
 			}
@@ -225,7 +225,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
 						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}));
-				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + lastCompletedRound);
+				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + (lastCompletedRound+1));
 			}
 		}
 		serialConn.unregisterEventQueue(eventQueue);
@@ -233,10 +233,12 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		// check if everything has been received correctly
 		if (receivedRoundsRF.nextClearBit(0) < rounds) {
 			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + (receivedRoundsRF.nextClearBit(0)+1));
+			logger.error(receivedRoundsRF);
 			return false;
 		}
 		if (receivedRoundsUS.nextClearBit(0) < rounds) {
 			logger.error("ERROR: Did not receive all required delayed authentications from remote dongle, first missing is round " + (receivedRoundsUS.nextClearBit(0)+1));
+			logger.error(receivedRoundsUS);
 			return false;
 		}
 		
