@@ -354,7 +354,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	    }
     	}
     	
-        if (args.length > 2 && args[0].equals("server"))
+        if (args.length > 1 && args[0].equals("server"))
         {
         	logger.info("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort, true);
