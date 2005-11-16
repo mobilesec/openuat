@@ -223,8 +223,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				if ((delayedMeasurement & 0x80) != 0)
 					delay++;
 				delay--;
+				// if it is the last round, it might have less bits
+				int curBits = lastAuthPart < rounds-1 ? EntropyBitsPerRound : (nonce.length * 8 - EntropyBitsPerRound * (rounds-1)); 
 				// and add to the receivedNonce for later comparison
-				addPart(receivedDelays, new byte[] {delay}, lastAuthPart * EntropyBitsPerRound, EntropyBitsPerRound);
+				addPart(receivedDelays, new byte[] {delay}, lastAuthPart * EntropyBitsPerRound, curBits);
 				lastCompletedRound = lastAuthPart;
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
@@ -352,13 +354,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * @param bitOffset The number of bits to shift src before adding to dest.
 	 * @param bitLen The number of bits to add from src to dest.
 	 */ 
-	static public void addPart(byte[] dest, byte[] src, int bitOffset, int bitLen) {
+	static public void addPart(byte[] dest, byte[] src, int bitOffset, int bitLen) throws InternalApplicationException {
 		if (src.length * 8 < bitLen)
-			// TODO: throw exception
-			return;
+			throw new InternalApplicationException("Not enough bits in the given array, requested to copy " + bitLen +
+					" bits, but being called with an array of " + src.length + " bytes");
 		if (dest.length * 8 < bitOffset + bitLen)
-			// TODO: throw exception
-			return;
+			throw new InternalApplicationException("Target array not long enough, requested to copy " + bitLen + 
+					" bits starting at offset " + bitOffset + " into a target array of " + dest.length + " bytes length");
 		
 		int bytePos = bitOffset / 8; // the byte to write to
 		int bitPos = bitOffset % 8;  // the bit (within the byte) to write to
