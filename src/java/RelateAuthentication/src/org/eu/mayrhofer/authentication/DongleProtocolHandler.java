@@ -166,7 +166,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
 				if (receivedRoundsRF.get(e.round-1)) {
-					logger.warn("Ignoring received authentication part for round " + e.round + " since it was already received earlier.");
+					logger.info("Ignoring received authentication part for round " + e.round + " since it was already received earlier.");
 					continue;
 				}
 				receivedRoundsRF.set(e.round-1, true);
@@ -202,7 +202,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
 				if (receivedRoundsUS.get(lastAuthPart)) {
-					logger.warn("Ignoring received delayed measurement for round " + (lastCompletedRound+1) + " since it was already received earlier.");
+					logger.info("Ignoring received delayed measurement for round " + (lastCompletedRound+1) + " since it was already received earlier.");
 					continue;
 				}
 				receivedRoundsUS.set(lastAuthPart, true);
