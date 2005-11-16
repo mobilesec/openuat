@@ -28,7 +28,7 @@
         <mkdir dir="${reports.tests}"/>
         <junit printsummary="on" haltonfailure="true">
             <classpath>
-               <pathelement path="${lib}" />
+               <pathelement path="lib.path" />
                <pathelement path="${bin}" />
             </classpath>
         	  <sysproperty key="java.library.path" value="nativelib/linux" />
@@ -49,7 +49,11 @@
     </target>
 
     <target name="run" depends="jar" description="Run jar file">
-        <java jar="${jarfile}" fork="yes" failonerror="true" />
+        <java jar="${jarfile}" fork="yes" failonerror="true" >
+            <classpath>
+               <pathelement path="lib.path" />
+            </classpath>
+        </java>
     </target>
 
     <target name="clean" description="Remove build and dist directories">
