@@ -129,6 +129,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		// This message queue is used to receive events from the dongle.
 		MessageQueue eventQueue = new MessageQueue();
 		serialConn.registerEventQueue(eventQueue);
+		
+		// start measuring the time for authentication noew
+		long startTime = System.currentTimeMillis();
 
 		// construct the start-of-authentication message and sent it to the dongle
 		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound)) {
@@ -228,6 +231,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + (lastCompletedRound+1));
 			}
 		}
+		
+		// and stop measuring now
+		logger.info("Dongle authentication protocol took " + (System.currentTimeMillis() - startTime) + " ms.");
+		
 		serialConn.unregisterEventQueue(eventQueue);
 
 		// check if everything has been received correctly

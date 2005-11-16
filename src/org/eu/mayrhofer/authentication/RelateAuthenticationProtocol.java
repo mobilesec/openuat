@@ -297,26 +297,20 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     public static void main(String[] args) throws Exception
 	{
     	class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
-    		RelateAuthenticationProtocol outer;
+    		private boolean serverMode;
+    		
+    		public TempAuthenticationEventHandler(boolean serverMode) {
+    			this.serverMode = serverMode;
+    		}
     		
     	    public void AuthenticationSuccess(Object remote, Object result)
     	    {
     	        System.out.println("Received authentication success event with " + remote);
-    	        if (result != null) {
-    	        	byte[][] keys = (byte[][]) result;
-    	        	System.out.println("Shared session key is now '" + keys[0] + "' with length " + keys[0].length + ", shared authentication key is now '" + keys[1] + "' with length " + keys[1].length);
-    	        	System.out.println("Starting dongle authentication with remote relate id " + outer.remoteRelateId);
-    	        	// remember the secret key shared with the other device
-    	        	outer.sharedKey = keys[0];
-    	        	// and use the agreed authentication key to start the dongle authentication
-    	        	DongleProtocolHandler dh = new DongleProtocolHandler(outer.remoteRelateId);
-    	        	dh.addAuthenticationProgressHandler(outer.new DongleAuthenticationEventHandler());
-    	        	dh.startAuthentication(keys[1], outer.rounds, 0);
-    	        } 
-    	        else {
-    	        	System.out.println("SUCCESS");
-    	        }
+   	        	System.out.println("SUCCESS");
+   	        	if (!serverMode)
+   	        		Runtime.getRuntime().exit(0);
     	    }
+    	    
     	    public void AuthenticationFailure(Object remote, Exception e, String msg)
     	    {
     	        System.out.println("Received authentication failure event with " + remote);
@@ -327,7 +321,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	        }
     	        if (msg != null)
     	            System.out.println("Message: " + msg);
+   	        	if (!serverMode)
+   	        		Runtime.getRuntime().exit(1);
     	    }
+
     	    public void AuthenticationProgress(Object remote, int cur, int max, String msg)
     	    {
     	        System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
@@ -338,10 +335,12 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         {
         	System.out.println("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort);
-            TempAuthenticationEventHandler h = new TempAuthenticationEventHandler();
-            h.outer = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
-            h.outer.rounds = (byte) Integer.parseInt(args[2]);
-        	h1.addAuthenticationProgressHandler(h);
+            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true);
+            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
+            r.rounds = (byte) Integer.parseInt(args[2]);
+            r.addAuthenticationProgressHandler(ht);
+            HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
+        	h1.addAuthenticationProgressHandler(hh);
             h1.startListening();
             new BufferedReader(new InputStreamReader(System.in)).readLine();
             h1.stopListening();
@@ -350,7 +349,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         {
         	System.out.println("Starting client mode");
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
-        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler());
+        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
             new BufferedReader(new InputStreamReader(System.in)).readLine();
         }
