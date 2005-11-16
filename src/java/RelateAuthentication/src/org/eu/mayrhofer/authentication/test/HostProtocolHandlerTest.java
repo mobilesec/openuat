@@ -31,7 +31,7 @@ public class HostProtocolHandlerTest extends TestCase {
         if (socketWasAlreadyOpen)
             Thread.sleep(100);
 
-        server = new HostServerSocket(PORT, false);
+        server = new HostServerSocket(PORT, true);
         server.startListening();
         socketWasAlreadyOpen = true;
     }
@@ -69,7 +69,7 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false);
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false, "");
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -83,21 +83,82 @@ public class HostProtocolHandlerTest extends TestCase {
 
         Assert.assertEquals(2, h.getReceivedSecrets());
         Assert.assertTrue(h.areSharedSecretsEqual());
+
+        h.shutdownSocketsCleanly();
     }
 
+    public void testCompleteAuthenticationWithParam() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
+    {
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false, "TEST_PARAMETER");
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(8, h.getReceivedProgress());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSharedSecretsEqual());
+        
+        Assert.assertTrue(h.areOptionalParametersSet());
+        Assert.assertTrue(h.areOptionalParametersEqual());
+    
+        h.shutdownSocketsCleanly();
+    }
+
+    public void testCompleteAuthenticationWithParamAndOpenSockets() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
+    {
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, true, "TEST_PARAMETER");
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(8, h.getReceivedProgress());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSharedSecretsEqual());
+        
+        Assert.assertTrue(h.areOptionalParametersSet());
+        Assert.assertTrue(h.areOptionalParametersEqual());
+        
+        Assert.assertTrue(h.areSocketsConnectedToEachOther());
+
+        h.shutdownSocketsCleanly();
+    }
+    
     private class EventHelper implements AuthenticationProgressHandler
     {
         private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0;
         private byte[][] sharedSessionKeys = new byte[2][], sharedAuthenticationKeys = new byte[2][];
+        private String[] optionalParameters = new String[2];
+        private Socket[] sockets = new Socket[2];
 
         public void AuthenticationSuccess(Object remote, Object result)
         {
             synchronized (this)
             {
             	int r = receivedSecrets++;
-            	byte[][] keys = (byte[][]) result;
-                sharedSessionKeys[r] = keys[0];
-                sharedAuthenticationKeys[r] = keys[1];
+            	Object[] res = (Object[]) result;
+                sharedSessionKeys[r] = (byte[]) res[0];
+                sharedAuthenticationKeys[r] = (byte[]) res[1];
+                optionalParameters[r] = (String) res[2];
+                if (res.length > 3)
+                	sockets[r] = (Socket) res[3];
             }
         }
 
@@ -139,6 +200,50 @@ public class HostProtocolHandlerTest extends TestCase {
             else
                 return SimpleKeyAgreementTest.compareByteArray(sharedSessionKeys[0], sharedSessionKeys[1]) &&
                 	SimpleKeyAgreementTest.compareByteArray(sharedAuthenticationKeys[0], sharedAuthenticationKeys[1]);
+        }
+        
+        boolean areOptionalParametersSet() 
+        {
+        	return receivedSecrets == 2 && 
+        		optionalParameters[0] != null && optionalParameters[1] != null;
+        }
+        
+        boolean areOptionalParametersEqual()
+        {
+            if (receivedSecrets != 2)
+                return false;
+            else
+            	return optionalParameters[0].equals(optionalParameters[1]);
+        }
+        
+        boolean areSocketsConnectedToEachOther()
+        {
+        	/*System.out.println("local 0: " + sockets[0].getLocalAddress() + " " + sockets[0].getLocalPort());
+        	System.out.println("local 1: " + sockets[1].getLocalAddress() + " " + sockets[1].getLocalPort());
+        	System.out.println("remote 0: " + sockets[0].getInetAddress() + " " + sockets[0].getPort());
+        	System.out.println("remote 1: " + sockets[1].getInetAddress() + " " + sockets[1].getPort());*/
+        	// hmm, that's bad - can't compare the addresses because getLocalAddress() always returns 0.0.0.0/0.0.0.0
+        	return receivedSecrets == 2 &&
+        		sockets[0] != null && sockets[1] != null &&
+        		sockets[0].isConnected() && sockets[1].isConnected() &&
+        		/*sockets[0].getLocalAddress().equals(sockets[1].getInetAddress()) &&
+        		sockets[1].getLocalAddress().equals(sockets[0].getInetAddress()) && */
+        		sockets[0].getLocalPort() == sockets[1].getPort() &&
+        		sockets[1].getLocalPort() == sockets[0].getPort();
+        }
+        
+        void shutdownSocketsCleanly() throws IOException 
+        {
+        	for (int i=0; i<sockets.length; i++) {
+        		if (sockets[i] != null && sockets[i].isConnected())
+        		{
+        			if (! sockets[i].isInputShutdown() && !sockets[i].isClosed())
+        				sockets[i].shutdownInput();
+        			if (! sockets[i].isOutputShutdown() && !sockets[i].isClosed())
+        				sockets[i].shutdownOutput();
+        			sockets[i].close();
+        		}
+        	}
         }
     }
 }

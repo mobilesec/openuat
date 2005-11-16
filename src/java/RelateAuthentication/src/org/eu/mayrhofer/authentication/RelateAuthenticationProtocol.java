@@ -191,12 +191,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * continue to start the dongle authentication.
 		 */ 
 		state = STATE_HOST_AUTH_RUNNING; 
-		this.rounds = rounds;
 		/* There is no need to unregister this new object, since it is only 
 		 * registered with a temporary HostProtocolHandler object, which will
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
-		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), true);
+		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), true, Integer.toString(rounds));
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
