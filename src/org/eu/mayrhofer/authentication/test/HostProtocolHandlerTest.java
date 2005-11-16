@@ -31,7 +31,7 @@ public class HostProtocolHandlerTest extends TestCase {
         if (socketWasAlreadyOpen)
             Thread.sleep(100);
 
-        server = new HostServerSocket(PORT);
+        server = new HostServerSocket(PORT, false);
         server.startListening();
         socketWasAlreadyOpen = true;
     }
@@ -69,7 +69,7 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h);
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;

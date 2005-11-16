@@ -27,10 +27,18 @@ public class HostServerSocket extends AuthenticationEventSender implements Runna
 
 	/** Used to signal the listening thread to stop itself. */
 	private boolean running = false;
+	
+	/** If set to true, the fully connected socket that represents a connection to a client
+	 * will not be closed as soon as the HostProtocolHandler is finished with it, but will be
+	 * passed to the authentication success event of the respective listener for further reuse. */
+	private boolean keepSocketConnected;
 
-	/** Initialized the listener socket by binding it to the specified port. */
-	public HostServerSocket(int port) throws IOException {
+	/** Initialized the listener socket by binding it to the specified port. 
+	 * @see #keepSocketConnected 
+	 */
+	public HostServerSocket(int port, boolean keepSocketConnected) throws IOException {
 		listener = new ServerSocket(port);
+		this.keepSocketConnected = keepSocketConnected;
 	}
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
@@ -77,7 +85,7 @@ public class HostServerSocket extends AuthenticationEventSender implements Runna
 			while (running) {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				Socket s = listener.accept();
-				HostProtocolHandler h = new HostProtocolHandler(s);
+				HostProtocolHandler h = new HostProtocolHandler(s, keepSocketConnected);
 				// before starting the background thread, register all our own listeners with this new event sender
 	    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
 	    			h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
