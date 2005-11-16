@@ -68,13 +68,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 */
 	private byte[] sharedKey = null;
 
-	/** The number of rounds used for the spatial authentication protocol.
-	 * It is set by HostAuthenticationEventHandler.AuthenticationSuccess.
-	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object)
-	 * @see DongleProtocolHandler#handleDongleCommunication
-	 */
-	private int rounds;
-	
 	/** If the state is STATE_DONGLE_AUTH_RUNNING, this contains a socket that is still
 	 * connected to the remote side and which is used for transmitting success or failure
 	 * messages from the dongle authentication protocol (i.e. the second stage).
@@ -246,14 +239,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        // and also extract the optional parameter (in the case of the RelateAuthenticationProtocol the number of
 	        // rounds (we assume it to be set) as well as the socket (which is assumed to be still connected to the
 	        // remote)
-	        rounds = Integer.parseInt((String) res[1]);
+	        int rounds = Integer.parseInt((String) res[2]);
 	        // this could need some error handling, but at the moment we depend on it being set
 	        socketToRemote = (Socket) res[3];
 
 	        // and use the agreed authentication key to start the dongle authentication
 	        logger.debug("Starting dongle authentication with remote relate id " + remoteRelateId + " and " + rounds + " rounds.");
 	        DongleProtocolHandler dh = new DongleProtocolHandler(remoteRelateId);
-	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler());
+	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
         	state = STATE_DONGLE_AUTH_RUNNING;
         	dh.startAuthentication((byte[]) res[1], rounds, 0);
 	    }
@@ -274,15 +267,23 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        logger.info("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        // this is not optional because we don't know the number of rounds to use yet
 	        raiseAuthenticationProgressEvent(remote, cur, 
-	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
+	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages,
 	        		msg);
 	    }
 	}
 
 	/** A helper class for handling the events from DongleProtocolHandler. */
 	private class DongleAuthenticationEventHandler implements AuthenticationProgressHandler {
+		/** The number of rounds used for the spatial authentication protocol. */
+		private int rounds;
+		
+		public DongleAuthenticationEventHandler(int rounds) {
+			this.rounds = rounds;
+		}
+		
 	    public void AuthenticationSuccess(Object remote, Object result)
 	    {
 			// TODO: check state!
@@ -310,7 +311,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        logger.info("Received dongle authentication progress event with id " + remote + " " + cur + " out of " + max + ": " + msg);
+	        logger.debug("Received dongle authentication progress event with id " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, HostProtocolHandler.AuthenticationStages + cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        		msg);
