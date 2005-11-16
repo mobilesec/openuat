@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="spatial-authentication" default="jar" basedir=".">
+    <property name="src" location="src"/>
+    <property name="bin" location="bin"/>
+    <property name="lib" location="lib"/>
+    <property name="dist" location="dist"/>
+    <property name="jarfile" location="${dist}/${ant.project.name}.jar"/>
+    <property name="reports.tests" location="reports/tests"/>
+    <property name="compile.debug" value="true"/>
+
+    <fileset id="lib.jars" dir="${lib}">
+        <include name="**/*.jar"/>
+    </fileset>
+
+    <path id="lib.path">
+        <fileset refid="lib.jars"/>
+    </path>
+
+    <target name="compile" description="Compile code">
+        <mkdir dir="${bin}"/>
+        <mkdir dir="${lib}"/>
+        <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+               classpathref="lib.path" debug="${compile.debug}" target="1.1">
+        </javac>
+    </target>
+
+    <target name="junit" depends="compile" description="Run unit tests">
+        <mkdir dir="${reports.tests}"/>
+        <junit printsummary="on" haltonfailure="true">
+            <classpath>
+               <pathelement path="${lib}" />
+               <pathelement path="${bin}" />
+            </classpath>
+        	  <sysproperty key="java.library.path" value="nativelib/linux" />
+            <batchtest todir="${reports.tests}">
+              <fileset dir="${src}">
+                <include name="**/*Test*.java"/>
+              </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="jar" depends="compile" description="Build jar">
+        <mkdir dir="${dist}"/>
+        <jar jarfile="${jarfile}" basedir="${bin}" manifest="Manifest">
+            <!-- Merge library jars into final jar file -->
+            <!-- <zipgroupfileset refid="lib.jars"/> -->
+        </jar>
+    </target>
+
+    <target name="run" depends="jar" description="Run jar file">
+        <java jar="${jarfile}" fork="yes" failonerror="true" />
+    </target>
+
+    <target name="clean" description="Remove build and dist directories">
+        <delete dir="${bin}"/>
+        <delete dir="${dist}"/>
+    </target>
+</project>
