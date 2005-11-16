@@ -342,7 +342,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (InternalApplicationException e)
         {
-            System.out.println(e);
+            logger.error(e);
             // also communicate any application exception to interested
 			// listeners
             raiseAuthenticationFailureEvent(remote, e, null);
@@ -350,17 +350,18 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (IOException e)
         {
-            //System.out.println(e);
+            logger.debug(e);
             // even if we ignore the exception and not treat it as an error
 			// case, report it to listeners
             // so that they can clean up their state of this authentication
-			// (identified by the remote
+			// (identified by the remote)
             raiseAuthenticationFailureEvent(remote, null, "Client closed connection unexpectedly\n");
             shutdownSocketCleanly();
         }
         catch (Exception e)
         {
             logger.fatal("UNEXPECTED EXCEPTION: " + e);
+            e.printStackTrace();
             shutdownSocketCleanly();
         }
         finally {
