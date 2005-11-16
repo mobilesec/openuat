@@ -1,11 +1,12 @@
 package org.eu.mayrhofer.authentication.test;
 
 import org.eu.mayrhofer.authentication.DongleProtocolHandler;
+import org.eu.mayrhofer.authentication.exceptions.*;
 
 import junit.framework.*;
 
 public class DongleProtocolHandlerTest extends TestCase {
-	public void testAddPart() {
+	public void testAddPart() throws InternalApplicationException {
 		byte[] dest = new byte[8];
 		byte[] src1 = {0x01, 0x02, 0x03};
 		byte[] src2 = {(byte) 0xff};
@@ -46,6 +47,29 @@ public class DongleProtocolHandlerTest extends TestCase {
 		Assert.assertEquals((byte) 0x01, dest[6]);
 	}
 	
+	public void testAddPart_Exceptions() {
+		byte[] dest = new byte[8];
+		byte[] src1 = {0x01, 0x02, 0x03};
+		try {
+			DongleProtocolHandler.addPart(dest, src1, 0, 25);
+			Assert.fail();
+		} catch (InternalApplicationException e) {
+			Assert.assertTrue(true);
+		}
+		try {
+			DongleProtocolHandler.addPart(dest, src1, 41, 24);
+			Assert.fail();
+		} catch (InternalApplicationException e) {
+			Assert.assertTrue(true);
+		}
+		try {
+			DongleProtocolHandler.addPart(dest, src1, 64, 1);
+			Assert.fail();
+		} catch (InternalApplicationException e) {
+			Assert.assertTrue(true);
+		}
+	}
+	
 	public void testCompareBits() {
 		byte[] a1 = {0x01, 0x02, 0x03};
 		byte[] a2 = {0x01, 0x02, 0x07};
@@ -59,5 +83,17 @@ public class DongleProtocolHandlerTest extends TestCase {
 		Assert.assertTrue(DongleProtocolHandler.compareBits(a2, a3, 21));
 		Assert.assertFalse(DongleProtocolHandler.compareBits(a2, a3, 22));
 		Assert.assertFalse(DongleProtocolHandler.compareBits(a3, a4, 22));
+	}
+
+	public void testHammingDistance() {
+		byte[] a1 = {0x01, 0x02, 0x03};
+		byte[] a2 = {0x01, 0x02, 0x07};
+		byte[] a3 = {0x01, 0x02, 0x27};
+		byte[] a4 = {0x00, 0x02, 0x27};
+		
+		Assert.assertEquals(1, DongleProtocolHandler.hammingDistance(a1, a2, 24));
+		Assert.assertEquals(2, DongleProtocolHandler.hammingDistance(a1, a3, 24));
+		Assert.assertEquals(3, DongleProtocolHandler.hammingDistance(a1, a4, 24));
+		Assert.assertEquals(1, DongleProtocolHandler.hammingDistance(a1, a4, 16));
 	}
 }
