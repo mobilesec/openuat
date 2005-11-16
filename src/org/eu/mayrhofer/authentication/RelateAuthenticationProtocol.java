@@ -3,6 +3,7 @@ package org.eu.mayrhofer.authentication;
 import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.io.*;
+import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
@@ -29,11 +30,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	private byte remoteRelateId;
 	/** The hostname/IP address of the remote device to authenticate with. */
 	private String remoteHost;
-	
-	/** The number of rounds used for the spatial authentication protocol.
-	 * @see DongleProtocolHandler#handleDongleCommunication
-	 */
-	private int rounds;
 	
 	/** Possible value of state, indicates that the authentication has not been started yet. 
 	 * @see #state 
@@ -71,6 +67,21 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * the secret key shared with the other device.
 	 */
 	private byte[] sharedKey = null;
+
+	/** The number of rounds used for the spatial authentication protocol.
+	 * It is set by HostAuthenticationEventHandler.AuthenticationSuccess.
+	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object)
+	 * @see DongleProtocolHandler#handleDongleCommunication
+	 */
+	private int rounds;
+	
+	/** If the state is STATE_DONGLE_AUTH_RUNNING, this contains a socket that is still
+	 * connected to the remote side and which is used for transmitting success or failure
+	 * messages from the dongle authentication protocol (i.e. the second stage).
+	 * It is set by HostAuthenticationEventHandler.AuthenticationSuccess.
+	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object)
+	 */
+	private Socket socketToRemote;
 	
 	/** The serial connector object (singleton) used to talk to the dongle. */
 	private SerialConnector serialConn;
@@ -195,7 +206,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * registered with a temporary HostProtocolHandler object, which will
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
-		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), true, Integer.toString(rounds));
+		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), 
+				true, Integer.toString(rounds));
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
@@ -215,34 +227,46 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		raiseAuthenticationFailureEvent(remote, e, message);
 	}
 	
-	/** A helper class for handling the events from HostProtocolHandler. */
+	/** A helper class for handling the events from HostProtocolHandler.
+	 * Its main purpose is to react to the AuthenticationSuccess event of
+	 * HostAuthenticationProtocol (i.e. stage 1), record its results and
+	 * fire off a new DongleAuthenticationProtocol (i.e. stage 2).
+	 * Additionally, it will forward failure and progress events.  
+	 */
 	private class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
 	    public void AuthenticationSuccess(Object remote, Object result)
 	    {
 			// TODO: check state!
 			
-	        System.out.println("Received authentication success event with host " + remote);
-	        byte[][] keys = (byte[][]) result;
-	        System.out.println("Shared session key is now '" + keys[0] + "' with length " + keys[0].length + ", shared authentication key is now '" + keys[1] + "' with length " + keys[1].length);
-	        System.out.println("Starting dongle authentication with remote relate id " + remoteRelateId);
+	        logger.info("Received host authentication success event with " + remote);
+	        Object[] res = (Object[]) result;
+	        logger.debug("Shared session key is now '" + res[0] + "' with length " + ((byte[]) res[0]).length + ", shared authentication key is now '" + res[1] + "' with length " + ((byte[]) res[1]).length);
 	        // remember the secret key shared with the other device
-	        sharedKey = keys[0];
+	        sharedKey = (byte[]) res[0];
+	        // and also extract the optional parameter (in the case of the RelateAuthenticationProtocol the number of
+	        // rounds (we assume it to be set) as well as the socket (which is assumed to be still connected to the
+	        // remote)
+	        rounds = Integer.parseInt((String) res[1]);
+	        // this could need some error handling, but at the moment we depend on it being set
+	        socketToRemote = (Socket) res[3];
+
 	        // and use the agreed authentication key to start the dongle authentication
+	        logger.debug("Starting dongle authentication with remote relate id " + remoteRelateId + " and " + rounds + " rounds.");
 	        DongleProtocolHandler dh = new DongleProtocolHandler(remoteRelateId);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler());
         	state = STATE_DONGLE_AUTH_RUNNING;
-        	dh.startAuthentication(keys[1], rounds, 0);
+        	dh.startAuthentication((byte[]) res[1], rounds, 0);
 	    }
 
 	    public void AuthenticationFailure(Object remote, Exception e, String msg)
 	    {
 			// TODO: check state!
 			
-	        //System.out.println("Received authentication failure event with " + remote);
+	        logger.info("Received host authentication failure event with " + remote);
 	        if (e != null)
-	            System.out.println("Exception: " + e);
+	            logger.info("Exception: " + e);
 	        if (msg != null)
-	            System.out.println("Message: " + msg);
+	            logger.info("Message: " + msg);
 	        authenticationFailed(remote, e, msg);
 	    }
 
@@ -250,7 +274,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        //System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        logger.info("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        		msg);
@@ -263,7 +287,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        System.out.println("Received authentication success event with relate dongle " + remote);
+	        logger.info("Received dongle authentication success event with id " + remote);
 	        state = STATE_SUCCEEDED;
 	        // our result object is here the secret key that is shared (host authentication) 
 	        // and now spatially authenticated (dongle authentication)
@@ -274,7 +298,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        //System.out.println("Received authentication failure event with " + remote);
+	        logger.info("Received dongle authentication failure event with id " + remote);
 	        if (e != null)
 	            System.out.println("Exception: " + e);
 	        if (msg != null)
@@ -286,7 +310,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 			// TODO: check state!
 			
-	        //System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        logger.info("Received dongle authentication progress event with id " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, HostProtocolHandler.AuthenticationStages + cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        		msg);
@@ -304,7 +328,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     		
     	    public void AuthenticationSuccess(Object remote, Object result)
     	    {
-    	        System.out.println("Received authentication success event with " + remote);
+    	        logger.info("Received relate authentication success event with " + remote);
    	        	System.out.println("SUCCESS");
    	        	if (!serverMode)
    	        		Runtime.getRuntime().exit(0);
@@ -312,31 +336,30 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	    
     	    public void AuthenticationFailure(Object remote, Exception e, String msg)
     	    {
-    	        System.out.println("Received authentication failure event with " + remote);
+    	        logger.info("Received relate authentication failure event with " + remote);
     	        Throwable exc = e;
     	        while (exc != null) {
-    	            System.out.println("Exception: " + exc);
+    	            logger.info("Exception: " + exc);
     	            exc = exc.getCause();
     	        }
     	        if (msg != null)
-    	            System.out.println("Message: " + msg);
+    	            logger.info("Message: " + msg);
    	        	if (!serverMode)
    	        		Runtime.getRuntime().exit(1);
     	    }
 
     	    public void AuthenticationProgress(Object remote, int cur, int max, String msg)
     	    {
-    	        System.out.println("Received authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+    	        logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
     	    }
     	}
     	
         if (args.length > 2 && args[0].equals("server"))
         {
-        	System.out.println("Starting server mode");
+        	logger.info("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort, true);
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true);
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
-            r.rounds = (byte) Integer.parseInt(args[2]);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
         	h1.addAuthenticationProgressHandler(hh);
@@ -346,7 +369,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         }
         if (args.length > 3 && args[0].equals("client"))
         {
-        	System.out.println("Starting client mode");
+        	logger.info("Starting client mode");
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
