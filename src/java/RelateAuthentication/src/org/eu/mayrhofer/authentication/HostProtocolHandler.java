@@ -34,6 +34,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
     /** The socket used to communicate with the remote end, for both incoming and outgoing connections. */
     private Socket socket;
+    /** If set to false, socket will be closed. 
+     * @see #socket
+     * @see #HostProtocolHandler(Socket, boolean)
+     */
+    private boolean keepSocketConnected;
     /** The stream to send messages to the remote end. */
     private PrintWriter toRemote;
     /** The stream to receive messages from the remote end. */
@@ -47,21 +52,30 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @param soc
 	 *            The socket to use for communication. It must already be
 	 *            connected to the other side, but will be shut down and closed
-	 *            before the protocol handler methods return. The reason for
+	 *            before the protocol handler methods return, depending on the
+	 *            parameter keepSocketConnected. The reason for
 	 *            this asymmetry (the socket must be connected by the caller,
 	 *            but is closed by the methods of this class) lies in the
 	 *            asynchronity: the protocol handler methods are called in
 	 *            background threads and must therefore dispose the objects
 	 *            before exiting.
+	 *            
+	 * @param keepSocketConnected
+	 *            If set to true, the opened client socket soc is passed to the
+	 *            authentication success event (in the results parameter) for 
+	 *            further re-use of the connection (e.g. passing additional 
+	 *            information about further protocol steps). If set to false, the
+	 *            socket will be closed when this protocol is done with it.
 	 */
-    HostProtocolHandler(Socket soc) 
+    HostProtocolHandler(Socket soc, boolean keepSocketConnected) 
 	{
 		socket = soc;
+		this.keepSocketConnected = keepSocketConnected;
     }
     
     /**
 	 * Helper method used for closing the socket and its connected streams
-	 * cleanly.
+	 * cleanly. 
 	 * 
 	 * @see #fromRemote
 	 * @see #toRemote
@@ -71,24 +85,24 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     {
     	logger.debug("Shutting down sockets");
     	try {
-    	if (fromRemote != null)
-    		fromRemote.close();
-    	if (toRemote != null) {
-    		toRemote.flush();
-    		toRemote.close();
-    	}
-        if (socket != null && socket.isConnected())
-        {
-        	if (! socket.isInputShutdown() && !socket.isClosed())
-        		socket.shutdownInput();
-        	if (! socket.isOutputShutdown() && !socket.isClosed())
-        		socket.shutdownOutput();
-        	socket.close();
-        }
-    	}
-    	catch (IOException e) {
-    		throw new RuntimeException("Unable to close sockets cleanly", e);
-    	}
+    		if (fromRemote != null)
+    			fromRemote.close();
+    		if (toRemote != null) {
+    			toRemote.flush();
+    			toRemote.close();
+    		}
+    		if (socket != null && socket.isConnected())
+    		{
+    			if (! socket.isInputShutdown() && !socket.isClosed())
+    				socket.shutdownInput();
+    			if (! socket.isOutputShutdown() && !socket.isClosed())
+   					socket.shutdownOutput();
+   				socket.close();
+   			}
+   		}
+   		catch (IOException e) {
+   			throw new RuntimeException("Unable to close sockets cleanly", e);
+   		}
     }
     
     /**
@@ -236,7 +250,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             raiseAuthenticationProgressEvent(remote, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
             // the authentication success event sent here is just an array of two keys
-            raiseAuthenticationSuccessEvent(remote, new byte[][] {ka.getSessionKey(), ka.getAuthenticationKey()});
+            // but if we were requested to keep the socket connected, then pass the socket instead of just the address
+            if (keepSocketConnected) {
+            	logger.debug("Not closing socket as requested, but passing it to the success event.");
+            	raiseAuthenticationSuccessEvent(socket, new byte[][] {ka.getSessionKey(), ka.getAuthenticationKey()});
+            }
+            else {
+            	raiseAuthenticationSuccessEvent(remote, new byte[][] {ka.getSessionKey(), ka.getAuthenticationKey()});
+            	shutdownSocketsCleanly();
+            }
         }
         catch (InternalApplicationException e)
         {
@@ -244,6 +266,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // also communicate any application exception to interested
 			// listeners
             raiseAuthenticationFailureEvent(remote, e, null);
+            shutdownSocketsCleanly();
         }
         catch (IOException e)
         {
@@ -253,13 +276,14 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // so that they can clean up their state of this authentication
 			// (identified by the remote
             raiseAuthenticationFailureEvent(remote, null, "Client closed connection unexpectedly\n");
+            shutdownSocketsCleanly();
         }
         catch (Exception e)
         {
             logger.fatal("UNEXPECTED EXCEPTION: " + e);
+            shutdownSocketsCleanly();
         }
         finally {
-            shutdownSocketsCleanly();
             if (ka != null)
                 ka.wipe();
             //System.out.println("Ended " + inOrOut + " authentication connection with " + remote);
@@ -303,16 +327,20 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * (in which case no events are sent). If not null, it will be registered with a new
 	 * HostProtocolHandler object before starting the authentication protocol so that
 	 * it is guaranteed that all events are posted to the event handler.
+	 * @param keepSocketConnected When set to true, the socket created in this method
+	 *        is not closed but passed to the authentation success event for further
+	 *        reuse.
 	 */
     static public void startAuthenticationWith(String remoteAddress,
-			int remotePort, AuthenticationProgressHandler eventHandler) throws UnknownHostException, IOException {
+			int remotePort, AuthenticationProgressHandler eventHandler,
+			boolean keepSocketConnected) throws UnknownHostException, IOException {
 		logger.info("Starting authentication with " + remoteAddress);
 
     	Socket clientSocket = new Socket(remoteAddress, remotePort);
 
 		logger.info("Connected successfully to " + remoteAddress);
     	
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket);
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket, keepSocketConnected);
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
 		

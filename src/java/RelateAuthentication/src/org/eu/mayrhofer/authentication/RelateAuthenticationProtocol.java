@@ -196,7 +196,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * registered with a temporary HostProtocolHandler object, which will
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
-		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler());
+		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), true);
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
@@ -334,7 +334,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         if (args.length > 2 && args[0].equals("server"))
         {
         	System.out.println("Starting server mode");
-            HostServerSocket h1 = new HostServerSocket(TcpPort);
+            HostServerSocket h1 = new HostServerSocket(TcpPort, true);
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true);
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
             r.rounds = (byte) Integer.parseInt(args[2]);
