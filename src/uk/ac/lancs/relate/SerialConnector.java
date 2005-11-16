@@ -1647,7 +1647,7 @@ public class SerialConnector implements Runnable {
 							firmwareVersionBytes = receiveHelper(FIRMWARE_VERSION_LENGTH);
 							firmwareVersion = ""+unsign(firmwareVersionBytes[0])+"."+
 							+unsign(firmwareVersionBytes[1]) ;
-							logger.warn("The firmware version for dongle "+commHelper.getLocalRelateId()+" is "+
+							logger.info("The firmware version for dongle "+commHelper.getLocalRelateId()+" is "+
 									firmwareVersion+".") ;
 						}else if(theByte == ERROR_CODE_SIGN) {
 							errorCode = unsign(receiveHelper(1)[0]) ;
