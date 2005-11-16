@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="spatial-authentication" default="jar" basedir=".">
+<project name="spatial-authentication" default="junit" basedir=".">
     <property name="src" location="src"/>
     <property name="bin" location="bin"/>
     <property name="lib" location="lib"/>
     <property name="dist" location="dist"/>
+    <property name="dist.mainclass" value="org.eu.mayrhofer.authentication.RelateAuthenticationProtocol"/>
     <property name="jarfile" location="${dist}/${ant.project.name}.jar"/>
     <property name="reports.tests" location="reports/tests"/>
     <property name="compile.debug" value="true"/>
 
-    <fileset id="lib.jars" dir="${lib}">
+    <!-- this can be used in a refid for filesets -->
+    <fileset id="lib.alljars" dir="${lib}">
         <include name="**/*.jar"/>
     </fileset>
 
+    <!-- this can be used in a refid for classpaths -->
     <path id="lib.path">
-        <fileset refid="lib.jars"/>
+        <fileset refid="lib.alljars"/>
     </path>
 
     <target name="compile" description="Compile code">
@@ -24,22 +27,6 @@
         </javac>
     </target>
 
-    <target name="junit" depends="compile" description="Run unit tests">
-        <mkdir dir="${reports.tests}"/>
-        <junit printsummary="on" haltonfailure="true">
-            <classpath>
-               <pathelement path="lib.path" />
-               <pathelement path="${bin}" />
-            </classpath>
-        	  <sysproperty key="java.library.path" value="nativelib/linux" />
-            <batchtest todir="${reports.tests}">
-              <fileset dir="${src}">
-                <include name="**/*Test*.java"/>
-              </fileset>
-            </batchtest>
-        </junit>
-    </target>
-
     <target name="jar" depends="compile" description="Build jar">
         <mkdir dir="${dist}"/>
         <jar jarfile="${jarfile}" basedir="${bin}" manifest="Manifest">
@@ -48,16 +35,38 @@
         </jar>
     </target>
 
+    <target name="junit" depends="jar" description="Run unit tests">
+	    <mkdir dir="${reports.tests}"/>
+	    <junit printsummary="on" haltonfailure="true">
+		    <sysproperty key="java.library.path" value="nativelib/linux" />
+		    <classpath>
+			    <fileset refid="lib.alljars"/>
+			    <pathelement location="${jarfile}"/>
+		    </classpath>
+		    <batchtest todir="${reports.tests}">
+			    <fileset dir="${src}">
+				    <include name="**/*Test*.java"/>
+			    </fileset>
+		    </batchtest>
+	    </junit>
+    </target>
+    
     <target name="run" depends="jar" description="Run jar file">
-        <java jar="${jarfile}" fork="yes" failonerror="true" >
+        <!-- executing the jar obviously does not work with an additional classpath, but only with a single
+	     merged jar file, so just specify the class -->
+        <!--<java jar="${jarfile}" fork="yes" failonerror="true" >-->
+	    <java classname="${dist.mainclass}" fork="yes" failonerror="true" >
+	    <sysproperty key="java.library.path" value="nativelib/linux" />
             <classpath>
-               <pathelement path="lib.path" />
-            </classpath>
+		    <fileset refid="lib.alljars"/>
+		    <pathelement location="${jarfile}"/>
+	    </classpath>
         </java>
     </target>
 
     <target name="clean" description="Remove build and dist directories">
         <delete dir="${bin}"/>
         <delete dir="${dist}"/>
+	<delete dir="${reports.tests}"/>
     </target>
 </project>
