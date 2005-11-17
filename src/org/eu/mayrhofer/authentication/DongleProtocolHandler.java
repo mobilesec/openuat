@@ -59,6 +59,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 */
 	private int rounds;
 	
+	/** These are merely for keeping statistics of how quickly the protocol runs.
+	 * The methods get*Time should be used for fetching the statistics. 
+	 */
+	private long startTime, commandSentTime, completedTime;
+	
 	/** Initializes the dongle protocol handler by setting the serialPort and remoteRelateId members.
 	 * 
 	 * @param remoteRelateId The remote relate id to perform the authentication with.

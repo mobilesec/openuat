@@ -12,6 +12,8 @@ public interface AuthenticationProgressHandler {
 	 * events, but an Integer for DongleProtocolHandler generated events (encapsulating
 	 * the remote relate id).
 	 * 
+	 * @param sender The object which sent this event.
+	 * 
 	 * @param remoteHost The remote end with which the authentication is performed. 
 	 * Depends on the sender of the event.
 	 * 
@@ -19,23 +21,27 @@ public interface AuthenticationProgressHandler {
 	 * e.g. be a shared key or a set of keys or can even be null if the authentication
 	 * event is enough to signal successful authentication.
 	 */
-	public void AuthenticationSuccess(Object remoteHost, Object result);
+	public void AuthenticationSuccess(Object sender, Object remoteHost, Object result);
 
 	/**
 	 Upon authentication failure, an exception might have been thrown and a
 	 message might have been created.
+	 * @param sender The object which sent this event.
+	 * 
 	 @param e Reason for the failue, can be null.
 	 @param msg Reaseon for the failue, can be null */
-	public void AuthenticationFailure(Object remote, Exception e,
+	public void AuthenticationFailure(Object sender, Object remote, Exception e,
 			String msg);
 
 	/** This event is raised during the authentication protocol to indicate progress.
+	 * 
+	 * @param sender The object which sent this event.
 	 * 
 	 * @param remote The remote end with which the authentication is performed.
 	 * @param cur The current stage in the authentication.
 	 * @param max The maximum number of stages.
 	 * @param msg If not null, a message describing the last successful stage.
 	 */
-	public void AuthenticationProgress(Object remote, int cur, int max,
+	public void AuthenticationProgress(Object sender, Object remote, int cur, int max,
 			String msg);
 }

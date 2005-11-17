@@ -148,7 +148,7 @@ public class HostProtocolHandlerTest extends TestCase {
         private String[] optionalParameters = new String[2];
         private Socket[] sockets = new Socket[2];
 
-        public void AuthenticationSuccess(Object remote, Object result)
+        public void AuthenticationSuccess(Object sender, Object remote, Object result)
         {
             synchronized (this)
             {
@@ -162,7 +162,7 @@ public class HostProtocolHandlerTest extends TestCase {
             }
         }
 
-        public void AuthenticationFailure(Object remote, Exception e, String msg)
+        public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
         {
             synchronized (this)
             {
@@ -170,7 +170,7 @@ public class HostProtocolHandlerTest extends TestCase {
             }
         }
 
-        public void AuthenticationProgress(Object remote, int cur, int max, String msg)
+        public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
         {
             synchronized (this)
             {
