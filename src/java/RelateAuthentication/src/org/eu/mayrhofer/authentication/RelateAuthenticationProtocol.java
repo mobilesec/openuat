@@ -227,7 +227,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * Additionally, it will forward failure and progress events.  
 	 */
 	private class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
-	    public void AuthenticationSuccess(Object remote, Object result)
+	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
 			// TODO: check state!
 			
@@ -251,7 +251,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         	dh.startAuthentication((byte[]) res[1], rounds, 0);
 	    }
 
-	    public void AuthenticationFailure(Object remote, Exception e, String msg)
+	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
 			// TODO: check state!
 			
@@ -263,7 +263,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        authenticationFailed(remote, e, msg);
 	    }
 
-	    public void AuthenticationProgress(Object remote, int cur, int max, String msg)
+	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
 			// TODO: check state!
 			
@@ -284,7 +284,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			this.rounds = rounds;
 		}
 		
-	    public void AuthenticationSuccess(Object remote, Object result)
+	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
 			// TODO: check state!
 			
@@ -295,7 +295,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        raiseAuthenticationSuccessEvent(remote, sharedKey);
 	    }
 
-	    public void AuthenticationFailure(Object remote, Exception e, String msg)
+	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
 			// TODO: check state!
 			
@@ -307,7 +307,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        authenticationFailed(remote, e, msg);
 	    }
 
-	    public void AuthenticationProgress(Object remote, int cur, int max, String msg)
+	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
 			// TODO: check state!
 			
@@ -327,7 +327,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     			this.serverMode = serverMode;
     		}
     		
-    	    public void AuthenticationSuccess(Object remote, Object result)
+    	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
     	    {
     	        logger.info("Received relate authentication success event with " + remote);
    	        	System.out.println("SUCCESS");
@@ -335,7 +335,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
    	        		Runtime.getRuntime().exit(0);
     	    }
     	    
-    	    public void AuthenticationFailure(Object remote, Exception e, String msg)
+    	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
     	    {
     	        logger.info("Received relate authentication failure event with " + remote);
     	        Throwable exc = e;
@@ -349,7 +349,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
    	        		Runtime.getRuntime().exit(1);
     	    }
 
-    	    public void AuthenticationProgress(Object remote, int cur, int max, String msg)
+    	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
     	    {
     	        logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
     	    }
