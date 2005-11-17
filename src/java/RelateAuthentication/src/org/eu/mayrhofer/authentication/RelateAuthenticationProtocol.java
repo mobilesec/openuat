@@ -21,6 +21,10 @@ import uk.ac.lancs.relate.SerialConnector;
 public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.relateauthentication");
 
 	public static final int TcpPort = 54321;
 	// TODO: make configurable!
@@ -62,6 +66,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @see #STATE_FAILED
 	 */ 
 	private int state = STATE_NOT_STARTED;
+	
+	/** This message is sent via the TCP channel to the remote upon authentication success. */
+	private final static String Protocol_Success = "ACK ";
+	/** This message is sent via the TCP channel to the remote upon authentication failure. */
+	private final static String Protocol_Failure = "NACK ";
 	
 	/** If the state is STATE_DONGLE_AUTH_RUNNING or STATE_SUCCEEDED, this contains
 	 * the secret key shared with the other device.
@@ -284,15 +293,61 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			this.rounds = rounds;
 		}
 		
+		/** Small helper method for logging a success and the protocol execution times of both sides. */
+		private void logSuccess(DongleProtocolHandler localSide, String remoteStatus) {
+			// first extract the values from the remote status string
+			String values[] = remoteStatus.substring(Protocol_Success.length()).split(" ", 2);
+			// first local, than remote times
+			statisticsLogger.info("+ " + localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() +
+					" " + values[0] + " " + values[1] + " Dongle authentication succeeded");
+		}
+		
+		/** Small helper method for logging a failure (on either of the sides. */
+		private void logFailure() {
+			statisticsLogger.error("- Dongle authentication failed");
+		}
+		
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
 			// TODO: check state!
 			
 	        logger.info("Received dongle authentication success event with id " + remote);
-	        state = STATE_SUCCEEDED;
-	        // our result object is here the secret key that is shared (host authentication) 
-	        // and now spatially authenticated (dongle authentication)
-	        raiseAuthenticationSuccessEvent(remote, sharedKey);
+	        
+	        // before forwarding the success event, send a success message to the remote and wait for its success message
+	        try {
+	        	BufferedReader fromRemote = new BufferedReader(new InputStreamReader(socketToRemote.getInputStream()));
+	        	// this enables auto-flush
+	        	PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
+	        	DongleProtocolHandler h = (DongleProtocolHandler) sender;
+	        	// (also report the time it took on this side to the remote)
+	        	toRemote.println(Protocol_Success + h.getSendCommandTime() + " " + h.getDongleInterlockTime());
+	        	toRemote.flush();
+	        	String remoteStatus = fromRemote.readLine();
+	        	if (remoteStatus == null) {
+		        	logger.error("Could not get status message from remote host");
+		        	authenticationFailed(remote, null, "Could not get status message from remote host");
+	        	}
+	        	else if (remoteStatus.startsWith(Protocol_Success)) {
+	        		logger.info("Received success status from remote host");
+
+			        state = STATE_SUCCEEDED;
+			        // our result object is here the secret key that is shared (host authentication) 
+			        // and now spatially authenticated (dongle authentication)
+			        raiseAuthenticationSuccessEvent(remote, sharedKey);
+			        logSuccess(h, remoteStatus);
+	        	}
+	        	else if (remoteStatus.startsWith(Protocol_Failure)) {
+	        		logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed.");
+	        		authenticationFailed(remote, null, "Received authentication failure status from remote host");
+			        logFailure();
+	        	}
+	        	// don't forget to properly close the socket
+	        	socketToRemote.close();
+	        } 
+	        catch (IOException e) {
+	        	logger.error("Could not report success to remote host or get status message from remote host: " + e);
+	        	authenticationFailed(remote, e, "Could not report success to remote host or get status message from remote host");
+	        }
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
@@ -301,10 +356,25 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			
 	        logger.info("Received dongle authentication failure event with id " + remote);
 	        if (e != null)
-	            System.out.println("Exception: " + e);
+	            logger.info("Exception: " + e);
 	        if (msg != null)
-	            System.out.println("Message: " + msg);
+	            logger.info("Message: " + msg);
 	        authenticationFailed(remote, e, msg);
+	        logFailure();
+	        
+	        // and also send an authentication failed status to the remote
+	        try {
+	        	// this enables auto-flush
+	        	PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
+	        	DongleProtocolHandler h = (DongleProtocolHandler) sender;
+	        	toRemote.println(Protocol_Failure + h.getSendCommandTime() + " " + h.getDongleInterlockTime());
+	        	toRemote.flush();
+	        	// don't forget to properly close the socket
+	        	socketToRemote.close();
+	        }
+	        catch (IOException ex) {
+	        	logger.error("Could not report failure to remote host: " + ex);
+	        }
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
