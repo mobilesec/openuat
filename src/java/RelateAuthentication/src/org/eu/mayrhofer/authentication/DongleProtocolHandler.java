@@ -171,15 +171,24 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				receivedRoundsRF.set(e.round-1, true);
 
-				// if it is the last round, it might have less bits
-				int curBits = e.round < rounds ? messageBitsPerRound : (sentRfMessage.length * 8 - messageBitsPerRound * (rounds-1)); 
-				// authentication info event: just remember the bits received with it
-				addPart(receivedRfMessage, e.authenticationPart, (e.round-1) * messageBitsPerRound, curBits);
-				lastAuthPart = e.round-1;
-				logger.info("Received authentication part from dongle " + remoteRelateId + 
+				// if nearly all (or all) bits have already been transmitted, it might have less bits
+				int curBits = messageBitsPerRound * e.round <= receivedRfMessage.length * 8 ? 
+						messageBitsPerRound : 
+						(receivedRfMessage.length * 8 - messageBitsPerRound * (e.round-1));
+				// the last messages might not even carry any bits at all
+				if (curBits > 0) {
+					// authentication info event: just remember the bits received with it
+					addPart(receivedRfMessage, e.authenticationPart, (e.round-1) * messageBitsPerRound, curBits);
+					logger.info("Received authentication part from dongle " + remoteRelateId + 
 						": round " + e.round + 
 						(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
 						SerialConnector.byteArrayToHexString(e.authenticationPart));
+				}
+				else
+					logger.info("Ignoring authentication part from dongle " + remoteRelateId + 
+							": round " + e.round + 
+							(e.ack ? " with" : " without") + " ack out of " + rounds + " because RF message is already complete");
+				lastAuthPart = e.round-1;
 			}
 			else if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId) {
@@ -223,14 +232,17 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				if ((delayedMeasurement & 0x80) != 0)
 					delay++;
 				delay--;
-				// if it is the last round, it might have less bits
-				int curBits = lastAuthPart < rounds-1 ? EntropyBitsPerRound : (nonce.length * 8 - EntropyBitsPerRound * (rounds-1)); 
+				// if it is the last round, it might have less bits (but only for >= 43 rounds)
+				// if more than 43 rounds are used, it will basically overflow - allow that
+				int curBits = (receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8) >= EntropyBitsPerRound ? 
+						EntropyBitsPerRound : 
+						(receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8);
 				// and add to the receivedNonce for later comparison
-				addPart(receivedDelays, new byte[] {delay}, lastAuthPart * EntropyBitsPerRound, curBits);
+				addPart(receivedDelays, new byte[] {delay}, (lastAuthPart * EntropyBitsPerRound) % (receivedDelays.length * 8), curBits);
 				lastCompletedRound = lastAuthPart;
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
-						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}));
+						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits)");
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + (lastCompletedRound+1));
 			}
 		}
@@ -441,6 +453,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				outer.handleCompleteProtocol();
 			}
 			catch (InternalApplicationException e) {
+				logger.error("InternalApplicationException. This should not happen: " + e);
+				e.printStackTrace();
 				outer.raiseAuthenticationFailureEvent(new Integer(outer.remoteRelateId), e, "Dongle authentication protocol failed");
 			}
 			catch (DongleAuthenticationProtocolException e) {
