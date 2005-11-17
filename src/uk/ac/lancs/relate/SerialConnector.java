@@ -86,7 +86,7 @@ class SerialCommunicationHelper {
 	 * Used in getDongleAttention.
 	 * @see #getDongleAttention
 	 */
-	private final static int MAGIC_1 = 10;
+	private final static int MAGIC_1 = 20;
 
 	/** MAGIC VALUE NUMBER 2: Wait for 200 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
