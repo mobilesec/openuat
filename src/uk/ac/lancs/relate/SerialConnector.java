@@ -21,6 +21,10 @@ import org.apache.log4j.Logger;
 class SerialCommunicationHelper {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(SerialCommunicationHelper.class);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.serialhelper");
 	
 	/** List of available ports returned by the javax.comm API.  */
 	private String[] portNames = null;
@@ -350,6 +354,7 @@ class SerialCommunicationHelper {
 			// check that we don't interrupt the dongle two quickly again
 			if (startTime - lastTimeDongleInterrupted < MAGIC_5) {
 				logger.info("Trying to interrupt dongle again in quick succession. Waiting for " + MAGIC_5 + "ms to give the dongle time to recover.");
+				statisticsLogger.info("* Waiting for " + (MAGIC_5 - (startTime - lastTimeDongleInterrupted)) + " ms before next dongle interruption");
 				try {
 					Thread.sleep(MAGIC_5 - (startTime - lastTimeDongleInterrupted));
 				} catch (InterruptedException e) {}
@@ -379,8 +384,7 @@ class SerialCommunicationHelper {
 				if (recv != null) {
 					unacknowledged = false;
 					localId = recv[ACK.length];
-					//log("Got first ACK and Id: "+ recv[0] + ", " + recv[1] + ", " + localId+"\n");
-					logger.info("time to get dongle's attention: "+(System.currentTimeMillis() - startTime)+"ms");
+					logger.info("time to get dongle's attention: " + (System.currentTimeMillis() - startTime) + "ms");
 				}
 			}
 		} catch (IOException ex) {
@@ -388,8 +392,10 @@ class SerialCommunicationHelper {
 			//ex.printStackTrace();
 		}
 		if (localId != -1) {
-			logger.info("Number of trials before getting ACK:"+counter) ;
-			logger.info("Time from garbage to ack: "+(System.currentTimeMillis()-lastTry));
+			logger.info("Number of trials before getting ACK: " + counter) ;
+			logger.info("Time from garbage to ack: " + (System.currentTimeMillis() - lastTry));
+			statisticsLogger.info("! " + (System.currentTimeMillis() - startTime) + " " + (System.currentTimeMillis() - lastTry) + 
+					counter + " got dongle attention");
 		}
 		else
 			logger.error("Could not get dongle's attention after " + counter + " tries and " + (System.currentTimeMillis()-startTime) + "ms");
@@ -601,7 +607,7 @@ public class SerialConnector implements Runnable {
 	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics");
+	private static Logger statisticsLogger = Logger.getLogger("statistics.serialconnector");
 
 	/**
 	 * At the moment, there can only be a single instance of SerialConnector.
@@ -707,13 +713,13 @@ public class SerialConnector implements Runnable {
 	private final static int MES_SIZE = 6;
 
 	/** number of bits for ultrasonic receiver id */
-	private final static int RX_ID_SIZE = 8;
+	/*private final static int RX_ID_SIZE = 8;*/
 
 	/** number of bits for ultrasonic sender id */
-	private final static int TX_ID_SIZE = 8;
+	/*private final static int TX_ID_SIZE = 8;*/
 
 	/** number of bits for this measurement timestamp */
-	private final static int TIMESTAMP_SIZE = 8;
+	/*private final static int TIMESTAMP_SIZE = 8;*/
 
 	/** number of bits for number of transducers involved in this measurement */
 	private final static int NUMRX_SIZE = 3;
@@ -1585,7 +1591,7 @@ public class SerialConnector implements Runnable {
 						commHelper.forceBaudrateReset();
 
 						if (++i % 100 == 0) {
-							statisticsLogger.info("### Statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
+							statisticsLogger.info("# SerialConnector statistics: " + numReceiveErrors + " rec.err., " + numDecodeErrors + " dec.err., " + numUnknownMessages + " unkn.msg.");
 							/*for (Iterator iter=unknownMessages.keySet().iterator(); iter.hasNext(); ) {
 								Integer key = (Integer) iter.next();
 								System.out.println(key + " --> " + unknownMessages.get(key));
@@ -1768,7 +1774,7 @@ public class SerialConnector implements Runnable {
 				connector.switchDiagnosticMode(false);
 			}
 			else if (args[1].equals("wakeup")) {
-				boolean ret = connector.commHelper.sendMessage(new byte[] {'C', '1'}, MAXIMUM_TIMEOUT);
+				connector.commHelper.sendMessage(new byte[] {'C', '1'}, MAXIMUM_TIMEOUT);
 			}
 			else if (args[1].equals("monitoring")) {
 				connector.run();

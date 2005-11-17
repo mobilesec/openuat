@@ -136,7 +136,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		serialConn.registerEventQueue(eventQueue);
 		
 		// start measuring the time for authentication noew
-		long startTime = System.currentTimeMillis();
+		startTime = System.currentTimeMillis();
 
 		// construct the start-of-authentication message and sent it to the dongle
 		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound)) {
@@ -144,6 +144,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle.");
 			return false;
 		}
+
+		// record this step
+		commandSentTime = System.currentTimeMillis();
+		logger.info("Sending command to dongle took " + (commandSentTime - startTime) + " ms.");
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 2, AuthenticationStages + rounds, "Initiated authentication mode in dongle");
 		
@@ -253,7 +257,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		}
 		
 		// and stop measuring now
-		logger.info("Dongle authentication protocol took " + (System.currentTimeMillis() - startTime) + " ms.");
+		completedTime = System.currentTimeMillis();
+		logger.info("Dongle authentication protocol took " + (completedTime - startTime) + " ms.");
 		
 		serialConn.unregisterEventQueue(eventQueue);
 
@@ -475,5 +480,23 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
     	protected AsynchronousCallHelper(DongleProtocolHandler outer) {
     		this.outer = outer;
     	}
+    }
+    
+    /** Returns the time that it took to send the start-of-authentication command to the dongle 
+     * 
+     * @return Time for sending the command in ms.
+     */
+    public int getSendCommandTime() {
+    	return (int) (commandSentTime - startTime);
+    }
+    
+    /** Returns the time it took to complete the dongle interlock protocol, i.e. the time between
+     * successfully sending the start-of-authentication command to the dongle and the receipt of the
+     * last round message.
+     * 
+     * @return Time for the dongle interlock protocol in ms.
+     */
+    public int getDongleInterlockTime() {
+    	return (int) (completedTime - commandSentTime);
     }
 }
