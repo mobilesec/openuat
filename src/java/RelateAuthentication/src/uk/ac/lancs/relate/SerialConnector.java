@@ -212,8 +212,7 @@ class SerialCommunicationHelper {
 				System.out.println("horrible hack line 3");
 				serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			} catch (UnsupportedCommOperationException e) {
-				logger.error("UnsupportedCommOperationException") ;
-				e.printStackTrace();
+				logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
 			}
 			if (interacting) 
 				fos = serialPort.getOutputStream();
@@ -231,8 +230,7 @@ class SerialCommunicationHelper {
 			fos.write(data) ;
 			fos.flush();
 		} catch (IOException ex) {
-			logger.error("sending info to dongle failed due to " + ex);
-			ex.printStackTrace();
+			logger.error("sending info to dongle failed due to " + ex + "\n" + ex.getStackTrace());
 			throw ex;
 		}
 	}
@@ -259,14 +257,6 @@ class SerialCommunicationHelper {
 		int alreadyRead = 0, readBytes, retries = 0;
 		long startTime = System.currentTimeMillis();
 		
-		/*try {
-			throw new Exception();
-		}
-		catch (Exception e) {
-			System.out.println("!!!!!! receiveFromDongle called from: ");
-			e.printStackTrace();
-		}*/
-		
 		// sanity check: the input stream must have been initialized
 		if (fis == null) {
 			logger.error("Error: trying to read from serial port while it has not been opened yet correctly. This should not happen!");
@@ -279,8 +269,7 @@ class SerialCommunicationHelper {
 				serialPort.enableReceiveTimeout(timeout * MAGIC_3);
 			} catch (UnsupportedCommOperationException e) {
 				// this can be ignored - it won't kill if timeout doesn't work. but it will just miss the protection against a "dead" dongle
-				logger.warn("UnsupportedCommOperationException") ;
-				e.printStackTrace();
+				logger.warn("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace()) ;
 			}
 
 			// if we got some expected start bytes, really wait for those to appear (at least until the timeout)
@@ -329,8 +318,7 @@ class SerialCommunicationHelper {
 			// finally: read all bytes that have been requested and compared ok to the expected start
 			return received;
 		} catch (IOException ex) {
-			logger.warn("receiving from dongle failed due to " + ex);
-			ex.printStackTrace();
+			logger.warn("receiving from dongle failed due to " + ex + "\n" + ex.getStackTrace());
 			return null;
 		}
 	}
@@ -388,8 +376,7 @@ class SerialCommunicationHelper {
 				}
 			}
 		} catch (IOException ex) {
-			logger.error("Geting dongle's attention failed due to " + ex);
-			//ex.printStackTrace();
+			logger.error("Geting dongle's attention failed due to " + ex + "\n" + ex.getStackTrace());
 		}
 		if (localId != -1) {
 			logger.info("Number of trials before getting ACK: " + counter) ;
@@ -900,8 +887,7 @@ public class SerialConnector implements Runnable {
 
 				operational = true;
 			} catch (Exception e) {
-				logger.fatal("Could not connect to dongle!");
-				e.printStackTrace();
+				logger.fatal("Could not connect to dongle!" + e + "\n" + e.getStackTrace());
 				return false;
 			}
 		}
@@ -1312,7 +1298,7 @@ public class SerialConnector implements Runnable {
 				printHostInfo(bytes) ;
 				/* filter events */
 				if (invalidID(unsign(bytes[0]))) {
-					System.out.println("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
+					logger.warn("invalid ID:" + (invalidID(rxId) ? "" + rxId : "") + " " +
 					 (invalidID(txId) ? "" + txId : ""));
 					result = null;
 				}
@@ -1501,8 +1487,7 @@ public class SerialConnector implements Runnable {
 				logger.info("shut down dongle");
 			}
 		} catch (Exception e) {
-			logger.error("changing dongle state to " + (dongle_on ? "on" : "off") + "failed!");
-			e.printStackTrace();
+			logger.error("changing dongle state to " + (dongle_on ? "on" : "off") + "failed! " + e + "\n" + e.getStackTrace());
 		}
 		synchronized(changeStateWaiter) {
 			changeStateWaiter.notify();
@@ -1720,8 +1705,7 @@ public class SerialConnector implements Runnable {
 						}
 					}
 			}catch (Exception ex) {
-				logger.fatal("failure in main loop: " + ex);
-				ex.printStackTrace();
+				logger.fatal("failure in main loop: " + ex + "\n" + ex.getStackTrace());
 				try {
 					Thread.sleep(2000);
 				} catch (InterruptedException e) {

@@ -358,10 +358,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			
 	        logger.info("Received dongle authentication failure event with id " + remote);
 	        if (e != null)
-	            logger.info("Exception: " + e);
+	            logger.info("Exception: " + e + "\n" +  e.getStackTrace());
 	        if (msg != null)
 	            logger.info("Message: " + msg);
-	        logFailure(e.toString() + "/" + msg);
+	        logFailure((e != null ? e.toString() : "") + "/" + msg);
 	        authenticationFailed(remote, e, msg);
 	        
 	        // and also send an authentication failed status to the remote
@@ -375,7 +375,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	socketToRemote.close();
 	        }
 	        catch (IOException ex) {
-	        	logger.error("Could not report failure to remote host: " + ex);
+	        	logger.error("Could not report failure to remote host: " + ex + "\n" + ex.getStackTrace());
 	        }
 	    }
 

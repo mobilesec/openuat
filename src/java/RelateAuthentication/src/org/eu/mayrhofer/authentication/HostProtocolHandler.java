@@ -362,8 +362,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (Exception e)
         {
-            logger.fatal("UNEXPECTED EXCEPTION: " + e);
-            e.printStackTrace();
+            logger.fatal("UNEXPECTED EXCEPTION: " + e + "\n" + e.getStackTrace());
             shutdownSocketCleanly();
         }
         finally {
