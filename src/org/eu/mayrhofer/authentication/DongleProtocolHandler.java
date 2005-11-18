@@ -463,8 +463,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				outer.handleCompleteProtocol();
 			}
 			catch (InternalApplicationException e) {
-				logger.error("InternalApplicationException. This should not happen: " + e);
-				e.printStackTrace();
+				logger.error("InternalApplicationException. This should not happen: " + e + "\n" + e.getStackTrace());
 				outer.raiseAuthenticationFailureEvent(new Integer(outer.remoteRelateId), e, "Dongle authentication protocol failed");
 			}
 			catch (DongleAuthenticationProtocolException e) {
