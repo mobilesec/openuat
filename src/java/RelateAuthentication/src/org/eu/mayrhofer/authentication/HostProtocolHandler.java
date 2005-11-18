@@ -330,7 +330,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // the authentication success event sent here is just an array of two keys
             if (keepSocketConnected) {
             	logger.debug("Not closing socket as requested, but passing it to the success event.");
-            	shutdownStreamsCleanly();
+            	// don't shut down the streams because this effectively shuts down the TCP connection
+            	// but make sure that the last message has been sent successfully
+            	toRemote.flush();
             	raiseAuthenticationSuccessEvent(remote, new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
             			optionalParameter, socket});
             }
