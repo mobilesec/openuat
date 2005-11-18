@@ -395,7 +395,7 @@ class SerialCommunicationHelper {
 			logger.info("Number of trials before getting ACK: " + counter) ;
 			logger.info("Time from garbage to ack: " + (System.currentTimeMillis() - lastTry));
 			statisticsLogger.info("! " + (System.currentTimeMillis() - startTime) + " " + (System.currentTimeMillis() - lastTry) + 
-					counter + " got dongle attention");
+					" " + counter + " got dongle attention");
 		}
 		else
 			logger.error("Could not get dongle's attention after " + counter + " tries and " + (System.currentTimeMillis()-startTime) + "ms");
