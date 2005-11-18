@@ -303,8 +303,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		}
 		
 		/** Small helper method for logging a failure (on either of the sides. */
-		private void logFailure() {
-			statisticsLogger.error("- Dongle authentication failed");
+		private void logFailure(String reason) {
+			statisticsLogger.error("- Dongle authentication failed:" + reason);
 		}
 		
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
@@ -325,6 +325,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	String remoteStatus = fromRemote.readLine();
 	        	if (remoteStatus == null) {
 		        	logger.error("Could not get status message from remote host");
+			        logFailure("Could not get status message from remote host");
 		        	authenticationFailed(remote, null, "Could not get status message from remote host");
 	        	}
 	        	else if (remoteStatus.startsWith(Protocol_Success)) {
@@ -333,19 +334,20 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			        state = STATE_SUCCEEDED;
 			        // our result object is here the secret key that is shared (host authentication) 
 			        // and now spatially authenticated (dongle authentication)
-			        raiseAuthenticationSuccessEvent(remote, sharedKey);
 			        logSuccess(h, remoteStatus);
+			        raiseAuthenticationSuccessEvent(remote, sharedKey);
 	        	}
 	        	else if (remoteStatus.startsWith(Protocol_Failure)) {
 	        		logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed.");
+			        logFailure("Received authentication failure status from remote host");
 	        		authenticationFailed(remote, null, "Received authentication failure status from remote host");
-			        logFailure();
 	        	}
 	        	// don't forget to properly close the socket
 	        	socketToRemote.close();
 	        } 
 	        catch (IOException e) {
 	        	logger.error("Could not report success to remote host or get status message from remote host: " + e);
+		        logFailure(e.toString());
 	        	authenticationFailed(remote, e, "Could not report success to remote host or get status message from remote host");
 	        }
 	    }
@@ -359,8 +361,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	            logger.info("Exception: " + e);
 	        if (msg != null)
 	            logger.info("Message: " + msg);
+	        logFailure(e.toString() + "/" + msg);
 	        authenticationFailed(remote, e, msg);
-	        logFailure();
 	        
 	        // and also send an authentication failed status to the remote
 	        try {
