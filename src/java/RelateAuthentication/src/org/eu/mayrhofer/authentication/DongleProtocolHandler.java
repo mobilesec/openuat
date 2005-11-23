@@ -168,22 +168,29 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				continue;
 			}
 			if (e.getType() == RelateEvent.AUTHENTICATION_INFO && e.getDevice().getId() == remoteRelateId) {
-				// sanity check
-				if (e.round > rounds) {
-					logger.warn("Ignoring received authentication part for round number " + e.round + ", only expected " + rounds + " rounds");
-					continue;
-				}
-				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				if (receivedRoundsRF.get(e.round-1)) {
-					logger.info("Ignoring received authentication part for round " + e.round + " since it was already received earlier.");
-					continue;
-				}
-				receivedRoundsRF.set(e.round-1, true);
-
 				// if nearly all (or all) bits have already been transmitted, it might have less bits
 				int curBits = messageBitsPerRound * e.round <= receivedRfMessage.length * 8 ? 
 						messageBitsPerRound : 
 						(receivedRfMessage.length * 8 - messageBitsPerRound * (e.round-1));
+
+				// sanity check
+				if (e.round > rounds) {
+					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
+							": round " + e.round + 
+							(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(e.authenticationPart) + ". Reason: only expected + " + rounds + " rounds.");
+					continue;
+				}
+				// check if we already got that round - only use the first packet so to ignore any ack-only packets
+				if (receivedRoundsRF.get(e.round-1)) {
+					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
+							": round " + e.round + 
+							(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(e.authenticationPart) + ". Reason: already received this round.");
+					continue;
+				}
+				receivedRoundsRF.set(e.round-1, true);
+
 				// the last messages might not even carry any bits at all
 				if (curBits > 0) {
 					// authentication info event: just remember the bits received with it
@@ -196,7 +203,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				else
 					logger.info("Ignoring authentication part from dongle " + remoteRelateId + 
 							": round " + e.round + 
-							(e.ack ? " with" : " without") + " ack out of " + rounds + " because RF message is already complete");
+							(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(e.authenticationPart) + ". Reason: RF message already complete.");
 				lastAuthPart = e.round-1;
 			}
 			else if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
@@ -206,33 +214,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					continue;
 				}
 				if (e.getMeasurement().getDistance() == 4094) {
-					logger.debug("Discarding invalid measurement in authentication mode: reported by dongle");
+					logger.debug("Discarding invalid measurement in authentication mode: 4094 reported by dongle");
 					continue;
 				}
-				// sanity check
-				if (lastAuthPart >= rounds) {
-					logger.warn("Ignoring received delayed measurement for round number " + (lastCompletedRound+1) + ", only expected " + rounds + " rounds");
-					continue;
-				}
-				// even more sanity...
-				if (lastAuthPart < 0) {
-					logger.info("Got measurement event before getting an authentication packet - ignoring");
-					continue;
-				}
-				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				if (receivedRoundsUS.get(lastAuthPart)) {
-					logger.info("Ignoring received delayed measurement for round " + (lastCompletedRound+1) + " since it was already received earlier.");
-					continue;
-				}
-				receivedRoundsUS.set(lastAuthPart, true);
-				
+
 				// measurement event for the authentication partner: re-use the round from the authentication info event
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();
-				// still do a sanity check (within our accuracy range)
-				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
-					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference");
-					continue;
-				}
+
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				// WATCHME: at the moment we use only 3 bits, but that might change....
 				// if it's negative because of noise, we'll just get the 2's complement, so correct that
@@ -246,6 +234,39 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				int curBits = (receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8) >= EntropyBitsPerRound ? 
 						EntropyBitsPerRound : 
 						(receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8);
+				
+				// sanity check
+				if (lastAuthPart >= rounds) {
+					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
+							", round " + (lastAuthPart+1) +
+							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
+							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). Reason: only expected " + rounds + " rounds.");
+					continue;
+				}
+				// even more sanity...
+				if (lastAuthPart < 0) {
+					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
+							", round " + (lastAuthPart+1) +
+							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
+							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). Reason: got measurement before first authentication packet");
+					continue;
+				}
+				// check if we already got that round - only use the first packet so to ignore any ack-only packets
+				if (receivedRoundsUS.get(lastAuthPart)) {
+					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
+							", round " + (lastAuthPart+1) +
+							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
+							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). already received this round.");
+					continue;
+				}
+				receivedRoundsUS.set(lastAuthPart, true);
+				
+				// still do a sanity check (within our accuracy range)
+				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
+					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
+							", reference is " + referenceMeasurement);
+					continue;
+				}
 				// and add to the receivedNonce for later comparison
 				addPart(receivedDelays, new byte[] {delay}, (lastAuthPart * EntropyBitsPerRound) % (receivedDelays.length * 8), curBits);
 				lastCompletedRound = lastAuthPart;
