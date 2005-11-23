@@ -5,6 +5,7 @@ import org.eu.mayrhofer.authentication.exceptions.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 import org.apache.log4j.Logger;
 
@@ -132,8 +133,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		
 		// wait for the first reference measurements to come in (needed to compute the delays)
 		logger.debug("Trying to get reference measurement to relate id " + remoteRelateId);
+		int[] ref = new int[10];
 		int numMeasurements = 0;
-		referenceMeasurement = 0;
 		while (numMeasurements < 10) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
@@ -163,11 +164,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId && e.getMeasurement().getTransducers() != 0 && e.getMeasurement().getDistance() != 4094) {
 				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
-				referenceMeasurement += (int) e.getMeasurement().getDistance();
-				numMeasurements++;
+				ref[numMeasurements++] = (int) e.getMeasurement().getDistance();
 			}
 		}
-		referenceMeasurement /= numMeasurements;
+		Arrays.sort(ref);
+		referenceMeasurement = (ref[4] + ref[5]) / 2;
 		logger.info("Mean over reference measurements to dongle " + remoteRelateId + ": " + referenceMeasurement);
 		
 		serialConn.unregisterEventQueue(eventQueue);
