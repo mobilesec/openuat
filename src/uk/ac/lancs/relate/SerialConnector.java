@@ -665,7 +665,7 @@ public class SerialConnector implements Runnable {
 	 * @see #setMonitoring(boolean)
 	 * @see #run
 	 */
-	private boolean monitoringThreadSuspended = false;
+	//private boolean monitoringThreadSuspended = false;
 	
 	/** Used to synchronize access to the monitoring flag. 
 	 * @see #monitoring
@@ -808,7 +808,7 @@ public class SerialConnector implements Runnable {
 	 * Used in setMonitoring.
 	 * @see #setMonitoring
 	 */
-	private final static int MAGIC_3 = 500;
+	//private final static int MAGIC_3 = 500;
 	
 	/** The maximum timeout for any public method that does not provide a timeout from the application. When it takes the 
 	 * dongle longer than this to respond to any command or to provide the next message, something is wrong an a TimeoutException
@@ -1512,11 +1512,11 @@ public class SerialConnector implements Runnable {
 					 * just give the thread some time that is usually enough to make it suspend itself gracefully
 					 * when it gets messages from the dongle, but the interrupt it to force it to check more quickly.
 					 */
-					changeMonitoringWaiter.wait(MAGIC_3);
-					while (!monitoringThreadSuspended) {
+					changeMonitoringWaiter.wait();
+					/*while (!monitoringThreadSuspended) {
 						monitoringThread.interrupt();
 						changeMonitoringWaiter.wait(MAGIC_3);
-					}
+					}*/
 				} catch (InterruptedException e) {
 				}
 			}
@@ -1573,8 +1573,8 @@ public class SerialConnector implements Runnable {
 			// this sleep is only in there so that the thread can receive an interrupted exception
 			//Thread.sleep(1);
 			// in addition check if we have been signalled to suspend, if yes, then return immediately
-			if (!monitoring)
-				return null;
+			/*if (!monitoring)
+				return null;*/
 		} while (ret == null && numBytes == 1 && --tries > 0);
 		if (ret == null) {
 			disconnect();
@@ -1616,13 +1616,13 @@ public class SerialConnector implements Runnable {
 						// if we are not in monitoring mode, block until woken up again
 						if (!monitoring) {
 							logger.info("------- Monitoring thread now suspending");
-							monitoringThreadSuspended = true;
+//							monitoringThreadSuspended = true;
 							// first notify setMonitoring that we received the signal to block
 							changeMonitoringWaiter.notify();
 							// block until setMonitoring notifies us
 							changeMonitoringWaiter.wait();
 							logger.info("+++++++ Monitoring thread now waking up again");
-							monitoringThreadSuspended = false;
+//							monitoringThreadSuspended = false;
 							// and then again notify setMonitoring that we received the signal
 							changeMonitoringWaiter.notify();
 						}
