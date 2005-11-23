@@ -1571,7 +1571,7 @@ public class SerialConnector implements Runnable {
 		do {
 			ret = commHelper.receiveFromDongle(numBytes, null, numBytes * MAGIC_1);
 			// this sleep is only in there so that the thread can receive an interrupted exception
-			Thread.sleep(1);
+			//Thread.sleep(1);
 			// in addition check if we have been signalled to suspend, if yes, then return immediately
 			if (!monitoring)
 				return null;
