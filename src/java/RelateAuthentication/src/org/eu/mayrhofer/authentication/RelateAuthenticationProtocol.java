@@ -145,7 +145,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			
 			// test code begin
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
-				if (/*e.getMeasurement().getTransducers() != 0 && */ e.getMeasurement().getDistance() != 4094) {
+				if (e.getMeasurement().getTransducers() != 0 && e.getMeasurement().getDistance() != 4094) {
 					logger.debug("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
 					ThreeInts x = s[e.getMeasurement().getId()];
 					x.n++;
@@ -161,7 +161,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			// test code end
 			
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
-					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0 &6 */ e.getMeasurement().getDistance() != 4094) {
+					e.getMeasurement().getId() == remoteRelateId && e.getMeasurement().getTransducers() != 0 && e.getMeasurement().getDistance() != 4094) {
 				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
 				referenceMeasurement += (int) e.getMeasurement().getDistance();
 				numMeasurements++;

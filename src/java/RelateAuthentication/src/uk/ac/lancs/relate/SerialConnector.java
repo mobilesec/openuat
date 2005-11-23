@@ -1806,7 +1806,7 @@ public class SerialConnector implements Runnable {
 		if (args.length > 1) {
 			if (args[1].equals("start_auth")) {
 				byte[] tmpMsg = new byte[16];
-				for (int i=0; i<tmpMsg.length; i++) tmpMsg[i] = (byte) 0xaa;
+				for (int i=0; i<tmpMsg.length; i++) tmpMsg[i] = (byte) 0x00;
 				connector.startAuthenticationWith(Integer.parseInt(args[2]), tmpMsg, tmpMsg, 43, 3);
 			}
 			else if (args[1].equals("diag_on")) {
