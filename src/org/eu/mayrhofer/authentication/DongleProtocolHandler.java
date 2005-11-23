@@ -210,9 +210,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			else if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
 					e.getMeasurement().getId() == remoteRelateId) {
 				if (e.getMeasurement().getTransducers() == 0) {
-					logger.info("Measurement is reported with 0 valid transducers, using it anyway.");
-					/*logger.debug("Discarding invalid measurement in authentication mode: 0 valid transducers.");
-					continue;*/
+					//logger.info("Measurement is reported with 0 valid transducers, using it anyway.");
+					logger.debug("Discarding invalid measurement in authentication mode: 0 valid transducers.");
+					continue;
 				}
 				if (e.getMeasurement().getDistance() == 4094) {
 					logger.debug("Discarding invalid measurement in authentication mode: 4094 reported by dongle");
