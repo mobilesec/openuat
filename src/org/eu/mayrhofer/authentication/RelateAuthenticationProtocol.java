@@ -88,8 +88,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	/** The serial connector object (singleton) used to talk to the dongle. */
 	private SerialConnector serialConn;
 	
-	/** Temporary: hold the background thread for the serial connector, needs better integration. */
-	private Thread serialThread;
 	/** Also temporary, needs better integration. */
 	private int referenceMeasurement;
 	
@@ -121,8 +119,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			throw new InternalApplicationException("Dongle reports id -1, which is an error case.");
 		
 		// start the backgroud thread for getting messages from the dongle
-		serialThread = new Thread(serialConn);
-		serialThread.start();
+		serialConn.start();
 		
 		// This message queue is used to receive events from the dongle, in this case the reference measurements.
 		MessageQueue eventQueue = new MessageQueue();
@@ -148,7 +145,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			
 			// test code begin
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
-				if (/*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
+				if (/*e.getMeasurement().getTransducers() != 0 && */ e.getMeasurement().getDistance() != 4094) {
 					logger.debug("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
 					ThreeInts x = s[e.getMeasurement().getId()];
 					x.n++;
@@ -164,7 +161,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			// test code end
 			
 			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
-					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0*/ e.getMeasurement().getDistance() != 4094) {
+					e.getMeasurement().getId() == remoteRelateId && /*e.getMeasurement().getTransducers() != 0 &6 */ e.getMeasurement().getDistance() != 4094) {
 				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
 				referenceMeasurement += (int) e.getMeasurement().getDistance();
 				numMeasurements++;
@@ -180,12 +177,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * the Relate framework.
 	 */
 	public void dispose() {
-		serialConn.die();
-		try {
-			serialThread.join();
-		}
-		catch (InterruptedException e) {
-		}
+		serialConn.stop();
 		serialConn.disconnect();
 	}
 	
@@ -298,13 +290,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			// first extract the values from the remote status string
 			String values[] = remoteStatus.substring(Protocol_Success.length()).split(" ", 2);
 			// first local, than remote times
-			statisticsLogger.info("+ " + localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() +
+			statisticsLogger.info("+ " + rounds + " " + referenceMeasurement + " " +
+					localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() +
 					" " + values[0] + " " + values[1] + " Dongle authentication succeeded");
 		}
 		
 		/** Small helper method for logging a failure (on either of the sides. */
 		private void logFailure(String reason) {
-			statisticsLogger.error("- Dongle authentication failed:" + reason);
+			statisticsLogger.error("- " + rounds + " " + referenceMeasurement + " " + " Dongle authentication failed:" + reason);
 		}
 		
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
