@@ -480,6 +480,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
 		this.referenceMeasurement = referenceMeasurement;
+		logger.debug("Starting authentication with " + rounds + " rounds and reference=" + referenceMeasurement);
 		
 		new Thread(new AsynchronousCallHelper(this) { public void run() {
 			try {
