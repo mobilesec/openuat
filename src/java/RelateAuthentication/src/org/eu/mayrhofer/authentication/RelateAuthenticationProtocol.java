@@ -249,7 +249,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        DongleProtocolHandler dh = new DongleProtocolHandler(remoteRelateId);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
         	state = STATE_DONGLE_AUTH_RUNNING;
-        	dh.startAuthentication((byte[]) res[1], rounds, 0);
+        	dh.startAuthentication((byte[]) res[1], rounds, referenceMeasurement);
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
