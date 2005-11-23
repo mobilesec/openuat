@@ -221,15 +221,15 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 				// measurement event for the authentication partner: re-use the round from the authentication info event
 				int delayedMeasurement = (int) e.getMeasurement().getDistance();
+				int delta = Math.abs(delayedMeasurement - referenceMeasurement);
 
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
 				// WATCHME: at the moment we use only 3 bits, but that might change....
 				// if it's negative because of noise, we'll just get the 2's complement, so correct that
-				byte delay = (byte) Math.abs((delayedMeasurement - referenceMeasurement) >> EntropyBitsOffset);
+				byte delay = (byte) (delta >> EntropyBitsOffset);
 				// special case: a bit error can carry over
-				if ((delayedMeasurement & 0x80) != 0)
+				if ((delta & 0x80) != 0)
 					delay++;
-				delay--;
 				// if it is the last round, it might have less bits (but only for >= 43 rounds)
 				// if more than 43 rounds are used, it will basically overflow - allow that
 				int curBits = (receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8) >= EntropyBitsPerRound ? 
@@ -274,6 +274,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
 						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits)");
+				logger.debug("reference=" + referenceMeasurement + ", delta=" + delta + " (" + Integer.toBinaryString(delta) + ")");
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + (lastCompletedRound+1));
 			}
 		}
