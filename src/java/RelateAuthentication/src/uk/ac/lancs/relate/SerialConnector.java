@@ -648,10 +648,24 @@ public class SerialConnector implements Runnable {
 	 */
 	private boolean awaken = true;
 	
+	/** This is the thread object used to run the background monitoring Thread. 
+	 * @see #start
+	 * @see #stop 
+	 */
+	private Thread monitoringThread;
+	
 	/** Used to suspend the thread without modifying the dongle state. This flag should be set to false before
 	 * trying to send messages to the dongle so that the background thread will suspend reading from it.
 	 */
 	private boolean monitoring = true;
+	
+	/** The monitoring thread will set this flag to true when it has entered its suspended state and set it to
+	 * false when it is running again. It is necessary for proper thread synchronization.
+	 * @see #monitoring
+	 * @see #setMonitoring(boolean)
+	 * @see #run
+	 */
+	private boolean monitoringThreadSuspended = false;
 	
 	/** Used to synchronize access to the monitoring flag. 
 	 * @see #monitoring
@@ -785,6 +799,16 @@ public class SerialConnector implements Runnable {
 	 * @see #receiveHelper
 	 */
 	private final static int MAGIC_2 = 50;
+	
+	/** MAGIC VALUE NUMBER 3: The time to give the monitoring thread to check for its signal to suspend. It the monitoring
+	 * thread is not getting any messages from the dongle, it will wait for a long time for data from the serial port
+	 * before checking for the suspend signal.
+	 * It's magic because there's no real reason for that specific number other than trial&error. 
+	 * 
+	 * Used in setMonitoring.
+	 * @see #setMonitoring
+	 */
+	private final static int MAGIC_3 = 500;
 	
 	/** The maximum timeout for any public method that does not provide a timeout from the application. When it takes the 
 	 * dongle longer than this to respond to any command or to provide the next message, something is wrong an a TimeoutException
@@ -1065,10 +1089,26 @@ public class SerialConnector implements Runnable {
 	 */
 	public int getLocalRelateId() {
 		return commHelper.getLocalRelateId();
-	}	
+	}
 	
-	public void die() {
-		alive = false;
+	public void start() {
+		if (monitoringThread == null) {
+			monitoringThread = new Thread(this);
+			monitoringThread.start();
+		}
+	}
+	
+	public void stop() {
+		if (monitoringThread != null) {
+			alive = false;
+			try {
+				monitoringThread.join();
+			}
+			catch (InterruptedException e) {
+				logger.error("Error waiting for monitoring thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
+			}
+			monitoringThread = null;
+		}
 	}
 	
 	/** convert one byte to int */
@@ -1465,7 +1505,18 @@ public class SerialConnector implements Runnable {
 			synchronized(changeMonitoringWaiter) {
 				changeMonitoringWaiter.notify();
 				try {
-					changeMonitoringWaiter.wait();
+					/* Don't wait until forever for a graceful suspension of the monitoring thread. The problem
+					 * is that, when the monitoring thread is not getting any messages from the dongle, it can
+					 * take a long time (i.e. MAGIC_1 * MAGIC_2 ms, see receiveHelper) for the monitoring thread
+					 * to check if it should suspend, because it is doing a blocking wait on the serial port. So
+					 * just give the thread some time that is usually enough to make it suspend itself gracefully
+					 * when it gets messages from the dongle, but the interrupt it to force it to check more quickly.
+					 */
+					changeMonitoringWaiter.wait(MAGIC_3);
+					while (!monitoringThreadSuspended) {
+						monitoringThread.interrupt();
+						changeMonitoringWaiter.wait(MAGIC_3);
+					}
 				} catch (InterruptedException e) {
 				}
 			}
@@ -1513,13 +1564,18 @@ public class SerialConnector implements Runnable {
 	 * null so that the return value does not need to be checked for being null. If there is no exception, this method guarantees
 	 * to return as many bytes as requested.
 	 */
-	private byte[] receiveHelper(int numBytes) {
+	private byte[] receiveHelper(int numBytes) throws InterruptedException {
 		int tries = MAGIC_2;
 		byte[] ret;
 		// workaround for getting just 1 byte: try it a number of times since the dongle might be busy switching mode
-		do
+		do {
 			ret = commHelper.receiveFromDongle(numBytes, null, numBytes * MAGIC_1);
-		while (ret == null && numBytes == 1 && --tries > 0);
+			// this sleep is only in there so that the thread can receive an interrupted exception
+			Thread.sleep(1);
+			// in addition check if we have been signalled to suspend, if yes, then return immediately
+			if (!monitoring)
+				return null;
+		} while (ret == null && numBytes == 1 && --tries > 0);
 		if (ret == null) {
 			disconnect();
 			connect(serialPort, MIN_ID, MAX_ID);
@@ -1560,11 +1616,13 @@ public class SerialConnector implements Runnable {
 						// if we are not in monitoring mode, block until woken up again
 						if (!monitoring) {
 							logger.info("------- Monitoring thread now suspending");
+							monitoringThreadSuspended = true;
 							// first notify setMonitoring that we received the signal to block
 							changeMonitoringWaiter.notify();
 							// block until setMonitoring notifies us
 							changeMonitoringWaiter.wait();
 							logger.info("+++++++ Monitoring thread now waking up again");
+							monitoringThreadSuspended = false;
 							// and then again notify setMonitoring that we received the signal
 							changeMonitoringWaiter.notify();
 						}
@@ -1706,11 +1764,11 @@ public class SerialConnector implements Runnable {
 					}
 			}catch (Exception ex) {
 				logger.fatal("failure in main loop: " + ex + "\n" + ex.getStackTrace());
-				try {
+				/*try {
 					Thread.sleep(2000);
 				} catch (InterruptedException e) {
 					
-				}
+				}*/
 			}
 		}	
 		disconnect();
