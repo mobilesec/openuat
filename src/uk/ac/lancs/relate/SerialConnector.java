@@ -1574,7 +1574,7 @@ public class SerialConnector implements Runnable {
 			//Thread.sleep(1);
 			// check if we have been signalled to suspend, if yes, then return immediately
 			if (!monitoring)
-				return null;
+				throw new InterruptedException("Monitoring thread signalled to suspend itself, aborting listening from serial port.");
 		} while (ret == null && numBytes == 1 && --tries > 0);
 		if (ret == null) {
 			disconnect();
