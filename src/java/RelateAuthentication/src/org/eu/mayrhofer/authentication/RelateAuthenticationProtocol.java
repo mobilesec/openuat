@@ -338,13 +338,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	}
 	        	// don't forget to properly close the socket
 	        	socketToRemote.close();
-	        	
-	        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
-	        	try {
-	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
-	        	} catch (InterruptedException e) {}
-	        	serialConn.switchDiagnosticMode(true);
-	        	serialConn.switchDiagnosticMode(false);
 	        } 
 	        catch (IOException e) {
 	        	logger.error("Could not report success to remote host or get status message from remote host: " + e);
@@ -378,13 +371,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        catch (IOException ex) {
 	        	logger.error("Could not report failure to remote host: " + ex + "\n" + ex.getStackTrace());
 	        }
-
-        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
-        	try {
-        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
-        	} catch (InterruptedException e1) {}
-        	serialConn.switchDiagnosticMode(true);
-        	serialConn.switchDiagnosticMode(false);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
@@ -402,15 +388,25 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	{
     	class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
     		private boolean serverMode;
+    		private RelateAuthenticationProtocol outer;
     		
-    		public TempAuthenticationEventHandler(boolean serverMode) {
+    		public TempAuthenticationEventHandler(boolean serverMode, RelateAuthenticationProtocol outer) {
     			this.serverMode = serverMode;
+    			this.outer = outer;
     		}
     		
     	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
     	    {
     	        logger.info("Received relate authentication success event with " + remote);
    	        	System.out.println("SUCCESS");
+
+	        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
+	        	try {
+	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
+	        	} catch (InterruptedException e) {}
+	        	outer.serialConn.switchDiagnosticMode(true);
+	        	outer.serialConn.switchDiagnosticMode(false);
+   	        	
    	        	if (!serverMode)
    	        		Runtime.getRuntime().exit(0);
     	    }
@@ -425,7 +421,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	        }
     	        if (msg != null)
     	            logger.info("Message: " + msg);
-   	        	if (!serverMode)
+
+	        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
+	        	try {
+	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
+	        	} catch (InterruptedException e1) {}
+	        	outer.serialConn.switchDiagnosticMode(true);
+	        	outer.serialConn.switchDiagnosticMode(false);
+    	        
+    	        if (!serverMode)
    	        		Runtime.getRuntime().exit(1);
     	    }
 
@@ -439,8 +443,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         {
         	logger.info("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort, true);
-            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true);
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
+            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true, r);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
         	h1.addAuthenticationProgressHandler(hh);
@@ -452,7 +456,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         {
         	logger.info("Starting client mode");
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
-        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false));
+        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false, r));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
             new BufferedReader(new InputStreamReader(System.in)).readLine();
         }
