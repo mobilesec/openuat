@@ -264,6 +264,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). Reason: got measurement before first authentication packet");
 					continue;
 				}
+				// still do a sanity check (within our accuracy range)
+				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
+					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
+							", reference is " + referenceMeasurement);
+					continue;
+				}
+
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
 				if (receivedRoundsUS.get(lastAuthPart)) {
 					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
@@ -274,12 +281,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				receivedRoundsUS.set(lastAuthPart, true);
 				
-				// still do a sanity check (within our accuracy range)
-				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
-					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
-							", reference is " + referenceMeasurement);
-					continue;
-				}
 				// and add to the receivedNonce for later comparison
 				addPart(receivedDelays, new byte[] {delay}, (lastAuthPart * EntropyBitsPerRound) % (receivedDelays.length * 8), curBits);
 				lastCompletedRound = lastAuthPart;
