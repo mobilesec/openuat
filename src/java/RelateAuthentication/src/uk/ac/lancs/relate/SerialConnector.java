@@ -1577,11 +1577,11 @@ public class SerialConnector implements Runnable {
 				throw new InterruptedException("Monitoring thread signalled to suspend itself, aborting listening from serial port.");
 		} while (ret == null && numBytes == 1 && --tries > 0);
 		if (ret == null) {
-			disconnect();
-			connect(serialPort, MIN_ID, MAX_ID);
+			/*disconnect();
+			connect(serialPort, MIN_ID, MAX_ID);*/
 			throw new NullPointerException("Did not receive enough bytes (wanted " + numBytes + 
 					") from the dongle (error number " + (++numReceiveErrors) +
-					" since startup). Timeout? Tried to reconnect serial port to reset dongle");
+					" since startup). Timeout? /*Tried to reconnect serial port to reset dongle*/");
 		}
 		else
 			return ret;
@@ -1763,7 +1763,7 @@ public class SerialConnector implements Runnable {
 						}
 					}
 			}catch (Exception ex) {
-				logger.fatal("failure in main loop: " + ex + "\n" + ex.getStackTrace());
+				logger.fatal("failure in main loop: " + ex.toString() + "\n" + ex.getStackTrace().toString());
 				/*try {
 					Thread.sleep(2000);
 				} catch (InterruptedException e) {
