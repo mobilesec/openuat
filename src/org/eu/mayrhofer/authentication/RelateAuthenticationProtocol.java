@@ -401,10 +401,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
    	        	System.out.println("SUCCESS");
 
 	        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
-	        	try {
+	        	/*try {
 	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
 	        	} catch (InterruptedException e) {}
-	        	outer.serialConn.switchDiagnosticMode(false);
+	        	outer.serialConn.switchDiagnosticMode(false);*/
    	        	
    	        	if (!serverMode)
    	        		Runtime.getRuntime().exit(0);
@@ -422,10 +422,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	            logger.info("Message: " + msg);
 
 	        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
-	        	try {
+	        	/*try {
 	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
 	        	} catch (InterruptedException e1) {}
-	        	outer.serialConn.switchDiagnosticMode(false);
+	        	outer.serialConn.switchDiagnosticMode(false);*/
     	        
     	        if (!serverMode)
    	        		Runtime.getRuntime().exit(1);
