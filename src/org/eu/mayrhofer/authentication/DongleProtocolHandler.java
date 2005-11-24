@@ -139,7 +139,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		// complete its cycle, which should hopefully make it quicker for both
 		// (and yes, it's cheating to do it before taking the start time)
 		if (localRelateId > remoteRelateId) {
-			logger.info("Master waiting befor being interrupted");
+			logger.info("Master waiting before being interrupted");
 			// yippey, I'm the master, thus I need to wait
 			try {
 				Thread.sleep(5000);
