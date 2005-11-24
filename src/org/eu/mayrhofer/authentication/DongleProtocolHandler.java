@@ -138,14 +138,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		// HACK HACK HACK HACK: before interrupting the master dongle (higher id), give the slave some time to
 		// complete its cycle, which should hopefully make it quicker for both
 		// (and yes, it's cheating to do it before taking the start time)
-		if (localRelateId > remoteRelateId) {
+		/*if (localRelateId > remoteRelateId) {
 			logger.info("Master waiting before being interrupted");
 			// yippey, I'm the master, thus I need to wait
 			try {
 				Thread.sleep(5000);
 			}
 			catch (InterruptedException e) {}
-		}
+		}*/
 		
 		// start measuring the time for authentication noew
 		startTime = System.currentTimeMillis();
