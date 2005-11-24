@@ -338,6 +338,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	}
 	        	// don't forget to properly close the socket
 	        	socketToRemote.close();
+	        	
+	        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
+	        	try {
+	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
+	        	} catch (InterruptedException e) {}
+	        	serialConn.disconnect();
+	        	serialConn.connect(SerialPort, 0, 255);
 	        } 
 	        catch (IOException e) {
 	        	logger.error("Could not report success to remote host or get status message from remote host: " + e);
@@ -371,6 +378,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        catch (IOException ex) {
 	        	logger.error("Could not report failure to remote host: " + ex + "\n" + ex.getStackTrace());
 	        }
+
+        	// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
+        	try {
+        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
+        	} catch (InterruptedException e1) {}
+        	serialConn.disconnect();
+        	serialConn.connect(SerialPort, 0, 255);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
