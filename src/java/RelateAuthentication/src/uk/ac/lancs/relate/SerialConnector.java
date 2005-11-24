@@ -197,19 +197,19 @@ class SerialCommunicationHelper {
 				 * that can't be caught because it occurs in native code.
 				 */
 				//Thread.sleep(10);
-				System.out.println("horrible hack line 1");
+				System.out.println("horrible hack line 1: " + System.currentTimeMillis());
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
 						SerialPort.PARITY_NONE);
 				// so that read on the getInputStream does not hang indefinitely but times out
 				//Thread.sleep(10);
-				System.out.println("horrible hack line 2");
+				System.out.println("horrible hack line 2: " + System.currentTimeMillis());
 				serialPort.enableReceiveTimeout(MAGIC_4);
 				if (!serialPort.isReceiveTimeoutEnabled())
 					logger.warn("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
 				//Thread.sleep(10);
-				System.out.println("horrible hack line 3");
+				System.out.println("horrible hack line 3: " + System.currentTimeMillis());
 				serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			} catch (UnsupportedCommOperationException e) {
 				logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
@@ -547,7 +547,7 @@ class SerialCommunicationHelper {
 								+ (this.interacting ? 19200 : 57600));
 
 				// Thread.sleep(10);
-				System.out.println("horrible hack line 4");
+				System.out.println("horrible hack line 4: " + System.currentTimeMillis());
 				serialPort.setSerialPortParams(
 						this.interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
