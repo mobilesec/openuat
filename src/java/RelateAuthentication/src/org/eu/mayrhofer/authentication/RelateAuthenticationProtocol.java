@@ -462,10 +462,12 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             // not so simple for the server.
             new Thread(new Runnable() {
             	public void run() {
+            		System.out.println("******** Starting timer");
             		// two minutes should really be enough
             		try {
             			Thread.sleep(120 * 1000);
             		} catch (InterruptedException e) {}
+            		System.out.println("******** Timed out");
         			statisticsLogger.error("- Timer killed client");
             		System.exit(100);
             	}
