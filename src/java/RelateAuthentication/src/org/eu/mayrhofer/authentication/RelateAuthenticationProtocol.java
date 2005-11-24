@@ -457,6 +457,19 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false, r));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
             new BufferedReader(new InputStreamReader(System.in)).readLine();
+            
+            // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
+            // not so simple for the server.
+            new Thread(new Runnable() {
+            	public void run() {
+            		// two minutes should really be enough
+            		try {
+            			Thread.sleep(120 * 1000);
+            		} catch (InterruptedException e) {}
+        			statisticsLogger.error("- Timer killed client");
+            		System.exit(100);
+            	}
+            }).start();
         }
         
         // problem with the javax.comm API - doesn't release its native thread
