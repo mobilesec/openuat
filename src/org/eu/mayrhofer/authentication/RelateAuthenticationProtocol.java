@@ -343,8 +343,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	try {
 	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
 	        	} catch (InterruptedException e) {}
-	        	serialConn.disconnect();
-	        	serialConn.connect(SerialPort, 0, 255);
+	        	serialConn.switchDiagnosticMode(true);
+	        	serialConn.switchDiagnosticMode(false);
 	        } 
 	        catch (IOException e) {
 	        	logger.error("Could not report success to remote host or get status message from remote host: " + e);
@@ -383,8 +383,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         	try {
         		Thread.sleep(500); // should be long enough to send the last packet, if necessary
         	} catch (InterruptedException e1) {}
-        	serialConn.disconnect();
-        	serialConn.connect(SerialPort, 0, 255);
+        	serialConn.switchDiagnosticMode(true);
+        	serialConn.switchDiagnosticMode(false);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
