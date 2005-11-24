@@ -14,6 +14,7 @@ while [ $r -le 43 ]; do
     if [ ! -e "/tmp/exp_${r}_${i}" ]; then
       ./runme.sh client ind022000011.lancs.ac.uk $1 $r
       touch "/tmp/exp_${r}_${i}"
+      sleep 2s
     else
       echo "Already done, skipping."
     fi
