@@ -404,7 +404,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	try {
 	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
 	        	} catch (InterruptedException e) {}
-	        	outer.serialConn.switchDiagnosticMode(true);
 	        	outer.serialConn.switchDiagnosticMode(false);
    	        	
    	        	if (!serverMode)
@@ -426,7 +425,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	try {
 	        		Thread.sleep(500); // should be long enough to send the last packet, if necessary
 	        	} catch (InterruptedException e1) {}
-	        	outer.serialConn.switchDiagnosticMode(true);
 	        	outer.serialConn.switchDiagnosticMode(false);
     	        
     	        if (!serverMode)
