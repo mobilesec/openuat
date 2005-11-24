@@ -1513,7 +1513,7 @@ public class SerialConnector implements Runnable {
 					 * when it gets messages from the dongle, but the interrupt it to force it to check more quickly.
 					 */
 					changeMonitoringWaiter.wait(MAGIC_3);
-					while (monitoringThreadSuspended != monitoring) {
+					while (monitoringThreadSuspended == monitoring) {
 						monitoringThread.interrupt();
 						changeMonitoringWaiter.wait(MAGIC_3);
 					}
