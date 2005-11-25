@@ -1822,7 +1822,7 @@ public class SerialConnector implements Runnable {
 				connector.run();
 			}
 		}
-		connector.run();
+		//connector.run();
 		
 		System.out.println("done");
 		System.exit(0);

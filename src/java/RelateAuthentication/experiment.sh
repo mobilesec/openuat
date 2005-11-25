@@ -12,7 +12,7 @@ while [ $r -le 43 ]; do
     echo -------------------------------------------------
     echo "Rounds: $r Try: $i"
     if [ ! -e "/tmp/exp_${r}_${i}" ]; then
-      sudo nice -n -10 ./runme.sh client ind022000011.lancs.ac.uk $1 $r
+      ./runme.sh client ind022000011.lancs.ac.uk $1 $r
       ret=$?
       sleep 2s
       # only mark the run as done for either error or success, but else retry
