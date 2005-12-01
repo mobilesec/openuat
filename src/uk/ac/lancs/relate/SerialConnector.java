@@ -4,7 +4,7 @@ package uk.ac.lancs.relate;
  ** Based on code by Martin Strohbach (WeightTableSerialConnector)
  **/
 
-import javax.comm.*;
+import gnu.io.*;
 
 import java.io.*;
 import java.util.*;
@@ -27,10 +27,10 @@ class SerialCommunicationHelper {
 	private static Logger statisticsLogger = Logger.getLogger("statistics.serialhelper");
 	
 	/** List of available ports returned by the javax.comm API.  */
-	private String[] portNames = null;
+	private static String[] portNames = null;
 
 	/** Holds the CommPortIdentifier objects associated with the portNames. */
-	private Vector availablePorts = null;
+	private static Vector availablePorts = null;
 
 	/**
 	 * The port identifier used to reference the serial port used by the dongle.
@@ -138,14 +138,14 @@ class SerialCommunicationHelper {
 	
 	
 	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
-	public SerialCommunicationHelper() {
+	static {
 		CommPortIdentifier id;
 		Enumeration portList;
 
 		portList = CommPortIdentifier.getPortIdentifiers();
 		availablePorts = new Vector();
 		/* generate list of (available) ports */
-		while ((portList.hasMoreElements()) && (portId == null)) {
+		while (portList.hasMoreElements()) {
 			id = (CommPortIdentifier) portList.nextElement();
 			logger.info("port " + id + " (" + id.getName() + ") is "
 					+ (id.isCurrentlyOwned() ? " not " : "") + " available.");
@@ -165,7 +165,7 @@ class SerialCommunicationHelper {
 	}
 
 	/** return list of available serial ports */
-	public String[] getPorts() {
+	public static String[] getPorts() {
 		return portNames;
 	}
 
