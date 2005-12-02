@@ -90,7 +90,7 @@ class SerialCommunicationHelper {
 	 * Used in getDongleAttention.
 	 * @see #getDongleAttention
 	 */
-	private final static int MAGIC_1 = 20;
+	static int MAGIC_1 = 20;
 
 	/** MAGIC VALUE NUMBER 2: Wait for 200 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
@@ -106,7 +106,7 @@ class SerialCommunicationHelper {
 	 * Used in getDongleAttention.
 	 * @see #getDongleAttention
 	 */
-	private final static int MAGIC_2 = 200;
+	static int MAGIC_2 = 200;
 	
 	/** MAGIC VALUE NUMBER 3: Set the serial port read timeout to 5 times the timeout passed to the receive method. I am really not 
 	 * sure why this is necessary at all (the normal timeout should be enough), but elongating that time should not matter too much.
@@ -127,17 +127,18 @@ class SerialCommunicationHelper {
 	 */  
 	private final static int MAGIC_4 = 1000;
 	
-	/** MAGIC VALUE NUMBER 5: Leave at least 5000 ms between two tries to interrupt the dongle. It doesn't like that so we
+	/** MAGIC VALUE NUMBER 5: Leave at least 3000 ms between two tries to interrupt the dongle. It doesn't like that so we
 	 * prevent it.
 	 * It's magic because there's no real reason for that specific number other than trial&error.
 	 * 
 	 * @see #getDongleAttention
 	 * @see #lastTimeDongleInterrupted
 	 */
-	private final static int MAGIC_5 = 5000;
+	private final static int MAGIC_5 = 3000;
 	
 	
-	/** This constructor only initializes the portNames and availablePorts members by querying the javax.comm API for serial ports. */
+	/** This static constructor only initializes the portNames and availablePorts members by querying the 
+	 * javax.comm/gnu.io API for serial ports. */
 	static {
 		CommPortIdentifier id;
 		Enumeration portList;
@@ -180,6 +181,7 @@ class SerialCommunicationHelper {
 		}
 		else {
 			if (fis != null) {
+				fis.skip(fis.available());
 				fis.close();
 				fis = null;
 			}
@@ -193,23 +195,14 @@ class SerialCommunicationHelper {
 			serialPort = (SerialPort) portId.open("RelatePort", 500);
 			try {
 				logger.info("Switching serial port baud rate (previously in interactive mode: " + this.interacting + ", now: " + interacting + ")");
-				/* according to http://forum.java.sun.com/thread.jspa?threadID=673793&tstart=0, this fixes the params not supported IOException
-				 * that can't be caught because it occurs in native code.
-				 */
-				//Thread.sleep(10);
-				System.out.println("horrible hack line 1: " + System.currentTimeMillis());
 				serialPort.setSerialPortParams(interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8,
 						SerialPort.STOPBITS_1,
 						SerialPort.PARITY_NONE);
 				// so that read on the getInputStream does not hang indefinitely but times out
-				//Thread.sleep(10);
-				System.out.println("horrible hack line 2: " + System.currentTimeMillis());
 				serialPort.enableReceiveTimeout(MAGIC_4);
 				if (!serialPort.isReceiveTimeoutEnabled())
 					logger.warn("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
-				//Thread.sleep(10);
-				System.out.println("horrible hack line 3: " + System.currentTimeMillis());
 				serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 			} catch (UnsupportedCommOperationException e) {
 				logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
@@ -287,7 +280,8 @@ class SerialCommunicationHelper {
 					logger.debug("Got EOF after receiving " + retries + " bytes");
 					return null;
 				} else {
-					logger.debug("Could not find first expected byte, returning with timeout after receiving " + retries + " bytes");
+					logger.debug("Could not find first expected byte, returning with timeout after receiving " + 
+							retries + " bytes, last read bytes was " + recv + " (0x" + Integer.toHexString(recv) + ")");
 					// unable to find even our first expected byte, either due to timeout or to read error
 					return null;
 				}
@@ -360,9 +354,9 @@ class SerialCommunicationHelper {
 				// another safety belt: sometimes it falls back to 57600 if it was set to that earlier!
 				forceBaudrateReset();
 				
-				/*Discard everything currently in the serial input buffer.*/
+				// Discard everything currently in the serial input buffer
 				fis.skip(fis.available());
-				/*Send garbage..*/
+				// Send garbage...
 				byte[] garbage = new byte[MAGIC_1];
 				for (int i=0; i<garbage.length; i++)
 					garbage[i] = (byte) 0xAA;
@@ -543,20 +537,15 @@ class SerialCommunicationHelper {
 		// The baud rate just resets itself to 19200 if we don't do that pariodically!
 		if (serialPort.getBaudRate() != (this.interacting ? 19200 : 57600)) {
 			try {
-				logger.debug("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to "
+				logger.warn("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to "
 								+ (this.interacting ? 19200 : 57600));
 
-				// Thread.sleep(10);
-				System.out.println("horrible hack line 4: " + System.currentTimeMillis());
 				serialPort.setSerialPortParams(
 						this.interacting ? 19200 : 57600,
 						SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
 						SerialPort.PARITY_NONE);
-			} catch (Exception e) {
-				// sometimes there are just exceptions from the native routines
-				// - ignore them
-				// dirty hack
-				// e.printStackTrace();
+			} catch (UnsupportedCommOperationException e) {
+				logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
 			}
 		}
 	}
@@ -616,7 +605,7 @@ public class SerialConnector implements Runnable {
 	 * Flag indicating wether this instance should continue to run. Used by
 	 * die() to signal the thread to terminate.
 	 * 
-	 * @see #die
+	 * @see #stop
 	 */
 	private boolean alive = true;
 
@@ -798,7 +787,7 @@ public class SerialConnector implements Runnable {
 	 * Used in receiveHelper.
 	 * @see #receiveHelper
 	 */
-	private final static int MAGIC_2 = 50;
+	private final static int MAGIC_2 = 20;
 	
 	/** MAGIC VALUE NUMBER 3: The time to give the monitoring thread to check for its signal to suspend. It the monitoring
 	 * thread is not getting any messages from the dongle, it will wait for a long time for data from the serial port
@@ -812,9 +801,9 @@ public class SerialConnector implements Runnable {
 	
 	/** The maximum timeout for any public method that does not provide a timeout from the application. When it takes the 
 	 * dongle longer than this to respond to any command or to provide the next message, something is wrong an a TimeoutException
-	 * will be thrown by the respective method.
+	 * will be thrown by the respective method. This is the last safety belt for the dongle communication.
 	 */
-	private final static int MAXIMUM_TIMEOUT = 20000;
+	private final static int MAXIMUM_TIMEOUT = 10000;
 	
 	/** Firmware version */
 	private String firmwareVersion = null;
@@ -866,8 +855,8 @@ public class SerialConnector implements Runnable {
 	}
 
 	/** return list of available serial ports */
-	public String[] getPorts() {
-		return commHelper.getPorts();
+	public static String[] getPorts() {
+		return SerialCommunicationHelper.getPorts();
 	}
 	
 	/** return Calibration object */
@@ -1795,6 +1784,12 @@ public class SerialConnector implements Runnable {
 		if (args.length < 1) {
 			System.out.println("Error: need the port to connect to");
 			System.exit(1);
+		}
+		
+		// hack to allow the parameter search experiment
+		if (args.length == 4 && args[1].equals("param-search")) {
+			SerialCommunicationHelper.MAGIC_1 = Integer.parseInt(args[2]);
+			SerialCommunicationHelper.MAGIC_2 = Integer.parseInt(args[3]);
 		}
 		
 		if (!connector.connect(args[0], 0, 50)) {
