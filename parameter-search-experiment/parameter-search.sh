@@ -11,8 +11,8 @@ while [ $magic1 -le 30 ]; do
              /dev/ttyUSB1 param-search $magic1 $magic2 2>/dev/null \
              | awk ' /time to get dongle.s attention/ { print $11; }' \
              | tail -n 1 | sed 's/ms//'`
-      if [ $? -ne 0 ]; then
-        echo "X "
+      if [ $? -ne 0 -o -z "$time" ]; then
+        echo -n "X "
       else
         echo -n "$time "
         let i=i+1
