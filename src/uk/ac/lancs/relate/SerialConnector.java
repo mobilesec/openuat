@@ -108,7 +108,7 @@ class SerialCommunicationHelper {
 	 */
 	static int MAGIC_2 = 200;
 	
-	/** MAGIC VALUE NUMBER 3: Set the serial port read timeout to 5 times the timeout passed to the receive method. I am really not 
+	/** MAGIC VALUE NUMBER 3: Set the serial port read timeout to 2 times the timeout passed to the receive method. I am really not 
 	 * sure why this is necessary at all (the normal timeout should be enough), but elongating that time should not matter too much.
 	 * It is only a safeguard against a "dead" dongle that does not want to send anything, anyway.
 	 * It's magic because there's no real reason for that specific number other than trial&error.
@@ -116,7 +116,7 @@ class SerialCommunicationHelper {
 	 * Used in receiveFromDongle.
 	 * @see #receiveFromDongle 
 	 */ 
-	private final static int MAGIC_3 = 5;
+	private final static int MAGIC_3 = 2;
 
 	/** MAGIC VALUE NUMBER 4: Wait for 1000 ms by default, if no other receive timeout is specified. This will be overwritten
 	 * anyway by the next call to receiveFromDongle (which uses MAGIC_3), so it doesn't matter too much.
