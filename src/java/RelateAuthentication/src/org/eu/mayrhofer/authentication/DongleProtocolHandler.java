@@ -47,6 +47,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** The remote relate id to perform the authentication with. */
 	private byte remoteRelateId;
 	
+	/** The serial port to use for talking to the dongle. */
+	private String serialPort;
+	
 	/** The reference measurement to use when examining the delayed US pulses from the remote. This is is millimeters. */
 	private int referenceMeasurement;
 	
@@ -67,8 +70,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** Initializes the dongle protocol handler by setting the serialPort and remoteRelateId members.
 	 * 
 	 * @param remoteRelateId The remote relate id to perform the authentication with.
+	 * @param serialPort The serial port to which the dongle is connected.
 	 */
-	public DongleProtocolHandler(byte remoteRelateId) {
+	public DongleProtocolHandler(String serialPort, byte remoteRelateId) {
+		this.serialPort = serialPort;
 		this.remoteRelateId = remoteRelateId;
 	}
 	
@@ -122,7 +127,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		if (rounds < 2)
 			throw new DongleAuthenticationProtocolException("Need at least 2 rounds for the interlock protocol to be secure.");
 
-		SerialConnector serialConn = SerialConnector.getSerialConnector();
+		SerialConnector serialConn;
+		try {
+			serialConn = SerialConnector.getSerialConnector(serialPort);
+		}
+		catch (Exception e) {
+			throw new InternalApplicationException("Could not get serial connector object.", e);
+		}
 		
 		// fetch our own relate id from the serial connector (which must be connected by now)
 		if (! serialConn.isOperational())

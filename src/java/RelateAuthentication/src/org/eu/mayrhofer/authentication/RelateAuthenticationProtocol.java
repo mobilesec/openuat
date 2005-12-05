@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 import uk.ac.lancs.relate.MessageQueue;
 import uk.ac.lancs.relate.RelateEvent;
 import uk.ac.lancs.relate.SerialConnector;
+import uk.ac.lancs.relate.DongleException;
 
 /// <summary>
 /// This is the main class of the relate authentication software: it ties together
@@ -104,15 +105,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		this.remoteHost = remoteHost;
 		this.remoteRelateId = remoteRelateId;
 
-		serialConn = SerialConnector.getSerialConnector();
-		
 		// immediately get the reference measurement to the specific remote relate dongle
-		// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-		if (serialConn.connect(SerialPort, 0, 255))
+		try {
+			// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
+			serialConn = SerialConnector.getSerialConnector(SerialPort);
 			logger.info("-------- connected successfully to dongle, including first handshake. My ID is " + serialConn.getLocalRelateId());
-		else {
+		}
+		catch (DongleException e) {
 			logger.error("-------- failed to connect to dongle, didn't get my ID.");
-			throw new ConfigurationErrorException("Can't connect to dongle.");
+			throw new ConfigurationErrorException("Can't connect to dongle.", e);
 		}
 		
 		int localRelateId = serialConn.getLocalRelateId();
@@ -247,7 +248,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	        // and use the agreed authentication key to start the dongle authentication
 	        logger.debug("Starting dongle authentication with remote relate id " + remoteRelateId + " and " + rounds + " rounds.");
-	        DongleProtocolHandler dh = new DongleProtocolHandler(remoteRelateId);
+	        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, remoteRelateId);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
         	state = STATE_DONGLE_AUTH_RUNNING;
         	dh.startAuthentication((byte[]) res[1], rounds, referenceMeasurement);
@@ -388,11 +389,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	{
     	class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
     		private boolean serverMode;
-    		private RelateAuthenticationProtocol outer;
     		
-    		public TempAuthenticationEventHandler(boolean serverMode, RelateAuthenticationProtocol outer) {
+    		public TempAuthenticationEventHandler(boolean serverMode) {
     			this.serverMode = serverMode;
-    			this.outer = outer;
     		}
     		
     	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
@@ -442,7 +441,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         	logger.info("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort, true);
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
-            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true, r);
+            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
         	h1.addAuthenticationProgressHandler(hh);
@@ -457,7 +456,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         {
         	logger.info("Starting client mode");
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
-        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false, r));
+        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
