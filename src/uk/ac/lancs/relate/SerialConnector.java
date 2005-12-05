@@ -170,22 +170,92 @@ class SerialCommunicationHelper {
 		return portNames;
 	}
 
+	/** Connect to a dongle at the given port. This method just initializes the portId member to point to 
+	 * a valid CommPortIdentifier object corresponding to the specified port, but does not open the hardware port.
+	 * The portId member will be used by prepareMode to open the hardware port. 
+	 *
+	 * @param port The port to use.
+	 * @see #portId
+	 * @see #prepareMode
+	 * 
+	 * @throws DongleException When the specified port could not be found or is already in use.
+	 * @throws IllegalArgumentException When the port argument is either null or empty.
+	 */
+	public SerialCommunicationHelper(String port) throws DongleException, IllegalArgumentException {
+		// initialize the portId object based on the objects gathered from the javax.comm API and the passed port name
+		if (port != null && port.length() > 0) {
+			for (int i=0; i<availablePorts.size(); i++) {
+				if (port.equals(((CommPortIdentifier) availablePorts.elementAt(i)).getName())) {
+					portId = (CommPortIdentifier) availablePorts.elementAt(i);
+					break;
+				}
+			}
+			if (portId == null) {
+				logger.error("no port named '" + port + "' found!");
+				throw new DongleException("no port named '" + port + "' found!");
+			} else {
+				if (portId.isCurrentlyOwned()) {
+					logger.error("port " + port + " is currently in use by " +
+							portId.getCurrentOwner());
+					throw new DongleException("port " + port  + " is currently in use by " +
+							portId.getCurrentOwner());
+				} else {
+					/* Set serial port parameters directly that are not yet accessible via the (deeply broken) javax.comm API.
+					 * This is of course very OS specific, but hopefully only needs to be done once and not each time the port
+					 * is opened (i.e. in prepareMode).
+					 */
+					if (System.getProperty("os.name").startsWith("Linux")) {
+						logger.info("Using Linux-specific configuration of the serial port.");
+						try {
+							// WATCHME: sometimes, the option -opost fixes the "10" duplication, but is not enough 
+							// ("255" duplication still happens and seems to be solved by the raw option)
+							String[] cmdArgs = new String[] {"stty", "-F", port, "raw"};
+							int exitCode = Runtime.getRuntime().exec(cmdArgs).waitFor();
+							if (exitCode != 0) {
+								logger.error("Unable to set serial port parameters to prohibit post-processing of received characters. " +
+										"Exit code of 'stty -F " + port + " raw' was " + exitCode + ". " +
+								        "This is non-fatal, but the dongle communication might now be subtly broken.");
+							}
+						}
+						catch (InterruptedException e) {
+							logger.error("The process was interrupted while trying to set serial port parameters with " + e + ". " +
+							    "This is non-fatal, but the dongle communication might now be subtly broken.");
+						}
+						catch (IOException e) {
+							logger.error("The process execution failed while trying to set serial port parameters with " + e + ". " +
+						    "This is non-fatal, but the dongle communication might now be subtly broken.");
+						}
+					}
+				}
+			}
+		}
+		else {
+			logger.error("connect method called with null or empty port string");
+			throw new IllegalArgumentException("port argument was either null or empty.");
+		}
+	}
+	
 	/** Prepares the dongle for either interacting mode (used to send commands to the dongle and get its status) or read-only monitoring mode.
 	 * 
+	 * This method actually opens the port (the constructor doesn't). To explicitly close it, the method 
+	 * disconnect() can be used.
+	 * 
 	 * @param interacting true for interacting mode, false for monitoring mode
+	 * @see #disconnect
 	 */
 	private synchronized void prepareMode(boolean interacting) throws IOException, PortInUseException {
-		if (this.interacting == interacting) {
+		if (this.interacting == interacting && serialPort != null) {
 			// already in the requested mode, nothing to do
+			logger.debug("Requested to switch mode while already in " + this.interacting + ", ignoring.");
 			return;
 		}
 		else {
-			if (fis != null) {
+			if (fis != null && serialPort != null) {
 				fis.skip(fis.available());
 				fis.close();
 				fis = null;
 			}
-			if (fos != null) {
+			if (fos != null && serialPort != null) {
 				fos.close();
 				fos = null;
 			}
@@ -229,7 +299,7 @@ class SerialCommunicationHelper {
 	}
 	
 	/**
-	 * This method also resceives from the dongle, but skips bytes until they
+	 * This method receives from the dongle, and skips bytes until they
 	 * match an expected start header (e.g. acknowledge).
 	 * 
 	 * @param bytesToRead
@@ -438,67 +508,10 @@ class SerialCommunicationHelper {
 		return curTime - startTime < timeout;
 	}
 
-	/** Connect to a dongle at the given port. This method just initializes the portId member to point to 
-	 * a valid CommPortIdentifier object corresponding to the specified port, but does not open the hardware port.
-	 * The portId member will be used by prepareMode to open the hardware port. 
-	 * @param port The port to use.
-	 * @return true if the port is available and not owned by another application, false otherwise.
-	 * @see #portId
-	 * @see #prepareMode
+	/** Disconnect from the hardware port. This is not a final operation for this object, since the
+	 * next prepareMode call will reopen the port. 
 	 */
-	public synchronized boolean connect(String port) {
-		// initialize the portId object based on the objects gathered from the javax.comm API and the passed port name
-		if (port != null) {
-			for (int i=0; i<availablePorts.size(); i++) {
-				if (port.equals(((CommPortIdentifier) availablePorts.elementAt(i)).getName())) {
-					portId = (CommPortIdentifier) availablePorts.elementAt(i);
-					break;
-				}
-			}
-			if (portId == null) {
-				logger.error("no port named '" + port + "' found!");
-			} else {
-				if (portId.isCurrentlyOwned()) {
-					logger.error("port " + port + " is currently in use by " +
-							portId.getCurrentOwner());
-				} else {
-					/* Set serial port parameters directly that are not yet accessible via the (deeply broken) javax.comm API.
-					 * This is of course very OS specific, but hopefully only needs to be done once and not each time the port
-					 * is opened (i.e. in prepareMode).
-					 */
-					if (System.getProperty("os.name").startsWith("Linux")) {
-						logger.info("Using Linux-specific configuration of the serial port.");
-						try {
-							// WATCHME: sometimes, the option -opost fixes the "10" duplication, but is not enough 
-							// ("255" duplication still happens and seems to be solved by the raw option)
-							String[] cmdArgs = new String[] {"stty", "-F", port, "raw"};
-							int exitCode = Runtime.getRuntime().exec(cmdArgs).waitFor();
-							if (exitCode != 0) {
-								logger.error("Unable to set serial port parameters to prohibit post-processing of received characters. " +
-										"Exit code of 'stty -F " + port + " raw' was " + exitCode + ". " +
-								        "This is non-fatal, but the dongle communication might now be subtly broken.");
-							}
-						}
-						catch (InterruptedException e) {
-							logger.error("The process was interrupted while trying to set serial port parameters with " + e + ". " +
-							    "This is non-fatal, but the dongle communication might now be subtly broken.");
-						}
-						catch (IOException e) {
-							logger.error("The process execution failed while trying to set serial port parameters with " + e + ". " +
-						    "This is non-fatal, but the dongle communication might now be subtly broken.");
-						}
-					}
-					
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	/** Disconnect from the hardware port. */
 	public synchronized void disconnect() {
-		/*b = null;*/
 		if (serialPort != null) {
 			serialPort.close();
 			serialPort = null;
@@ -517,6 +530,13 @@ class SerialCommunicationHelper {
 		return myRelateId;
 	}
 	
+	/** Returns the name of the serial port that this SerialCommunicationHelper object is using.
+	 * @return The used serial port name;
+	 */
+	public String getSerialPortName() {
+		return serialPort.getName();
+	}
+	
 	/** Switches the communication mode to the non-interactice receive-only mode used to transmit measurements and
 	 * status information from the dongle to the host. Use this method after sending commands to the dongle and before
 	 * using receiveFromDongle to get measurements or status messages in its normal (non-interactive) mode.
@@ -531,10 +551,14 @@ class SerialCommunicationHelper {
 	/** The USB to serial bridge seems to be really nasty in losing its baud rate setting when only 
 	 * receiving. Therefore it needs to be reset periodically by calling this method while in
 	 * non-interactive mode.
+	 * 
+	 * UPDATE: It seems that this method no longer needs to do anything since the switch from Sun's
+	 * implementation of javax.comm to the rxtx implementation. Keep an eye on it, but maybe this
+	 * method can finally be removed.
 	 */
 	public synchronized void forceBaudrateReset() {
 		// This is _really_ nasty! Why do we need to reset the baud rate continuously?
-		// The baud rate just resets itself to 19200 if we don't do that pariodically!
+		// The baud rate just resets itself to 19200 if we don't do that periodically!
 		if (serialPort.getBaudRate() != (this.interacting ? 19200 : 57600)) {
 			try {
 				logger.warn("BAD BAD DONGLE, NO COOKIE FOR YOU: The USB/serial bridge lost its last baud rate setting, forcing it back to "
@@ -556,10 +580,9 @@ class SerialCommunicationHelper {
  * between a Relate dongle and its host device (laptop, desktop, PDA, projector) *
  * 
  * To use this class, only a few steps are necessary:<br>
- * 1. Call the static method getSerialConnector to get the singleton object.<br>
- * 2. Call the connect method with the serial port name to use.<br>
- * 3. Register (at least) one event queue that will receive decoded events with registerEventQueue.
- * 4. Create a thread object for the SerialConnector object and start the thread.<br>
+ * 1. Call the static method getSerialConnector to get the singleton object for the specified port.<br>
+ * 2. Register (at least) one event queue that will receive decoded events with registerEventQueue.
+ * 3. Call the start method to start a background thread for polling the serial port.<br>
  * Optionally, the setHostInfo, switchDiagnosticMode and startAuthenticationWith methods
  * can be used to talk to the dongle at any time. When using one of these methods, the
  * background thread will be suspended until the dongle interaction has been completed.<br>
@@ -567,7 +590,6 @@ class SerialCommunicationHelper {
  * connected dongle (after connect has been called).
  * 
  * @see #getSerialConnector()
- * @see #connect
  * @see #registerEventQueue
  * @see #setHostInfo
  * @see #switchDiagnosticMode
@@ -585,22 +607,20 @@ public class SerialConnector implements Runnable {
 	 */
 	private static Logger statisticsLogger = Logger.getLogger("statistics.serialconnector");
 
-	/**
-	 * At the moment, there can only be a single instance of SerialConnector.
-	 * This singleton is held here and returned by getSerialConnector.
+	/** For each serial port, there can only be one SerialConnector object. This hash map
+	 * keeps all instances.
 	 * 
 	 * @see #getSerialConnector
 	 */
-	private static SerialConnector sConn = null;
+	private static HashMap serialConnectorSingletons = null;
+	
+	static {
+		serialConnectorSingletons = new HashMap();
+	}
 	
 	/** This helper class is used to communicate with the serial port. */
 	private SerialCommunicationHelper commHelper = null;
 	
-	/** The serial port name this connector refers to. Used to reconnect to the dongle if it fails to respond.
-	 * @see #receiveHelper
-	 */
-	private String serialPort;
-
 	/**
 	 * Flag indicating wether this instance should continue to run. Used by
 	 * die() to signal the thread to terminate.
@@ -619,7 +639,7 @@ public class SerialConnector implements Runnable {
 	private boolean operational = false;
 
 	/**
-	 * Flag indicating wether this instance is fully initialised. It is used by
+	 * Flag indicating wether this instance is initialised (even if failed). It is used by
 	 * getSerialConnector to wait for an instance to be initialised before
 	 * returning it.
 	 * 
@@ -738,10 +758,10 @@ public class SerialConnector implements Runnable {
 	private Object changeStateWaiter = new Object();
 
 	/** Minimal value for a relate id */
-	private int MIN_ID = 0;
+	private final static int MIN_ID = 0;
 
 	/** Maximal value for a relate id */
-	private int MAX_ID = 255;
+	private final static int MAX_ID = 255;
 
 	/** Prefix to host info 'H' */
 	private static final int HOST_INFO_SIGN = (byte) 'H';
@@ -833,24 +853,83 @@ public class SerialConnector implements Runnable {
 	private int numUnknownMessages = 0;
 
 	/** Initializes the SerialCommunicationHelper object in commHelper. */
-	protected SerialConnector() {
-		commHelper = new SerialCommunicationHelper();
-		
+	protected SerialConnector(String port) throws DongleException, IllegalArgumentException {
 		eventQueues = new LinkedList();
+
+		commHelper = new SerialCommunicationHelper(port);
+		logger.info("Connecting to dongle on port " + port);
+
+		try {
+			// this just get's the dongle's attention to see if it's there and implicitly reads its id
+			/*if (! commHelper.interruptDongle(MAXIMUM_TIMEOUT))
+			 return -1;*/
+			
+			// send a wakeup command to the dongle so that it will definitely start sending measurements
+			if (! commHelper.sendMessage(UNBLOCK_DONGLE, MAXIMUM_TIMEOUT)) {
+				logger.error("Could not send UNBLOCK_DONGLE message to dongle, initialization failed.");
+				initialised = true;
+				throw new DongleException("Could not send UNBLOCK_DONGLE message to dongle, initialization failed.");
+			}
+
+			// switch to receiving mode
+			commHelper.switchToReceive();
+			logger.info("Switched dongle to receive mode, local id is " + commHelper.getLocalRelateId());
+		}
+		catch (PortInUseException e) {
+			logger.error("Unable to initialize connection to dongle: " + e.getMessage());
+			initialised = true;
+			throw new DongleException("Unable to initialize connection to dongle", e);
+		}
+		catch (IOException e) {
+			logger.error("Unable to initialize connection to dongle: " + e.getMessage());
+			initialised = true;
+			throw new DongleException("Unable to initialize connection to dongle", e);
+		}
+
+		if (commHelper.getLocalRelateId() == -1) {
+			logger.error("Reported dongle id is -1, connect failed.");
+			initialised = true;
+			throw new DongleException("Reported dongle id is -1, connect failed.");
+		}
 		
 		initialised = true;
+		operational = true;
 	}
 
-	/** Get the only instance of the SerialConnector. */
-	public static SerialConnector getSerialConnector() {
-		if (sConn == null)
-			sConn = new SerialConnector();
-		while (!(sConn.initialised))
+	/** Get the only instance of the SerialConnector for the specified serial port. This method will wait until
+	 * the connector has been initialized and will return the singleton object for the specified serial port.
+	 * When specifiying the same serial port, the same object will be returned upon the next call.
+	 * 
+	 * Upon first call of this method for a serial port, the SerialConnector object will be created and the
+	 * connection to the dongle will be established. This can take some time, so other (concurrent) calls to this
+	 * method with the same port string will wait until this initialization is complete.
+	 * 
+	 * After successful initialisation, the local relate ID will have been reported by the dongle and can be
+	 * queried.
+	 * 
+	 * @see #getLocalRelateId
+	 *
+	 * @see SerialCommunicationHelper#SerialCommunicationHelper(String)
+	 */
+	public static SerialConnector getSerialConnector(String port) throws DongleException, IllegalArgumentException {
+		synchronized(serialConnectorSingletons) {
+			if (! serialConnectorSingletons.containsKey(port)) {
+				serialConnectorSingletons.put(port, new SerialConnector(port));
+			}
+		}
+		
+		SerialConnector sConn = (SerialConnector) serialConnectorSingletons.get(port);
+		// prevent multiple threads from initializing the same object twice....
+		while (! sConn.initialised)
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
 
 			}
+		
+		if (! sConn.operational)
+			throw new DongleException("Unable to initialze dongle connection");
+		
 		return sConn;
 	}
 
@@ -862,51 +941,6 @@ public class SerialConnector implements Runnable {
 	/** return Calibration object */
 	public Calibration getCalibration() {
 		return calibration ;
-	}
-	
-	/** initialise connector, first handshake with the dongle takes place here. This method fetches the dongle's Relate ID.
-	 * @param port		  the port to connect with 
-	 @param minID         the lowest valid ID for relate objects
-	 @param maxID         the highest valid ID for relate objects
-	 @return true if connection could be established, false otherwise.
-	 
-	 @see #getLocalRelateId
-	 **/
-	public boolean connect(String port, int minID, int maxID) {
-		// TODO: get the hostinfo from somewhere
-		// this.hostInfo = configuration.getFormat();
-
-		this.MIN_ID = minID;
-		this.MAX_ID = maxID;
-		this.serialPort = port;
-
-		if (!operational && commHelper.connect(port)) {
-			try {
-				logger.info("Connecting to dongle on port " + port);
-				
-				// this just get's the dongle's attention to see if it's there and implicitly reads its id
-				/*if (! commHelper.interruptDongle(MAXIMUM_TIMEOUT))
-					return -1;*/
-				
-				// send a wakeup command to the dongle so that it will definitely start sending measurements
-				if (! commHelper.sendMessage(UNBLOCK_DONGLE, MAXIMUM_TIMEOUT)) {
-					logger.error("Could not send UNBLOCK_DONGLE message to dongle, initialization failed.");
-					return false;
-				}
-
-				// switch to receiving mode
-				commHelper.switchToReceive();
-				logger.info("Switched dongle to receive mode, local id is " + commHelper.getLocalRelateId());
-
-				operational = true;
-			} catch (Exception e) {
-				logger.fatal("Could not connect to dongle!" + e + "\n" + e.getStackTrace());
-				return false;
-			}
-		}
-		if (commHelper.getLocalRelateId() == -1)
-			logger.error("Reported dongle id is -1, connect failed.");
-		return commHelper.getLocalRelateId() != -1;
 	}
 	
 	/** Switches the diagnostic mode on or off
@@ -1765,7 +1799,6 @@ public class SerialConnector implements Runnable {
 	
 	//Testing
 	public static void main(String args[]) throws Exception {
-		SerialConnector connector = SerialConnector.getSerialConnector();
 		/*Configuration configuration = new Configuration("./img/", connector, true);
 		
 		// wait for the user to specify all fields 
@@ -1791,9 +1824,14 @@ public class SerialConnector implements Runnable {
 			SerialCommunicationHelper.MAGIC_1 = Integer.parseInt(args[2]);
 			SerialCommunicationHelper.MAGIC_2 = Integer.parseInt(args[3]);
 		}
-		
-		if (!connector.connect(args[0], 0, 50)) {
+
+		SerialConnector connector = null;
+		try {
+			connector = SerialConnector.getSerialConnector(args[0]);
+		}
+		catch (Exception e) {
 			System.out.println("Error connecting to dongle!");
+			e.printStackTrace();
 			System.exit(1);
 		}
 		System.out.println("My relate id is " + connector.getLocalRelateId());
