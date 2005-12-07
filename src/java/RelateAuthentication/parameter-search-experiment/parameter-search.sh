@@ -8,7 +8,7 @@ while [ $magic1 -le 30 ]; do
       time=`java -cp bin:lib/RXTXcomm.jar:lib/log4j-1.2.jar:. \
             -Dgnu.io.rxtx.SerialPorts=/dev/ttyUSB0:/dev/ttyUSB1 \
             -Djava.library.path=nativelib/linux uk.ac.lancs.relate.SerialConnector \
-             /dev/ttyUSB1 param-search $magic1 $magic2 2>/dev/null \
+             /dev/ttyUSB0 param-search $magic1 $magic2 2>/dev/null \
              | awk ' /time to get dongle.s attention/ { print $11; }' \
              | tail -n 1 | sed 's/ms//'`
       if [ $? -ne 0 -o -z "$time" ]; then
@@ -17,6 +17,7 @@ while [ $magic1 -le 30 ]; do
         echo -n "$time "
         let i=i+1
       fi
+      sleep 3s
     done
     echo
     let magic2=magic2+25
