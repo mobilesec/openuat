@@ -80,7 +80,7 @@ class SerialCommunicationHelper {
 	 */
 	private final static byte[] ACK = { (byte) 'A', (byte) 'C', (byte) 'K' };
 
-	/** MAGIC VALUE NUMBER 1: Send 10 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud). 
+	/** MAGIC VALUE NUMBER 1: Send 25 garbage bytes, seems to work well (at least > 50ms garbage at 19200 baud). 
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
 	 * search of possible parameter combinations).
 	 * Warning: don't set this too high. The dongle currently has a statically sized receive buffer of 100 bytes, which will
@@ -90,9 +90,9 @@ class SerialCommunicationHelper {
 	 * Used in getDongleAttention.
 	 * @see #getDongleAttention
 	 */
-	static int MAGIC_1 = 20;
+	static int MAGIC_1 = 25;
 
-	/** MAGIC VALUE NUMBER 2: Wait for 200 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
+	/** MAGIC VALUE NUMBER 2: Wait for 50 ms for the dongle to realize we sent garbage. also seems to work reasonably well.
 	 * It's magic because there's no real reason for that specific number other than trial&error (and a systematic brute-force
 	 * search of possible parameter combinations).
 	 * Warning: Don't set this too low (i.e. too aggressively trying to get the dongle's attention) or the dongle will take a
@@ -106,7 +106,7 @@ class SerialCommunicationHelper {
 	 * Used in getDongleAttention.
 	 * @see #getDongleAttention
 	 */
-	static int MAGIC_2 = 200;
+	static int MAGIC_2 = 50;
 	
 	/** MAGIC VALUE NUMBER 3: Set the serial port read timeout to 2 times the timeout passed to the receive method. I am really not 
 	 * sure why this is necessary at all (the normal timeout should be enough), but elongating that time should not matter too much.
@@ -135,10 +135,12 @@ class SerialCommunicationHelper {
 	 * @see #lastTimeDongleInterrupted
 	 */
 	private final static int MAGIC_5 = 3000;
-	
-	
+
 	/** This static constructor only initializes the portNames and availablePorts members by querying the 
-	 * javax.comm/gnu.io API for serial ports. */
+	 * javax.comm/gnu.io API for serial ports.
+	 * @see #availablePorts
+	 * @see #portNames 
+	 */
 	static {
 		CommPortIdentifier id;
 		Enumeration portList;
@@ -518,6 +520,21 @@ class SerialCommunicationHelper {
 		}
 	}
 	
+	/** This method really frees the serial port resource by calling disconnect and then setting portId to
+	 * null so that the port will no longer be owned. This is a final operation for this object.
+	 * @see #disconnect
+	 * @see #portId
+	 */
+	public synchronized void destroy() {
+		disconnect();
+		portId = null;
+	}
+	
+	/** Simply calls destroy to be sure to free all resources. */
+	public void dispose() {
+		destroy();
+	}
+	
 	/** Returns the local dongle id that was reported by the dongle during sending the last message to it. It will be invalid
 	 * before the first call to sendMessage, because it is only initialized in that method. However, connect already initializes
 	 * it. It is updated every time the dongle's attention is successfully caught, i.e. in every call to the public sendMessage
@@ -534,7 +551,7 @@ class SerialCommunicationHelper {
 	 * @return The used serial port name;
 	 */
 	public String getSerialPortName() {
-		return serialPort.getName();
+		return portId.getName();
 	}
 	
 	/** Switches the communication mode to the non-interactice receive-only mode used to transmit measurements and
@@ -630,23 +647,13 @@ public class SerialConnector implements Runnable {
 	private boolean alive = true;
 
 	/** Flag indicating wether this instance is connected to a dongle. 
-	 * It is changed by connect (setting it to true on success) and disconnect (setting it to false).
+	 * It is changed by the constructor (setting it to true on success) and destroy (setting it to false).
 	 * 
 	 * @see #connect
-	 * @see #disconnect
+	 * @see #destroy
 	 * @see #isOperational
 	 */
 	private boolean operational = false;
-
-	/**
-	 * Flag indicating wether this instance is initialised (even if failed). It is used by
-	 * getSerialConnector to wait for an instance to be initialised before
-	 * returning it.
-	 * 
-	 * @see #getSerialConnector
-	 * @see #SerialConnector()
-	 */
-	private boolean initialised = false;
 
 	/** flag indicating the dongle's state */
 	private boolean dongle_on = true;
@@ -867,7 +874,9 @@ public class SerialConnector implements Runnable {
 			// send a wakeup command to the dongle so that it will definitely start sending measurements
 			if (! commHelper.sendMessage(UNBLOCK_DONGLE, MAXIMUM_TIMEOUT)) {
 				logger.error("Could not send UNBLOCK_DONGLE message to dongle, initialization failed.");
-				initialised = true;
+				// be sure to destroy it properly so that it can be retried later
+				commHelper.destroy();
+				commHelper = null;
 				throw new DongleException("Could not send UNBLOCK_DONGLE message to dongle, initialization failed.");
 			}
 
@@ -877,22 +886,24 @@ public class SerialConnector implements Runnable {
 		}
 		catch (PortInUseException e) {
 			logger.error("Unable to initialize connection to dongle: " + e.getMessage());
-			initialised = true;
+			commHelper.destroy();
+			commHelper = null;
 			throw new DongleException("Unable to initialize connection to dongle", e);
 		}
 		catch (IOException e) {
 			logger.error("Unable to initialize connection to dongle: " + e.getMessage());
-			initialised = true;
+			commHelper.destroy();
+			commHelper = null;
 			throw new DongleException("Unable to initialize connection to dongle", e);
 		}
 
 		if (commHelper.getLocalRelateId() == -1) {
 			logger.error("Reported dongle id is -1, connect failed.");
-			initialised = true;
+			commHelper.destroy();
+			commHelper = null;
 			throw new DongleException("Reported dongle id is -1, connect failed.");
 		}
 		
-		initialised = true;
 		operational = true;
 	}
 
@@ -914,25 +925,36 @@ public class SerialConnector implements Runnable {
 	public static SerialConnector getSerialConnector(String port) throws DongleException, IllegalArgumentException {
 		synchronized(serialConnectorSingletons) {
 			if (! serialConnectorSingletons.containsKey(port)) {
+				logger.info("Requested SerialConnector object for port " + port + " does not yet exist, creating singleton.");
 				serialConnectorSingletons.put(port, new SerialConnector(port));
 			}
 		}
 		
 		SerialConnector sConn = (SerialConnector) serialConnectorSingletons.get(port);
-		// prevent multiple threads from initializing the same object twice....
-		while (! sConn.initialised)
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
 
-			}
-		
-		if (! sConn.operational)
+		if (! sConn.operational) {
+			logger.error("Could not connect to dongle on port " + port + ", destroying SerialConnector object");
+			sConn.destroy();
 			throw new DongleException("Unable to initialze dongle connection");
+		}
 		
 		return sConn;
 	}
 
+	/** Disconnects the serial port to free the ressource and also frees the SerialConnector object. */
+	public void destroy() throws DongleException {
+		String myPortName = commHelper.getSerialPortName();
+		logger.info("Destroying SerialConnector object for port " + myPortName + ", will recreate on next access");
+		if (commHelper != null) {
+			commHelper.destroy();
+			commHelper = null;
+		}
+		operational = false;
+		if (serialConnectorSingletons.remove(myPortName) != this) 
+			throw new DongleException("Internal error: could not remove SerialConnector object. This should not happen! " +
+					"It seems a reference to SerialConnector was not abolished after calling destroy.");
+	}
+	
 	/** return list of available serial ports */
 	public static String[] getPorts() {
 		return SerialCommunicationHelper.getPorts();
@@ -1078,14 +1100,8 @@ public class SerialConnector implements Runnable {
 			((MessageQueue) i.next()).addMessage(e);
 	}
 	
-	/** Disconnects the serial port to free the ressource. */
-	public void disconnect() {
-		commHelper.disconnect();
-		operational = false;
-	}
-	
 	/** Returns the status of this serial connector object. It is changed by connect (setting
-	 * it to true on success) and disconnect (setting it to false).
+	 * it to true on success) and destroy (setting it to false).
 	 * 
 	 * @return true when successfully connected to a dongle, false otherwise.
 	 * 
@@ -1785,7 +1801,11 @@ public class SerialConnector implements Runnable {
 							changeDongleState();
 						}
 					}
-			}catch (Exception ex) {
+			}
+			catch (InterruptedException ex) {
+				logger.info("Main loop in monitoring thread was interruped, jumping to beginning to check for interruption.");
+			}
+			catch (Exception ex) {
 				logger.fatal("failure in main loop: " + ex.toString() + "\n" + ex.getStackTrace().toString());
 				/*try {
 					Thread.sleep(2000);
@@ -1793,8 +1813,10 @@ public class SerialConnector implements Runnable {
 					
 				}*/
 			}
-		}	
-		disconnect();
+		}
+		// free the resource while not running
+		logger.info("Monitoring thread stopped completely, disconnecting from serial port now.");
+		commHelper.disconnect();
 	}
 	
 	//Testing
