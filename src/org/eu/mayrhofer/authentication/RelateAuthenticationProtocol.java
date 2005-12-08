@@ -29,8 +29,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	private static Logger statisticsLogger = Logger.getLogger("statistics.relateauthentication");
 
 	public static final int TcpPort = 54321;
-	// TODO: make configurable!
-	public static final String SerialPort = "/dev/ttyUSB0";
+	
+	/** The serial port that is used by this authentication protocol instance to connect to its dongle. */
+	private String serialPort;
 
 	/** The relate id of the remote device to authenticate with. */
 	private byte remoteRelateId;
@@ -97,18 +98,20 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * This constructor also gets a reference measurement to the remote relate id by itself. This needs better
 	 * integration with the Relate framework, the reference measurement should come from "the outside".
 	 * 
+	 * @param serialPort The serial port to which the dongle is connected
 	 * @param remoteHost The hostname/IP address of the remote device.
 	 * @param remoteRelateId The relate id of the remote device.
 	 */
-	public RelateAuthenticationProtocol(String remoteHost, byte remoteRelateId) 
+	public RelateAuthenticationProtocol(String serialPort, String remoteHost, byte remoteRelateId) 
 			throws ConfigurationErrorException, InternalApplicationException {
+		this.serialPort = serialPort;
 		this.remoteHost = remoteHost;
 		this.remoteRelateId = remoteRelateId;
 
 		// immediately get the reference measurement to the specific remote relate dongle
 		try {
 			// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-			serialConn = SerialConnector.getSerialConnector(SerialPort);
+			serialConn = SerialConnector.getSerialConnector(serialPort);
 			logger.info("-------- connected successfully to dongle, including first handshake. My ID is " + serialConn.getLocalRelateId());
 		}
 		catch (DongleException e) {
@@ -180,7 +183,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 */
 	public void dispose() {
 		serialConn.stop();
-		serialConn.disconnect();
+		try {
+			serialConn.destroy();
+		}
+		catch (DongleException e) {}
 	}
 	
 	/** Starts the spatial authentication protocol in the background. Listeners should subscribe to
@@ -248,7 +254,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	        // and use the agreed authentication key to start the dongle authentication
 	        logger.debug("Starting dongle authentication with remote relate id " + remoteRelateId + " and " + rounds + " rounds.");
-	        DongleProtocolHandler dh = new DongleProtocolHandler(SerialPort, remoteRelateId);
+	        DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, remoteRelateId);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
         	state = STATE_DONGLE_AUTH_RUNNING;
         	dh.startAuthentication((byte[]) res[1], rounds, referenceMeasurement);
@@ -385,16 +391,32 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    }
 	}
 	
+	// helper function to better facilitate the experiments, just interrupt both dongles
+	private static void resetBothDongles() {
+		try {
+			SerialConnector.getSerialConnector("/dev/ttyUSB0").switchDiagnosticMode(false);
+		}
+		catch (DongleException e) { 
+			logger.error("Could not reset dongle");
+		}
+		try {
+			SerialConnector.getSerialConnector("/dev/ttyUSB1").switchDiagnosticMode(false);
+		}
+		catch (DongleException e) { 
+			logger.error("Could not reset dongle");
+		}
+	}
+	
     public static void main(String[] args) throws Exception
 	{
     	class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
-    		private boolean serverMode;
+    		private int mode; // 0 = client, 1 = server, 2 = both
     		
-    		public TempAuthenticationEventHandler(boolean serverMode) {
-    			this.serverMode = serverMode;
+    		public TempAuthenticationEventHandler(int mode) {
+    			this.mode = mode;
     		}
     		
-    	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
+    		synchronized public void AuthenticationSuccess(Object sender, Object remote, Object result)
     	    {
     	        logger.info("Received relate authentication success event with " + remote);
    	        	System.out.println("SUCCESS");
@@ -405,11 +427,19 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	} catch (InterruptedException e) {}
 	        	outer.serialConn.switchDiagnosticMode(false);*/
    	        	
-   	        	if (!serverMode)
+   	        	if (mode == 0)
    	        		Runtime.getRuntime().exit(0);
+   	        	else if (mode == 2) {
+   	        		// give it time to settle....
+   	        		try {
+   	        			Thread.sleep(3000);
+   	        		} catch (InterruptedException e) {}
+   	        		resetBothDongles();
+   	        		Runtime.getRuntime().exit(0);
+   	        	}
     	    }
     	    
-    	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
+    	    synchronized public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
     	    {
     	        logger.info("Received relate authentication failure event with " + remote);
     	        Throwable exc = e;
@@ -426,8 +456,12 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	} catch (InterruptedException e1) {}
 	        	outer.serialConn.switchDiagnosticMode(false);*/
     	        
-    	        if (!serverMode)
+   	        	if (mode == 0)
    	        		Runtime.getRuntime().exit(1);
+   	        	else if (mode == 2) {
+   	        		resetBothDongles();
+   	        		Runtime.getRuntime().exit(1);
+   	        	}
     	    }
 
     	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
@@ -436,12 +470,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	    }
     	}
     	
-        if (args.length > 1 && args[0].equals("server"))
-        {
+        if (args.length > 1 && args[0].equals("server")) {
         	logger.info("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort, true);
-            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("", (byte) Integer.parseInt(args[1]));
-            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(true);
+            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) Integer.parseInt(args[1]));
+            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
         	h1.addAuthenticationProgressHandler(hh);
@@ -451,12 +484,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             while (true) Thread.sleep(1000);
 
             //h1.stopListening();
-        }
-        if (args.length > 3 && args[0].equals("client"))
-        {
+        } 
+        else if (args.length > 3 && args[0].equals("client")) {
         	logger.info("Starting client mode");
-        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], (byte) Integer.parseInt(args[2]));
-        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(false));
+        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB9", args[1], (byte) Integer.parseInt(args[2]));
+        	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(0));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
@@ -475,6 +507,57 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
             //new BufferedReader(new InputStreamReader(System.in)).readLine();
 
+            while (true) Thread.sleep(1000);
+        }
+        else if (args.length == 1 && args[0].equals("both")) {
+        	logger.info("Starting mutual authentication mode with two dongles");
+        	int localId1 = -1, localId2 = -1;
+
+        	// first need to get my local ids
+    		try {
+    			SerialConnector s1 = SerialConnector.getSerialConnector("/dev/ttyUSB0");
+    			localId1 = s1.getLocalRelateId();
+    			SerialConnector s2 = SerialConnector.getSerialConnector("/dev/ttyUSB1");
+    			localId2 = s2.getLocalRelateId();
+    		}
+    		catch (DongleException e) {
+    			logger.error("-------- failed to connect to dongle, didn't get my ID.");
+    			System.out.println(e);
+    			e.printStackTrace();
+    			System.exit(1);
+    		}
+
+    		logger.info("Connected to my two dongles: ID " + localId1 + ", and ID " + localId2);
+
+    		// server side
+            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
+    		HostServerSocket h1 = new HostServerSocket(TcpPort, true);
+            RelateAuthenticationProtocol r_serv = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) localId2);
+            r_serv.addAuthenticationProgressHandler(ht);
+            HostAuthenticationEventHandler hh_serv = r_serv.new HostAuthenticationEventHandler();
+        	h1.addAuthenticationProgressHandler(hh_serv);
+            h1.startListening();
+
+            // client side
+        	RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol("/dev/ttyUSB1" , "localhost", (byte) localId1);
+        	r_client.addAuthenticationProgressHandler(ht);
+        	r_client.startAuthentication((byte) localId1);
+
+        	// safety belt
+            new Thread(new Runnable() {
+            	public void run() {
+            		System.out.println("******** Starting timer");
+            		// two minutes should really be enough
+            		try {
+            			Thread.sleep(120 * 1000);
+            		} catch (InterruptedException e) {}
+            		System.out.println("******** Timed out");
+        			statisticsLogger.error("- Timer killed client");
+            		System.exit(100);
+            	}
+            }).start();
+
+            // and wait
             while (true) Thread.sleep(1000);
         }
         
