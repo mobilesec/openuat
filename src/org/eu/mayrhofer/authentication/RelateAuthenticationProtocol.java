@@ -509,7 +509,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
             while (true) Thread.sleep(1000);
         }
-        else if (args.length == 1 && args[0].equals("both")) {
+        else if (args.length == 2 && args[0].equals("both")) {
         	logger.info("Starting mutual authentication mode with two dongles");
         	int localId1 = -1, localId2 = -1;
 
@@ -541,8 +541,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             // client side
         	RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol("/dev/ttyUSB1" , "localhost", (byte) localId1);
         	r_client.addAuthenticationProgressHandler(ht);
-        	r_client.startAuthentication((byte) localId1);
-
+        	r_client.startAuthentication(Integer.parseInt(args[1]));
+        	
         	// safety belt
             new Thread(new Runnable() {
             	public void run() {
