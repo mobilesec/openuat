@@ -15,9 +15,11 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.BadPaddingException;
 
-import uk.ac.lancs.relate.SerialConnector;
-import uk.ac.lancs.relate.MessageQueue;
-import uk.ac.lancs.relate.RelateEvent;
+import uk.ac.lancs.relate.core.SerialConnector;
+import uk.ac.lancs.relate.core.MessageQueue;
+import uk.ac.lancs.relate.events.RelateEvent;
+import uk.ac.lancs.relate.events.MeasurementEvent;
+import uk.ac.lancs.relate.events.AuthenticationEvent;
 
 /**
  * 
@@ -190,60 +192,63 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				logger.warn("Warning: got null message out of message queue! This should not happen.");
 				continue;
 			}
-			if (e.getType() == RelateEvent.AUTHENTICATION_INFO && e.getDevice().getId() == remoteRelateId) {
+			if (e instanceof AuthenticationEvent && ((AuthenticationEvent) e).getRemoteDongleId() == remoteRelateId) {
+				AuthenticationEvent ae = (AuthenticationEvent) e;
 				// if nearly all (or all) bits have already been transmitted, it might have less bits
-				int curBits = messageBitsPerRound * e.round <= receivedRfMessage.length * 8 ? 
+				int curBits = messageBitsPerRound * ae.getRound ()<= receivedRfMessage.length * 8 ? 
 						messageBitsPerRound : 
-						(receivedRfMessage.length * 8 - messageBitsPerRound * (e.round-1));
+						(receivedRfMessage.length * 8 - messageBitsPerRound * (ae.getRound()-1));
 
 				// sanity check
-				if (e.round > rounds) {
+				if (ae.getRound() > rounds) {
 					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
-							": round " + e.round + 
-							(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(e.authenticationPart) + ". Reason: only expected + " + rounds + " rounds.");
+							": round " + ae.getRound() + 
+							(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(ae.getAuthPart()) + ". Reason: only expected + " + rounds + " rounds.");
 					continue;
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				if (receivedRoundsRF.get(e.round-1)) {
+				if (receivedRoundsRF.get(ae.getRound()-1)) {
 					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
-							": round " + e.round + 
-							(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(e.authenticationPart) + ". Reason: already received this round.");
+							": round " + ae.getRound() + 
+							(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(ae.getAuthPart()) + ". Reason: already received this round.");
 					continue;
 				}
-				receivedRoundsRF.set(e.round-1, true);
+				receivedRoundsRF.set(ae.getRound()-1, true);
 
 				// the last messages might not even carry any bits at all
 				if (curBits > 0) {
 					// authentication info event: just remember the bits received with it
-					addPart(receivedRfMessage, e.authenticationPart, (e.round-1) * messageBitsPerRound, curBits);
+					addPart(receivedRfMessage, ae.getAuthPart(), (ae.getRound()-1) * messageBitsPerRound, curBits);
 					logger.info("Received authentication part from dongle " + remoteRelateId + 
-						": round " + e.round + 
-						(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-						SerialConnector.byteArrayToHexString(e.authenticationPart));
+						": round " + ae.getRound() + 
+						(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+						SerialConnector.byteArrayToHexString(ae.getAuthPart()));
 				}
 				else
 					logger.info("Ignoring authentication part from dongle " + remoteRelateId + 
-							": round " + e.round + 
-							(e.ack ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(e.authenticationPart) + ". Reason: RF message already complete.");
-				lastAuthPart = e.round-1;
+							": round " + ae.getRound() + 
+							(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(ae.getAuthPart()) + ". Reason: RF message already complete.");
+				lastAuthPart = ae.getRound()-1;
 			}
-			else if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
-					e.getMeasurement().getId() == remoteRelateId) {
-				if (e.getMeasurement().getTransducers() == 0) {
+			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getMeasurement().getDongleId() == localRelateId &&  
+					((MeasurementEvent) e).getMeasurement().getRelatumId() == remoteRelateId) {
+				MeasurementEvent me = (MeasurementEvent) e;
+				
+				if (me.getMeasurement().getTransducers() == 0) {
 					//logger.info("Measurement is reported with 0 valid transducers, using it anyway.");
 					logger.debug("Discarding invalid measurement in authentication mode: 0 valid transducers.");
 					continue;
 				}
-				if (e.getMeasurement().getDistance() == 4094) {
+				if (me.getMeasurement().getDistance() == 4094) {
 					logger.debug("Discarding invalid measurement in authentication mode: 4094 reported by dongle");
 					continue;
 				}
 
 				// measurement event for the authentication partner: re-use the round from the authentication info event
-				int delayedMeasurement = (int) e.getMeasurement().getDistance();
+				int delayedMeasurement = (int) me.getMeasurement().getDistance();
 				int delta = Math.abs(delayedMeasurement - referenceMeasurement);
 
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
