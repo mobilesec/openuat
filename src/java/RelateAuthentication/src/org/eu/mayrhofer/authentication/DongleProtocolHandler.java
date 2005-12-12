@@ -203,16 +203,16 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				if (ae.getRound() > rounds) {
 					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
-							(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(ae.getAuthPart()) + ". Reason: only expected + " + rounds + " rounds.");
+							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: only expected + " + rounds + " rounds.");
 					continue;
 				}
 				// check if we already got that round - only use the first packet so to ignore any ack-only packets
 				if (receivedRoundsRF.get(ae.getRound()-1)) {
 					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
-							(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(ae.getAuthPart()) + ". Reason: already received this round.");
+							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: already received this round.");
 					continue;
 				}
 				receivedRoundsRF.set(ae.getRound()-1, true);
@@ -220,17 +220,17 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				// the last messages might not even carry any bits at all
 				if (curBits > 0) {
 					// authentication info event: just remember the bits received with it
-					addPart(receivedRfMessage, ae.getAuthPart(), (ae.getRound()-1) * messageBitsPerRound, curBits);
+					addPart(receivedRfMessage, ae.getAuthenticationPart(), (ae.getRound()-1) * messageBitsPerRound, curBits);
 					logger.info("Received authentication part from dongle " + remoteRelateId + 
 						": round " + ae.getRound() + 
-						(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-						SerialConnector.byteArrayToHexString(ae.getAuthPart()));
+						(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+						SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()));
 				}
 				else
 					logger.info("Ignoring authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
-							(ae.getAckknoledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(ae.getAuthPart()) + ". Reason: RF message already complete.");
+							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: RF message already complete.");
 				lastAuthPart = ae.getRound()-1;
 			}
 			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getMeasurement().getDongleId() == localRelateId &&  
