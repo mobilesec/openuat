@@ -9,10 +9,11 @@ import java.util.Arrays;
 
 import org.apache.log4j.Logger;
 
-import uk.ac.lancs.relate.MessageQueue;
-import uk.ac.lancs.relate.RelateEvent;
-import uk.ac.lancs.relate.SerialConnector;
-import uk.ac.lancs.relate.DongleException;
+import uk.ac.lancs.relate.core.MessageQueue;
+import uk.ac.lancs.relate.core.SerialConnector;
+import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.events.RelateEvent;
+import uk.ac.lancs.relate.events.MeasurementEvent;
 
 /// <summary>
 /// This is the main class of the relate authentication software: it ties together
@@ -149,26 +150,30 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			}
 			
 			// test code begin
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId) {
-				if (e.getMeasurement().getTransducers() != 0 && e.getMeasurement().getDistance() != 4094) {
-					logger.debug("Got measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
-					ThreeInts x = s[e.getMeasurement().getId()];
+			if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getMeasurement().getDongleId() == localRelateId) {
+				MeasurementEvent me = (MeasurementEvent) e;
+				
+				if (me.getMeasurement().getTransducers() != 0 && me.getMeasurement().getDistance() != 4094) {
+					logger.debug("Got measurement from dongle " + me.getMeasurement().getDongleId() + " to dongle " + me.getMeasurement().getRelatumId() + ": " + me.getMeasurement().getDistance());
+					ThreeInts x = s[me.getMeasurement().getRelatumId()];
 					x.n++;
-					x.sum += (int) e.getMeasurement().getDistance();
-					x.sum2 += ((int) e.getMeasurement().getDistance() * (int) e.getMeasurement().getDistance());
-					logger.debug("To dongle " + e.getMeasurement().getId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
+					x.sum += (int) me.getMeasurement().getDistance();
+					x.sum2 += ((int) me.getMeasurement().getDistance() * (int) me.getMeasurement().getDistance());
+					logger.debug("To dongle " + me.getMeasurement().getRelatumId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
 							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );
 				}
 				else {
-					logger.debug("Discarded invalid measurement from dongle " + e.getMeasurement().getRelatum() + " to dongle " + e.getMeasurement().getId() + ": " + e.getMeasurement().getDistance());
+					logger.debug("Discarded invalid measurement from dongle " + me.getMeasurement().getDongleId() + " to dongle " + me.getMeasurement().getRelatumId() + ": " + me.getMeasurement().getDistance());
 				}
 			}
 			// test code end
 			
-			if (e.getType() == RelateEvent.NEW_MEASUREMENT && e.getMeasurement().getRelatum() == localRelateId &&  
-					e.getMeasurement().getId() == remoteRelateId && e.getMeasurement().getTransducers() != 0 && e.getMeasurement().getDistance() != 4094) {
-				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + e.getMeasurement().getDistance());
-				ref[numMeasurements++] = (int) e.getMeasurement().getDistance();
+			if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getMeasurement().getDongleId() == localRelateId &&  
+					((MeasurementEvent) e).getMeasurement().getRelatumId() == remoteRelateId && ((MeasurementEvent) e).getMeasurement().getTransducers() != 0 && ((MeasurementEvent) e).getMeasurement().getDistance() != 4094) {
+				MeasurementEvent me = (MeasurementEvent) e;
+
+				logger.info("Received reference measurement to dongle " + remoteRelateId + ": " + me.getMeasurement().getDistance());
+				ref[numMeasurements++] = (int) me.getMeasurement().getDistance();
 			}
 		}
 		Arrays.sort(ref);
