@@ -506,6 +506,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             		} catch (InterruptedException e) {}
             		System.out.println("******** Timed out");
         			statisticsLogger.error("- Timer killed client");
+   	        		resetBothDongles();
             		System.exit(100);
             	}
             }).start();
