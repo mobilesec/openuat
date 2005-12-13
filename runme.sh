@@ -1,2 +1,2 @@
 # classpath . is just so that log4j.properties is found
-java -cp bin:lib/RXTXcomm.jar:lib/log4j-1.2.jar:. -Djava.library.path=nativelib/linux/ org.eu.mayrhofer.authentication.RelateAuthenticationProtocol $@
+java -cp bin:lib/relatecore.jar:. -Djava.library.path=/usr/lib org.eu.mayrhofer.authentication.RelateAuthenticationProtocol $@
