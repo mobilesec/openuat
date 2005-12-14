@@ -1,5 +1,5 @@
-magic1=1
-while [ $magic1 -le 30 ]; do 
+magic1=15
+while [ $magic1 -le 35 ]; do 
   magic2=50
   while [ $magic2 -le 400 ]; do 
     echo -n "$magic1 $magic2 "
