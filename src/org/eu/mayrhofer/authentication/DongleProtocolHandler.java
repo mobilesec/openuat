@@ -17,6 +17,7 @@ import javax.crypto.BadPaddingException;
 
 import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.MessageQueue;
+import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.events.RelateEvent;
 import uk.ac.lancs.relate.events.MeasurementEvent;
 import uk.ac.lancs.relate.events.AuthenticationEvent;
@@ -164,9 +165,16 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		startTime = System.currentTimeMillis();
 
 		// construct the start-of-authentication message and sent it to the dongle
-		if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound)) {
-			logger.error("ERROR: could not send start-of-authentication packet to dongle");
-			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle.");
+		try {
+			if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound)) {
+				logger.error("ERROR: could not send start-of-authentication packet to dongle");
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle.");
+				return false;
+			}
+		} 
+		catch (DongleException e) {
+			logger.fatal("ERROR: could not send start-of-authentication packet to dongle: " + e);
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), e, "Unable to send start-of-authentication packet to dongle.");
 			return false;
 		}
 
