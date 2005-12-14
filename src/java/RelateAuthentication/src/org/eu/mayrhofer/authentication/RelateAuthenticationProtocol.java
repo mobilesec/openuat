@@ -405,6 +405,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			logger.error("Could not reset dongle");
 		}
 		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {}
+		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB1").switchDiagnosticMode(false);
 		}
 		catch (DongleException e) { 
@@ -523,6 +526,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     		try {
     			SerialConnector s1 = SerialConnector.getSerialConnector("/dev/ttyUSB0");
     			localId1 = s1.getLocalRelateId();
+    			Thread.sleep(3000);
     			SerialConnector s2 = SerialConnector.getSerialConnector("/dev/ttyUSB1");
     			localId2 = s2.getLocalRelateId();
     		}

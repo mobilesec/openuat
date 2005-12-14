@@ -7,7 +7,7 @@ while [ $r -le 43 ]; do
     echo -------------------------------------------------
     echo "Rounds: $r Try: $i"
     if [ ! -e "/tmp/exp_${r}_${i}" ]; then
-      ./runme.sh both $r
+      time ./runme.sh both $r
       ret=$?
       sleep 2s
       # only mark the run as done for either error or success, but else retry
