@@ -233,7 +233,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: RF message already complete.");
 				lastAuthPart = ae.getRound()-1;
 			}
-			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getMeasurement().getDongleId() == localRelateId &&  
+			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getDongleId() == localRelateId &&  
 					((MeasurementEvent) e).getMeasurement().getRelatumId() == remoteRelateId) {
 				MeasurementEvent me = (MeasurementEvent) e;
 				
@@ -248,7 +248,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 
 				// measurement event for the authentication partner: re-use the round from the authentication info event
-				int delayedMeasurement = (int) me.getMeasurement().getDistance();
+				int delayedMeasurement = me.getMeasurement().getDistance();
 				int delta = Math.abs(delayedMeasurement - referenceMeasurement);
 
 				// first extract the delay bits (since it is delayed, it is guaranteed to be longer than the reference)
