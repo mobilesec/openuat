@@ -1,29 +1,29 @@
 mean values:
 
 d=dlmread('attention-magic-values.log');
-for i=1:252
-l=d(i,1)-2;
+for i=1:size(d,1)
+l=d(i,1);
 c=(d(i,2)-50)/25+1;
-d_mean(l,c)=mean(d(i,3:46));
-d_max(l,c)=max(d(i,3:46));
-d_stddev(l,c)=std(d(i,3:46));
+d_mean(l,c)=mean(d(i,3:size(d,2)));
+d_max(l,c)=max(d(i,3:size(d,2)));
+d_stddev(l,c)=std(d(i,3:size(d,2)));
 end
 
 bar3(d_mean);
 bar3(d_max);
 bar3(d_stddev);
 
-for i=1:252
+for i=1:size(d,1)
 o(i,1:2) = d(i,1:2);
-o(i,3) = mean(d(i,3:46));
-o(i,4) = max(d(i,3:46));
-o(i,5) = std(d(i,3:46));
+o(i,3) = mean(d(i,3:size(d,2)));
+o(i,4) = max(d(i,3:size(d,2)));
+o(i,5) = std(d(i,3:size(d,2)));
 end
 
 min_mean=10000;
 min_max=10000;
 min_stddev=10000;
-for i=1:252
+for i=1:size(d,1)
 if o(i,3) < min_mean
 min_mean = o(i,3);
 min_mean_ind = o(i,1:2);
@@ -38,9 +38,9 @@ min_stddev_ind = o(i,1:2);
 end
 end
 
-min_mean --> 156,9773
-min_mean_ind --> 26 75
-min_max --> 3444
-min_max_ind --> 26 75
-min_stddev --> 619,7726
-min_stddev_ind --> 26 75
+min_mean --> 156,9773 (old), 173,1765 (10s), 160.9414 (7s), 252,3922 (7d), 213,2157 (10d)
+min_mean_ind --> 26 75 (old), 24 50 (10s), 28 50 (7s), 25 50 (7d), 19 100 (10d)
+min_max --> 3444 (old), 259 (10s), 369 (7s), 772 (7d), 588 (10d)
+min_max_ind --> 26 75 (old), 26 50 (10s), 27 50 (7s), 25 50 (7d), 19 100 (10d)
+min_stddev --> 619,7726 (old), 73,1579 (10s), 82.1106 (7s), 155,2640 (7d), 121,5007 (10d)
+min_stddev_ind --> 26 75 (old), 25 50 (10s), 23 50 (7s), 25 50 (7d), 19 100 (10d)
