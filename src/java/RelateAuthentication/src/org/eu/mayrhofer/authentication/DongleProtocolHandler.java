@@ -290,7 +290,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// still do a sanity check (within our accuracy range)
 				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
-					logger.debug("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
+					logger.warn("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
 							", reference is " + referenceMeasurement);
 					continue;
 				}
