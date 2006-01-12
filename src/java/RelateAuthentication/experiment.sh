@@ -11,14 +11,17 @@ while [ $r -le 43 ]; do
       ret=$?
       sleep 2s
       # only mark the run as done for either error or success, but else retry
-      if [ $ret -eq 0 -o $ret -eq 1 ]; then
+      # change: only go on when it's been a success....
+      #if [ $ret -eq 0 -o $ret -eq 1 ]; then
+      if [ $ret -eq 0 ]; then
         touch "/tmp/exp_${r}_${i}"
       fi
     else
       echo "Already done, skipping."
       ret=0
     fi
-    if [ $ret -eq 0 -o $ret -eq 1 ]; then
+    #if [ $ret -eq 0 -o $ret -eq 1 ]; then
+    if [ $ret -eq 0 ]; then
       let i=i+1
     fi
   done
