@@ -20,7 +20,7 @@ public class HostServerSocketTest extends TestCase {
 	}
 
 	public void setUp() throws IOException {
-		server = new HostServerSocket(PORT, false);
+		server = new HostServerSocket(PORT, false, true);
 		server.startListening();
 	}
 

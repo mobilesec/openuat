@@ -33,12 +33,19 @@ public class HostServerSocket extends AuthenticationEventSender implements Runna
 	 * passed to the authentication success event of the respective listener for further reuse. */
 	private boolean keepSocketConnected;
 
+	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
+	private boolean useJSSE;
+	
 	/** Initialized the listener socket by binding it to the specified port. 
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 * @see #keepSocketConnected 
 	 */
-	public HostServerSocket(int port, boolean keepSocketConnected) throws IOException {
-		listener = new ServerSocket(port);
+	public HostServerSocket(int port, boolean keepSocketConnected, boolean useJSSE) throws IOException {
+		this.listener = new ServerSocket(port);
 		this.keepSocketConnected = keepSocketConnected;
+		this.useJSSE = useJSSE;
 	}
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
@@ -85,11 +92,11 @@ public class HostServerSocket extends AuthenticationEventSender implements Runna
 			while (running) {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				Socket s = listener.accept();
-				HostProtocolHandler h = new HostProtocolHandler(s, keepSocketConnected);
+				HostProtocolHandler h = new HostProtocolHandler(s, keepSocketConnected, useJSSE);
 				// before starting the background thread, register all our own listeners with this new event sender
-	    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-	    			h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
-				h.startIncomingAuthenticationThread();
+	    			for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
+	    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
+	    			h.startIncomingAuthenticationThread();
 			}
 		} catch(SocketException e) {
 			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 

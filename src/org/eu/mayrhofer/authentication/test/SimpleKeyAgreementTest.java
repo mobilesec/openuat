@@ -7,6 +7,9 @@ import java.math.BigInteger;
 import junit.framework.*;
 
 public class SimpleKeyAgreementTest extends TestCase {
+	
+	protected boolean useJSSE = true;
+	protected boolean useJSSE2 = true;
 
     public static boolean compareByteArray(byte[] b1, byte[] b2)
     {
@@ -61,16 +64,16 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testStates_Initialize() throws InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 			
 			// we should be able to initialize at every time
-			ka.init();
-			ka.init();
+			ka.init(useJSSE);
+			ka.init(useJSSE);
 		}
 		
 		public void testStates_getPublicKey_correctState() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 			
 			// we can get the key once directly after initialization
 			ka.getPublicKey();
@@ -78,7 +81,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testStates_getPublicKey_wrongState() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 			
 			// we can get the key once directly after initialization
 			ka.getPublicKey();
@@ -93,9 +96,9 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testStates_addRemotePublicKey_correctState() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
 			// the second object is just for getting a valid public key
-			SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka2 = new SimpleKeyAgreement(useJSSE2);
 			
 			ka1.getPublicKey();
 			byte[] pubKey2 = ka2.getPublicKey();
@@ -106,9 +109,9 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testStates_addRemotePublicKey_wrongState1() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
 			// the second object is just for getting a valid public key
-			SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka2 = new SimpleKeyAgreement(useJSSE2);
 			
 			byte[] pubKey2 = ka2.getPublicKey();
 			
@@ -123,9 +126,9 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testStates_addRemotePublicKey_wrongState2() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
 			// the second object is just for getting a valid public key
-			SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka2 = new SimpleKeyAgreement(useJSSE2);
 			
 			ka1.getPublicKey();
 			byte[] pubKey2 = ka2.getPublicKey();
@@ -143,7 +146,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
      public void testStates_getSessionKey_wrongState1() throws KeyAgreementProtocolException, InternalApplicationException
      {
-         SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
          // should not work, we have noto yet complete the agreement
 			try {
 				ka1.getSessionKey();
@@ -155,7 +158,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
      public void testStates_getSessionKey_wrongState2() throws KeyAgreementProtocolException, InternalApplicationException
      {
-         SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
 
          ka1.getPublicKey();
 
@@ -170,9 +173,9 @@ public class SimpleKeyAgreementTest extends TestCase {
 
      public void testStates_getSessionKey_correctState() throws KeyAgreementProtocolException, InternalApplicationException
      {
-         SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
          // the second object is just for getting a valid public key
-         SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka2 = new SimpleKeyAgreement(useJSSE2);
 
          ka1.getPublicKey();
          byte[] pubKey2 = ka2.getPublicKey();
@@ -186,7 +189,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
      public void testStates_getAuthenticationKey_wrongState1() throws KeyAgreementProtocolException, InternalApplicationException
      {
-         SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
          // should not work, we have noto yet complete the agreement
 			try {
 		         ka1.getAuthenticationKey();
@@ -198,7 +201,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
      public void testStates_getAuthenticationKey_wrongState2() throws KeyAgreementProtocolException, InternalApplicationException
      {
-         SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
 
          ka1.getPublicKey();
 
@@ -213,9 +216,9 @@ public class SimpleKeyAgreementTest extends TestCase {
 
      public void testStates_getAuthenticationKey_correctState() throws KeyAgreementProtocolException, InternalApplicationException
      {
-         SimpleKeyAgreement ka1 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
          // the second object is just for getting a valid public key
-         SimpleKeyAgreement ka2 = new SimpleKeyAgreement();
+         SimpleKeyAgreement ka2 = new SimpleKeyAgreement(useJSSE2);
 
          ka1.getPublicKey();
          byte[] pubKey2 = ka2.getPublicKey();
@@ -229,7 +232,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testMessages_addRemotePublicKey_equalPublicKeyAdded() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 			
 			byte[] pubKey = ka.getPublicKey();
 			// this should produce an exception, since the public key is our own (but the state is correct)
@@ -243,7 +246,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded1() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 
 			// for the correct state			
 			ka.getPublicKey();
@@ -258,7 +261,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded2() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 
 			// for the correct state			
 			ka.getPublicKey();
@@ -273,7 +276,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded3() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 
 			// for the correct state			
 			ka.getPublicKey();
@@ -288,7 +291,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded4() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 
 			// for the correct state			
 			ka.getPublicKey();
@@ -303,7 +306,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 
 		public void testMessages_addRemotePublicKey_invalidPublicKeyAdded5() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ka = new SimpleKeyAgreement();
+			SimpleKeyAgreement ka = new SimpleKeyAgreement(useJSSE);
 
 			// for the correct state			
 			ka.getPublicKey();
@@ -318,8 +321,8 @@ public class SimpleKeyAgreementTest extends TestCase {
 		
 		public void testCorrectAgreement() throws KeyAgreementProtocolException, InternalApplicationException
 		{
-			SimpleKeyAgreement ag1 = new SimpleKeyAgreement();
-			SimpleKeyAgreement ag2 = new SimpleKeyAgreement();
+			SimpleKeyAgreement ag1 = new SimpleKeyAgreement(useJSSE);
+			SimpleKeyAgreement ag2 = new SimpleKeyAgreement(useJSSE2);
 			
 			byte[] msg1 = ag1.getPublicKey();
 			byte[] msg2 = ag2.getPublicKey();

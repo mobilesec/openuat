@@ -76,6 +76,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	/** This message is sent via the TCP channel to the remote upon authentication failure. */
 	private final static String Protocol_Failure = "NACK ";
 	
+	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
+	private boolean useJSSE;
+
 	/** If the state is STATE_DONGLE_AUTH_RUNNING or STATE_SUCCEEDED, this contains
 	 * the secret key shared with the other device.
 	 */
@@ -102,12 +105,16 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @param serialPort The serial port to which the dongle is connected
 	 * @param remoteHost The hostname/IP address of the remote device.
 	 * @param remoteRelateId The relate id of the remote device.
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 */
-	public RelateAuthenticationProtocol(String serialPort, String remoteHost, byte remoteRelateId) 
+	public RelateAuthenticationProtocol(String serialPort, String remoteHost, byte remoteRelateId, boolean useJSSE) 
 			throws ConfigurationErrorException, InternalApplicationException {
 		this.serialPort = serialPort;
 		this.remoteHost = remoteHost;
 		this.remoteRelateId = remoteRelateId;
+		this.useJSSE = useJSSE;
 
 		// immediately get the reference measurement to the specific remote relate dongle
 		try {
@@ -214,7 +221,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
 		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), 
-				true, Integer.toString(rounds));
+				true, Integer.toString(rounds), useJSSE);
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
@@ -259,7 +266,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	        // and use the agreed authentication key to start the dongle authentication
 	        logger.debug("Starting dongle authentication with remote relate id " + remoteRelateId + " and " + rounds + " rounds.");
-	        DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, remoteRelateId);
+	        DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, remoteRelateId, useJSSE);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
         	state = STATE_DONGLE_AUTH_RUNNING;
         	dh.startAuthentication((byte[]) res[1], rounds, referenceMeasurement);
@@ -477,11 +484,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	        logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
     	    }
     	}
+    
+    		boolean useJSSEServer = true;
+    		boolean useJSSEClient = true;
     	
         if (args.length > 1 && args[0].equals("server")) {
         	logger.info("Starting server mode");
-            HostServerSocket h1 = new HostServerSocket(TcpPort, true);
-            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) Integer.parseInt(args[1]));
+            HostServerSocket h1 = new HostServerSocket(TcpPort, true, useJSSEServer);
+            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) Integer.parseInt(args[1]), useJSSEServer);
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
@@ -495,7 +505,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         } 
         else if (args.length > 3 && args[0].equals("client")) {
         	logger.info("Starting client mode");
-        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB9", args[1], (byte) Integer.parseInt(args[2]));
+        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB9", args[1], (byte) Integer.parseInt(args[2]), useJSSEClient);
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(0));
         	r.startAuthentication((byte) Integer.parseInt(args[3]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
@@ -541,15 +551,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
     		// server side
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
-    		HostServerSocket h1 = new HostServerSocket(TcpPort, true);
-            RelateAuthenticationProtocol r_serv = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) localId2);
+    		HostServerSocket h1 = new HostServerSocket(TcpPort, true, useJSSEServer);
+            RelateAuthenticationProtocol r_serv = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) localId2, useJSSEServer);
             r_serv.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh_serv = r_serv.new HostAuthenticationEventHandler();
         	h1.addAuthenticationProgressHandler(hh_serv);
             h1.startListening();
 
             // client side
-        	RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol("/dev/ttyUSB1" , "localhost", (byte) localId1);
+        	RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol("/dev/ttyUSB1" , "localhost", (byte) localId1, useJSSEClient);
         	r_client.addAuthenticationProgressHandler(ht);
         	r_client.startAuthentication(Integer.parseInt(args[1]));
         	
