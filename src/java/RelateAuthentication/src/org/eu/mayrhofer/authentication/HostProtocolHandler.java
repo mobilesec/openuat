@@ -45,6 +45,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
     /** At the moment, the whole protocol consists of 4 stages. */
     public static final int AuthenticationStages = 4;
+    
+	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
+	private boolean useJSSE;
 
     /** The socket used to communicate with the remote end, for both incoming and outgoing connections. */
     private Socket socket;
@@ -86,11 +89,16 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            further re-use of the connection (e.g. passing additional 
 	 *            information about further protocol steps). If set to false, the
 	 *            socket will be closed when this protocol is done with it.
+	 *
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 */
-    HostProtocolHandler(Socket soc, boolean keepSocketConnected) 
+    HostProtocolHandler(Socket soc, boolean keepSocketConnected, boolean useJSSE) 
 	{
-		socket = soc;
+		this.socket = soc;
 		this.keepSocketConnected = keepSocketConnected;
+		this.useJSSE = useJSSE;
     }
     
     /**
@@ -243,7 +251,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            ("authenticatee")
 	 */
     private void performAuthenticationProtocol(boolean serverSide) {
-    	SimpleKeyAgreement ka = null;
+    		SimpleKeyAgreement ka = null;
         // remember whom we are communication with: when the socket gets closed,
 		// we can no longer access it
         InetAddress remote = socket.getInetAddress();
@@ -281,7 +289,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     shutdownSocketCleanly();
                     return;
                 }
-        	}
+        		}
             raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
             byte[] remotePubKey = null;
@@ -301,18 +309,18 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             }
             else {
             	// now send my first message, but already need the public key for it
-            	ka = new SimpleKeyAgreement();
+            	ka = new SimpleKeyAgreement(useJSSE);
             	toRemote.println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
             			(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
             }
-        	raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
+        		raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
-        	if (serverSide) {
+        		if (serverSide) {
                 // for performance reasons: only now start the DH phase
-                ka = new SimpleKeyAgreement();
+                ka = new SimpleKeyAgreement(useJSSE);
                 toRemote.println(Protocol_AuthenticationAcknowledge + new String(Hex.encodeHex(ka.getPublicKey())));
-        	}
-        	else {
+        		}
+        		else {
                 remotePubKey = helper_extractPublicKey(
                 		helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, remote),
                 		Protocol_AuthenticationAcknowledge, remote);
@@ -321,7 +329,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     shutdownSocketCleanly();
                     return;
                 }
-        	}
+        		}
             raiseAuthenticationProgressEvent(remote, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
             ka.addRemotePublicKey(remotePubKey);
@@ -374,11 +382,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     
     /** Hack to just allow one method to be called asynchronously while still having access to the outer class. */
     private abstract class AsynchronousCallHelper implements Runnable {
-    	protected HostProtocolHandler outer;
+    		protected HostProtocolHandler outer;
     	
-    	protected AsynchronousCallHelper(HostProtocolHandler outer) {
-    		this.outer = outer;
-    	}
+    		protected AsynchronousCallHelper(HostProtocolHandler outer) {
+    			this.outer = outer;
+    		}
     }
 
     /**
@@ -424,22 +432,27 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            authentication success message. This parameter <b>must</b> be
 	 *            encoded in 7-bit ASCII and <b>must not</b> contain spaces.
 	 *            
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 */
     static public void startAuthenticationWith(String remoteAddress,
 			int remotePort, AuthenticationProgressHandler eventHandler,
-			boolean keepSocketConnected, String optionalParameter) throws UnknownHostException, IOException {
+			boolean keepSocketConnected, String optionalParameter,
+			boolean useJSSE) throws UnknownHostException, IOException {
 		logger.info("Starting authentication with " + remoteAddress);
 
-    	Socket clientSocket = new Socket(remoteAddress, remotePort);
+		Socket clientSocket = new Socket(remoteAddress, remotePort);
 
 		logger.info("Connected successfully to " + remoteAddress);
     	
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket, keepSocketConnected);
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(clientSocket, keepSocketConnected, useJSSE);
+		tmpProtocolHandler.useJSSE = useJSSE;
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
 		tmpProtocolHandler.optionalParameter = optionalParameter;
 		
-		// start the authentication protocol ni the background
+		// start the authentication protocol in the background
 		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
 				tmpProtocolHandler) {
 			public void run() {

@@ -20,6 +20,9 @@ public class HostProtocolHandlerTest extends TestCase {
     private Socket client;
     private BufferedReader sr;
     private PrintWriter sw;
+    
+    protected boolean useJSSEServer = true;
+    protected boolean useJSSEClient = true;
 
     public void setUp() throws InterruptedException, IOException
     {
@@ -31,7 +34,7 @@ public class HostProtocolHandlerTest extends TestCase {
         if (socketWasAlreadyOpen)
             Thread.sleep(100);
 
-        server = new HostServerSocket(PORT, true);
+        server = new HostServerSocket(PORT, true, useJSSEServer);
         server.startListening();
         socketWasAlreadyOpen = true;
     }
@@ -69,7 +72,7 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false, "");
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -92,7 +95,7 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false, "TEST_PARAMETER");
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, false, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -118,7 +121,7 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, true, "TEST_PARAMETER");
+        HostProtocolHandler.startAuthenticationWith("127.0.0.1", PORT, h, true, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;

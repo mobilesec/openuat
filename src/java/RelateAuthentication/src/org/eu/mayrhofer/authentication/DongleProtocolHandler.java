@@ -4,16 +4,7 @@ import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.security.SecureRandom;
-import java.security.NoSuchAlgorithmException;
-import java.security.InvalidKeyException;
-
 import java.util.BitSet;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.BadPaddingException;
 
 import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.MessageQueue;
@@ -22,7 +13,11 @@ import uk.ac.lancs.relate.events.RelateEvent;
 import uk.ac.lancs.relate.events.MeasurementEvent;
 import uk.ac.lancs.relate.events.AuthenticationEvent;
 
-/**
+/** This class implements the host part of the authentication protocol between two Relate dongles. It will prepare
+ * the data to initialize the dongle authentication mode (i.e. encrypt the shared secret with a block cipher) and
+ * check that the nonce received via the ultrasound delays matches (at least as far as the number of bits being used)
+ * the received encrypted nonce. Since the authentication protocol will also run as a background thread, this class
+ * will emit AuthenticationEvents. 
  * 
  * @author Rene Mayrhofer
  *
@@ -56,6 +51,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** The reference measurement to use when examining the delayed US pulses from the remote. This is is millimeters. */
 	private int referenceMeasurement;
 	
+	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
+	private boolean useJSSE;
+
 	/** A temporary variable holding the shared key. It is used for passing data from
 	 * startAuthentication to the Thread's run method.
 	 */
@@ -74,10 +72,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * 
 	 * @param remoteRelateId The remote relate id to perform the authentication with.
 	 * @param serialPort The serial port to which the dongle is connected.
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 */
-	public DongleProtocolHandler(String serialPort, byte remoteRelateId) {
+	public DongleProtocolHandler(String serialPort, byte remoteRelateId, boolean useJSSE) {
 		this.serialPort = serialPort;
 		this.remoteRelateId = remoteRelateId;
+		this.useJSSE = useJSSE;
 	}
 	
 	/**
@@ -346,85 +348,146 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
         byte[] nonce = new byte[NonceByteLength];
         r.nextBytes(nonce);
 
-    	logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
-    	logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
-    	logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
-        
+    		logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
+    		logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
+    		logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
+    		
+		byte[] rfMessage;
+		if (useJSSE)
+			rfMessage = encryptNonce_JSSE(nonce);
+		else
+			rfMessage = encryptNonce_BCAPI(nonce);
+		
+		if (rfMessage.length != NonceByteLength) {
+			logger.error("Encryption went wrong, got "
+					+ rfMessage.length + " bytes");
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Encryption went wrong, got " + rfMessage.length + " bytes instead of " + NonceByteLength + ".");
+			return;
+		}
+		logger.debug("My RF packet is " + SerialConnector.byteArrayToBinaryString(rfMessage));
+
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
+		
+		byte[] receivedDelays = new byte[NonceByteLength], receivedRfMessage = new byte[NonceByteLength];
+		if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedDelays, receivedRfMessage)) {
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
+			return;
+		}
+
+		logger.debug("Received RF packet is " + SerialConnector.byteArrayToBinaryString(receivedRfMessage));
+		logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToBinaryString(receivedDelays));
+
+		// check that the delays match the (encrypted) message sent by the remote
+		byte[] receivedNonce;
+		if (useJSSE)
+			receivedNonce = decryptNonce_JSSE(receivedRfMessage);
+		else
+			receivedNonce = decryptNonce_BCAPI(receivedRfMessage);
+
+		if (receivedNonce.length != NonceByteLength) {
+			logger.error("Decryption went wrong, got "
+					+ receivedNonce.length + " bytes");
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Decryption went wrong, got " + receivedNonce.length + " bytes instead of " + NonceByteLength + ".");
+			return;
+		}
+
+		logger.debug("Received nonce is " + SerialConnector.byteArrayToBinaryString(receivedNonce));
+
+		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + rounds, AuthenticationStages + rounds, "Decrypted remote message");
+
+		// the lower bits must match
+		int numBitsToCheck = EntropyBitsPerRound * rounds <= rfMessage.length * 8 ? 
+					EntropyBitsPerRound * rounds : 
+					rfMessage.length * 8;
+		if (compareBits(receivedNonce, receivedDelays, numBitsToCheck)) {
+			logger.info("Ultrasound delays match received nonce, authentication succeeded");
+			raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
+		}
+		else {
+			logger.warn("Received RF packet length is " + receivedRfMessage.length);
+			logger.warn("Decrypted nonce length is " + receivedNonce.length);
+			logger.warn("Received delays length is " + receivedDelays.length);
+			logger.warn("Ultrasound delays do not match received nonce (checking " + numBitsToCheck + " bits)!");
+			logger.warn("Expected: " + SerialConnector.byteArrayToBinaryString(receivedNonce));
+			logger.warn("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
+			logger.warn("Hamming distance between the strings is " + hammingDistance(receivedNonce, receivedDelays, numBitsToCheck));
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
+		}
+	}
+	
+	/** Encrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
+	private byte[] encryptNonce_JSSE(byte[] nonce) throws InternalApplicationException, DongleAuthenticationProtocolException {
         // need to specifically request no padding or padding would enlarge the one 128 bits block to two
         try {
-			Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-			cipher.init(Cipher.ENCRYPT_MODE,
-					new SecretKeySpec(sharedKey, "AES"));
-			byte[] rfMessage = cipher.doFinal(nonce);
-			if (rfMessage.length != NonceByteLength) {
-				logger.error("Encryption went wrong, got "
-						+ rfMessage.length + " bytes");
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Encryption went wrong, got " + rfMessage.length + " bytes instead of " + NonceByteLength + ".");
-				return;
-			}
-			logger.debug("My RF packet is " + SerialConnector.byteArrayToBinaryString(rfMessage));
-
-			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
-			
-			byte[] receivedDelays = new byte[NonceByteLength], receivedRfMessage = new byte[NonceByteLength];
-			if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedDelays, receivedRfMessage)) {
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
-				return;
-			}
-
-			logger.debug("Received RF packet is " + SerialConnector.byteArrayToBinaryString(receivedRfMessage));
-			logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToBinaryString(receivedDelays));
-			
-			// check that the delays match the (encrypted) message sent by the remote
-			cipher.init(Cipher.DECRYPT_MODE,
-					new SecretKeySpec(sharedKey, "AES"));
-			byte[] receivedNonce = cipher.doFinal(receivedRfMessage);
-			if (receivedNonce.length != NonceByteLength) {
-				logger.error("Decryption went wrong, got "
-						+ receivedNonce.length + " bytes");
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Decryption went wrong, got " + receivedNonce.length + " bytes instead of " + NonceByteLength + ".");
-				return;
-			}
-
-			logger.debug("Received nonce is " + SerialConnector.byteArrayToBinaryString(receivedNonce));
-
-			raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + rounds, AuthenticationStages + rounds, "Decrypted remote message");
-
-			// the lower bits must match
-			int numBitsToCheck = EntropyBitsPerRound * rounds <= rfMessage.length * 8 ? 
-						EntropyBitsPerRound * rounds : 
-						rfMessage.length * 8;
-			if (compareBits(receivedNonce, receivedDelays, numBitsToCheck)) {
-				logger.info("Ultrasound delays match received nonce, authentication succeeded");
-				raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
-			}
-			else {
-				logger.warn("Received RF packet length is " + receivedRfMessage.length);
-				logger.warn("Decrypted nonce length is " + receivedNonce.length);
-				logger.warn("Received delays length is " + receivedDelays.length);
-				logger.warn("Ultrasound delays do not match received nonce (checking " + numBitsToCheck + " bits)!");
-				logger.warn("Expected: " + SerialConnector.byteArrayToBinaryString(receivedNonce));
-				logger.warn("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
-				logger.warn("Hamming distance between the strings is " + hammingDistance(receivedNonce, receivedDelays, numBitsToCheck));
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
-			}
-				
-		} catch (NoSuchAlgorithmException e) {
+			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
+			cipher.init(javax.crypto.Cipher.ENCRYPT_MODE,
+					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
+			return cipher.doFinal(nonce);
+		} catch (java.security.NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Unable to get cipher object from crypto provider.", e);
-		} catch (NoSuchPaddingException e) {
+		} catch (javax.crypto.NoSuchPaddingException e) {
 			throw new InternalApplicationException(
 					"Unable to get requested padding from crypto provider.", e);
-		} catch (InvalidKeyException e) {
+		} catch (java.security.InvalidKeyException e) {
 			throw new InternalApplicationException(
 					"Cipher does not accept its key.", e);
-		} catch (IllegalBlockSizeException e) {
+		} catch (javax.crypto.IllegalBlockSizeException e) {
 			throw new InternalApplicationException(
 					"Cipher does not accept requested block size.", e);
-		} catch (BadPaddingException e) {
+		} catch (javax.crypto.BadPaddingException e) {
 			throw new InternalApplicationException(
 					"Cipher does not accept requested padding.", e);
 		}
+	}
+	
+	/** Decrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
+	private byte[] decryptNonce_JSSE(byte[] receivedRfMessage) throws InternalApplicationException, DongleAuthenticationProtocolException {
+		try {
+			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
+			cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
+					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
+			return cipher.doFinal(receivedRfMessage);
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new InternalApplicationException(
+					"Unable to get cipher object from crypto provider.", e);
+		} catch (javax.crypto.NoSuchPaddingException e) {
+			throw new InternalApplicationException(
+					"Unable to get requested padding from crypto provider.", e);
+		} catch (java.security.InvalidKeyException e) {
+			throw new InternalApplicationException(
+					"Cipher does not accept its key.", e);
+		} catch (javax.crypto.IllegalBlockSizeException e) {
+			throw new InternalApplicationException(
+					"Cipher does not accept requested block size.", e);
+		} catch (javax.crypto.BadPaddingException e) {
+			throw new InternalApplicationException(
+					"Cipher does not accept requested padding.", e);
+		}
+	}
+
+	/** Encrypt the nonce using the shared key. This implementation utilizes the Bouncycastle Lightweight API. */
+	private byte[] encryptNonce_BCAPI(byte[] nonce) throws InternalApplicationException, DongleAuthenticationProtocolException {
+    		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
+    		cipher.init(true, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
+    		byte[] rfMessage = new byte[NonceByteLength];
+		int encryptedBytes = cipher.processBlock(nonce, 0, rfMessage, 0);
+		if (encryptedBytes != NonceByteLength) {
+			return new byte[encryptedBytes];
+		}
+		return rfMessage;
+	}
+
+	/** Decrypt the nonce using the shared key. This implementation utilizes the Bouncycastle Lightweight API. */
+	private byte[] decryptNonce_BCAPI(byte[] receivedRfMessage) throws InternalApplicationException, DongleAuthenticationProtocolException {
+		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
+		cipher.init(false, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
+    		byte[] receivedNonce = new byte[NonceByteLength];
+    		int decryptedBytes = cipher.processBlock(receivedRfMessage, 0, receivedNonce, 0);
+    		if (decryptedBytes != NonceByteLength) {
+    			return new byte[decryptedBytes];
+    		}
+    		return receivedNonce;
 	}
 	
 	/** Small helper function to add a part to a byte array.
@@ -535,11 +598,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
     /** Hack to just allow one method to be called asynchronously while still having access to the outer class. */
     private abstract class AsynchronousCallHelper implements Runnable {
-    	protected DongleProtocolHandler outer;
+    		protected DongleProtocolHandler outer;
     	
-    	protected AsynchronousCallHelper(DongleProtocolHandler outer) {
-    		this.outer = outer;
-    	}
+    		protected AsynchronousCallHelper(DongleProtocolHandler outer) {
+    			this.outer = outer;
+    		}
     }
     
     /** Returns the time that it took to send the start-of-authentication command to the dongle 
@@ -547,7 +610,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
      * @return Time for sending the command in ms.
      */
     public int getSendCommandTime() {
-    	return (int) (commandSentTime - startTime);
+    		return (int) (commandSentTime - startTime);
     }
     
     /** Returns the time it took to complete the dongle interlock protocol, i.e. the time between
@@ -557,6 +620,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
      * @return Time for the dongle interlock protocol in ms.
      */
     public int getDongleInterlockTime() {
-    	return (int) (completedTime - commandSentTime);
+    		return (int) (completedTime - commandSentTime);
     }
 }

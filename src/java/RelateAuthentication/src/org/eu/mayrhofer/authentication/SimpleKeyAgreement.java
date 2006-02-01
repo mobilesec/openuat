@@ -1,11 +1,8 @@
 package org.eu.mayrhofer.authentication;
 
 import org.eu.mayrhofer.authentication.exceptions.*;
-import javax.crypto.interfaces.*;
-import javax.crypto.spec.*;
-import java.security.*;
-import java.security.spec.*;
 import java.math.BigInteger;
+import java.security.SecureRandom;
 
 /** This class implements a simple key agreement protocol. Simple refers to the interface of this class, not its security. 
  * For a complete key agreement, the caller is expected to initialize the object, transmit the public key to the remote host,
@@ -29,15 +26,22 @@ public class SimpleKeyAgreement {
 	private static final int STATE_INTRANSIT = 2;
 	/** @see #STATE_INITIALIZED */
 	private static final int STATE_COMPLETED = 3;
+	
+	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
+	private boolean useJSSE;
 
 	/** The current state of the protocol, i.e. one of STATE_INITIALIZED, STATE_INTRANSIT, or STATE_COMPLETED. */
 	private int state;
 
-	/** The Diffie-Hellman key agreement object used for computing the shared key. */
-	private javax.crypto.KeyAgreement dh;
+	/** The Diffie-Hellman key agreement object used for computing the shared key. This object will hold either a
+	 * javax.crypto.KeyAgreement object of an org.bouncycastle.crypto.BasicAgreement object, depending on the
+	 * used API.  */
+	private Object dh;
 
-	/** The local Diffie-Hellman key pair, can be used to get the public and private parts. */
-	private KeyPair myKeypair;
+	/** The local Diffie-Hellman key pair, can be used to get the public and private parts. This object will hold 
+	 * either a java.security.KeyPair object or an org.bouncycastle.crypto.AsymmetricCipherKeyPair object,
+	 * depending on the used API. */
+	private Object myKeypair;
 
 	/** We use this algorithm for computing the shared key. It is hard-coded for simpler use of this class. */
 	private static final String KEYAGREEMENT_ALGORITHM = "DiffieHellman";
@@ -106,49 +110,83 @@ public class SimpleKeyAgreement {
 	 * DIGEST_ALGORITHM is secure).
 	 */
 	private byte[] sharedKey;
-
+	
 	/** Initialized a fresh key agreement, simply by calling init(). 
 	 * @see #init
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 */
-	public SimpleKeyAgreement() throws InternalApplicationException {
-		init();
+	public SimpleKeyAgreement(boolean useJSSE) throws InternalApplicationException {
+		init(useJSSE);
 	}
 
 	/** Initializes the random nonce of this side for generating the shared session key.
 	 * This method can be called in any state and wipes all old values (by calling wipe()).
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
 	 * @see #wipe
 	 */
-	public void init() throws InternalApplicationException {
+	public void init(boolean useJSSE) throws InternalApplicationException {
+		this.useJSSE = useJSSE;
+		if (useJSSE)
+			init_JSSE();
+		else
+			init_BCAPI();
+	}
+
+	/** This is an implementation of init() using the Sun JSSE API. */
+	private void init_JSSE() throws InternalApplicationException {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
 		wipe();
 
 		// this also generates the private value X with a bit length of 256
 		try {
 			dh = javax.crypto.KeyAgreement.getInstance(KEYAGREEMENT_ALGORITHM);
-			KeyPairGenerator kg = KeyPairGenerator
+			java.security.KeyPairGenerator kg = java.security.KeyPairGenerator
 					.getInstance(KEYAGREEMENT_ALGORITHM);
 
-			DHParameterSpec ps = new DHParameterSpec(skip1024Modulus,
+			javax.crypto.spec.DHParameterSpec ps = new javax.crypto.spec.DHParameterSpec(skip1024Modulus,
 					skip1024Base);
 			kg.initialize(ps);
 			myKeypair = kg.generateKeyPair();
 
-			dh.init(myKeypair.getPrivate());
+			((javax.crypto.KeyAgreement) dh).init(((java.security.KeyPair) myKeypair).getPrivate());
 
 			state = STATE_INITIALIZED;
-		} catch (NoSuchAlgorithmException e) {
+		} catch (java.security.NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Required key agreement algorithm is unknown to the installed cryptography provider(s)",
 					e);
-		} catch (InvalidKeyException e) {
+		} catch (java.security.InvalidKeyException e) {
 			throw new InternalApplicationException(
 					"Generated private key is not accepted by the key agreement algorithm",
 					e);
-		} catch (InvalidAlgorithmParameterException e) {
+		} catch (java.security.InvalidAlgorithmParameterException e) {
 			throw new InternalApplicationException(
 					"Required parameters are not supported by the key agreement algorithm",
 					e);
 		}
+	}
+
+	/** This is an implementation of init() using the Bouncycastle Lightweight API. */
+	private void init_BCAPI() throws InternalApplicationException {
+		// before overwriting the object references, wipe the old values in memory to really destroy them
+		wipe();
+
+		// this also generates the private value X with a bit length of 256
+		dh = new org.bouncycastle.crypto.agreement.DHBasicAgreement();
+		
+		org.bouncycastle.crypto.generators.DHBasicKeyPairGenerator kg = new org.bouncycastle.crypto.generators.DHBasicKeyPairGenerator();
+		kg.init(new org.bouncycastle.crypto.params.DHKeyGenerationParameters(new SecureRandom(), 
+				new org.bouncycastle.crypto.params.DHParameters(skip1024Modulus, skip1024Base)));
+		myKeypair = kg.generateKeyPair();
+		
+		((org.bouncycastle.crypto.agreement.DHBasicAgreement) dh).init(
+				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPrivate());
+
+		state = STATE_INITIALIZED;
 	}
 
 	/** This method performs a secure wipe of the cryptographic key material held by this class by overwriting the memory
@@ -191,8 +229,22 @@ public class SimpleKeyAgreement {
 
 		state = STATE_INTRANSIT;
 
-		// Do without any special encapsulation, just transfer the raw byte stream. Why should we use X.509 encoding just for transferring the key bytes? 
-		return ((DHPublicKey) myKeypair.getPublic()).getY().toByteArray();
+		// Do without any special encapsulation, just transfer the raw byte stream. Why should we use X.509 encoding just for transferring the key bytes?
+		if (useJSSE)
+			return getPublicKey_JSSE();
+		else
+			return getPublicKey_BCAPI();
+	}
+	
+	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
+	private byte[] getPublicKey_JSSE() throws KeyAgreementProtocolException {
+		return ((javax.crypto.interfaces.DHPublicKey) ((java.security.KeyPair) myKeypair).getPublic()).getY().toByteArray();
+	}
+	
+	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
+	private byte[] getPublicKey_BCAPI() throws KeyAgreementProtocolException {
+		return ((org.bouncycastle.crypto.params.DHPublicKeyParameters) 
+				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPublic()) .getY().toByteArray();
 	}
 
 	/** Add the remote public key.
@@ -210,12 +262,6 @@ public class SimpleKeyAgreement {
 		if (key == null)
 			throw new KeyAgreementProtocolException("addRemotePublicKeyy called with null public key.");
 		
-		if (new BigInteger(key).equals(((DHPublicKey) myKeypair.getPublic())
-				.getY()))
-			throw new KeyAgreementProtocolException(
-					"addRemotePublicKey called with a public key equal to our "
-							+ "own! This is strictly forbidden since the created random numbers must be different.");
-
 		/* check that: 
 		 - 1 < key < p
 		 - key^q = 1
@@ -231,52 +277,111 @@ public class SimpleKeyAgreement {
 		/* if(! new BigInteger(key).pow(q).Equals(BigInteger.ONE))
 		 throw new KeyAgreementProtocolException("addRemotePublicKey error: received public key k does not fulfill key^q = 1"); */
 
+		if (useJSSE)
+			addRemotePublicKey_JSSE(key);
+		else
+			addRemotePublicKey_BCAPI(key);
+	}
+	
+	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
+	private void addRemotePublicKey_JSSE(byte[] key)
+			throws KeyAgreementProtocolException, InternalApplicationException {
+		if (new BigInteger(key).equals(((javax.crypto.interfaces.DHPublicKey) ((java.security.KeyPair) myKeypair).getPublic())
+				.getY()))
+			throw new KeyAgreementProtocolException(
+					"addRemotePublicKey called with a public key equal to our "
+							+ "own! This is strictly forbidden since the created random numbers must be different.");
+
 		try {
-			DHPublicKey remotePublicKey = (DHPublicKey) KeyFactory.getInstance(
+			javax.crypto.interfaces.DHPublicKey remotePublicKey = 
+				(javax.crypto.interfaces.DHPublicKey) java.security.KeyFactory.getInstance(
 					KEYAGREEMENT_ALGORITHM).generatePublic(
-					new DHPublicKeySpec(new BigInteger(key), skip1024Modulus,
+					new javax.crypto.spec.DHPublicKeySpec(new BigInteger(key), skip1024Modulus,
 							skip1024Base));
 			//				new DHPublicKeySpec(new BigInteger(key), new BigInteger(p1024), new BigInteger(g1024)));
-			dh.doPhase(remotePublicKey, true);
-			sharedKey = dh.generateSecret();
+			((javax.crypto.KeyAgreement) dh).doPhase(remotePublicKey, true);
+			sharedKey = ((javax.crypto.KeyAgreement) dh).generateSecret();
 			state = STATE_COMPLETED;
-		} catch (InvalidKeySpecException e) {
+		} catch (java.security.spec.InvalidKeySpecException e) {
 			throw new InternalApplicationException(
 					"Key specification was not accepted for required key agreement protocol",
 					e);
-		} catch (NoSuchAlgorithmException e) {
+		} catch (java.security.NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Required key agreement algorithm is unknown to the installed cryptography provider(s)",
 					e);
-		} catch (InvalidKeyException e) {
+		} catch (java.security.InvalidKeyException e) {
 			throw new KeyAgreementProtocolException(
 					"Received remote public key is not accepted by the key agreement algorithm",
 					e);
 		}
 	}
 
+	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
+	private void addRemotePublicKey_BCAPI(byte[] key)
+			throws KeyAgreementProtocolException, InternalApplicationException {
+		if (new BigInteger(key).equals(((org.bouncycastle.crypto.params.DHPublicKeyParameters) 
+				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPublic()) .getY()))
+			throw new KeyAgreementProtocolException(
+					"addRemotePublicKey called with a public key equal to our "
+							+ "own! This is strictly forbidden since the created random numbers must be different.");
+
+		org.bouncycastle.crypto.params.DHPublicKeyParameters remotePublicKey = new
+			org.bouncycastle.crypto.params.DHPublicKeyParameters(new BigInteger(key), 
+					new org.bouncycastle.crypto.params.DHParameters(skip1024Modulus, skip1024Base));
+		sharedKey = ((org.bouncycastle.crypto.agreement.DHBasicAgreement) dh).calculateAgreement(remotePublicKey).toByteArray();
+		state = STATE_COMPLETED;
+	}
+	
 	/** this is a small utility function for computing a secure hash from the shared key. */		
 	private byte[] doubleSHA256(byte[] text)
 			throws InternalApplicationException {
 		// this double hashing with the first hash being prepended to the message is suggested by 
 		// Practical Cryptography, p. 93 - it should solve the length extension attacks and thus the
 		// MD5 attacks
+		if (useJSSE)
+			return doubleSHA256_JSSE(text);
+		else
+			return doubleSHA256_BCAPI(text);
+	}
+	
+	/** This is an implementation of doubleSHA256 using the Sun JSSE. */
+	private byte[] doubleSHA256_JSSE(byte[] text)
+			throws InternalApplicationException {
 		try {
-			MessageDigest h1 = MessageDigest.getInstance(DIGEST_ALGORITHM);
-			MessageDigest h2 = MessageDigest.getInstance(DIGEST_ALGORITHM);
+			java.security.MessageDigest h1 = java.security.MessageDigest.getInstance(DIGEST_ALGORITHM);
+			java.security.MessageDigest h2 = java.security.MessageDigest.getInstance(DIGEST_ALGORITHM);
 
 			byte[] tmp1 = h1.digest(text);
 			byte[] tmp2 = new byte[tmp1.length + text.length];
 			System.arraycopy(tmp1, 0, tmp2, 0, tmp1.length);
 			System.arraycopy(text, 0, tmp2, tmp1.length, text.length);
 			return h2.digest(tmp2);
-		} catch (NoSuchAlgorithmException e) {
+		} catch (java.security.NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Required digest algorithm is unknown to the installed cryptography provider(s)",
 					e);
 		}
 	}
 
+	/** This is an implementation of doubleSHA256 using the Bouncycastle Lightweight API. */
+	private byte[] doubleSHA256_BCAPI(byte[] text)
+			throws InternalApplicationException {
+		org.bouncycastle.crypto.Digest h1 = new org.bouncycastle.crypto.digests.SHA256Digest();
+		org.bouncycastle.crypto.Digest h2 = new org.bouncycastle.crypto.digests.SHA256Digest();
+		
+		byte[] tmp1 = new byte[h1.getDigestSize()];
+		if (tmp1.length != 32)
+			throw new InternalApplicationException("Digst does not produce 256 bits, but claims to produce " + tmp1.length);
+		byte[] tmp2 = new byte[tmp1.length + text.length];
+		h1.update(text, 0, text.length);
+		h1.doFinal(tmp1, 0);
+		System.arraycopy(tmp1, 0, tmp2, 0, tmp1.length);
+		System.arraycopy(text, 0, tmp2, tmp1.length, text.length);
+		h2.update(tmp2, 0, tmp2.length);
+		h2.doFinal(tmp1, 0);
+		return tmp1;
+	}	
 	/** This method can only be called in state completed.
 	 * The returned session key must only be used for deriving authentication and encryption keys,
 	 * e.g. as a PSK for IPSec. It must _not_ be used directly for authentication, since this could
