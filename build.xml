@@ -23,7 +23,7 @@
         <mkdir dir="${bin}"/>
         <mkdir dir="${lib}"/>
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
-               classpathref="lib.path" debug="${compile.debug}" target="1.1">
+               classpathref="lib.path" debug="${compile.debug}" target="1.1" source="1.2">
         </javac>
     </target>
 
