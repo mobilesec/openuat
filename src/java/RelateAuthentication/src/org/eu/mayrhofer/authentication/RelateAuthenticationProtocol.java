@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 
 import uk.ac.lancs.relate.core.MessageQueue;
 import uk.ac.lancs.relate.core.SerialConnector;
@@ -371,7 +372,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			
 	        logger.info("Received dongle authentication failure event with id " + remote);
 	        if (e != null)
-	            logger.info("Exception: " + e + "\n" +  e.getStackTrace());
+	            logger.info("Exception: " + e /*+ "\n" +  e.getStackTrace()*/);
 	        if (msg != null)
 	            logger.info("Message: " + msg);
 	        logFailure((e != null ? e.toString() : "") + "/" + msg);
@@ -388,7 +389,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	socketToRemote.close();
 	        }
 	        catch (IOException ex) {
-	        	logger.error("Could not report failure to remote host: " + ex + "\n" + ex.getStackTrace());
+	        	logger.error("Could not report failure to remote host: " + ex /*+ "\n" + ex.getStackTrace()*/);
 	        }
 	    }
 
@@ -424,6 +425,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	
     public static void main(String[] args) throws Exception
 	{
+		if (System.getProperty("os.name").startsWith("Windows CE")) {
+			PropertyConfigurator.configure("log4j.properties");
+		}
+
     	class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
     		private int mode; // 0 = client, 1 = server, 2 = both
     		
@@ -443,7 +448,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	outer.serialConn.switchDiagnosticMode(false);*/
    	        	
    	        	if (mode == 0)
-   	        		Runtime.getRuntime().exit(0);
+   	     		if (! System.getProperty("os.name").startsWith("Windows CE")) 
+   	     			Runtime.getRuntime().exit(0);
    	        	else if (mode == 2) {
    	        		// give it time to settle....
    	        		try {
@@ -472,7 +478,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        	outer.serialConn.switchDiagnosticMode(false);*/
     	        
    	        	if (mode == 0)
-   	        		Runtime.getRuntime().exit(1);
+   	        		if (! System.getProperty("os.name").startsWith("Windows CE"))
+   	        			Runtime.getRuntime().exit(1);
    	        	else if (mode == 2) {
    	        		resetBothDongles();
    	        		Runtime.getRuntime().exit(1);
@@ -487,11 +494,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     
     		boolean useJSSEServer = true;
     		boolean useJSSEClient = true;
+    		if (System.getProperty("os.name").startsWith("Windows CE")) {
+    			useJSSEServer = useJSSEClient = false;
+    		}
     	
-        if (args.length > 1 && args[0].equals("server")) {
+        if (args.length > 2 && args[0].equals("server")) {
         	logger.info("Starting server mode");
             HostServerSocket h1 = new HostServerSocket(TcpPort, true, useJSSEServer);
-            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB0", "", (byte) Integer.parseInt(args[1]), useJSSEServer);
+            RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], "", (byte) Integer.parseInt(args[2]), useJSSEServer);
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
@@ -503,11 +513,12 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
             //h1.stopListening();
         } 
-        else if (args.length > 3 && args[0].equals("client")) {
+        else if (args.length > 4 && args[0].equals("client")) {
+        	System.out.println("starting client mode: port=" + args[1] + ", server=" + args[2] + ", remoteid=" + args[3] + ", rounds=" + args[4]);
         	logger.info("Starting client mode");
-        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol("/dev/ttyUSB9", args[1], (byte) Integer.parseInt(args[2]), useJSSEClient);
+        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(args[1], args[2], (byte) Integer.parseInt(args[3]), useJSSEClient);
         	r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(0));
-        	r.startAuthentication((byte) Integer.parseInt(args[3]));
+        	r.startAuthentication((byte) Integer.parseInt(args[4]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
             new Thread(new Runnable() {
@@ -520,7 +531,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             		System.out.println("******** Timed out");
         			statisticsLogger.error("- Timer killed client");
    	        		resetBothDongles();
-            		System.exit(100);
+   	        		if (! System.getProperty("os.name").startsWith("Windows CE"))
+   	        			System.exit(100);
             	}
             }).start();
 
@@ -543,8 +555,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     		catch (DongleException e) {
     			logger.error("-------- failed to connect to dongle, didn't get my ID.");
     			System.out.println(e);
-    			e.printStackTrace();
-    			System.exit(1);
+    			//e.printStackTrace();
+    			if (! System.getProperty("os.name").startsWith("Windows CE"))
+    				System.exit(1);
     		}
 
     		logger.info("Connected to my two dongles: ID " + localId1 + " on /dev/ttyUSB0, and ID " + localId2 + " on /dev/ttyUSB1");
@@ -573,7 +586,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             		} catch (InterruptedException e) {}
             		System.out.println("******** Timed out");
         			statisticsLogger.error("- Timer killed client");
-            		System.exit(100);
+        			if (	! System.getProperty("os.name").startsWith("Windows CE"))
+        				System.exit(100);
             	}
             }).start();
 
@@ -582,6 +596,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         }
         
         // problem with the javax.comm API - doesn't release its native thread
-        System.exit(0);
+        if (! System.getProperty("os.name").startsWith("Windows CE"))
+        		System.exit(0);
 	}
 }
