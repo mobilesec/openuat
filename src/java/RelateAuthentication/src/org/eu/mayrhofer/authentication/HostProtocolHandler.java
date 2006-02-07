@@ -303,15 +303,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 }
                 int optParamOff = paramLine.indexOf(Protocol_AuthenticationRequest_Param);
                 if (optParamOff != -1) {
-                	optionalParameter = paramLine.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
-                	logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
+                		optionalParameter = paramLine.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
+                		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
                 }
             }
             else {
-            	// now send my first message, but already need the public key for it
-            	ka = new SimpleKeyAgreement(useJSSE);
-            	toRemote.println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
-            			(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
+            		// now send my first message, but already need the public key for it
+            		ka = new SimpleKeyAgreement(useJSSE);
+            		toRemote.println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
+            				(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
             }
         		raiseAuthenticationProgressEvent(remote, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
@@ -370,7 +370,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (Exception e)
         {
-            logger.fatal("UNEXPECTED EXCEPTION: " + e + "\n" + e.getStackTrace());
+            logger.fatal("UNEXPECTED EXCEPTION: " + e /*+ "\n" + e.getStackTrace()*/);
             shutdownSocketCleanly();
         }
         finally {
