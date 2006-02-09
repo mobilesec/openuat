@@ -173,7 +173,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getDongleId() == localRelateId) {
 				MeasurementEvent me = (MeasurementEvent) e;
 				
-				if (me.getMeasurement().getTransducers() != 0 && me.getMeasurement().getDistance() != 4094) {
+				if (/*me.getMeasurement().getTransducers() != 0 &&*/ me.getMeasurement().getDistance() != 4094) {
 					logger.debug("Got local measurement from dongle " + me.getDongleId() + " to dongle " + me.getMeasurement().getRelatumId() + ": " + me.getMeasurement().getDistance());
 					ThreeInts x = s[me.getMeasurement().getRelatumId()];
 					x.n++;
@@ -275,7 +275,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			return false;
 		
 		// create the optional parameter object to pass, consisting of the relate id and the number of rounds
-		String param = Integer.toString(rounds) + " " + Integer.toString(localRelateId);
+		String param = Integer.toString(localRelateId) + " " + Integer.toString(rounds);
 			
 		/* There is no need to unregister this new object, since it is only 
 		 * registered with a temporary HostProtocolHandler object, which will
@@ -329,7 +329,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	           relate id to authenticate with and the number of rounds - we assume them to be set) as well as the 
 	           socket (which is assumed to be still connected to the remote) */
 	        String param1 = ((String) res[2]).substring(0, ((String) res[2]).indexOf(' '));
-	        String param2 = ((String) res[2]).substring(((String) res[2]).indexOf(' ')+1, ((String) res[2]).length()-1);
+	        String param2 = ((String) res[2]).substring(((String) res[2]).indexOf(' ')+1, ((String) res[2]).length());
 	        // distinguish between client and server mode here
 	        byte otherRelateId;
 	        if (remoteRelateId != -1) {
@@ -347,7 +347,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        socketToRemote = (Socket) res[3];
 
 	        // and use the agreed authentication key to start the dongle authentication
-	        logger.debug("Starting dongle authentication with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
+	        logger.debug("Starting dongle authentication at dongle " + serialPort + " with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
 	        DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, otherRelateId, useJSSE);
 	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
 	        state = STATE_DONGLE_AUTH_RUNNING;
