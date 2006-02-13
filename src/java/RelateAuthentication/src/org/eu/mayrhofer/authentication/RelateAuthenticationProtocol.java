@@ -577,9 +577,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	/** This is a helper function to start the "server" part of the authentication protocol.
 	 * It constructs a HostServerSocket object and sets up this object as a listener.
 	 * @see #serverSocket
-	 * @param referenceMeasurement TODO: remove me
 	 */
-	public void startServer(int referenceMeasurement) throws IOException {
+	public void startServer() throws IOException {
         serverSocket = new HostServerSocket(TcpPort, true, useJSSE);
         HostAuthenticationEventHandler hostServerHandler = new HostAuthenticationEventHandler();
     		serverSocket.addAuthenticationProgressHandler(hostServerHandler);
