@@ -42,15 +42,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	public static final int TcpPort = 54321;
 	
-	/** The serial port that is used by this authentication protocol instance to connect to its dongle. */
-	private String serialPort;
-	
-	/** The measurement manager object which listens for measurments coming from the used serial port.
-	 * It will be used to fetch the reference measurement.
-	 * @see #referenceMeasurement
-	 */
-	private MeasurementManager manager;
-
 	/** Possible value of state, indicates that the authentication has not been started yet. 
 	 * @see #state 
 	 */
@@ -80,13 +71,23 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @see #STATE_DONGLE_AUTH_RUNNING
 	 * @see #STATE_SUCCEEDED
 	 * @see #STATE_FAILED
-	 */ 
+	 */
+	// TODO: whole class: make me reset to the first state (should be renamed to IDLE) after success or failure - i.e. state will be a lock against concurrent runs
 	private int state = STATE_NOT_STARTED;
 	
 	/** This message is sent via the TCP channel to the remote upon authentication success. */
 	private final static String Protocol_Success = "ACK ";
 	/** This message is sent via the TCP channel to the remote upon authentication failure. */
 	private final static String Protocol_Failure = "NACK ";
+
+	/** The serial port that is used by this authentication protocol instance to connect to its dongle. */
+	private String serialPort;
+	
+	/** The measurement manager object which listens for measurments coming from the used serial port.
+	 * It will be used to fetch the reference measurement.
+	 * @see #referenceMeasurement
+	 */
+	private MeasurementManager manager;
 	
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	private boolean useJSSE;
