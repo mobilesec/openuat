@@ -17,9 +17,9 @@ import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.core.Measurement;
 import uk.ac.lancs.relate.core.MeasurementManager;
+import uk.ac.lancs.relate.core.EventDispatcher;
 import uk.ac.lancs.relate.auth.ProgressEventHandler;
 //import uk.ac.lancs.relate.events.RelateEvent;
-import uk.ac.lancs.relate.events.EventDispatcher;
 
 /**
 /// This is the main class of the relate authentication software: it ties together
@@ -264,7 +264,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			/* this gives us all the measurements that the local dongle took (i.e. where the 
 			 * getDongleId() of MeasurementEvent was equal to the localRelateId) to the remote 
 			 * dongle (i.e. where Measurement.getRelatumId was equal to remoteRelateId) */
-			LinkedList measurements = manager.getLocalMeasurementsTo(new Integer(remoteRelateId));
+			LinkedList measurements = manager.getLocalMeasurementsTo(remoteRelateId);
 			// simply find the first (i.e. newest) valid measurement
 			Iterator iter = measurements.iterator();
 			while (ref == -1 && iter.hasNext()) {
