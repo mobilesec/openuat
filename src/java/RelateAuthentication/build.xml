@@ -9,6 +9,11 @@
     <property name="reports.tests" location="reports/tests"/>
     <property name="compile.debug" value="true"/>
 
+    <!-- for MIDP builds -->
+    <property name="preverified" location="bin-preverified"/>
+    <property name="midp_home" value="/opt/j2me/WTK2.2" />
+    <property name="midp_libs" value="${midp_home}/lib/midpapi20.jar:${midp_home}/lib/cldcapi11.jar" />
+
     <!-- this can be used in a refid for filesets -->
     <fileset id="lib.alljars" dir="${lib}">
         <include name="**/*.jar"/>
@@ -25,6 +30,22 @@
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
                classpathref="lib.path" debug="${compile.debug}" target="1.1" source="1.2">
         </javac>
+    </target>
+
+    <target name="compile-midp" description="Compile special classes for MIDP2.0">
+        <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+               classpathref="lib.path" debug="${compile.debug}" target="1.2" source="1.2">
+        <!-- TODO: missing, include midp jars in classpath -->
+        </javac>
+    </target>
+
+    <target name="preverify" depends="compile">
+        <mkdir dir="${preverified}" />
+        <exec executable="${midp_home}/bin/preverify">
+				    <arg line="-classpath ${midp_libs}"/>
+				    <arg line="-d ${preverified}"/>
+ 				    <arg line="${bin}"/>
+			  </exec>
     </target>
 
     <target name="jar" depends="compile" description="Build jar">
@@ -64,9 +85,25 @@
         </java>
     </target>
 
+	  <taskdef name="nsis" classname="info.waynegrant.ant.NsisTask">
+    	<classpath>
+      	<pathelement location="${lib}/wat-12.jar"/>
+      </classpath>
+    </taskdef>
+    <target name="installer" depends="junit" description="Create installers">
+    	<nsis script="${dist}/windows.nsi" verbosity="4" nocd="yes">
+        <define name="distdir" value="${dist}"/>
+        <define name="nativelibs" value="${thirdparty.nativelib}/windows"/>
+        <scriptcmd cmd="CRCcheck on"/>
+      </nsis>
+    </target>
+
+
     <target name="clean" description="Remove build and dist directories">
         <delete dir="${bin}"/>
-        <delete dir="${dist}"/>
-	<delete dir="${reports.tests}"/>
+        <delete>
+        	<fileset dir="${dist}" includes="*.jar"/>
+        </delete>
+				<delete dir="${reports.tests}"/>
     </target>
 </project>
