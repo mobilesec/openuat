@@ -631,9 +631,27 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 		class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
 			private int mode; // 0 = client, 1 = server, 2 = both
-    		
+			
+			private final static boolean useProgressBar = false;
+			
+			// test code for progress bar
+			Object pb;
+			Object d;
+			Object s;
+			
 			public TempAuthenticationEventHandler(int mode) {
     				this.mode = mode;
+    				
+    				if (useProgressBar) {
+    					d = new org.eclipse.swt.widgets.Display();
+    					s = new org.eclipse.swt.widgets.Shell((org.eclipse.swt.widgets.Display) d);
+    					((org.eclipse.swt.widgets.Shell) s).setLayout(new org.eclipse.swt.layout.GridLayout());
+    					pb = new org.eclipse.swt.widgets.ProgressBar((org.eclipse.swt.widgets.Shell) s, org.eclipse.swt.SWT.HORIZONTAL | org.eclipse.swt.SWT.SMOOTH);
+    					((org.eclipse.swt.widgets.ProgressBar) pb).setLayoutData(new org.eclipse.swt.layout.GridData(org.eclipse.swt.layout.GridData.FILL_HORIZONTAL));
+    					((org.eclipse.swt.widgets.ProgressBar) pb).setMinimum(0);
+    					((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(5);
+    					((org.eclipse.swt.widgets.Shell) s).open();
+    				}
     			}
     		
     			synchronized public void AuthenticationSuccess(Object sender, Object remote, Object result)
@@ -691,6 +709,12 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     			public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
     			{
     				logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+    				if (useProgressBar) {
+    					final int m = max;
+    					final int c = cur;
+    					((org.eclipse.swt.widgets.Display) d).asyncExec(new Runnable() { public void run() { 
+    						((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(m); ((org.eclipse.swt.widgets.ProgressBar) pb).setSelection(c); }});
+    				}
     			}
     		}
     
@@ -736,7 +760,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             EventDispatcher.getDispatcher(new String[] {serialPort});
             MeasurementManager man = new MeasurementManager(serialPort);
         		RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, null);
-        		r.addAuthenticationProgressHandler(new TempAuthenticationEventHandler(0));
+        		TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
+        		r.addAuthenticationProgressHandler(t);
         		r.startAuthentication(args[2], (byte) Integer.parseInt(args[3]), Integer.parseInt(args[4]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
@@ -757,7 +782,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
             //new BufferedReader(new InputStreamReader(System.in)).readLine();
 
-            while (true) Thread.sleep(1000);
+            if (t.useProgressBar) {
+            		while (! ((org.eclipse.swt.widgets.Shell) t.s).isDisposed()) {
+            			if (((org.eclipse.swt.widgets.Display) t.d).readAndDispatch())
+            				((org.eclipse.swt.widgets.Display) t.d).sleep();
+            		}
+            }
+            else
+                while (true) Thread.sleep(1000);
         }
         else if (args.length == 2 && args[0].equals("both")) {
         		logger.info("Starting mutual authentication mode with two dongles");
