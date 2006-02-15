@@ -101,9 +101,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * connected to the remote side and which is used for transmitting success or failure
 	 * messages from the dongle authentication protocol (i.e. the second stage).
 	 * It is set by HostAuthenticationEventHandler.AuthenticationSuccess.
-	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object)
+	 * @see HostAuthenticationEventHandler#AuthenticationSuccess
 	 */
-	private Socket socketToRemote;
+	private Socket socketToRemote = null;
 	
 	/** This is just a helper to hold the remoteRelateId that is passed to startAuthentication
 	 * until it is needed when starting the DongleProtocolHandler (after the HostProtocolHandler
@@ -120,13 +120,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @see #startServer
 	 * @see #stopServer
 	 */
-	private HostServerSocket serverSocket;
+	private HostServerSocket serverSocket = null;
 	
 	/** AuthenticationProgressEvents will be forwarded to this more Relate-specific handler, when
 	 * set != null. It is a second possibility for this class to fire events, in addition to the
 	 * methods offered by AuthenticationEventSender.
 	 */
-	private ProgressEventHandler relateEventHandler;
+	private ProgressEventHandler relateEventHandler = null;
 	
 	/** The reference measurement to the remoteRelateId device taken when the
 	 * user selected this device for authentication, or the last one taken 
@@ -142,7 +142,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object, Object) for the "incoming" authentication
 	 * @see #fetchReferenceMeasurement is the helper method used for both incoming and outgoing
 	 */
-	private int referenceMeasurement;
+	private int referenceMeasurement = -1;
 	
 	/** This is only a helper to get the reference measurement now - pending better integration
 	 * with the Relate framework.
@@ -248,6 +248,18 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		this.useJSSE = useJSSE;
 		this.relateEventHandler = relateEventHandler;
 	}
+	
+	/** This method returns if this object is idle or if it is currently running the authentication protocol
+	 * with a remote host. Callers should check that it is idle before calling startAuthentication, because only
+	 * one protocol can be run at a time (this might change in the future at least for the host authentication 
+	 * phase, but right now, we only accept new authentication runs to be started when idle).
+	 * 
+	 * @return true when the object is idle, i.e. when a new authentication can be started.
+	 */
+	public boolean isIdle() {
+		// no synchronization mechanism here because it's only a boolean
+		return state == STATE_NOT_STARTED;
+	}
 
 	/** This is only a helper method to fetch the reference measurement to a remote host from the
 	 * MeasurementManager. It will block until such a measurement could be received.
@@ -305,13 +317,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * the HostProtocolHandler has finished successfully.
 		 */	
 		this.remoteRelateId = remoteRelateId;
+
+		if (! isIdle()) {
+			logger.warn("Tried to start authentication with host " + remoteHost + ", relate id " + remoteRelateId + 
+					" while another authentication protocol run is still active. Not starting authentication and " +
+					" returning false.");
+			return false;
+		}
 		
-		// TODO: check state!
-		
-		/* This is simple in the implementation, because we just need to start the
-		 * host authentication here. When that suceeds, the event handler will 
-		 * continue to start the dongle authentication.
-		 */ 
 		state = STATE_HOST_AUTH_RUNNING;
 		
 		/* And remember the last reference measurement taken to the remote relate id for
@@ -332,6 +345,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			return false;
 		}
 		
+		/* This is simple in the implementation, because we just need to start the
+		 * host authentication here. When that suceeds, the event handler will 
+		 * continue to start the dongle authentication.
+		 */ 
 		int localRelateId = serialConn.getLocalRelateId();
 		if (localRelateId == -1)
 			//throw new InternalApplicationException("Dongle reports id -1, which is an error case.");
@@ -349,6 +366,18 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		return true;
 	}
 	
+	/** Resets the object to its idle state. After calling reset, incoming as well as outgoing 
+	 * authentication protocol runs are again possible. 
+	 */
+	private void reset() {
+		// this needs to be reset so that the HostAuthenticationSuccess handler will be in "server" state
+		remoteRelateId = -1;
+		socketToRemote = null;
+		referenceMeasurement = -1;
+		// and finally reset the state
+		state = STATE_NOT_STARTED;
+	}
+	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
 	 * 
 	 * @param remote The remote device (either InetAddress or Integer for the host address or relate id) with which the authentication failed.
@@ -356,13 +385,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @param message If not null, the message describing the failure.
 	 */ 
 	private void authenticationFailed(Object remote, Exception e, String message) {
+		state = STATE_FAILED;
 		// be sure to wipe the shared key if it has already been set
 		if (sharedKey != null) {
 			for (int i=0; i<sharedKey.length; i++)
 				sharedKey[i] = 0;
 			sharedKey = null;
 		}
-		state = STATE_FAILED;
 		raiseAuthenticationFailureEvent(remote, e, message);
 		
 		if (relateEventHandler != null)
@@ -370,6 +399,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 				(remote instanceof String ? (String) remote : null),
 				(remote instanceof Integer ? ((Integer) remote).intValue() : -1),
 				e, message);
+		
+		reset();
 	}
 	
 	/** A helper class for handling the events from HostProtocolHandler.
@@ -381,7 +412,20 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	private class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
-			// TODO: check state!
+	    	if (isIdle()) {
+	    		logger.debug("Received host authentication event in idle state - assuming to be the server.");
+	    		state = STATE_HOST_AUTH_RUNNING;
+	    		// but do some sanity checks
+        		if (referenceMeasurement != -1)
+        			logger.error("Internal inconsistency! Object is idle in server mode, but referenceMeasurement is set");
+        		if (remoteRelateId != -1)
+        			logger.error("Internal inconsistency! Object is idle in server mode, but remoteRelateId is set");
+	    	}
+	    	if (state != STATE_HOST_AUTH_RUNNING) {
+	    		logger.error("Received host authentication success event with remote host " + remote + 
+	    				" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.info("Received host authentication success event at port " + serialPort + " with " + remote);
 	        Object[] res = (Object[]) result;
@@ -404,16 +448,16 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        		// "server" mode - take the id that was passed by the client
 	        		otherRelateId = Byte.parseByte(param1);
 	        		logger.debug("Server mode at port " + serialPort + ": taking remote relate id from authentication request message: " + otherRelateId);
+	    			/* And remember the last reference measurement taken to the remote relate id for
+	    			 * future use (i.e. computing the delays). For client mode, it has been set even
+	    			 * before starting the host authentication phase.
+	    			 */
+	    			referenceMeasurement = fetchReferenceMeasurement(otherRelateId);
 	        }
 	        int rounds = Integer.parseInt(param2);
-	        // this could need some error handling, but at the moment we depend on it being set
+	        // TODO: this could need some error handling, but at the moment we depend on it being set
 	        socketToRemote = (Socket) res[3];
 
-			/* And remember the last reference measurement taken to the remote relate id for
-			 * future use (i.e. computing the delays).
-			 */
-			referenceMeasurement = fetchReferenceMeasurement(otherRelateId);
-	        
 	        // and use the agreed authentication key to start the dongle authentication
 	        logger.debug("Starting dongle authentication at dongle " + serialPort + " with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
 	        DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, otherRelateId, useJSSE);
@@ -428,7 +472,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
-			// TODO: check state!
+	    	if (isIdle()) {
+	    		logger.debug("Received host authentication event in idle state - assuming to be the server.");
+	    		state = STATE_HOST_AUTH_RUNNING;
+	    	}
+	    	if (state != STATE_HOST_AUTH_RUNNING) {
+	    		logger.error("Received host authentication failure event with remote host " + remote + 
+	    				" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.info("Received host authentication failure event at port " + serialPort + " with " + remote);
 	        if (e != null)
@@ -440,7 +492,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
-			// TODO: check state!
+	    	if (isIdle()) {
+	    		logger.debug("Received host authentication event in idle state - assuming to be the server.");
+	    		state = STATE_HOST_AUTH_RUNNING;
+	    	}
+	    	if (state != STATE_HOST_AUTH_RUNNING) {
+	    		logger.error("Received host authentication progress event with remote host " + remote + 
+	    				" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.debug("Received host authentication progress event at port " + serialPort + " with " + remote + " " + cur + " out of " + max + ": " + msg);
 	        // this is not optional because we don't know the number of rounds to use yet
@@ -481,7 +541,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
-			// TODO: check state!
+	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
+	    		logger.error("Received dongle authentication success event with remote id " + remote + 
+	    				" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.info("Received dongle authentication success event at port " + serialPort + " with id " + remote);
 	        
@@ -528,11 +592,16 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		        logFailure(e.toString());
 	        		authenticationFailed(remote, e, "Could not report success to remote host or get status message from remote host");
 	        }
+	        reset();
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
-			// TODO: check state!
+	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
+	    		logger.error("Received dongle authentication failure event with remote id " + remote + 
+	    				" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.info("Received dongle authentication failure event at port " + serialPort + " with id " + remote);
 	        if (e != null)
@@ -555,11 +624,16 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        catch (IOException ex) {
 	        		logger.error("Could not report failure to remote host: " + ex /*+ "\n" + ex.getStackTrace()*/);
 	        }
+	        reset();
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
-			// TODO: check state!
+	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
+	    		logger.error("Received dongle authentication success event with remote id " + remote + 
+	    				" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.debug("Received dongle authentication progress event at port " + serialPort + " with id " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, HostProtocolHandler.AuthenticationStages + cur, 
@@ -580,10 +654,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @see #serverSocket
 	 */
 	public void startServer() throws IOException {
-        serverSocket = new HostServerSocket(TcpPort, true, useJSSE);
-        HostAuthenticationEventHandler hostServerHandler = new HostAuthenticationEventHandler();
-    		serverSocket.addAuthenticationProgressHandler(hostServerHandler);
-        serverSocket.startListening();
+		if (serverSocket == null) {
+			serverSocket = new HostServerSocket(TcpPort, true, useJSSE);
+			HostAuthenticationEventHandler hostServerHandler = new HostAuthenticationEventHandler();
+    			serverSocket.addAuthenticationProgressHandler(hostServerHandler);
+    		serverSocket.startListening();
+		}
+		else
+			logger.error("Could not start authentication server because one is already running.");
 	}
 	
 	/** This is a helper function to stop the "server" part of the authentication protocol.
@@ -598,11 +676,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			}
 			serverSocket = null;
 		}
+		else
+			logger.error("Could not stop authentication server because none is running.");
 	}
 	
 
 	
-	//////////////////////////// Test code starting here ///////////////////////////////////////
+	/////////////////// Test code starting here, don't look below, it might make your eyes cross ////////////////////
 	
 	// helper function to better facilitate the experiments, just interrupt both dongles
 	private static void resetBothDongles() {
