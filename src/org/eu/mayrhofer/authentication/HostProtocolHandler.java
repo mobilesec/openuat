@@ -53,7 +53,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     private Socket socket;
     /** If set to false, socket will be closed. 
      * @see #socket
-     * @see #HostProtocolHandler(Socket, boolean)
+     * @see #HostProtocolHandler(Socket, boolean, boolean)
      */
     private boolean keepSocketConnected;
     /** An optional parameter that can be passed from the client to the server
