@@ -182,13 +182,16 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		try {
 			if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound)) {
 				logger.error("ERROR: could not send start-of-authentication packet to dongle");
-				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle.");
+				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle, resetting it.");
+				// also reset the dongle, just in case the command was sent but just not acknowledged
+				serialConn.switchDiagnosticMode(false);
 				return false;
 			}
 		} 
 		catch (DongleException e) {
 			logger.fatal("ERROR: could not send start-of-authentication packet to dongle: " + e);
-			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), e, "Unable to send start-of-authentication packet to dongle.");
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), e, "Unable to send start-of-authentication packet to dongle, resetting it.");
+			serialConn.switchDiagnosticMode(false);
 			return false;
 		}
 
@@ -349,7 +352,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					". Resetting dongle (by turning off diagnostic mode) and generating an authentication failed event.");
 			serialConn.switchDiagnosticMode(false);
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
-					"Timeout while waiting for authentication messages from local dongle. Most probably cause is that " +
+					"Timeout while waiting for authentication messages from local dongle. Most probable cause is that " +
 					"the other dongle never entered authentication mode or that it has been interrupted or disappeared.");
 			return false;
 		}
