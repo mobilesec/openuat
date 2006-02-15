@@ -45,7 +45,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	/** Possible value of state, indicates that the authentication has not been started yet. 
 	 * @see #state 
 	 */
-	private final static int STATE_NOT_STARTED = 1;
+	private final static int STATE_IDLE = 1;
 	/** Possible value of state, indicates that the host authentication is running.
 	 * @see #state 
 	 */
@@ -64,16 +64,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 */
 	private final static int STATE_FAILED = 5;
 	
-	/** The current state of the spatial authentication, one of STATE_NOT_STARTED,
+	/** The current state of the spatial authentication, one of STATE_IDLE,
 	 * STATE_HOST_AUTH_RUNNING, STATE_DONGLE_AUTH_RUNNING, STATE_SUCCEEDED, STATE_FAILED.
-	 * @see #STATE_NOT_STARTED
+	 * @see #STATE_IDLE
 	 * @see #STATE_HOST_AUTH_RUNNING
 	 * @see #STATE_DONGLE_AUTH_RUNNING
 	 * @see #STATE_SUCCEEDED
 	 * @see #STATE_FAILED
 	 */
-	// TODO: whole class: make me reset to the first state (should be renamed to IDLE) after success or failure - i.e. state will be a lock against concurrent runs
-	private int state = STATE_NOT_STARTED;
+	private int state = STATE_IDLE;
 	
 	/** This message is sent via the TCP channel to the remote upon authentication success. */
 	private final static String Protocol_Success = "ACK ";
@@ -258,7 +257,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 */
 	public boolean isIdle() {
 		// no synchronization mechanism here because it's only a boolean
-		return state == STATE_NOT_STARTED;
+		return state == STATE_IDLE;
 	}
 
 	/** This is only a helper method to fetch the reference measurement to a remote host from the
@@ -375,7 +374,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		socketToRemote = null;
 		referenceMeasurement = -1;
 		// and finally reset the state
-		state = STATE_NOT_STARTED;
+		state = STATE_IDLE;
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
