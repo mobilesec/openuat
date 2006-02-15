@@ -549,6 +549,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        logger.info("Received dongle authentication success event at port " + serialPort + " with id " + remote);
 	        
 	        // before forwarding the success event, send a success message to the remote and wait for its success message
+	        // TODO: also do that for failure messages!
 	        try {
 	        		BufferedReader fromRemote = new BufferedReader(new InputStreamReader(socketToRemote.getInputStream()));
 	        		// this enables auto-flush
@@ -607,8 +608,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	            logger.info("Exception: " + e /*+ "\n" +  e.getStackTrace()*/);
 	        if (msg != null)
 	            logger.info("Message: " + msg);
-	        logFailure((e != null ? e.toString() : "") + "/" + msg);
-	        authenticationFailed(remote, e, msg);
 	        
 	        // and also send an authentication failed status to the remote
 	        try {
@@ -623,7 +622,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        catch (IOException ex) {
 	        		logger.error("Could not report failure to remote host: " + ex /*+ "\n" + ex.getStackTrace()*/);
 	        }
-	        reset();
+	        logFailure((e != null ? e.toString() : "") + "/" + msg);
+	        authenticationFailed(remote, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
