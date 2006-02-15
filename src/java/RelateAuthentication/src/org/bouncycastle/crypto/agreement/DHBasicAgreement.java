@@ -1,7 +1,7 @@
 package org.bouncycastle.crypto.agreement;
 
 import java.math.BigInteger;
-import java.security.SecureRandom;
+//import java.security.SecureRandom;
 
 import org.bouncycastle.crypto.BasicAgreement;
 import org.bouncycastle.crypto.CipherParameters;
@@ -23,7 +23,7 @@ public class DHBasicAgreement
 {
     private DHPrivateKeyParameters  key;
     private DHParameters            dhParams;
-    private SecureRandom            random;
+    //private SecureRandom            random;
 
     public void init(
         CipherParameters    param)
@@ -34,12 +34,12 @@ public class DHBasicAgreement
         {
             ParametersWithRandom    rParam = (ParametersWithRandom)param;
 
-            this.random = rParam.getRandom();
+            //this.random = rParam.getRandom();
             kParam = (AsymmetricKeyParameter)rParam.getParameters();
         }
         else
         {
-            this.random = new SecureRandom();
+            //this.random = new SecureRandom();
             kParam = (AsymmetricKeyParameter)param;
         }
 

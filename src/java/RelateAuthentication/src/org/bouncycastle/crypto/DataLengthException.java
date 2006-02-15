@@ -10,6 +10,11 @@ public class DataLengthException
     extends RuntimeCryptoException
 {
     /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	/**
      * base constructor.
      */
     public DataLengthException()

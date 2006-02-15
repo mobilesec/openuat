@@ -116,7 +116,7 @@ public class BitSet implements Cloneable, Serializable
    * given <code>set</code>.  This means it builds the intersection
    * of the two sets.  The result is stored into this bit set.
    *
-   * @param set the second bit set
+   * @param bs the second bit set
    * @throws NullPointerException if set is null
    */
   public void and(BitSet bs)
@@ -135,7 +135,7 @@ public class BitSet implements Cloneable, Serializable
    * selects every element in the first set, that isn't in the
    * second set.  The result is stored into this bit set.
    *
-   * @param set the second bit set
+   * @param bs the second bit set
    * @throws NullPointerException if set is null
    * @since 1.2
    */
@@ -193,7 +193,7 @@ public class BitSet implements Cloneable, Serializable
    * the corresponding bit is cleared.  If the index is not in the set,
    * this method does nothing.
    *
-   * @param bitIndex a non-negative integer
+   * @param pos a non-negative integer
    * @throws IndexOutOfBoundsException if bitIndex &lt; 0
    */
   public void clear(int pos)
