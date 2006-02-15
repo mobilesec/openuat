@@ -41,6 +41,16 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	
 	/** The number of authentication steps, not including the rounds of the dongles. */
 	public static final int AuthenticationStages = 3;
+
+	/** MAGIC VALUE NUMBER 1: Give a maximum of 10 seconds between receiving the authentication 
+	 * messages of two consecutive rounds between from the dongle. If it takes longer, this most
+	 * probably means that the dongle is stuck and will therefore be reset. The authentication
+	 * will then fail with a timeout.
+	 * It's magic because there's no real reason for that specific number other than trial&error.
+	 * 
+	 * @see #handleDongleCommunication
+	 */
+	private final static int MAGIC_1 = 10000;
 	
 	/** The remote relate id to perform the authentication with. */
 	private byte remoteRelateId;
@@ -114,7 +124,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *            same length as sentRfMessage, but the contents are returned by
 	 *            this method.
 	 * @return true if the authentication protocol completed, false otherwise.
-	 *         If true, returns the received RF message in receivedRfMessage
+	 *         If true, returns the received RF message in receivedRfMessage. If
+	 *         false, this method already raises a proper authentication failure
+	 *         event, so the caller doesn't need to.
 	 * @throws DongleAuthenticationProtocolException
 	 */
 	private boolean handleDongleCommunication(byte[] nonce, byte[] sentRfMessage, 
@@ -194,13 +206,19 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			messageBitsPerRound++;
 		logger.info("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
 
-		// TODO: endless loops are bad for fault tolerance. add a timer to generate a failure event, reset the dongle, and exit cleanly if something goes wrong (like, the dongle not finishing....) 
-		while (lastCompletedRound < rounds-1) {
+		/* This allows a clean exit when the dongle doesn't advance its reported round for too long
+		 * (e.g. when either the other side never enters authentication mode or it has been reset for
+		 * some reason).  
+		 */
+		SafetyBeltTimer timer = new SafetyBeltTimer(MAGIC_1);
+		
+		while (lastCompletedRound < rounds-1 && !timer.isTriggered()) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
 			if (e == null) {
-				logger.warn("Warning: got null message out of message queue! This should not happen.");
+				logger.warn("Warning: got null message out of message queue! This should normally not happen. " +
+						"Is the dongle asleep or malfunctioning so that it doesn't generate any messages?");
 				continue;
 			}
 			if (e instanceof AuthenticationEvent && ((AuthenticationEvent) e).getRemoteDongleId() == remoteRelateId) {
@@ -316,7 +334,24 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits)");
 				logger.debug("reference=" + referenceMeasurement + ", delta=" + delta + " (" + Integer.toBinaryString(delta) + ")");
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + (lastCompletedRound+1));
+
+				// here we have progress, so reset the timer
+				timer.reset();
 			}
+		}
+		
+		if (lastCompletedRound < rounds-1) {
+			/* The loop was left because of a timeout, so reset the dongle and
+			 * exit cleanly with a failure event. 
+			 */
+			logger.error("Dongle authentication timed out after " + (System.currentTimeMillis() - startTime) + 
+					" ms. Last received round is " + (lastCompletedRound+1) + 
+					". Resetting dongle (by turning off diagnostic mode) and generating an authentication failed event.");
+			serialConn.switchDiagnosticMode(false);
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
+					"Timeout while waiting for authentication messages from local dongle. Most probably cause is that " +
+					"the other dongle never entered authentication mode or that it has been interrupted or disappeared.");
+			return false;
 		}
 		
 		// and stop measuring now
@@ -327,13 +362,21 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		// check if everything has been received correctly
 		if (receivedRoundsRF.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + (receivedRoundsRF.nextClearBit(0)+1));
+			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + 
+					(receivedRoundsRF.nextClearBit(0)+1));
 			logger.error(receivedRoundsRF);
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
+					"Did not receive all required authentication parts from remote dongle, first missing is round " + 
+					(receivedRoundsRF.nextClearBit(0)+1));
 			return false;
 		}
 		if (receivedRoundsUS.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required delayed measurements from remote dongle, first missing is round " + (receivedRoundsUS.nextClearBit(0)+1));
+			logger.error("ERROR: Did not receive all required delayed measurements from remote dongle, first missing is round " + 
+					(receivedRoundsUS.nextClearBit(0)+1));
 			logger.error(receivedRoundsUS);
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
+					"Did not receive all required delayed measurements from remote dongle, first missing is round " + 
+					(receivedRoundsRF.nextClearBit(0)+1));
 			return false;
 		}
 		
@@ -371,7 +414,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		
 		byte[] receivedDelays = new byte[NonceByteLength], receivedRfMessage = new byte[NonceByteLength];
 		if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedDelays, receivedRfMessage)) {
-			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Dongle authentication protocol failed");
+			// all occurances of return fals already raise an authentication failure event, so no need to do it here
 			return;
 		}
 
