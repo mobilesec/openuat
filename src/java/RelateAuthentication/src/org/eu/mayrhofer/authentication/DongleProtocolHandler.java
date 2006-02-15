@@ -193,7 +193,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		if (sentRfMessage.length * 8 > messageBitsPerRound * rounds)
 			messageBitsPerRound++;
 		logger.info("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
-		
+
+		// TODO: endless loops are bad for fault tolerance. add a timer to generate a failure event, reset the dongle, and exit cleanly if something goes wrong (like, the dongle not finishing....) 
 		while (lastCompletedRound < rounds-1) {
 			while (eventQueue.isEmpty())
 				eventQueue.waitForMessage(500);
