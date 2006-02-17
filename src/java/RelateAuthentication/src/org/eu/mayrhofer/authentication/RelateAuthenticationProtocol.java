@@ -861,7 +861,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
             //new BufferedReader(new InputStreamReader(System.in)).readLine();
 
-            if (t.useProgressBar) {
+            if (TempAuthenticationEventHandler.useProgressBar) {
             		while (! ((org.eclipse.swt.widgets.Shell) t.s).isDisposed()) {
             			if (((org.eclipse.swt.widgets.Display) t.d).readAndDispatch())
             				((org.eclipse.swt.widgets.Display) t.d).sleep();
