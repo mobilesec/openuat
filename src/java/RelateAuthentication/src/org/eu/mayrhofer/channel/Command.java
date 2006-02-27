@@ -54,6 +54,15 @@ public class Command {
 			}
 			in.close();
 
+			BufferedReader err = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+			String errLine = "";
+			temp = err.readLine();
+			while (temp!=null) {
+				errLine += temp + "\n";
+				temp = err.readLine();
+			}
+			err.close();
+			
 			int result;
 			try {
 				result = proc.waitFor();
@@ -67,7 +76,7 @@ public class Command {
 			}*/
 			//ErrorLog.log(" with exit value " + result);
 			if (result!=0) {
-				throw new ExitCodeException("Exited with non-zero exit code (" + result + "), output was: " + line);
+				throw new ExitCodeException("Exited with non-zero exit code (" + result + "), output was: '" + line + "', error stream was: '" + errLine + "'");
 			} else {
 				return line;
 			}
