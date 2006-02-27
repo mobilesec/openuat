@@ -4,6 +4,11 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
@@ -26,8 +31,13 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 	public static final String EROUTED_HOLD = "erouted HOLD";
     public static final String UNROUTET = "unrouted";
     public static final String IPSEC_ESTABLISHED = "IPsec SA established";
-	
-	private String remoteHost;
+
+	public final static String[] Interface_Names_Blacklist = new String[] { "vmnet", "lo" };
+    
+	/** To remember the remote host address that was passed in start(). */
+	private String remoteHost = null;
+	/** This remembers the local address used to create the IPSec connection. It is used for stop() and isEstablished(). */
+	private String localAddr = null;
 
 	public IPSecConnection_Linux_Openswan() {
 		this.ignoredConns.add("private");
@@ -36,6 +46,41 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 		this.ignoredConns.add("clear");
 		this.ignoredConns.add("packetdefault");
 		this.ignoredConns.add("clear-or-private");
+	}
+	
+	private LinkedList getAllLocalIps() throws SocketException {
+		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
+		LinkedList allAddrs = new LinkedList();
+		while (ifaces.hasMoreElements()) {
+			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
+			logger.debug("Found local interface " + iface.getName());
+			// check if that interface name is blacklisted
+			boolean blacklisted = false;
+			for (int i=0; i<Interface_Names_Blacklist.length; i++)
+				if (iface.getName().startsWith(Interface_Names_Blacklist[i]))
+					blacklisted = true;
+			
+			if (!blacklisted) {
+				Enumeration addrs = iface.getInetAddresses();
+				while (addrs.hasMoreElements()) {
+					InetAddress addr = (InetAddress) addrs.nextElement();
+					if (addr instanceof Inet6Address)
+						logger.debug("Ignoring IPv6 address " + addr + " for now");
+					else {
+						logger.debug("Found address " + addr);
+						allAddrs.add(addr.getHostAddress());
+					}
+				}
+			}
+			else
+				logger.debug("Ignoring interface because it is blacklisted");
+		}
+		
+		return allAddrs;
+	}
+	
+	private String createConnName(String localAddr, String remoteAddr) {
+		return "auto-" + localAddr.replace('.', '_') + "-" + remoteAddr.replace('.', '_');
 	}
 	
 	/** Creates a new connection entry for openswan/strongswan/freeswan and tries to
@@ -66,32 +111,59 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 			return false;
 		}
 		try {
+			logger.info("Creating config files " + configConn + " and " + configPsk);
 			if (! configConn.createNewFile()) {
 				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
 			BufferedWriter writerConn = new BufferedWriter(new FileWriter(configConn));
-			writerConn.write("conn " + remoteHost + "\n");
-			writerConn.write("    left=%defaultroute\n");
-			writerConn.write("    authby=secret\n");
-			writerConn.write("    type=transport\n");
-			writerConn.write("    right=" + remoteHost);
-			writerConn.write("    auto=" + (persistent ? "start" : "add"));
-
 			if (! configPsk.createNewFile()) {
 				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
 			BufferedWriter writerPsk = new BufferedWriter(new FileWriter(configPsk));
-			writerPsk.write("%any " + remoteHost + new String(Hex.encodeHex(sharedSecret)));
-		
-			// reload the secrets and start the connection
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null);
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--add", remoteHost}, null);
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--start", remoteHost}, null);
-		}
-		catch (ExitCodeException e) {
-			logger.error("Could not execute command: " + e);
+			
+			// hmpf, this is a bad hack for openswan, because it can't deal with %defaultroute in the .secrets file - damn it
+			logger.info("Creating one connection description for each of the local IP addresses");
+			LinkedList allLocalAddrs = getAllLocalIps();
+			while (allLocalAddrs.size() > 0) {
+				// for each local address, create one configuration block
+				String localAddr = (String) allLocalAddrs.removeFirst();
+				logger.debug("Using local address " + localAddr);
+				
+				writerConn.write("conn " + createConnName(localAddr, remoteHost) + "\n");
+				writerConn.write("    left=" + localAddr + "\n");
+				// this is necessary so that the certificate ID isn't used for the ipsec.secrets lookup
+				writerConn.write("    leftcert=\n");
+				writerConn.write("    authby=secret\n");
+				writerConn.write("    type=transport\n");
+				writerConn.write("    right=" + remoteHost + "\n");
+				writerConn.write("    auto=" + (persistent ? "start" : "add") + "\n");
+				writerConn.flush();
+
+				writerPsk.write(localAddr + " " + remoteHost + " : PSK \"" + new String(Hex.encodeHex(sharedSecret)) + "\"\n");
+				writerPsk.flush();
+				
+				// reload the secrets and try to start the connection
+				try {
+					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null);
+					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--add", createConnName(localAddr, remoteHost)}, null);
+					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--up", createConnName(localAddr, remoteHost)}, null);
+					this.localAddr = localAddr;
+					writerConn.close();
+					writerPsk.close();
+					logger.info("Established connection from " + localAddr + " to " + remoteHost);
+					return isEstablished();
+				}
+				catch (ExitCodeException e) {
+					logger.error("Command failed: " + e);
+					// ignore it, because if one of the connections comes up, we are set
+				}
+			}
+			writerConn.close();
+			writerPsk.close();
+			// none of the connections came up
+			logger.error("None of the connections could be established");
 			return false;
 		}
 		catch (IOException e) {
@@ -99,10 +171,15 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 			return false;
 		}
 		
-		return isEstablished();
+		//return isEstablished();
 	}
 	
 	public boolean stop() {
+		if (remoteHost == null || localAddr == null) {
+			logger.error("Unable to stop IPSec connection, it has not been started yet");
+			return false;
+		}
+		
 		File configConn = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".conf");
 		if (! configConn.exists()) {
 			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
@@ -115,7 +192,7 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 		}
 
 		try {
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", remoteHost}, null);
+			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null);
 			if (! configConn.delete()) {
 				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 				return false;
@@ -139,8 +216,12 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 	}
 	
 	public boolean isEstablished() {
+		if (remoteHost == null || localAddr == null) {
+			return false;
+		}
+
 		try {
-			return getConnStatus(remoteHost) == 1;
+			return getConnStatus(createConnName(localAddr, remoteHost)) == 1;
 		}
 		catch (ExitCodeException e) {
 			logger.error("Could not execute command: " + e);
@@ -173,7 +254,6 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
     	//todo: change command
 		int retVal = -1;
         //getting current status output
-		String[] command = {"/usr/sbin/ipsec","auto","--status"};
 		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--status"}, null);
 
         StringTokenizer strT = new StringTokenizer(autoStatus,"\n");
@@ -221,18 +301,18 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
     		IPSecConnection_Linux_Openswan c = new IPSecConnection_Linux_Openswan();
     		System.out.println(c.start(args[0], key, false));
 
-    		Thread.sleep(10000);
+    		System.in.read();
     		
-    		System.out.print("Connection to " + args[0] + "is now " + c.isEstablished());
+    		System.out.println("Connection to " + args[0] + " is now " + c.isEstablished());
 
-    		Thread.sleep(10000);
+    		System.in.read();
     		
     		System.out.print("Stopping connection to " + args[0] + ": ");
     		System.out.println(c.stop());
 
-    		Thread.sleep(10000);
+    		System.in.read();
     		
-    		System.out.print("Connection to " + args[0] + "is now " + c.isEstablished());
+    		System.out.println("Connection to " + args[0] + " is now " + c.isEstablished());
     }
 }
 
