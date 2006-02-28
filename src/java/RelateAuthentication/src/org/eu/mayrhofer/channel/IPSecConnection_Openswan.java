@@ -16,9 +16,19 @@ import org.apache.log4j.Logger;
 import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.*;
 
-public class IPSecConnection_Linux_Openswan implements SecureChannel {
+/** This is an implementation of a secure channel using the openswan/strongswan/freeswan IPSec implementation
+ * for Linux. It is independent of the kernel implementation (i.e. both KLIPS and 26sec will work), but assumes
+ * the IKE-daemon "pluto" to be installed with the default locations. Additionally, the directory 
+ * "/etc/ipsec.d/dynamic/" is assumed to exist, the file "/etc/ipsec.conf" should contain a line
+ * "include /etc/ipsec.d/dynamic/*.conf", and the file "/etc/ipsec.secrets" should contain a line
+ * "include /etc/ipsec.d/dynamic/*.psk".
+ * 
+ * @author Rene Mayrhofer
+ *
+ */
+public class IPSecConnection_Openswan implements SecureChannel {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Linux_Openswan.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class);
 
 	private LinkedList ignoredConns = new LinkedList();
     /**constant for connection header*/
@@ -39,7 +49,7 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 	/** This remembers the local address used to create the IPSec connection. It is used for stop() and isEstablished(). */
 	private String localAddr = null;
 
-	public IPSecConnection_Linux_Openswan() {
+	public IPSecConnection_Openswan() {
 		this.ignoredConns.add("private");
 		this.ignoredConns.add("block");
 		this.ignoredConns.add("private-or-clear");
@@ -87,7 +97,7 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 	 * start that connection.
 	 * 
 	 * @param remoteHost The IP address or host name of the remote host.
-	 * @param sharedSecret The PSK to use - this byte array will be BASE64-encoded to form a textual representation.
+	 * @param sharedSecret The PSK to use - this byte array will be HEX-encoded to form a textual representation.
 	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
 	 *                   it will be set to auto=add.
 	 */
@@ -298,7 +308,7 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
     		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     	
     		System.out.print("Starting connection to " + args[0] + ": ");
-    		IPSecConnection_Linux_Openswan c = new IPSecConnection_Linux_Openswan();
+    		IPSecConnection_Openswan c = new IPSecConnection_Openswan();
     		System.out.println(c.start(args[0], key, false));
 
     		System.in.read();

@@ -38,7 +38,6 @@ public class Command {
 			// if outputString is not null -> write!
 			if (outputString!=null) {			
 				BufferedWriter out = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream()));
-				/** todo: password change */
 				out.write(outputString);
 				out.close();
 			}
