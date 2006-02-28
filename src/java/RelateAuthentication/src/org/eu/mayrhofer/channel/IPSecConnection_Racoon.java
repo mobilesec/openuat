@@ -6,16 +6,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
-import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the racoon IPSec implementation, which is
@@ -123,10 +117,17 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			// force racoon to reload its config, set the kernel policy, and try to start the connection
 			try {
 				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null);
-				String setkeyCmds = 
-					"spdadd " + remoteHost + " 0.0.0.0 any -P in ipsec esp/transport//use;\n" +
-					"spdadd 0.0.0.0 " + remoteHost + " any -P out ipsec esp/transport//use;\n";
-				Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds);
+				
+				// this must unfortunately be done for every local ip....
+				logger.info("Creating security policy entries for each of the local IP addresses");
+				LinkedList allLocalAddrs = Helper.getAllLocalIps();
+				while (allLocalAddrs.size() > 0) {
+					String localAddr = (String) allLocalAddrs.removeFirst();
+					String setkeyCmds = 
+						"spdadd " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
+						"spdadd " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
+					Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds);
+				}
 				logger.info("Established connection from to " + remoteHost);
 			}
 			catch (ExitCodeException e) {
@@ -161,6 +162,16 @@ public class IPSecConnection_Racoon implements SecureChannel {
 				return false;
 			}
 			Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null);
+			// this must unfortunately be done for every local ip....
+			logger.info("Deleting security policy entries for each of the local IP addresses");
+			LinkedList allLocalAddrs = Helper.getAllLocalIps();
+			while (allLocalAddrs.size() > 0) {
+				String localAddr = (String) allLocalAddrs.removeFirst();
+				String setkeyCmds = 
+					"spddel " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
+					"spddel " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
+				Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds);
+			}
 			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null);
 		}
 		catch (ExitCodeException e) {

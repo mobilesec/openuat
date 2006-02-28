@@ -4,16 +4,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
-import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the openswan/strongswan/freeswan IPSec implementation
@@ -42,8 +36,6 @@ public class IPSecConnection_Openswan implements SecureChannel {
     public static final String UNROUTET = "unrouted";
     public static final String IPSEC_ESTABLISHED = "IPsec SA established";
 
-	public final static String[] Interface_Names_Blacklist = new String[] { "vmnet", "lo" };
-    
 	/** To remember the remote host address that was passed in start(). */
 	private String remoteHost = null;
 	/** This remembers the local address used to create the IPSec connection. It is used for stop() and isEstablished(). */
@@ -56,37 +48,6 @@ public class IPSecConnection_Openswan implements SecureChannel {
 		this.ignoredConns.add("clear");
 		this.ignoredConns.add("packetdefault");
 		this.ignoredConns.add("clear-or-private");
-	}
-	
-	private LinkedList getAllLocalIps() throws SocketException {
-		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
-		LinkedList allAddrs = new LinkedList();
-		while (ifaces.hasMoreElements()) {
-			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
-			logger.debug("Found local interface " + iface.getName());
-			// check if that interface name is blacklisted
-			boolean blacklisted = false;
-			for (int i=0; i<Interface_Names_Blacklist.length; i++)
-				if (iface.getName().startsWith(Interface_Names_Blacklist[i]))
-					blacklisted = true;
-			
-			if (!blacklisted) {
-				Enumeration addrs = iface.getInetAddresses();
-				while (addrs.hasMoreElements()) {
-					InetAddress addr = (InetAddress) addrs.nextElement();
-					if (addr instanceof Inet6Address)
-						logger.debug("Ignoring IPv6 address " + addr + " for now");
-					else {
-						logger.debug("Found address " + addr);
-						allAddrs.add(addr.getHostAddress());
-					}
-				}
-			}
-			else
-				logger.debug("Ignoring interface because it is blacklisted");
-		}
-		
-		return allAddrs;
 	}
 	
 	protected String createConnName(String localAddr, String remoteAddr) {
@@ -135,7 +96,7 @@ public class IPSecConnection_Openswan implements SecureChannel {
 			
 			// hmpf, this is a bad hack for openswan, because it can't deal with %defaultroute in the .secrets file - damn it
 			logger.info("Creating one connection description for each of the local IP addresses");
-			LinkedList allLocalAddrs = getAllLocalIps();
+			LinkedList allLocalAddrs = Helper.getAllLocalIps();
 			while (allLocalAddrs.size() > 0) {
 				// for each local address, create one configuration block
 				String localAddr = (String) allLocalAddrs.removeFirst();
