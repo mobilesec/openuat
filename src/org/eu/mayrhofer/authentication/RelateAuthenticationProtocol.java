@@ -7,12 +7,11 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 //import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedList;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
-//import uk.ac.lancs.relate.core.MessageQueue;
+import uk.ac.lancs.relate.core.MessageQueue;
 import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.core.Measurement;
@@ -275,7 +274,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			/* this gives us all the measurements that the local dongle took (i.e. where the 
 			 * getDongleId() of MeasurementEvent was equal to the localRelateId) to the remote 
 			 * dongle (i.e. where Measurement.getRelatumId was equal to remoteRelateId) */
-			LinkedList measurements = manager.getLocalMeasurementsTo(remoteRelateId);
+			MessageQueue measurements = manager.getLocalMeasurementsTo(remoteRelateId);
 			// simply find the first (i.e. newest) valid measurement
 			Iterator iter = measurements.iterator();
 			while (ref == -1 && iter.hasNext()) {
