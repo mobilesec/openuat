@@ -79,7 +79,7 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
 		return allAddrs;
 	}
 	
-	private String createConnName(String localAddr, String remoteAddr) {
+	protected String createConnName(String localAddr, String remoteAddr) {
 		return "auto-" + localAddr.replace('.', '_') + "-" + remoteAddr.replace('.', '_');
 	}
 	
@@ -250,7 +250,7 @@ public class IPSecConnection_Linux_Openswan implements SecureChannel {
      * @param label of the connection
      * @return status of a single connection
      */
-    private int getConnStatus(String label) throws ExitCodeException,IOException {
+    protected int getConnStatus(String label) throws ExitCodeException,IOException {
     	//todo: change command
 		int retVal = -1;
         //getting current status output
