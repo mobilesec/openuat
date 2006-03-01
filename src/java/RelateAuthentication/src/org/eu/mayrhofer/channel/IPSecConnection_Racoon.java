@@ -52,7 +52,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 		}
 		File configPsk = new File("/etc/racoon/psk.txt");
 		// this file must already exist, we only append to it
-		if (! configConn.exists() || ! configConn.canWrite()) {
+		if (! configPsk.exists() || ! configPsk.canWrite()) {
 			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " does not exist or is not writable.");
 			return false;
 		}
@@ -77,45 +77,50 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			
 			writerConn.write("remote " + remoteHost + "\n");
 			writerConn.write("{\n");
-			writerConn.write("    exchange_mode aggressive,main;");
-			writerConn.write("    doi ipsec_doi;");
-			writerConn.write("    situation identity_only;");
-			writerConn.write("    my_identifier address;");
-			writerConn.write("    nonce_size 16;");
-			writerConn.write("    lifetime time 1 hour;");
-			writerConn.write("    initial_contact on;");
-			writerConn.write("    support_mip6 on;");
-			writerConn.write("    proposal_check obey;");
+			writerConn.write("    exchange_mode main,aggressive;\n");
+			writerConn.write("    doi ipsec_doi;\n");
+			writerConn.write("    situation identity_only;\n");
+			writerConn.write("    my_identifier address;\n");
+			writerConn.write("    nonce_size 16;\n");
+			writerConn.write("    lifetime time 1 hour;\n");
+			writerConn.write("    initial_contact on;\n");
+			writerConn.write("    proposal_check obey;\n");
+			// we generate manually
+			writerConn.write("    generate_policy off;\n");
 			// TODO: this would be good for the Linux port, but is not supported under MacOSX
-			writerConn.write("    #nat_traversal on;");
-			writerConn.write("    proposal {");
-			writerConn.write("        encryption_algorithm 3des;");
-			writerConn.write("        hash_algorithm sha1;");
-			writerConn.write("        authentication_method pre_shared_key;");
-			writerConn.write("        dh_group 2;");
-			writerConn.write("    }");
+			writerConn.write("    #nat_traversal on;\n");
+			writerConn.write("    proposal {\n");
+			writerConn.write("        encryption_algorithm 3des;\n");
+			writerConn.write("        hash_algorithm sha1;\n");
+			writerConn.write("        authentication_method pre_shared_key;\n");
+			writerConn.write("        dh_group 2;\n");
+			writerConn.write("    }\n");
 			writerConn.write("}\n");
 			writerConn.flush();
 			writerConn.close();
 
-			BufferedWriter writerPskTmp = new BufferedWriter(new FileWriter(configConn));
+			BufferedWriter writerPskTmp = new BufferedWriter(new FileWriter(configPskTmp));
 			// check if a PSK for this remote address is already in the file, if not, add it
 			// (we basically just copy the file except the old line, if there, and append one line)
 			BufferedReader readerPsk = new BufferedReader(new FileReader(configPsk));
 			String line = readerPsk.readLine();
 			while (line != null) {
 				if (! line.startsWith(remoteHost))
-					writerPskTmp.write(line);
+					writerPskTmp.write(line + "\n");
+				line = readerPsk.readLine();
 			}
 			readerPsk.close();
 			writerPskTmp.write(remoteHost + " " + new String(Hex.encodeHex(sharedSecret)) + "\n");
 			writerPskTmp.flush();
 			writerPskTmp.close();
 			// and move the temporary file to the one we want to change
-			//configPskTmp.renameTo(configPsk);
+			configPskTmp.renameTo(configPsk);
 				
 			// force racoon to reload its config, set the kernel policy, and try to start the connection
 			try {
+				// this is a hack to get correct file permissions....
+				Command.executeCommand(new String[] {"chmod", "0600", configPsk.getCanonicalPath()}, null);
+				
 				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null);
 				
 				// this must unfortunately be done for every local ip....
@@ -128,7 +133,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 						"spdadd " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
 					Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds);
 				}
-				logger.info("Established connection from to " + remoteHost);
+				logger.info("Established connection to " + remoteHost);
 			}
 			catch (ExitCodeException e) {
 				logger.error("Command failed: " + e);
@@ -140,7 +145,8 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			return false;
 		}
 		
-		return isEstablished();
+		// since we can't explicitly start the connection with racoon, just return true here
+		return true;
 	}
 	
 	public boolean stop() {
@@ -149,7 +155,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			return false;
 		}
 		
-		File configConn = new File("/etc/remote/" + remoteHost + ".conf");
+		File configConn = new File("/etc/racoon/remote/" + remoteHost + ".conf");
 		if (! configConn.exists()) {
 			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
 			return false;
@@ -168,9 +174,9 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			while (allLocalAddrs.size() > 0) {
 				String localAddr = (String) allLocalAddrs.removeFirst();
 				String setkeyCmds = 
-					"spddel " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
-					"spddel " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
-				Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds);
+					"spddelete " + remoteHost + " " + localAddr + " any -P in;\n" +
+					"spddelete " + localAddr + " " + remoteHost + " any -P out;\n";
+				System.out.println(Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds));
 			}
 			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null);
 		}
@@ -228,39 +234,65 @@ public class IPSecConnection_Racoon implements SecureChannel {
 		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/setkey", "-D"}, null);
 
         StringTokenizer strT = new StringTokenizer(autoStatus,"\n");
-        String temp = "";
-        boolean found = false;
-        while (strT.hasMoreElements()) {
-			temp = strT.nextToken();
-            /*if (!found && temp.startsWith("000 \"" + label.trim() + "\"")) {
-            	// 18.7.2005 - we have also to look for the keyword "erouted HOLD"
-            	if (temp.indexOf(UNROUTET)!=-1 || temp.indexOf(EROUTED_HOLD)!=-1) {
-                    found = true;
-                    retVal = STANDBY;
-                } else if (temp.indexOf(EROUTED)!=-1) {
-					found = true;
-                    retVal = RUNNING;
-                }  else {
-                    retVal = DEACTIVATED;
-                }
-            }*/
-        }
-        
-        // one more time because we could recognice that some connections might be running althoug
-        // they are in "unrouted" state in the first block
-		/*strT = new StringTokenizer(autoStatus,"\n");
-		temp = "";
-		found = false;
-		while (strT.hasMoreElements()) {
-			temp = strT.nextToken();
-			if (!found && temp.startsWith("000 #")) {
-				if (temp.indexOf(label)!=-1 && temp.indexOf(IPSEC_ESTABLISHED)!=-1) {
-					found = true;
-					retVal = RUNNING;
+        String line = "";
+        boolean foundIn = false, foundOut = false;
+        while (strT.hasMoreElements() && (!foundIn || !foundOut)) {
+			line = strT.nextToken();
+			while (line != null && line.startsWith("\t") && strT.hasMoreElements())
+				// just skip blank lines _before_ a block
+				line = strT.nextToken();
+			
+			if (line != null && strT.hasMoreElements()) {
+				String fromAddr = line.substring(0, line.indexOf(' '));
+				String toAddr = line.substring(line.indexOf(' ')+1, line.length());
+				// special case when there are no SA entried at all...
+				if (fromAddr.equals("No") && toAddr.equals("SAD entries."))
+					continue;
+				
+				logger.debug("Examining SA from address " + fromAddr + " to address " + toAddr);
+
+				// the next line should be "esp mode=transport ..."
+				line = strT.nextToken();
+				if (! line.startsWith("\tesp mode=transport"))
+					// if not, just ignore this block ...
+					continue;
+				// encryption and authentication algorithms (and current keys)
+
+				line = strT.nextToken();
+				if (! line.startsWith("\tE: "))
+					// hmm, no encrytion algorithm yet, seems to be a candidate SA, but not an active one
+					continue;
+				String encAlg = line.substring(4, line.indexOf(' ', 4));
+
+				line = strT.nextToken();
+				if (! line.startsWith("\tA: "))
+					continue;
+				String authAlg = line.substring(4, line.indexOf(' ', 4));
+				logger.debug("This SA seems to be active, using encryption algorithm " + encAlg + " and authentication algorithm " + authAlg);
+
+				// and now the critical line, with the 4th field being the state information
+				line = strT.nextToken();
+				int pos = line.indexOf('=');
+				pos = line.indexOf('=', pos+1);
+				pos = line.indexOf('=', pos+1);
+				pos = line.indexOf('=', pos+1);
+				String state = line.substring(pos+1, line.length());
+				logger.debug("This SA is in state " + state);
+				if (state.startsWith("mature")) {
+					if (fromAddr.startsWith(remoteHost)) {
+						logger.debug("Found active incoming SA");
+						foundIn = true;
+					}
+					if (toAddr.startsWith(remoteHost)) {
+						logger.debug("Found active outgoing SA");
+						foundOut = true;
+					}
 				}
 			}
-		}   */     
-        return retVal;
+        }
+
+        // TODO: not correct - to distinguish between STANDBY and DEACTIVATED, we also need to go through the SPD 
+        return (foundIn && foundOut) ? RUNNING : STANDBY;
     }
     
     
