@@ -228,8 +228,6 @@ public class IPSecConnection_Racoon implements SecureChannel {
      * @return status of a single connection
      */
     protected int getConnStatus(String label) throws ExitCodeException,IOException {
-    	//todo: change command
-		int retVal = -1;
         //getting current status output
 		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/setkey", "-D"}, null);
 
