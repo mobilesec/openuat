@@ -141,7 +141,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			}
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.error("Could not get list of local addresses: " + e);
 			return false;
 		}
 		
