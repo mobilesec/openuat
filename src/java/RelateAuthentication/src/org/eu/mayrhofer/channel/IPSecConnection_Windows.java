@@ -32,7 +32,8 @@ public class IPSecConnection_Windows implements SecureChannel {
 		
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
 		// TODO: error checks on input parameters!
-		
+
+		// decode the address
 
 		// since we can't explicitly start the connection with Windows, just return true here
 		return true;
@@ -46,13 +47,13 @@ public class IPSecConnection_Windows implements SecureChannel {
 		return true;
 	}
 
-	protected native long createPolicyPsk(byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
+	protected native String createPolicyPsk(byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
 			byte[] fromGateway, byte[] toGateway, int cipher, int mac, boolean pfs, String psk);
-	protected native long createPolicyCA(byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
+	protected native String createPolicyCA(byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
 			byte[] fromGateway, byte[] toGateway, int cipher, int mac, boolean pfs, String caDn);
-	protected native boolean activatePolicy(long id);
-	protected native boolean deactivatePolicy(long id);
-	protected native boolean removePolicy(long id);
+	protected native boolean activatePolicy(String id);
+	protected native boolean deactivatePolicy(String id);
+	protected native boolean removePolicy(String id);
     
     ////////////////////// testing code begins here /////////////////////
     public static void main(String[] args) throws Exception {
