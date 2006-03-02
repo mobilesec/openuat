@@ -18,6 +18,11 @@ package org.eu.mayrhofer.channel;
 public class ExitCodeException extends Exception {
 
 	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	/**
 	 * paremeterless Constructor
 	 */
 	public ExitCodeException() {

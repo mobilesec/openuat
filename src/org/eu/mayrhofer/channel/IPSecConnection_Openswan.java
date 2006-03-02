@@ -138,11 +138,9 @@ public class IPSecConnection_Openswan implements SecureChannel {
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.error("Could not execute command or get list of local addresses: " + e);
 			return false;
 		}
-		
-		//return isEstablished();
 	}
 	
 	public boolean stop() {
