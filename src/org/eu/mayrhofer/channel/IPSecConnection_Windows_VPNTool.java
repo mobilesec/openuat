@@ -29,7 +29,7 @@ public class IPSecConnection_Windows_VPNTool implements SecureChannel {
 	}
 	
 	public IPSecConnection_Windows_VPNTool() {
-		tempPath=System.getenv("TEMP");
+		tempPath=System.getenv("TEMP") + "\\";
 		logger.debug("Temporary path used is '" + tempPath + "'");
 	}
 	
