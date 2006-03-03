@@ -71,13 +71,13 @@ public class IPSecConnection_Windows_VPNTool implements SecureChannel {
 				writerConn.write("conn " + createConnName(localAddr, remoteHost) + "\n");
 				writerConn.write("    left=" + localAddr + "\n");
 				// this is necessary so that the certificate ID isn't used for the ipsec.secrets lookup
-				writerConn.write("    authmode=SHA\n");
+				writerConn.write("    authmode=SHA1\n");
 				writerConn.write("    type=transport\n");
 				writerConn.write("    pfs=yes\n");
 				writerConn.write("    network=lan\n");
 				writerConn.write("    right=" + remoteHost + "\n");
-				writerConn.write("    rightsubnet=\n");
-				writerConn.write("    auto=" + (persistent ? "start" : "add") + "\n");
+				// need to use start here unconditionally!
+				writerConn.write("    auto=" + "start" /*(persistent ? "start" : "add")*/ + "\n");
 				writerConn.write("    presharedkey=" + new String(Hex.encodeHex(sharedSecret)) + "\n");
 				writerConn.flush();
 			}
@@ -128,7 +128,8 @@ public class IPSecConnection_Windows_VPNTool implements SecureChannel {
 			return false;
 		}
 		
-		return !isEstablished();
+		return true;
+		//return !isEstablished();
 	}
 	
 	public boolean isEstablished() {
