@@ -119,9 +119,9 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			// force racoon to reload its config, set the kernel policy, and try to start the connection
 			try {
 				// this is a hack to get correct file permissions....
-				Command.executeCommand(new String[] {"chmod", "0600", configPsk.getCanonicalPath()}, null);
+				Command.executeCommand(new String[] {"chmod", "0600", configPsk.getCanonicalPath()}, null, null);
 				
-				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null);
+				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
 				
 				// this must unfortunately be done for every local ip....
 				logger.info("Creating security policy entries for each of the local IP addresses");
@@ -131,7 +131,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 					String setkeyCmds = 
 						"spdadd " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
 						"spdadd " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
-					Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds);
+					Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null);
 				}
 				logger.info("Established connection to " + remoteHost);
 			}
@@ -167,7 +167,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 				return false;
 			}
-			Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null);
+			Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
 			// this must unfortunately be done for every local ip....
 			logger.info("Deleting security policy entries for each of the local IP addresses");
 			LinkedList allLocalAddrs = Helper.getAllLocalIps();
@@ -176,9 +176,9 @@ public class IPSecConnection_Racoon implements SecureChannel {
 				String setkeyCmds = 
 					"spddelete " + remoteHost + " " + localAddr + " any -P in;\n" +
 					"spddelete " + localAddr + " " + remoteHost + " any -P out;\n";
-				System.out.println(Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds));
+				System.out.println(Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null));
 			}
-			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null);
+			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null, null);
 		}
 		catch (ExitCodeException e) {
 			logger.error("Could not execute command: " + e);
@@ -229,7 +229,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
      */
     protected int getConnStatus(String label) throws ExitCodeException,IOException {
         //getting current status output
-		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/setkey", "-D"}, null);
+		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/setkey", "-D"}, null, null);
 
         StringTokenizer strT = new StringTokenizer(autoStatus,"\n");
         String line = "";

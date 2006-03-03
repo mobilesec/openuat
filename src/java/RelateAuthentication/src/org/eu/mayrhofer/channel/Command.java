@@ -14,6 +14,7 @@ package org.eu.mayrhofer.channel;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -29,12 +30,16 @@ public class Command {
 	 *
 	 * @param systemCommand the command to execute
 	 * @param outputString	A String to set to the output of the process
+	 * @param workingDirectory If set to !=null, the process is run from this directory
 	 *
 	 * @return  the output of the command
 	 */
-	public static String executeCommand(String[] systemCommand, String outputString) throws ExitCodeException, IOException {
+	public static String executeCommand(String[] systemCommand, String outputString, String workingDirectory) throws ExitCodeException, IOException {
 			Runtime r = Runtime.getRuntime();
-			Process proc = r.exec(systemCommand);
+			File wDir = null;
+			if (workingDirectory != null)
+				wDir = new File(workingDirectory);
+			Process proc = r.exec(systemCommand, null, wDir);
 			// if outputString is not null -> write!
 			if (outputString!=null) {			
 				BufferedWriter out = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream()));
