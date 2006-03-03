@@ -113,7 +113,7 @@ public class IPSecConnection_Windows_VPNTool implements SecureChannel {
 		}
 
 		try {
-			Command.executeCommand(new String[] {"ipsec", "--delete"}, null, tempPath);
+			Command.executeCommand(new String[] {"ipsec", "-delete"}, null, tempPath);
 			if (! configConn.delete()) {
 				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 				return false;
