@@ -117,9 +117,9 @@ public class IPSecConnection_Openswan implements SecureChannel {
 				
 				// reload the secrets and try to start the connection
 				try {
-					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null);
-					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--add", createConnName(localAddr, remoteHost)}, null);
-					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--up", createConnName(localAddr, remoteHost)}, null);
+					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
+					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--add", createConnName(localAddr, remoteHost)}, null, null);
+					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--up", createConnName(localAddr, remoteHost)}, null, null);
 					this.localAddr = localAddr;
 					writerConn.close();
 					writerPsk.close();
@@ -161,7 +161,7 @@ public class IPSecConnection_Openswan implements SecureChannel {
 		}
 
 		try {
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null);
+			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
 			if (! configConn.delete()) {
 				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 				return false;
@@ -170,7 +170,7 @@ public class IPSecConnection_Openswan implements SecureChannel {
 				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 				return false;
 			}
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null);
+			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 		}
 		catch (ExitCodeException e) {
 			logger.error("Could not execute command: " + e);
@@ -223,7 +223,7 @@ public class IPSecConnection_Openswan implements SecureChannel {
     	//todo: change command
 		int retVal = -1;
         //getting current status output
-		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--status"}, null);
+		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--status"}, null, null);
 
         StringTokenizer strT = new StringTokenizer(autoStatus,"\n");
         String temp = "";
