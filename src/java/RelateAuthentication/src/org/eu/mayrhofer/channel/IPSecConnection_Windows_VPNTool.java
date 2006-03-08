@@ -136,6 +136,10 @@ class IPSecConnection_Windows_VPNTool implements SecureChannel {
 		// how to check?
 		return remoteHost != null;
 	}
+	
+	public void dispose() {
+		stop();
+	}
 
     
     ////////////////////// testing code begins here /////////////////////
