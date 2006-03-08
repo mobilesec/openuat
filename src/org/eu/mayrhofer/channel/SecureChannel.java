@@ -4,6 +4,9 @@ package org.eu.mayrhofer.channel;
  * Specific implementations take care of constructing, terminating, and querying the
  * secure channel.
  * 
+ * All implementations should take care to clean up connections if they have not been
+ * set to be persistent.
+ * 
  * @author Rene Mayrhofer
  *
  */

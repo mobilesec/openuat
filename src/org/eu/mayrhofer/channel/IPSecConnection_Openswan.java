@@ -20,7 +20,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  *
  */
-public class IPSecConnection_Openswan implements SecureChannel {
+class IPSecConnection_Openswan implements SecureChannel {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class);
 
@@ -38,6 +38,8 @@ public class IPSecConnection_Openswan implements SecureChannel {
 
 	/** To remember the remote host address that was passed in start(). */
 	private String remoteHost = null;
+	/** To remember if the connection is supposed to be persistent (used in dispose() to decide if to stop or not). */
+	private boolean persistent = false;
 	/** This remembers the local address used to create the IPSec connection. It is used for stop() and isEstablished(). */
 	private String localAddr = null;
 
@@ -64,6 +66,7 @@ public class IPSecConnection_Openswan implements SecureChannel {
 	 */
 	public boolean start(String remoteHost, byte[] sharedSecret, boolean persistent) {
 		this.remoteHost = remoteHost;
+		this.persistent = persistent;
 		
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
 		// TODO: error checks on input parameters!
@@ -90,6 +93,7 @@ public class IPSecConnection_Openswan implements SecureChannel {
 			BufferedWriter writerConn = new BufferedWriter(new FileWriter(configConn));
 			if (! configPsk.createNewFile()) {
 				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				configConn.delete();
 				return false;
 			}
 			BufferedWriter writerPsk = new BufferedWriter(new FileWriter(configPsk));
@@ -129,23 +133,38 @@ public class IPSecConnection_Openswan implements SecureChannel {
 				catch (ExitCodeException e) {
 					logger.error("Command failed: " + e);
 					// ignore it, because if one of the connections comes up, we are set
+					try {
+						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
+					} catch (ExitCodeException f) {}
 				}
 			}
 			writerConn.close();
 			writerPsk.close();
 			// none of the connections came up
-			logger.error("None of the connections could be established");
+			logger.error("None of the connections could be established, cleaning up");
+			configConn.delete();
+			configPsk.delete();
+			try {
+				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
+			} catch (ExitCodeException f) {}
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command or get list of local addresses: " + e);
+			logger.error("Could not execute command, handle files, or get list of local addresses: " + e);
+			if (configConn.exists())
+				configConn.delete();
+			if (configConn.exists())
+				configPsk.delete();
+			try {
+				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
+			} catch (Exception f) {}
 			return false;
 		}
 	}
 	
 	public boolean stop() {
-		if (remoteHost == null || localAddr == null) {
-			logger.error("Unable to stop IPSec connection, it has not been started yet");
+		if (remoteHost == null) {
+			logger.error("Unable to stop IPSec connection, it has not been started yet (don't know which remote host to work on)");
 			return false;
 		}
 		
@@ -161,15 +180,30 @@ public class IPSecConnection_Openswan implements SecureChannel {
 		}
 
 		try {
-			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
-			if (! configConn.delete()) {
-				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
-				return false;
-			}
-			if (! configPsk.delete()) {
-				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
-				return false;
-			}
+			if (localAddr != null)
+				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
+			else
+				logger.info("Skipping to take the connection down, it does not seem to have been started.");
+		}
+		catch (ExitCodeException e) {
+			logger.error("Could not execute command: " + e);
+			// ignore it here and go on to delete the files
+		}
+		catch (IOException e) {
+			logger.error("Could not execute command: " + e);
+			// dt.
+		}
+
+		if (! configConn.delete()) {
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
+			return false;
+		}
+		if (! configPsk.delete()) {
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " could not be deleted.");
+			return false;
+		}
+		
+		try {
 			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 		}
 		catch (ExitCodeException e) {
@@ -200,6 +234,11 @@ public class IPSecConnection_Openswan implements SecureChannel {
 			logger.error("Could not execute command: " + e);
 			return false;
 		}
+	}
+	
+	public void dispose() {
+		if (remoteHost != null && !persistent)
+			stop();
 	}
 
 	/**constants for state */
