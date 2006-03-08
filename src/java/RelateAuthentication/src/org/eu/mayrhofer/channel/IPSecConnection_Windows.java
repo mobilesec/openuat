@@ -16,7 +16,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  *
  */
-public class IPSecConnection_Windows implements SecureChannel {
+class IPSecConnection_Windows implements SecureChannel {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class);
 	

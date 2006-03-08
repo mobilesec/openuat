@@ -19,7 +19,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  *
  */
-public class IPSecConnection_Racoon implements SecureChannel {
+class IPSecConnection_Racoon implements SecureChannel {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class);
 
@@ -70,6 +70,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			logger.debug("Creating temporary file " + configPskTmp);
 			if (! configPskTmp.createNewFile()) {
 				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " could not be created.");
+				configConn.delete();
 				return false;
 			}
 
@@ -142,6 +143,13 @@ public class IPSecConnection_Racoon implements SecureChannel {
 		}
 		catch (IOException e) {
 			logger.error("Could not get list of local addresses: " + e);
+			if (configConn.exists())
+				configConn.delete();
+			if (configPskTmp.exists())
+				configPskTmp.delete();
+			try {
+				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
+			} catch (Exception f) {}
 			return false;
 		}
 		
@@ -151,7 +159,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.error("Unable to stop IPSec connection, it has not been started yet");
+			logger.error("Unable to stop IPSec connection, it has not been started yet (don't know which host to act on)");
 			return false;
 		}
 		
@@ -162,11 +170,12 @@ public class IPSecConnection_Racoon implements SecureChannel {
 		}
 		// TODO: we should also delete the PSK entry, but don't care right now
 
+		if (! configConn.delete()) {
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
+			return false;
+		}
+		
 		try {
-			if (! configConn.delete()) {
-				logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
-				return false;
-			}
 			Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
 			// this must unfortunately be done for every local ip....
 			logger.info("Deleting security policy entries for each of the local IP addresses");
@@ -178,6 +187,7 @@ public class IPSecConnection_Racoon implements SecureChannel {
 					"spddelete " + localAddr + " " + remoteHost + " any -P out;\n";
 				System.out.println(Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null));
 			}
+			// this is a bit intrusive....
 			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null, null);
 		}
 		catch (ExitCodeException e) {
@@ -208,6 +218,11 @@ public class IPSecConnection_Racoon implements SecureChannel {
 			logger.error("Could not execute command: " + e);
 			return false;
 		}
+	}
+	
+	public void dispose() {
+		if (remoteHost != null)
+			stop();
 	}
 
 	/**constants for state */

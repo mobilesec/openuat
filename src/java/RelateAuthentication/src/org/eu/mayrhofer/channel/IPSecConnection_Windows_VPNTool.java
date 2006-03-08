@@ -16,7 +16,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  *
  */
-public class IPSecConnection_Windows_VPNTool implements SecureChannel {
+class IPSecConnection_Windows_VPNTool implements SecureChannel {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Windows_VPNTool.class);
 
