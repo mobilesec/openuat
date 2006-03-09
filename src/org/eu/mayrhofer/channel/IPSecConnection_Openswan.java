@@ -69,10 +69,14 @@ class IPSecConnection_Openswan implements SecureChannel {
 	 *         false if the channel has already been initialized previously.
 	 */
 	public boolean init(String remoteHost) {
-		if (remoteHost != null)
+		if (this.remoteHost != null) {
+			logger.error("Can not initialize connection with remote '" + remoteHost + 
+					"', already initialized with '" + this.remoteHost + "'");
 			return false;
-		
+		}
+
 		this.remoteHost = remoteHost;
+		logger.info("Initialized with remote '" + this.remoteHost + "'");
 		return true;
 	}
 	
@@ -84,6 +88,11 @@ class IPSecConnection_Openswan implements SecureChannel {
 	 *                   it will be set to auto=add.
 	 */
 	public boolean start(byte[] sharedSecret, boolean persistent) {
+		if (remoteHost == null) {
+			logger.error("Can not start connection, remoteHost not yet set");
+			return false;
+		}
+
 		this.persistent = persistent;
 		
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
@@ -182,7 +191,7 @@ class IPSecConnection_Openswan implements SecureChannel {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.error("Unable to stop IPSec connection, it has not been started yet (don't know which remote host to work on)");
+			logger.error("Unable to stop IPSec connection, it has not been initialized yet (don't know which remote host to work on)");
 			return false;
 		}
 		
