@@ -315,6 +315,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * the HostProtocolHandler has finished successfully.
 		 */	
 		this.remoteRelateId = remoteRelateId;
+		
+		if (rounds < 2) {
+			logger.error("Invalid number of rounds (" + rounds + "), need at least 2");
+			return false;
+		}
 
 		if (! isIdle()) {
 			logger.warn("Tried to start authentication with host " + remoteHost + ", relate id " + remoteRelateId + 
@@ -325,11 +330,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		
 		state = STATE_HOST_AUTH_RUNNING;
 		
-		/* And remember the last reference measurement taken to the remote relate id for
-		 * future use (i.e. computing the delays).
-		 */
-		referenceMeasurement = fetchReferenceMeasurement(remoteRelateId);
-
 		// this code block only gets our local relate id so that it can be transmitted to the other host
 		SerialConnector serialConn;
 		try {
@@ -351,6 +351,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		if (localRelateId == -1)
 			//throw new InternalApplicationException("Dongle reports id -1, which is an error case.");
 			return false;
+
+		/* And remember the last reference measurement taken to the remote relate id for
+		 * future use (i.e. computing the delays).
+		 */
+		referenceMeasurement = fetchReferenceMeasurement(remoteRelateId);
 		
 		// create the optional parameter object to pass, consisting of the relate id and the number of rounds
 		String param = Integer.toString(localRelateId) + " " + Integer.toString(rounds);
