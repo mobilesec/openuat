@@ -120,7 +120,7 @@ class IPSecConnection_Racoon implements SecureChannel {
 			writerConn.write("        encryption_algorithm 3des;\n");
 			writerConn.write("        hash_algorithm sha1;\n");
 			writerConn.write("        authentication_method pre_shared_key;\n");
-			writerConn.write("        dh_group 2;\n");
+			writerConn.write("        dh_group modp1536;\n");
 			writerConn.write("    }\n");
 			writerConn.write("}\n");
 			writerConn.flush();
