@@ -150,7 +150,12 @@ class IPSecConnection_Openswan implements SecureChannel {
 				try {
 					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--add", createConnName(localAddr, remoteHost)}, null, null);
-					Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--asynchronous", "--up", createConnName(localAddr, remoteHost)}, null, null);
+					try {
+						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--asynchronous", "--up", createConnName(localAddr, remoteHost)}, null, null);
+					}
+					catch (ExitCodeException e) {
+						logger.debug("Trying to take ipsec up resulted in error code different from 0:" + e);
+					}
 					this.localAddr = localAddr;
 					writerConn.close();
 					writerPsk.close();
