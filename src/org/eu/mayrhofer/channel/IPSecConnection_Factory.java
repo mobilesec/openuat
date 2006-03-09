@@ -3,7 +3,6 @@ package org.eu.mayrhofer.channel;
 import java.io.File;
 
 import org.apache.log4j.Logger;
-import org.eu.mayrhofer.authentication.RelateAuthenticationProtocol;
 
 /** This is a factory class for generating instances of SecureChannel based on IPSec. Based on the
  * running operating system and installed components, it will select the appropriate IPSecConnection_*
@@ -12,7 +11,7 @@ import org.eu.mayrhofer.authentication.RelateAuthenticationProtocol;
  */
 public class IPSecConnection_Factory {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Factory.class);
 
 	/** Returns the appropriate instance of the ipsec secure channel implementation. or null if
 	 * no implementation is yet available for the running platform. 
@@ -59,4 +58,34 @@ public class IPSecConnection_Factory {
 			return null;
 		}
 	}
+	
+
+    ////////////////////// testing code begins here /////////////////////
+    public static void main(String[] args) throws Exception {
+    		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+    		SecureChannel c = IPSecConnection_Factory.getImplementation();
+    		if (c == null) {
+    			System.out.println("Could not get secure channel from IPSec factory");
+    			return;
+    		}
+    		System.out.println("Created class " + c + " from factory");
+    		
+    		System.out.print("Starting connection to " + args[0] + ": ");
+    		System.out.print("init=" + c.init(args[0]));
+    		System.out.println(", start=" + c.start(key, false));
+
+    		System.in.read();
+    		
+    		System.out.println("Connection to " + args[0] + " is now " + c.isEstablished());
+
+    		System.in.read();
+    		
+    		System.out.print("Stopping connection to " + args[0] + ": ");
+    		System.out.println(c.stop());
+
+    		System.in.read();
+    		
+    		System.out.println("Connection to " + args[0] + " is now " + c.isEstablished());
+    }
 }
