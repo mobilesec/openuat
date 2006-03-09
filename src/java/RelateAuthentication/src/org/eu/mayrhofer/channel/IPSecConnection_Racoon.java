@@ -42,10 +42,14 @@ class IPSecConnection_Racoon implements SecureChannel {
 	 *         false if the channel has already been initialized previously.
 	 */
 	public boolean init(String remoteHost) {
-		if (remoteHost != null)
+		if (this.remoteHost != null) {
+			logger.error("Can not initialize connection with remote '" + remoteHost + 
+					"', already initialized with '" + this.remoteHost + "'");
 			return false;
-		
+		}
+
 		this.remoteHost = remoteHost;
+		logger.info("Initialized with remote '" + this.remoteHost + "'");
 		return true;
 	}
 
@@ -57,6 +61,11 @@ class IPSecConnection_Racoon implements SecureChannel {
 	 *                   will not persist a reboot.
 	 */
 	public boolean start(byte[] sharedSecret, boolean persistent) {
+		if (remoteHost == null) {
+			logger.error("Can not start connection, remoteHost not yet set");
+			return false;
+		}
+		
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
 		// TODO: error checks on input parameters!
 		
@@ -176,7 +185,7 @@ class IPSecConnection_Racoon implements SecureChannel {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.error("Unable to stop IPSec connection, it has not been started yet (don't know which host to act on)");
+			logger.error("Unable to stop IPSec connection, it has not been initialized yet (don't know which host to act on)");
 			return false;
 		}
 		
@@ -328,7 +337,7 @@ class IPSecConnection_Racoon implements SecureChannel {
     		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     	
     		System.out.print("Starting connection to " + args[0] + ": ");
-    		IPSecConnection_Openswan c = new IPSecConnection_Openswan();
+    		IPSecConnection_Racoon c = new IPSecConnection_Racoon();
     		System.out.print("init=" + c.init(args[0]));
     		System.out.println(", start=" + c.start(key, false));
 
