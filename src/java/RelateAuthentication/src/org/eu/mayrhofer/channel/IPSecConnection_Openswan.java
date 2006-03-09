@@ -331,29 +331,5 @@ class IPSecConnection_Openswan implements SecureChannel {
 		}        
         return retVal;
     }
-    
-    
-    ////////////////////// testing code begins here /////////////////////
-    public static void main(String[] args) throws Exception {
-    		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    	
-    		System.out.print("Starting connection to " + args[0] + ": ");
-    		IPSecConnection_Openswan c = new IPSecConnection_Openswan();
-    		System.out.print("init=" + c.init(args[0]));
-    		System.out.println(", start=" + c.start(key, false));
-
-    		System.in.read();
-    		
-    		System.out.println("Connection to " + args[0] + " is now " + c.isEstablished());
-
-    		System.in.read();
-    		
-    		System.out.print("Stopping connection to " + args[0] + ": ");
-    		System.out.println(c.stop());
-
-    		System.in.read();
-    		
-    		System.out.println("Connection to " + args[0] + " is now " + c.isEstablished());
-    }
 }
 
