@@ -36,7 +36,9 @@ class IPSecConnection_Openswan implements SecureChannel {
     public static final String UNROUTET = "unrouted";
     public static final String IPSEC_ESTABLISHED = "IPsec SA established";
 
-	/** To remember the remote host address that was passed in start(). */
+	/** To remember the remote host address that was passed in init(). 
+	 * @see #init
+	 */
 	private String remoteHost = null;
 	/** To remember if the connection is supposed to be persistent (used in dispose() to decide if to stop or not). */
 	private boolean persistent = false;
@@ -56,16 +58,32 @@ class IPSecConnection_Openswan implements SecureChannel {
 		return "auto-" + localAddr.replace('.', '_') + "-" + remoteAddr.replace('.', '_');
 	}
 	
+	/** Initializes an instance of a secure channel. This implementation only remembers
+	 * remoteHost in the member variable.
+	 * @see #remoteHost 
+	 * 
+	 * <b>This method must be called before any of the others.</b>
+	 *
+	 * @param remoteHost The IP address or host name of the remote host.
+	 * @return true if the channel could be initialized, false otherwise. It will return
+	 *         false if the channel has already been initialized previously.
+	 */
+	public boolean init(String remoteHost) {
+		if (remoteHost != null)
+			return false;
+		
+		this.remoteHost = remoteHost;
+		return true;
+	}
+	
 	/** Creates a new connection entry for openswan/strongswan/freeswan and tries to
 	 * start that connection.
 	 * 
-	 * @param remoteHost The IP address or host name of the remote host.
 	 * @param sharedSecret The PSK to use - this byte array will be HEX-encoded to form a textual representation.
 	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
 	 *                   it will be set to auto=add.
 	 */
-	public boolean start(String remoteHost, byte[] sharedSecret, boolean persistent) {
-		this.remoteHost = remoteHost;
+	public boolean start(byte[] sharedSecret, boolean persistent) {
 		this.persistent = persistent;
 		
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
@@ -307,7 +325,8 @@ class IPSecConnection_Openswan implements SecureChannel {
     	
     		System.out.print("Starting connection to " + args[0] + ": ");
     		IPSecConnection_Openswan c = new IPSecConnection_Openswan();
-    		System.out.println(c.start(args[0], key, false));
+    		System.out.print("init=" + c.init(args[0]));
+    		System.out.println(", start=" + c.start(key, false));
 
     		System.in.read();
     		
