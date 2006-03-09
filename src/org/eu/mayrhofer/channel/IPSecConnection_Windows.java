@@ -29,6 +29,11 @@ class IPSecConnection_Windows implements SecureChannel {
 	//private static final int DHGROUP_LOW = 1;
 	private static final int DHGROUP_MED = 2;
 
+	/** To remember the remote host address that was passed in init(). 
+	 * @see #init
+	 */
+	private String remoteHost = null;
+	
 	/** Remember the GUID of the IPSec policy created by start() to be able to remove it again on stop(). */ 
 	private String policy = null;
 	
@@ -57,14 +62,31 @@ class IPSecConnection_Windows implements SecureChannel {
 	public IPSecConnection_Windows() {
 	}
 	
+	/** Initializes an instance of a secure channel. This implementation only remembers
+	 * remoteHost in the member variable.
+	 * @see #remoteHost 
+	 * 
+	 * <b>This method must be called before any of the others.</b>
+	 *
+	 * @param remoteHost The IP address or host name of the remote host.
+	 * @return true if the channel could be initialized, false otherwise. It will return
+	 *         false if the channel has already been initialized previously.
+	 */
+	public boolean init(String remoteHost) {
+		if (remoteHost != null)
+			return false;
+		
+		this.remoteHost = remoteHost;
+		return true;
+	}
+
 	/** Creates a new connection entry for Windows 2000/XP. This does not start the connection - it will be 
 	 * started when the first matching packet triggers it.
 	 * 
-	 * @param remoteHost The IP address or host name of the remote host.
 	 * @param sharedSecret The PSK to use - this byte array will be HEX-encoded to form a textual representation.
 	 * @param persistent Not supported right now. The security policies (in SPD) will always be permanent right now.
 	 */
-	public boolean start(String remoteHost, byte[] sharedSecret, boolean persistent) {
+	public boolean start(byte[] sharedSecret, boolean persistent) {
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
 		// TODO: error checks on input parameters!
 
@@ -170,8 +192,9 @@ class IPSecConnection_Windows implements SecureChannel {
     		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     	
     		System.out.print("Starting connection to " + args[0] + ": ");
-    		IPSecConnection_Windows c = new IPSecConnection_Windows();
-    		System.out.println(c.start(args[0], key, false));
+    		IPSecConnection_Openswan c = new IPSecConnection_Openswan();
+    		System.out.print("init=" + c.init(args[0]));
+    		System.out.println(", start=" + c.start(key, false));
 
     		System.in.read();
     		

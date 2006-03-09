@@ -23,23 +23,40 @@ class IPSecConnection_Racoon implements SecureChannel {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class);
 
-	/** To remember the remote host address that was passed in start(). */
+	/** To remember the remote host address that was passed in init(). 
+	 * @see #init
+	 */
 	private String remoteHost = null;
 
 	public IPSecConnection_Racoon() {
 	}
 	
+	/** Initializes an instance of a secure channel. This implementation only remembers
+	 * remoteHost in the member variable.
+	 * @see #remoteHost 
+	 * 
+	 * <b>This method must be called before any of the others.</b>
+	 *
+	 * @param remoteHost The IP address or host name of the remote host.
+	 * @return true if the channel could be initialized, false otherwise. It will return
+	 *         false if the channel has already been initialized previously.
+	 */
+	public boolean init(String remoteHost) {
+		if (remoteHost != null)
+			return false;
+		
+		this.remoteHost = remoteHost;
+		return true;
+	}
+
 	/** Creates a new connection entry for racoon, sets the kernel security policies (in SPD), and tries to
 	 * start that connection.
 	 * 
-	 * @param remoteHost The IP address or host name of the remote host.
 	 * @param sharedSecret The PSK to use - this byte array will be HEX-encoded to form a textual representation.
 	 * @param persistent Not supported right now. The security policies (in SPD) will only be temporary right now and
 	 *                   will not persist a reboot.
 	 */
-	public boolean start(String remoteHost, byte[] sharedSecret, boolean persistent) {
-		this.remoteHost = remoteHost;
-		
+	public boolean start(byte[] sharedSecret, boolean persistent) {
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
 		// TODO: error checks on input parameters!
 		
@@ -232,17 +249,14 @@ class IPSecConnection_Racoon implements SecureChannel {
 	
     /** This method is taken from at.gibraltar.webadmin.modules.ipsec.Ipsec (and slightly modified).
      * 
-     * returns the status of the connection named like "label"
-     * 
      * possible values
      *  1 .. the connection is erouted
      *  0 .. the connection is unrouted
      * -1 .. the connection was not found
      * 
-     * @param label of the connection
      * @return status of a single connection
      */
-    protected int getConnStatus(String label) throws ExitCodeException,IOException {
+    protected int getConnStatus(String remoteHost) throws ExitCodeException,IOException {
         //getting current status output
 		String autoStatus = Command.executeCommand(new String[] {"/usr/sbin/setkey", "-D"}, null, null);
 
@@ -314,8 +328,9 @@ class IPSecConnection_Racoon implements SecureChannel {
     		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     	
     		System.out.print("Starting connection to " + args[0] + ": ");
-    		IPSecConnection_Racoon c = new IPSecConnection_Racoon();
-    		System.out.println(c.start(args[0], key, false));
+    		IPSecConnection_Openswan c = new IPSecConnection_Openswan();
+    		System.out.print("init=" + c.init(args[0]));
+    		System.out.println(", start=" + c.start(key, false));
 
     		System.in.read();
     		
