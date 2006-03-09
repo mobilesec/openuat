@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.LinkedList;
-import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
 import org.apache.commons.codec.binary.*;
@@ -29,7 +28,8 @@ class IPSecConnection_Windows_VPNTool implements SecureChannel {
 	}
 	
 	public IPSecConnection_Windows_VPNTool() {
-		tempPath=System.getenv("TEMP") + "\\";
+		//tempPath=System.getenv("TEMP") + "\\";
+		tempPath = System.getProperty("java.io.tmpdir") + "\\";
 		logger.debug("Temporary path used is '" + tempPath + "'");
 	}
 	
