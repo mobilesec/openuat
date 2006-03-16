@@ -1,7 +1,8 @@
 #!/bin/bash
 
-r=2
-while [ $r -le 43 ]; do 
+r=18
+while [ $r -le 26 ]; do 
+#for r in 4 9; do
   i=1
   while [ $i -le 250 ]; do 
     echo -------------------------------------------------
