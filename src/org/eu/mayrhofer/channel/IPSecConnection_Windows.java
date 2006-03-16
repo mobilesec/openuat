@@ -195,5 +195,23 @@ class IPSecConnection_Windows implements SecureChannel {
 	protected native boolean activatePolicy(String id);
 	protected native boolean deactivatePolicy(String id);
 	protected native boolean removePolicy(String id);
+	
+	/** This native method allows to import an X.509 certificate into the correct Windows certificate store
+	 * for use with IPSec authentication.
+	 * 
+	 * @param file The file name of the certificate to import. It must point to a PKCS#12 encoded file that
+	 *             contains the X.509 client certificate and the corresponding private key that should be used
+	 *             for authentication as well as the CA certificate chain up to the root CA certificate that
+	 *             represents the trusted path of the client certificate. The other end of the IPSec tunnel
+	 *             must present a certificate that has been signed by the same CA as the client certificate
+	 *             imported from this file.
+	 * @param password The password necessary to decrypt the PKCS#12 file.
+	 * @return 0 if the certificates and the private key could be imported successfully, 
+	 *         1 if the file could not be found or opened,
+	 *         2 if the private key could not be decrypted (password mismatch),
+	 *         3 if it could not be decoded, or
+	 *         4 if importing failed.
+	 */
+	protected native int importCertificate(String file, String password);
 }
 
