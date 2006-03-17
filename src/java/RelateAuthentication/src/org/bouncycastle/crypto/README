@@ -1,0 +1,3 @@
+For basic authentication, only the DH classes are required under generators/ and params/.
+
+The RSA classes under generators/ and params/ are for creating X.509 certificates. Also the engines/RSA* and digests/MD5Engine stuff is for X.509.
