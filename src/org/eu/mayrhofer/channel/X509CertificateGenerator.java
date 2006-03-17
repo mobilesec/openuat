@@ -3,10 +3,13 @@ package org.eu.mayrhofer.channel;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -16,8 +19,10 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
@@ -74,14 +79,29 @@ public class X509CertificateGenerator {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
 	
-	private X509CertificateObject caCert;
-	private CipherParameters caPrivateKey;
+	private X509Certificate caCert;
+	private RSAPrivateCrtKeyParameters caPrivateKey;
 	
-	public X509CertificateGenerator(String caFile) {
-		// TODO: need to load CA private key and certificate from file and store into ca*
-		/*java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12"); 
-		 ks.load(new 
-		 java.io.FileInputStream("yourStore.p12"),"yourPassword".toCharArray());*/ 	
+	public X509CertificateGenerator(String caFile, String caPassword, String caAlias) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException {
+		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "'");
+		KeyStore caKs = KeyStore.getInstance("PKCS12");
+		caKs.load(new FileInputStream(new File(caFile)), caPassword.toCharArray());
+		
+		// load the key entry from the keystore
+		Key key = caKs.getKey(caAlias, caPassword.toCharArray());
+		if (key == null) {
+			throw new RuntimeException("Got null key from keystore!"); 
+		}
+		System.out.println(key.getClass());
+		RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) key;
+		caPrivateKey = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
+				privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
+		// and get the certificate
+		caCert = (X509Certificate) caKs.getCertificate(caAlias);
+		if (caCert == null) {
+			throw new RuntimeException("Got null cert from keystore!"); 
+		}
+		logger.debug("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
 	}
 	
 	public boolean createCertificate(String dn, int validityDays, String exportFile, String exportPassword) throws 
@@ -112,13 +132,13 @@ public class X509CertificateGenerator {
 		V3TBSCertificateGenerator certGen = new V3TBSCertificateGenerator();
 
 	    certGen.setSerialNumber(new DERInteger(BigInteger.valueOf(System.currentTimeMillis())));
-	    // TODO: this will of course need to be the CA issuer!
-		certGen.setIssuer(x509Name);
+		certGen.setIssuer(new X509Name(caCert.getSubjectDN().getName()));
 		certGen.setSubject(x509Name);
 		DERObjectIdentifier sigOID = X509Util.getAlgorithmOID("SHA1WithRSAEncryption");
 		AlgorithmIdentifier sigAlgId = new AlgorithmIdentifier(sigOID, new DERNull());
 		certGen.setSignature(sigAlgId);
 		//certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo(sigAlgId, pkStruct.toASN1Object()));
+		// TODO: why does the coding above not work?
         PublicKey tmpKey = KeyFactory.getInstance("RSA").generatePublic(
         		new RSAPublicKeySpec(publicKey.getModulus(), publicKey.getExponent()));
 		certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo((ASN1Sequence)new ASN1InputStream(
@@ -137,8 +157,7 @@ public class X509CertificateGenerator {
 
 		// and now sign
 		Signer signer = new PSSSigner(rsa, digester, 64);
-		// TODO: this will of course need to be the CA private key!
-		signer.init(true, keypair.getPrivate());
+		signer.init(true, caPrivateKey);
 		dOut.writeObject(tbsCert);
 		byte[] certBlock = bOut.toByteArray();
 		logger.debug("Block to sign is '" + new String(Hex.encodeHex(certBlock)) + "'");		
@@ -166,8 +185,6 @@ public class X509CertificateGenerator {
         		new RSAPrivateCrtKeySpec(publicKey.getModulus(), publicKey.getExponent(),
         				privateKey.getExponent(), privateKey.getP(), privateKey.getQ(), 
         				privateKey.getDP(), privateKey.getDQ(), privateKey.getQInv()));
-        PublicKey pubKey = KeyFactory.getInstance("RSA").generatePublic(
-        		new RSAPublicKeySpec(publicKey.getModulus(), publicKey.getExponent()));
 
         //
         // add the friendly name for the private key
@@ -213,8 +230,18 @@ public class X509CertificateGenerator {
         return true;
 	}
 	
+	/** The test CA can e.g. be created with
+	 * 
+	 * echo -e "AT\nUpper Austria\nSteyr\nMy Organization\nNetwork tests\nTest CA certificate\nme@myserver.com\n\n\n" | \
+	     openssl req -new -x509 -outform PEM -newkey rsa:2048 -nodes -keyout /tmp/ca.key -keyform PEM -out /tmp/ca.crt -days 365;
+	   echo "test password" | openssl pkcs12 -export -in /tmp/ca.crt -inkey /tmp/ca.key -out ca.p12 -name "Test CA" -passout stdin
+	 * 
+	 * @param args
+	 * @throws Exception
+	 */
+	
 	public static void main(String[] args) throws Exception {
-		System.out.println(new X509CertificateGenerator("").createCertificate("Test CN", 30, "test.p12", "test"));
+		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA").createCertificate("Test CN", 30, "test.p12", "test"));
 	}
 }
 
