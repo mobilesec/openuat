@@ -65,6 +65,7 @@ import org.bouncycastle.crypto.params.RSAKeyGenerationParameters;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.bouncycastle.crypto.params.RSAPrivateCrtKeyParameters;
 import org.bouncycastle.crypto.signers.PSSSigner;
+import org.bouncycastle.jce.PrincipalUtil;
 import org.bouncycastle.jce.interfaces.PKCS12BagAttributeCarrier;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 import org.bouncycastle.x509.X509Util;
@@ -144,7 +145,9 @@ public class X509CertificateGenerator {
 		V3TBSCertificateGenerator certGen = new V3TBSCertificateGenerator();
 
 	    certGen.setSerialNumber(new DERInteger(BigInteger.valueOf(System.currentTimeMillis())));
-		certGen.setIssuer(new X509Name(caCert.getSubjectDN().getName()));
+	    // Attention: this is a catch! Just using "new X509Name(caCert.getSubjectDN().getName())" will not work!
+	    // I don't know why, because the issuerDN strings look similar with both versions.
+		certGen.setIssuer(PrincipalUtil.getSubjectX509Principal(caCert));
 		certGen.setSubject(x509Name);
 		DERObjectIdentifier sigOID = X509Util.getAlgorithmOID("SHA1WithRSAEncryption");
 		AlgorithmIdentifier sigAlgId = new AlgorithmIdentifier(sigOID, new DERNull());
@@ -157,6 +160,20 @@ public class X509CertificateGenerator {
                 new ByteArrayInputStream(tmpKey.getEncoded())).readObject()));
 		certGen.setStartDate(new Time(new Date(System.currentTimeMillis())));
 		certGen.setEndDate(new Time(expiry.getTime()));
+		
+        //
+        // extensions
+        //
+        /*v3CertGen.addExtension(
+            X509Extensions.SubjectKeyIdentifier,
+            false,
+            new SubjectKeyIdentifierStructure(pubKey));
+
+        v3CertGen.addExtension(
+            X509Extensions.AuthorityKeyIdentifier,
+            false,
+            new AuthorityKeyIdentifierStructure(caCert));*/
+		
 
 		logger.debug("Certificate structure generated, creating SHA1 digest");
 		// attention: hard coded to be SHA1+RSA!
@@ -206,6 +223,9 @@ public class X509CertificateGenerator {
         PKCS12BagAttributeCarrier bagCert = clientCert;
         bagCert.setBagAttribute(PKCSObjectIdentifiers.pkcs_9_at_friendlyName,
         		new DERBMPString("Certificate for IPSec WLAN access"));
+        bagCert.setBagAttribute(
+                PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
+                new SubjectKeyIdentifierStructure(tmpKey));
         
 
         // need to convert to JSSE format...
@@ -216,22 +236,10 @@ public class X509CertificateGenerator {
         //
         // add the friendly name for the private key
         //
-        //PKCS12BagAttributeCarrier   bagKey = (PKCS12BagAttributeCarrier)privKey;
-
-        //
-        // this is also optional - in the sense that if you leave this
-        // out the keystore will add it automatically, note though that
-        // for the browser to recognise which certificate the private key
-        // is associated with you should at least use the pkcs_9_localKeyId
-        // OID and set it to the same as you do for the private key's
-        // corresponding certificate.
-        //
-        /*bagKey.setBagAttribute(
-            PKCSObjectIdentifiers.pkcs_9_at_friendlyName,
-            new DERBMPString("Private Key for IPSec WLAN access"));
+        /*PKCS12BagAttributeCarrier   bagKey = (PKCS12BagAttributeCarrier)privKey;
         bagKey.setBagAttribute(
             PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
-            new SubjectKeyIdentifierStructure(pubKey));*/
+            new SubjectKeyIdentifierStructure(tmpKey));*/
         //
         // store the key and the certificate chain
         //
@@ -239,10 +247,10 @@ public class X509CertificateGenerator {
 
         store.load(null, null);
 
-        X509Certificate[] chain = new X509Certificate[1];
+        X509Certificate[] chain = new X509Certificate[2];
         // first the client, then the CA certificate
         chain[0] = clientCert;
-        //chain[1] = caCert;
+        chain[1] = caCert;
         
         //
         // if you haven't set the friendly name and local key id above
