@@ -11,6 +11,8 @@ import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -18,6 +20,7 @@ import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
@@ -82,7 +85,7 @@ public class X509CertificateGenerator {
 	private X509Certificate caCert;
 	private RSAPrivateCrtKeyParameters caPrivateKey;
 	
-	public X509CertificateGenerator(String caFile, String caPassword, String caAlias) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException {
+	public X509CertificateGenerator(String caFile, String caPassword, String caAlias) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
 		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "'");
 		KeyStore caKs = KeyStore.getInstance("PKCS12");
 		caKs.load(new FileInputStream(new File(caFile)), caPassword.toCharArray());
@@ -102,6 +105,8 @@ public class X509CertificateGenerator {
 			throw new RuntimeException("Got null cert from keystore!"); 
 		}
 		logger.debug("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
+		caCert.verify(caCert.getPublicKey());
+		logger.debug("Successfully verified CA certificate with its own public key.");
 	}
 	
 	public boolean createCertificate(String dn, int validityDays, String exportFile, String exportPassword) throws 
@@ -123,6 +128,13 @@ public class X509CertificateGenerator {
 	    RSAPublicKeyStructure pkStruct = new RSAPublicKeyStructure(publicKey.getModulus(), publicKey.getExponent());
 	    logger.debug("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
 	    		", exponent=" + publicKey.getExponent() + ", modulus=" + publicKey.getModulus());
+
+	    // this is the JSSE way of key generation
+/*		KeyPairGenerator keyGen=KeyPairGenerator.getInstance("RSA");
+		keyGen.initialize(1024, new SecureRandom());
+		KeyPair keypair=keyGen.generateKeyPair();
+		PrivateKey privKey=keypair.getPrivate();
+		PublicKey pubkey=keypair.getPublic();*/
 	    
 		Calendar expiry = Calendar.getInstance();
 		expiry.add(Calendar.DAY_OF_YEAR, validityDays);
@@ -154,38 +166,53 @@ public class X509CertificateGenerator {
 
 		ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
 		DEROutputStream         dOut = new DEROutputStream(bOut);
+		dOut.writeObject(tbsCert);
 
 		// and now sign
-		Signer signer = new PSSSigner(rsa, digester, 64);
-		signer.init(true, caPrivateKey);
-		dOut.writeObject(tbsCert);
+		/*Signer signer = new PSSSigner(rsa, digester, 64);
+		signer.init(true, privateKey); //caPrivateKey);
 		byte[] certBlock = bOut.toByteArray();
 		logger.debug("Block to sign is '" + new String(Hex.encodeHex(certBlock)) + "'");		
 		
 		signer.update(certBlock, 0, certBlock.length);
 		byte[] signature = signer.generateSignature();
+		logger.debug("SHA1/RSA signature of digest is '" + new String(Hex.encodeHex(signature)) + "'");*/
+
+		
+        PrivateKey caPrivKey = KeyFactory.getInstance("RSA").generatePrivate(
+        		new RSAPrivateCrtKeySpec(caPrivateKey.getModulus(), caPrivateKey.getPublicExponent(),
+        				caPrivateKey.getExponent(), caPrivateKey.getP(), caPrivateKey.getQ(), 
+        				caPrivateKey.getDP(), caPrivateKey.getDQ(), caPrivateKey.getQInv()));
+		
+        Signature sig = Signature.getInstance(sigOID.getId());
+        sig.initSign(caPrivKey, sr);
+        sig.update(bOut.toByteArray());
+        byte[] signature = sig.sign();
 		logger.debug("SHA1/RSA signature of digest is '" + new String(Hex.encodeHex(signature)) + "'");
 
+        
         ASN1EncodableVector  v = new ASN1EncodableVector();
 
         v.add(tbsCert);
         v.add(sigAlgId);
         v.add(new DERBitString(signature));
 
-        logger.debug("Exporting certificate in PKCS12 format");
-        
         X509CertificateObject clientCert = new X509CertificateObject(new X509CertificateStructure(new DERSequence(v))); 
-        
+        logger.debug("Verifying certificate for correct signature with CA public key");
+        clientCert.verify(caCert.getPublicKey());
+
+        logger.debug("Exporting certificate in PKCS12 format");
+
         PKCS12BagAttributeCarrier bagCert = clientCert;
         bagCert.setBagAttribute(PKCSObjectIdentifiers.pkcs_9_at_friendlyName,
         		new DERBMPString("Certificate for IPSec WLAN access"));
         
+
         // need to convert to JSSE format...
         PrivateKey privKey = KeyFactory.getInstance("RSA").generatePrivate(
         		new RSAPrivateCrtKeySpec(publicKey.getModulus(), publicKey.getExponent(),
         				privateKey.getExponent(), privateKey.getP(), privateKey.getQ(), 
         				privateKey.getDP(), privateKey.getDQ(), privateKey.getQInv()));
-
         //
         // add the friendly name for the private key
         //
