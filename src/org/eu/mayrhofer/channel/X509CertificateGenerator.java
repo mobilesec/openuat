@@ -271,6 +271,10 @@ public class X509CertificateGenerator {
 	     openssl req -new -x509 -outform PEM -newkey rsa:2048 -nodes -keyout /tmp/ca.key -keyform PEM -out /tmp/ca.crt -days 365;
 	   echo "test password" | openssl pkcs12 -export -in /tmp/ca.crt -inkey /tmp/ca.key -out ca.p12 -name "Test CA" -passout stdin
 	 * 
+	 * The created certificate can be displayed with
+	 * 
+	 * openssl pkcs12 -nodes -info -in test.p12 > /tmp/test.cert && openssl x509 -noout -text -in /tmp/test.cert
+	 * 
 	 * @param args
 	 * @throws Exception
 	 */
