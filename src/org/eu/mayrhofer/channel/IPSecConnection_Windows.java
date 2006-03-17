@@ -186,15 +186,15 @@ class IPSecConnection_Windows implements SecureChannel {
 		return true;
 	}
 
-	protected native long createPolicyHandle(int cipher, int mac, int dhgroup, int lifetime);
-	protected native boolean addPolicyPsk(long handle, byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
+	protected static native long createPolicyHandle(int cipher, int mac, int dhgroup, int lifetime);
+	protected static native boolean addPolicyPsk(long handle, byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
 			byte[] fromGateway, byte[] toGateway, int cipher, int mac, boolean pfs, String psk);
-	protected native boolean addPolicyCA(long handle, byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
+	protected static native boolean addPolicyCA(long handle, byte[] fromAddress, byte[] fromMask, byte[] toAddress, byte[] toMask, 
 			byte[] fromGateway, byte[] toGateway, int cipher, int mac, boolean pfs, String caDn);
-	protected native String registerPolicy(long handle);
-	protected native boolean activatePolicy(String id);
-	protected native boolean deactivatePolicy(String id);
-	protected native boolean removePolicy(String id);
+	protected static native String registerPolicy(long handle);
+	protected static native boolean activatePolicy(String id);
+	protected static native boolean deactivatePolicy(String id);
+	protected static native boolean removePolicy(String id);
 	
 	/** This native method allows to import an X.509 certificate into the correct Windows certificate store
 	 * for use with IPSec authentication.
@@ -209,9 +209,43 @@ class IPSecConnection_Windows implements SecureChannel {
 	 * @return 0 if the certificates and the private key could be imported successfully, 
 	 *         1 if the file could not be found or opened,
 	 *         2 if the private key could not be decrypted (password mismatch),
-	 *         3 if it could not be decoded, or
-	 *         4 if importing failed.
+	 *         3 if it could not be decoded,
+	 *         4 if importing failed, or
+	 *         5 if anything else went wrong (like parameter error).
 	 */
-	protected native int importCertificate(String file, String password);
+	protected static native int importCertificate(String file, String password);
+	
+	
+	
+	/////////////////////////// Test code begins here ////////////////////////////
+	public static void main(String[] args) {
+		String file = args[0], pass = args[1];
+		System.out.println("Trying to import certificates into certificate store from file '" + 
+				file + "' with password '" + pass + "'");
+		
+		switch(importCertificate(file, pass)) {
+		case 0: 
+			System.out.println("success");
+			break;
+		case 1: 
+			System.out.println("could not open or read file");
+			break;
+		case 2: 
+			System.out.println("password mismatch");
+			break;
+		case 3: 
+			System.out.println("decode error - is the file a PKCS#12 file?");
+			break;
+		case 4: 
+			System.out.println("import error");
+			break;
+		case 5: 
+			System.out.println("parameter/unspecified error");
+			break;
+		default: 
+			System.out.println("ouch, should not be here");
+			break;
+		}
+	}
 }
 

@@ -1,0 +1,3 @@
+For basic authentication, only the classes under crypto/ are required.
+
+The sub-packages asn1, jce, util, and x509 are only necessary for the generation of X.509 certificates from Java.
