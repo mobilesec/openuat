@@ -34,6 +34,7 @@ import java.util.Date;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -46,6 +47,7 @@ import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.x509.DigestInfo;
 import org.bouncycastle.asn1.x509.RSAPublicKeyStructure;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.TBSCertificateStructure;
@@ -53,18 +55,18 @@ import org.bouncycastle.asn1.x509.Time;
 import org.bouncycastle.asn1.x509.V3TBSCertificateGenerator;
 import org.bouncycastle.asn1.x509.X509CertificateStructure;
 import org.bouncycastle.asn1.x509.X509Name;
+import org.bouncycastle.asn1.x509.X509ObjectIdentifiers;
+import org.bouncycastle.crypto.AsymmetricBlockCipher;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
-import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.CryptoException;
 import org.bouncycastle.crypto.DataLengthException;
-import org.bouncycastle.crypto.Signer;
 import org.bouncycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.encodings.PKCS1Encoding;
 import org.bouncycastle.crypto.engines.RSAEngine;
 import org.bouncycastle.crypto.generators.RSAKeyPairGenerator;
 import org.bouncycastle.crypto.params.RSAKeyGenerationParameters;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.bouncycastle.crypto.params.RSAPrivateCrtKeyParameters;
-import org.bouncycastle.crypto.signers.PSSSigner;
 import org.bouncycastle.jce.PrincipalUtil;
 import org.bouncycastle.jce.interfaces.PKCS12BagAttributeCarrier;
 import org.bouncycastle.jce.provider.X509CertificateObject;
@@ -83,11 +85,19 @@ public class X509CertificateGenerator {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
 	
+	/** This holds the certificate of the CA used to sign the new certificate. The object is created in the constructor. */
 	private X509Certificate caCert;
+	/** This holds the private key of the CA used to sign the new certificate. The object is created in the constructor. */
 	private RSAPrivateCrtKeyParameters caPrivateKey;
 	
-	public X509CertificateGenerator(String caFile, String caPassword, String caAlias) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
-		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "'");
+	private boolean useBCAPI;
+	
+	public X509CertificateGenerator(String caFile, String caPassword, String caAlias, boolean useBCAPI) 
+			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
+		this.useBCAPI = useBCAPI;
+		
+		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "' with "
+				+ (this.useBCAPI ? "Bouncycastle lightweight API" : "JCE API"));
 		KeyStore caKs = KeyStore.getInstance("PKCS12");
 		caKs.load(new FileInputStream(new File(caFile)), caPassword.toCharArray());
 		
@@ -116,26 +126,40 @@ public class X509CertificateGenerator {
 				dn + "', valid for " + validityDays + " days");
 		SecureRandom sr = new SecureRandom();
 		
+		PublicKey pubKey;
+		PrivateKey privKey;
+		
 		logger.debug("Creating RSA keypair");
 		// generate the keypair for the new certificate
-		RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
-		// TODO: what are these values??
-		gen.init(new RSAKeyGenerationParameters(BigInteger.valueOf(3), sr, 1024, 80));
-		AsymmetricCipherKeyPair keypair = gen.generateKeyPair();
-		logger.debug("Generated keypair, extracting components and creating public structure for certificate");
-		RSAKeyParameters publicKey = (RSAKeyParameters) keypair.getPublic();
-		RSAPrivateCrtKeyParameters privateKey = (RSAPrivateCrtKeyParameters) keypair.getPrivate();
-		// used to get proper encoding for the certificate
-	    RSAPublicKeyStructure pkStruct = new RSAPublicKeyStructure(publicKey.getModulus(), publicKey.getExponent());
-	    logger.debug("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
-	    		", exponent=" + publicKey.getExponent() + ", modulus=" + publicKey.getModulus());
-
-	    // this is the JSSE way of key generation
-/*		KeyPairGenerator keyGen=KeyPairGenerator.getInstance("RSA");
-		keyGen.initialize(1024, new SecureRandom());
-		KeyPair keypair=keyGen.generateKeyPair();
-		PrivateKey privKey=keypair.getPrivate();
-		PublicKey pubkey=keypair.getPublic();*/
+		if (!useBCAPI) {
+			RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
+			// TODO: what are these values??
+			gen.init(new RSAKeyGenerationParameters(BigInteger.valueOf(3), sr, 1024, 80));
+			AsymmetricCipherKeyPair keypair = gen.generateKeyPair();
+			logger.debug("Generated keypair, extracting components and creating public structure for certificate");
+			RSAKeyParameters publicKey = (RSAKeyParameters) keypair.getPublic();
+			RSAPrivateCrtKeyParameters privateKey = (RSAPrivateCrtKeyParameters) keypair.getPrivate();
+			// used to get proper encoding for the certificate
+			RSAPublicKeyStructure pkStruct = new RSAPublicKeyStructure(publicKey.getModulus(), publicKey.getExponent());
+			logger.debug("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
+					", exponent=" + publicKey.getExponent() + ", modulus=" + publicKey.getModulus());
+			// JCE format needed for the certificate - because getEncoded() is necessary...
+	        pubKey = KeyFactory.getInstance("RSA").generatePublic(
+	        		new RSAPublicKeySpec(publicKey.getModulus(), publicKey.getExponent()));
+	        // and this one for the KeyStore
+	        privKey = KeyFactory.getInstance("RSA").generatePrivate(
+	        		new RSAPrivateCrtKeySpec(publicKey.getModulus(), publicKey.getExponent(),
+	        				privateKey.getExponent(), privateKey.getP(), privateKey.getQ(), 
+	        				privateKey.getDP(), privateKey.getDQ(), privateKey.getQInv()));
+		}
+		else {
+			// this is the JSSE way of key generation
+			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+			keyGen.initialize(1024, sr);
+			KeyPair keypair = keyGen.generateKeyPair();
+			privKey = keypair.getPrivate();
+			pubKey = keypair.getPublic();
+		}
 	    
 		Calendar expiry = Calendar.getInstance();
 		expiry.add(Calendar.DAY_OF_YEAR, validityDays);
@@ -143,7 +167,6 @@ public class X509CertificateGenerator {
 		X509Name x509Name = new X509Name("CN=" + dn);
 
 		V3TBSCertificateGenerator certGen = new V3TBSCertificateGenerator();
-
 	    certGen.setSerialNumber(new DERInteger(BigInteger.valueOf(System.currentTimeMillis())));
 	    // Attention: this is a catch! Just using "new X509Name(caCert.getSubjectDN().getName())" will not work!
 	    // I don't know why, because the issuerDN strings look similar with both versions.
@@ -154,15 +177,13 @@ public class X509CertificateGenerator {
 		certGen.setSignature(sigAlgId);
 		//certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo(sigAlgId, pkStruct.toASN1Object()));
 		// TODO: why does the coding above not work?
-        PublicKey tmpKey = KeyFactory.getInstance("RSA").generatePublic(
-        		new RSAPublicKeySpec(publicKey.getModulus(), publicKey.getExponent()));
 		certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo((ASN1Sequence)new ASN1InputStream(
-                new ByteArrayInputStream(tmpKey.getEncoded())).readObject()));
+                new ByteArrayInputStream(pubKey.getEncoded())).readObject()));
 		certGen.setStartDate(new Time(new Date(System.currentTimeMillis())));
 		certGen.setEndDate(new Time(expiry.getTime()));
 		
         //
-        // extensions
+        // extensions - not really necessary
         //
         /*v3CertGen.addExtension(
             X509Extensions.SubjectKeyIdentifier,
@@ -178,7 +199,7 @@ public class X509CertificateGenerator {
 		logger.debug("Certificate structure generated, creating SHA1 digest");
 		// attention: hard coded to be SHA1+RSA!
 		SHA1Digest digester = new SHA1Digest();
-		RSAEngine rsa = new RSAEngine();
+		AsymmetricBlockCipher rsa = new PKCS1Encoding(new RSAEngine());
 		TBSCertificateStructure tbsCert = certGen.generateTBSCertificate();
 
 		ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
@@ -186,28 +207,35 @@ public class X509CertificateGenerator {
 		dOut.writeObject(tbsCert);
 
 		// and now sign
-		/*Signer signer = new PSSSigner(rsa, digester, 64);
-		signer.init(true, privateKey); //caPrivateKey);
-		byte[] certBlock = bOut.toByteArray();
-		logger.debug("Block to sign is '" + new String(Hex.encodeHex(certBlock)) + "'");		
-		
-		signer.update(certBlock, 0, certBlock.length);
-		byte[] signature = signer.generateSignature();
-		logger.debug("SHA1/RSA signature of digest is '" + new String(Hex.encodeHex(signature)) + "'");*/
-
-		
-        PrivateKey caPrivKey = KeyFactory.getInstance("RSA").generatePrivate(
-        		new RSAPrivateCrtKeySpec(caPrivateKey.getModulus(), caPrivateKey.getPublicExponent(),
-        				caPrivateKey.getExponent(), caPrivateKey.getP(), caPrivateKey.getQ(), 
-        				caPrivateKey.getDP(), caPrivateKey.getDQ(), caPrivateKey.getQInv()));
-		
-        Signature sig = Signature.getInstance(sigOID.getId());
-        sig.initSign(caPrivKey, sr);
-        sig.update(bOut.toByteArray());
-        byte[] signature = sig.sign();
+		byte[] signature;
+		if (useBCAPI) {
+			byte[] certBlock = bOut.toByteArray();
+			// first create digest
+			logger.debug("Block to sign is '" + new String(Hex.encodeHex(certBlock)) + "'");		
+			digester.update(certBlock, 0, certBlock.length);
+			byte[] hash = new byte[digester.getDigestSize()];
+			digester.doFinal(hash, 0);
+			// and sign that
+			rsa.init(true, caPrivateKey);
+			DigestInfo dInfo = new DigestInfo( new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1, null), hash);
+			byte[] digest = dInfo.getEncoded(ASN1Encodable.DER);
+			signature = rsa.processBlock(digest, 0, digest.length);
+		}
+		else {
+			// or the JCE way
+	        PrivateKey caPrivKey = KeyFactory.getInstance("RSA").generatePrivate(
+	        		new RSAPrivateCrtKeySpec(caPrivateKey.getModulus(), caPrivateKey.getPublicExponent(),
+	        				caPrivateKey.getExponent(), caPrivateKey.getP(), caPrivateKey.getQ(), 
+	        				caPrivateKey.getDP(), caPrivateKey.getDQ(), caPrivateKey.getQInv()));
+			
+	        Signature sig = Signature.getInstance(sigOID.getId());
+	        sig.initSign(caPrivKey, sr);
+	        sig.update(bOut.toByteArray());
+	        signature = sig.sign();
+		}
 		logger.debug("SHA1/RSA signature of digest is '" + new String(Hex.encodeHex(signature)) + "'");
 
-        
+		// and finally construct the certificate structure
         ASN1EncodableVector  v = new ASN1EncodableVector();
 
         v.add(tbsCert);
@@ -218,6 +246,7 @@ public class X509CertificateGenerator {
         logger.debug("Verifying certificate for correct signature with CA public key");
         clientCert.verify(caCert.getPublicKey());
 
+        // and export as PKCS12 formatted file along with the private key and the CA certificate 
         logger.debug("Exporting certificate in PKCS12 format");
 
         PKCS12BagAttributeCarrier bagCert = clientCert;
@@ -225,24 +254,14 @@ public class X509CertificateGenerator {
         		new DERBMPString("Certificate for IPSec WLAN access"));
         bagCert.setBagAttribute(
                 PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
-                new SubjectKeyIdentifierStructure(tmpKey));
+                new SubjectKeyIdentifierStructure(pubKey));
         
-
-        // need to convert to JSSE format...
-        PrivateKey privKey = KeyFactory.getInstance("RSA").generatePrivate(
-        		new RSAPrivateCrtKeySpec(publicKey.getModulus(), publicKey.getExponent(),
-        				privateKey.getExponent(), privateKey.getP(), privateKey.getQ(), 
-        				privateKey.getDP(), privateKey.getDQ(), privateKey.getQInv()));
-        //
-        // add the friendly name for the private key
-        //
+        // this does not work as in the example
         /*PKCS12BagAttributeCarrier   bagKey = (PKCS12BagAttributeCarrier)privKey;
         bagKey.setBagAttribute(
             PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
             new SubjectKeyIdentifierStructure(tmpKey));*/
-        //
-        // store the key and the certificate chain
-        //
+
         KeyStore store = KeyStore.getInstance("PKCS12");
 
         store.load(null, null);
@@ -252,10 +271,6 @@ public class X509CertificateGenerator {
         chain[0] = clientCert;
         chain[1] = caCert;
         
-        //
-        // if you haven't set the friendly name and local key id above
-        // the name below will be the name of the key
-        //
         store.setKeyEntry("Private key for IPSec WLAN access", privKey, exportPassword.toCharArray(), chain);
 
         FileOutputStream fOut = new FileOutputStream(exportFile);
@@ -280,7 +295,7 @@ public class X509CertificateGenerator {
 	 */
 	
 	public static void main(String[] args) throws Exception {
-		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA").createCertificate("Test CN", 30, "test.p12", "test"));
+		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA", false).createCertificate("Test CN", 30, "test.p12", "test"));
 	}
 }
 
