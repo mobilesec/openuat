@@ -206,14 +206,17 @@ class IPSecConnection_Windows implements SecureChannel {
 	 *             must present a certificate that has been signed by the same CA as the client certificate
 	 *             imported from this file.
 	 * @param password The password necessary to decrypt the PKCS#12 file.
+	 * @param overwriteExisting If true, existing certificates with the same common name and serial number and
+	 *                          signed by the same CA will be overwritten.
 	 * @return 0 if the certificates and the private key could be imported successfully, 
 	 *         1 if the file could not be found or opened,
 	 *         2 if the private key could not be decrypted (password mismatch),
 	 *         3 if it could not be decoded,
-	 *         4 if importing failed, or
+	 *         4 if importing failed,
+	 *         5 if (at least one of the) certificates existed already and overwriteExisting was set to false
 	 *         5 if anything else went wrong (like parameter error).
 	 */
-	protected static native int importCertificate(String file, String password);
+	protected static native int importCertificate(String file, String password, boolean oveŕwriteExisting);
 	
 	
 	
@@ -223,7 +226,7 @@ class IPSecConnection_Windows implements SecureChannel {
 		System.out.println("Trying to import certificates into certificate store from file '" + 
 				file + "' with password '" + pass + "'");
 		
-		switch(importCertificate(file, pass)) {
+		switch(importCertificate(file, pass, true)) {
 		case 0: 
 			System.out.println("success");
 			break;
