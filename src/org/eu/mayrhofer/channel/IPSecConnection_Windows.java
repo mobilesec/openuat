@@ -33,6 +33,10 @@ class IPSecConnection_Windows implements SecureChannel {
 	 * @see #init
 	 */
 	private String remoteHost = null;
+	/** To remember the useAsDefault parameter that was passed in init(). 
+	 * @see #init
+	 */
+	private boolean useAsDefault;
 	
 	/** Remember the GUID of the IPSec policy created by start() to be able to remove it again on stop(). */ 
 	private String policy = null;
@@ -69,10 +73,16 @@ class IPSecConnection_Windows implements SecureChannel {
 	 * <b>This method must be called before any of the others.</b>
 	 *
 	 * @param remoteHost The IP address or host name of the remote host.
+	 * @param useAsDefault If set to true, this channel will be used as default for all
+	 *                     further communication. This means that instead of an IPSec
+	 *                     transport connection, a tunnel connection with the remote subnet
+	 *                     0.0.0.0/0 will be created, effectively routing all IP traffic
+	 *                     through this connection.
+	 *                     Set to false if in doubt.
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
-	public boolean init(String remoteHost) {
+	public boolean init(String remoteHost, boolean useAsDefault) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
@@ -80,6 +90,7 @@ class IPSecConnection_Windows implements SecureChannel {
 		}
 
 		this.remoteHost = remoteHost;
+		this.useAsDefault = useAsDefault;
 		logger.info("Initialized with remote '" + this.remoteHost + "'");
 		return true;
 	}
@@ -96,7 +107,8 @@ class IPSecConnection_Windows implements SecureChannel {
 			return false;
 		}
 
-		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
+		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
+				" ipsec connection to host " + remoteHost + (useAsDefault ? " as default route" : ""));
 		// TODO: error checks on input parameters!
 
 		long handle = createPolicyHandle(CIPHER_3DES, MAC_SHA1, DHGROUP_MED, 600);
@@ -107,11 +119,20 @@ class IPSecConnection_Windows implements SecureChannel {
 			byte[][] addrs = new byte[allLocalAddrs.size()][];
 			for (int i=0; i<addrs.length; i++) {
 				String localAddr = (String) allLocalAddrs.removeFirst();
-				addPolicyPsk(handle,
-						addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
-						addressStringToByteArray(remoteHost), addressStringToByteArray("255.255.255.255"),
-						addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
-						CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+				if (!useAsDefault) {
+					addPolicyPsk(handle,
+							addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
+							addressStringToByteArray(remoteHost), addressStringToByteArray("255.255.255.255"),
+							addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
+							CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+				}
+				else {
+					addPolicyPsk(handle,
+							addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
+							addressStringToByteArray("0.0.0.0"), addressStringToByteArray("0.0.0.0"),
+							addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
+							CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+				}
 			}
 			String policyId = registerPolicy(handle);
 			if (policyId == null) {

@@ -27,6 +27,10 @@ class IPSecConnection_Racoon implements SecureChannel {
 	 * @see #init
 	 */
 	private String remoteHost = null;
+	/** To remember the useAsDefault parameter that was passed in init(). 
+	 * @see #init
+	 */
+	private boolean useAsDefault;
 
 	public IPSecConnection_Racoon() {
 	}
@@ -38,10 +42,16 @@ class IPSecConnection_Racoon implements SecureChannel {
 	 * <b>This method must be called before any of the others.</b>
 	 *
 	 * @param remoteHost The IP address or host name of the remote host.
+	 * @param useAsDefault If set to true, this channel will be used as default for all
+	 *                     further communication. This means that instead of an IPSec
+	 *                     transport connection, a tunnel connection with the remote subnet
+	 *                     0.0.0.0/0 will be created, effectively routing all IP traffic
+	 *                     through this connection.
+	 *                     Set to false if in doubt.
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
-	public boolean init(String remoteHost) {
+	public boolean init(String remoteHost, boolean useAsDefault) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
@@ -49,6 +59,7 @@ class IPSecConnection_Racoon implements SecureChannel {
 		}
 
 		this.remoteHost = remoteHost;
+		this.useAsDefault = useAsDefault;
 		logger.info("Initialized with remote '" + this.remoteHost + "'");
 		return true;
 	}
@@ -66,7 +77,8 @@ class IPSecConnection_Racoon implements SecureChannel {
 			return false;
 		}
 		
-		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
+		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
+				" ipsec connection to host " + remoteHost + (useAsDefault ? " as default route" : ""));
 		// TODO: error checks on input parameters!
 		
 		// basically just create a new file and try to start the connection
@@ -155,9 +167,17 @@ class IPSecConnection_Racoon implements SecureChannel {
 				LinkedList allLocalAddrs = Helper.getAllLocalIps();
 				while (allLocalAddrs.size() > 0) {
 					String localAddr = (String) allLocalAddrs.removeFirst();
-					String setkeyCmds = 
-						"spdadd " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
-						"spdadd " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
+					String setkeyCmds;
+					if (!useAsDefault) {
+						setkeyCmds =
+							"spdadd " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
+							"spdadd " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
+					}
+					else {
+						setkeyCmds =
+							"spdadd 0.0.0.0 " + localAddr + " any -P in ipsec esp/tunnel/" + remoteHost + "-" + localAddr + "/require;\n" +
+							"spdadd " + localAddr + " 0.0.0.0 any -P out ipsec esp/tunnel/" + localAddr + "-" + remoteHost + "/require;\n";
+					}
 					Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null);
 				}
 				logger.info("Established connection to " + remoteHost);
@@ -208,9 +228,17 @@ class IPSecConnection_Racoon implements SecureChannel {
 			LinkedList allLocalAddrs = Helper.getAllLocalIps();
 			while (allLocalAddrs.size() > 0) {
 				String localAddr = (String) allLocalAddrs.removeFirst();
-				String setkeyCmds = 
-					"spddelete " + remoteHost + " " + localAddr + " any -P in;\n" +
-					"spddelete " + localAddr + " " + remoteHost + " any -P out;\n";
+				String setkeyCmds;
+				if (!useAsDefault) {
+					setkeyCmds = 
+						"spddelete " + remoteHost + " " + localAddr + " any -P in;\n" +
+						"spddelete " + localAddr + " " + remoteHost + " any -P out;\n";
+				}
+				else {
+					setkeyCmds =
+						"spddelete 0.0.0.0 " + localAddr + " any -P in;\n" +
+						"spddelete " + localAddr + " 0.0.0.0 any -P out;\n";
+				}
 				System.out.println(Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null));
 			}
 			// this is a bit intrusive....
