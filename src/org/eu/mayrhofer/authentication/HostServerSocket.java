@@ -40,7 +40,10 @@ public class HostServerSocket extends AuthenticationEventSender implements Runna
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
-	 * @see #keepSocketConnected 
+	 * @see #keepSocketConnected If set to true, the socket to the client will be kept connected after the 
+	 *                           registered HostProtocolHandler has finished. This allows the socket to be
+	 *                           reused for additional communication after the first authentication
+	 *                           protocol has been completed.
 	 */
 	public HostServerSocket(int port, boolean keepSocketConnected, boolean useJSSE) throws IOException {
 		this.listener = new ServerSocket(port);
