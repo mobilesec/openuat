@@ -130,6 +130,25 @@ public class X509CertificateGenerator {
 		// TODO: implement me using constructor (null, null, null, useBCAPI) and createCertificate(....)
 		return false;
 	}
+
+	/** Converts from a PKCS12 encoded file to PEM encoded files readable by openssl (and subsequently 
+	 * e.g. openswan and racoon).
+	 * 
+	 * @param inFile The PKCS12 encoded input file. It is assumed to contain the (client) certificate,
+	 *               the matching private key, and the complete certificate chain up to the self-signed
+	 *               root CA.
+	 * @param inPassword The password needed to decrypt the PKCS12 encoded input file.
+	 * @param inAlias The friendly name of the certificate in the PKCS12 encoded input file.
+	 * @param outCertFile The output certificate in PEM format. If null, it will not be created.
+	 * @param outKeyFile The output private key in PEM format. If null, it will not be created.
+	 * @param outCertChainFile The output certificate chain in PEM format. If null, it will not be created.
+	 * @return true if all requested parts could be exported successfully, false otherwise.
+	 */
+	public static boolean convertPKCS12toPEM(String inFile, String inPassword, String inAlias, 
+			String outCertFile, String outKeyFile, String outCertChainFile) {
+		// TODO: implement me
+		return false;
+	}
 	
 	/** Initializes the object for creating certificates by loading the CA certificate and private key. 
 	 * 
