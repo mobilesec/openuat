@@ -96,29 +96,57 @@ public class X509CertificateGenerator {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
 	
+	/** This method is used for signing the certificate. */
 	public static final String CertificateSignatureAlgorithm = "SHA1WithRSAEncryption";
-	
+	/** This string is used as the friendly name for the certificate in the PKCS12 exported file. */
 	public static final String CertificateExportFriendlyName = "Certificate for IPSec WLAN access";
-	
+	/** This string is used as the friendly name for the private key in the PKCS12 exported file. */
 	public static final String KeyExportFriendlyName = "Private key for IPSec WLAN access"; 
 	
 	/** This holds the certificate of the CA used to sign the new certificate. The object is created in the constructor. */
 	private X509Certificate caCert;
 	/** This holds the private key of the CA used to sign the new certificate. The object is created in the constructor. */
 	private RSAPrivateCrtKeyParameters caPrivateKey;
-	
+	/** Used to remember the value of useBCAPI as passed to the constructor. */
 	private boolean useBCAPI;
 	
-	/** A new CA can be created with:
+	/** Creates a new self-signed CA (certificate authority) for subsequently signing certificates. 
+	 * 
+	 * @param commonName The common name (CN) field of the X.509 distinguished name that should be set
+	 *                   for the new certificate. All other fields of the distinguished name are not set.
+	 * @param validityDays How long the new certificate should be valid, in days.
+	 * @param caFile The PKCS12 encoded file to which the CA should be exported to. It will contain the
+	 *               self-signed certificate and the matching private key.
+	 * @param caPassword The password used to encode the PKCS12 file.
+	 * @param caAlias The friendly name of the CA in the PKCS12 file.
+	 * @param useBCAPI Set to true if the Bouncycastle lightweight API should be used for cryptographical
+	 *                 operations. If set to false, the JCE infrastructure with the configured default provider
+	 *                 will be used. JCE may be faster depending on the provider implementation, but it might
+	 *                 not be available on embedded platforms, i.e. J2ME.
+	 * @return true if the CA could be created, self-signed, and exported successfully, false otherwise.
+	 */
+	public static boolean createNewCa(String commonName, int validityDays, 
+			String caFile, String caPassword, String caAlias, boolean useBCAPI) {
+		// TODO: implement me using constructor (null, null, null, useBCAPI) and createCertificate(....)
+		return false;
+	}
+	
+	/** Initializes the object for creating certificates by loading the CA certificate and private key. 
+	 * 
+	 * A new CA can be created with:
 	 * 
 	 * Comment out basicConstraints in /etc/ssl/openssl.cnf (CA:FALSE should not be set, but it does not need to be set to true)
 	 * /usr/lib/ssl/misc/CA.sh -newca
 	 * openssl pkcs12 -export -in demoCA/cacert.pem -inkey demoCA/private/cakey.pem -out ca.p12 -name "Test CA"
 	 *
-	 * @param caFile
-	 * @param caPassword
-	 * @param caAlias
-	 * @param useBCAPI
+	 * @param caFile The PKCS12 encoded file containing the whole CA to use. It must contain the CA certificate
+	 *               (which will be self-signed for top-level CAs) and the matching private key.
+	 * @param caPassword The password necessary to decode the PKCS12 file.
+	 * @param caAlias The friendly name of the CA in the PKCS12 file.
+	 * @param useBCAPI Set to true if the Bouncycastle lightweight API should be used for cryptographical
+	 *                 operations. If set to false, the JCE infrastructure with the configured default provider
+	 *                 will be used. JCE may be faster depending on the provider implementation, but it might
+	 *                 not be available on embedded platforms, i.e. J2ME.
 	 */
 	public X509CertificateGenerator(String caFile, String caPassword, String caAlias, boolean useBCAPI) 
 			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
@@ -154,16 +182,18 @@ public class X509CertificateGenerator {
 	 * openssl ca -policy policy_anything -out /tmp/test.crt -config /etc/ssl/openssl.cnf -infiles  /tmp/test.pem
 	 * openssl pkcs12 -export -in /tmp/test.crt -inkey /tmp/test.key -certfile demoCA/cacert.pem -out test.p12
 	 * 
-	 * @param dn
-	 * @param validityDays
-	 * @param exportFile
-	 * @param exportPassword
-	 * @return
+	 * @param commonName The common name (CN) field of the X.509 distinguished name that should be set
+	 *                   for the new certificate. All other fields of the distinguished name are not set.
+	 * @param validityDays How long the new certificate should be valid, in days.
+	 * @param exportFile The PKCS12 encoded file to which the certificate should be exported to. It will contain the
+	 *               self-signed certificate and the matching private key.
+	 * @param export Password The password used to encode the PKCS12 file.
+	 * @return true if the certificate could be created, signed, and exported successfully, false otherwise.
 	 */
-	public boolean createCertificate(String dn, int validityDays, String exportFile, String exportPassword) throws 
+	public boolean createCertificate(String commonName, int validityDays, String exportFile, String exportPassword) throws 
 			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException {
-		logger.info("Generating certificate for distinguished subject name '" + 
-				dn + "', valid for " + validityDays + " days");
+		logger.info("Generating certificate for distinguished common subject name '" + 
+				commonName + "', valid for " + validityDays + " days");
 		SecureRandom sr = new SecureRandom();
 		
 		PublicKey pubKey;
@@ -183,6 +213,7 @@ public class X509CertificateGenerator {
 			RSAPublicKeyStructure pkStruct = new RSAPublicKeyStructure(publicKey.getModulus(), publicKey.getExponent());
 			logger.debug("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
 					", exponent=" + publicKey.getExponent() + ", modulus=" + publicKey.getModulus());
+			// TODO: these two lines should go away
 			// JCE format needed for the certificate - because getEncoded() is necessary...
 	        pubKey = KeyFactory.getInstance("RSA").generatePublic(
 	        		new RSAPublicKeySpec(publicKey.getModulus(), publicKey.getExponent()));
@@ -204,7 +235,7 @@ public class X509CertificateGenerator {
 		Calendar expiry = Calendar.getInstance();
 		expiry.add(Calendar.DAY_OF_YEAR, validityDays);
  
-		X509Name x509Name = new X509Name("CN=" + dn);
+		X509Name x509Name = new X509Name("CN=" + commonName);
 
 		V3TBSCertificateGenerator certGen = new V3TBSCertificateGenerator();
 	    certGen.setSerialNumber(new DERInteger(BigInteger.valueOf(System.currentTimeMillis())));
@@ -216,7 +247,7 @@ public class X509CertificateGenerator {
 		AlgorithmIdentifier sigAlgId = new AlgorithmIdentifier(sigOID, new DERNull());
 		certGen.setSignature(sigAlgId);
 		//certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo(sigAlgId, pkStruct.toASN1Object()));
-		// TODO: why does the coding above not work?
+		// TODO: why does the coding above not work? - make me work without PublicKey class
 		certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo((ASN1Sequence)new ASN1InputStream(
                 new ByteArrayInputStream(pubKey.getEncoded())).readObject()));
 		certGen.setStartDate(new Time(new Date(System.currentTimeMillis())));
