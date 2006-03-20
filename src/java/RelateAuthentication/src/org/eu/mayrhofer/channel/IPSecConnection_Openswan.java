@@ -40,6 +40,10 @@ class IPSecConnection_Openswan implements SecureChannel {
 	 * @see #init
 	 */
 	private String remoteHost = null;
+	/** To remember the useAsDefault parameter that was passed in init(). 
+	 * @see #init
+	 */
+	private boolean useAsDefault;
 	/** To remember if the connection is supposed to be persistent (used in dispose() to decide if to stop or not). */
 	private boolean persistent = false;
 	/** This remembers the local address used to create the IPSec connection. It is used for stop() and isEstablished(). */
@@ -65,10 +69,16 @@ class IPSecConnection_Openswan implements SecureChannel {
 	 * <b>This method must be called before any of the others.</b>
 	 *
 	 * @param remoteHost The IP address or host name of the remote host.
+	 * @param useAsDefault If set to true, this channel will be used as default for all
+	 *                     further communication. This means that instead of an IPSec
+	 *                     transport connection, a tunnel connection with the remote subnet
+	 *                     0.0.0.0/0 will be created, effectively routing all IP traffic
+	 *                     through this connection.
+	 *                     Set to false if in doubt.
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
-	public boolean init(String remoteHost) {
+	public boolean init(String remoteHost, boolean useAsDefault) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
@@ -76,6 +86,7 @@ class IPSecConnection_Openswan implements SecureChannel {
 		}
 
 		this.remoteHost = remoteHost;
+		this.useAsDefault = useAsDefault;
 		logger.info("Initialized with remote '" + this.remoteHost + "'");
 		return true;
 	}
@@ -95,7 +106,8 @@ class IPSecConnection_Openswan implements SecureChannel {
 
 		this.persistent = persistent;
 		
-		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + " ipsec connection to host " + remoteHost);
+		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
+				" ipsec connection to host " + remoteHost + (useAsDefault ? " as default route" : ""));
 		// TODO: error checks on input parameters!
 		
 		// basically just create a new file and try to start the connection
@@ -138,9 +150,15 @@ class IPSecConnection_Openswan implements SecureChannel {
 				// this is necessary so that the certificate ID isn't used for the ipsec.secrets lookup
 				writerConn.write("    leftcert=\n");
 				writerConn.write("    authby=secret\n");
-				writerConn.write("    type=transport\n");
 				writerConn.write("    right=" + remoteHost + "\n");
 				writerConn.write("    auto=" + (persistent ? "start" : "add") + "\n");
+				if (!useAsDefault) {
+					writerConn.write("    type=transport\n");
+				}
+				else {
+					writerConn.write("    type=tunnel\n");
+					writerConn.write("    rightsubnet=0.0.0.0/0");
+				}
 				writerConn.flush();
 
 				writerPsk.write(localAddr + " " + remoteHost + " : PSK \"" + new String(Hex.encodeHex(sharedSecret)) + "\"\n");

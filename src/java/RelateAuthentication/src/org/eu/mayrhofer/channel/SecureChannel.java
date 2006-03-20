@@ -19,10 +19,13 @@ public interface SecureChannel {
 	 *
 	 * @param remoteHost The remote host to establish the channel to. This string is 
 	 *                   dependent on the implementation of the secure channel.
+	 * @param useAsDefault If set to true, this channel will be used as default for all
+	 *                     further communication. It might not be supported by all
+	 *                     implementations, set to false if in doubt.
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
-	public boolean init(String remoteHost);
+	public boolean init(String remoteHost, boolean useAsDefault);
 	
 	/** Establishes and starts a new secure channel to another host. 
 	 * init() needs to be called once before this method.

@@ -72,7 +72,7 @@ public class IPSecConnection_Factory {
     		System.out.println("Created class " + c + " from factory");
     		
     		System.out.print("Starting connection to " + args[0] + ": ");
-    		System.out.print("init=" + c.init(args[0]));
+    		System.out.print("init=" + c.init(args[0], false));
     		System.out.println(", start=" + c.start(key, false));
 
     		System.in.read();
