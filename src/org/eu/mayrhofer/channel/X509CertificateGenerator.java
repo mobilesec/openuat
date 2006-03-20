@@ -1,3 +1,8 @@
+/* Copyright Rene Mayrhofer
+ * 
+ * This file may be copied under the terms of the GNU GPL version 2.
+ */ 
+
 package org.eu.mayrhofer.channel;
 
 import java.io.ByteArrayInputStream;
