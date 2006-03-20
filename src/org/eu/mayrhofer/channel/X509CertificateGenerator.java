@@ -36,6 +36,8 @@ import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Hashtable;
+import java.util.Vector;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
@@ -48,6 +50,7 @@ import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.DERObjectIdentifier;
+import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
@@ -59,6 +62,8 @@ import org.bouncycastle.asn1.x509.TBSCertificateStructure;
 import org.bouncycastle.asn1.x509.Time;
 import org.bouncycastle.asn1.x509.V3TBSCertificateGenerator;
 import org.bouncycastle.asn1.x509.X509CertificateStructure;
+import org.bouncycastle.asn1.x509.X509Extension;
+import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.asn1.x509.X509ObjectIdentifiers;
 import org.bouncycastle.crypto.AsymmetricBlockCipher;
@@ -76,6 +81,7 @@ import org.bouncycastle.jce.PrincipalUtil;
 import org.bouncycastle.jce.interfaces.PKCS12BagAttributeCarrier;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 import org.bouncycastle.x509.X509Util;
+import org.bouncycastle.x509.extension.AuthorityKeyIdentifierStructure;
 import org.bouncycastle.x509.extension.SubjectKeyIdentifierStructure;
 
 /** This class uses the Bouncycastle lightweight API to generate X.509 certificates programmatically.
@@ -90,6 +96,12 @@ public class X509CertificateGenerator {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
 	
+	public static final String CertificateSignatureAlgorithm = "SHA1WithRSAEncryption";
+	
+	public static final String CertificateExportFriendlyName = "Certificate for IPSec WLAN access";
+	
+	public static final String KeyExportFriendlyName = "Private key for IPSec WLAN access"; 
+	
 	/** This holds the certificate of the CA used to sign the new certificate. The object is created in the constructor. */
 	private X509Certificate caCert;
 	/** This holds the private key of the CA used to sign the new certificate. The object is created in the constructor. */
@@ -97,6 +109,17 @@ public class X509CertificateGenerator {
 	
 	private boolean useBCAPI;
 	
+	/** A new CA can be created with:
+	 * 
+	 * Comment out basicConstraints in /etc/ssl/openssl.cnf (CA:FALSE should not be set, but it does not need to be set to true)
+	 * /usr/lib/ssl/misc/CA.sh -newca
+	 * openssl pkcs12 -export -in demoCA/cacert.pem -inkey demoCA/private/cakey.pem -out ca.p12 -name "Test CA"
+	 *
+	 * @param caFile
+	 * @param caPassword
+	 * @param caAlias
+	 * @param useBCAPI
+	 */
 	public X509CertificateGenerator(String caFile, String caPassword, String caAlias, boolean useBCAPI) 
 			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
 		this.useBCAPI = useBCAPI;
@@ -125,6 +148,18 @@ public class X509CertificateGenerator {
 		logger.debug("Successfully verified CA certificate with its own public key.");
 	}
 	
+	/** This method should create something similar to:
+	 *
+	 * openssl req -new -outform PEM -newkey rsa:1024 -nodes -keyout /tmp/test.key -keyform PEM -out /tmp/test.pem -days 30 -config /etc/ssl/openssl.cnf
+	 * openssl ca -policy policy_anything -out /tmp/test.crt -config /etc/ssl/openssl.cnf -infiles  /tmp/test.pem
+	 * openssl pkcs12 -export -in /tmp/test.crt -inkey /tmp/test.key -certfile demoCA/cacert.pem -out test.p12
+	 * 
+	 * @param dn
+	 * @param validityDays
+	 * @param exportFile
+	 * @param exportPassword
+	 * @return
+	 */
 	public boolean createCertificate(String dn, int validityDays, String exportFile, String exportPassword) throws 
 			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException {
 		logger.info("Generating certificate for distinguished subject name '" + 
@@ -177,7 +212,7 @@ public class X509CertificateGenerator {
 	    // I don't know why, because the issuerDN strings look similar with both versions.
 		certGen.setIssuer(PrincipalUtil.getSubjectX509Principal(caCert));
 		certGen.setSubject(x509Name);
-		DERObjectIdentifier sigOID = X509Util.getAlgorithmOID("SHA1WithRSAEncryption");
+		DERObjectIdentifier sigOID = X509Util.getAlgorithmOID(CertificateSignatureAlgorithm);
 		AlgorithmIdentifier sigAlgId = new AlgorithmIdentifier(sigOID, new DERNull());
 		certGen.setSignature(sigAlgId);
 		//certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo(sigAlgId, pkStruct.toASN1Object()));
@@ -186,20 +221,23 @@ public class X509CertificateGenerator {
                 new ByteArrayInputStream(pubKey.getEncoded())).readObject()));
 		certGen.setStartDate(new Time(new Date(System.currentTimeMillis())));
 		certGen.setEndDate(new Time(expiry.getTime()));
-		
-        //
-        // extensions - not really necessary
-        //
-        /*v3CertGen.addExtension(
-            X509Extensions.SubjectKeyIdentifier,
-            false,
-            new SubjectKeyIdentifierStructure(pubKey));
 
-        v3CertGen.addExtension(
-            X509Extensions.AuthorityKeyIdentifier,
-            false,
-            new AuthorityKeyIdentifierStructure(caCert));*/
-		
+		// These X509v3 extensions are not strictly necessary, but be nice and provide them...
+	    Hashtable extensions = new Hashtable();
+	    Vector extOrdering = new Vector();
+		ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+		DEROutputStream dOut = new DEROutputStream(bOut);
+		dOut.writeObject(new SubjectKeyIdentifierStructure(pubKey));
+		extensions.put(X509Extensions.SubjectKeyIdentifier, 
+				new X509Extension(false, new DEROctetString(bOut.toByteArray())));
+		extOrdering.addElement(X509Extensions.SubjectKeyIdentifier);
+		bOut = new ByteArrayOutputStream();
+		dOut = new DEROutputStream(bOut);
+		dOut.writeObject(new AuthorityKeyIdentifierStructure(caCert));
+		extensions.put(X509Extensions.AuthorityKeyIdentifier, 
+				new X509Extension(false, new DEROctetString(bOut.toByteArray())));
+		extOrdering.addElement(X509Extensions.AuthorityKeyIdentifier);
+		certGen.setExtensions(new X509Extensions(extOrdering, extensions));
 
 		logger.debug("Certificate structure generated, creating SHA1 digest");
 		// attention: hard coded to be SHA1+RSA!
@@ -207,8 +245,8 @@ public class X509CertificateGenerator {
 		AsymmetricBlockCipher rsa = new PKCS1Encoding(new RSAEngine());
 		TBSCertificateStructure tbsCert = certGen.generateTBSCertificate();
 
-		ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
-		DEROutputStream         dOut = new DEROutputStream(bOut);
+		bOut = new ByteArrayOutputStream();
+		dOut = new DEROutputStream(bOut);
 		dOut.writeObject(tbsCert);
 
 		// and now sign
@@ -256,7 +294,7 @@ public class X509CertificateGenerator {
 
         PKCS12BagAttributeCarrier bagCert = clientCert;
         bagCert.setBagAttribute(PKCSObjectIdentifiers.pkcs_9_at_friendlyName,
-        		new DERBMPString("Certificate for IPSec WLAN access"));
+        		new DERBMPString(CertificateExportFriendlyName));
         bagCert.setBagAttribute(
                 PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
                 new SubjectKeyIdentifierStructure(pubKey));
@@ -276,7 +314,7 @@ public class X509CertificateGenerator {
         chain[0] = clientCert;
         chain[1] = caCert;
         
-        store.setKeyEntry("Private key for IPSec WLAN access", privKey, exportPassword.toCharArray(), chain);
+        store.setKeyEntry(KeyExportFriendlyName, privKey, exportPassword.toCharArray(), chain);
 
         FileOutputStream fOut = new FileOutputStream(exportFile);
 
@@ -287,6 +325,7 @@ public class X509CertificateGenerator {
 	
 	/** The test CA can e.g. be created with
 	 * 
+	 * Hmm, this CA doesn't work - look at the Javadoc comment for the constructor for how to create it correctly.
 	 * echo -e "AT\nUpper Austria\nSteyr\nMy Organization\nNetwork tests\nTest CA certificate\nme@myserver.com\n\n\n" | \
 	     openssl req -new -x509 -outform PEM -newkey rsa:2048 -nodes -keyout /tmp/ca.key -keyform PEM -out /tmp/ca.crt -days 365;
 	   echo "test password" | openssl pkcs12 -export -in /tmp/ca.crt -inkey /tmp/ca.key -out ca.p12 -name "Test CA" -passout stdin
