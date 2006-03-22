@@ -1,8 +1,6 @@
 package org.bouncycastle.asn1;
 
 import java.io.*;
-import java.util.*;
-import java.io.*;
 
 /**
  * UTC time object.
