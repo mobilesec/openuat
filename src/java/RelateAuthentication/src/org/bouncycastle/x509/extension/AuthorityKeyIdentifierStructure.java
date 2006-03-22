@@ -22,7 +22,6 @@ import org.bouncycastle.jce.PrincipalUtil;
 public class AuthorityKeyIdentifierStructure
     extends AuthorityKeyIdentifier
 {
-    private AuthorityKeyIdentifier authKeyID;
     
     /**
      * Constructor which will take the byte[] returned from getExtensionValue()

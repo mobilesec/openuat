@@ -50,7 +50,11 @@ public class X509CertificateObject
     extends X509Certificate
     implements PKCS12BagAttributeCarrier
 {
-    private X509CertificateStructure    c;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private X509CertificateStructure    c;
     private Hashtable                   pkcs12Attributes = new Hashtable();
     private Vector                      pkcs12Ordering = new Vector();
 
@@ -312,7 +316,6 @@ public class X509CertificateObject
         throws CertificateParsingException
     {
         byte[]  bytes = this.getExtensionBytes("2.5.29.37");
-        int     length = 0;
 
         if (bytes != null)
         {
