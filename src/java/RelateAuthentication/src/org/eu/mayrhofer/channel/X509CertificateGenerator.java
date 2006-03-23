@@ -21,7 +21,6 @@ import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -82,6 +81,7 @@ import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.bouncycastle.crypto.params.RSAPrivateCrtKeyParameters;
 import org.bouncycastle.jce.PrincipalUtil;
 import org.bouncycastle.jce.interfaces.PKCS12BagAttributeCarrier;
+import org.bouncycastle.jce.provider.JDKPKCS12KeyStore;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 import org.bouncycastle.x509.X509Util;
 import org.bouncycastle.x509.extension.AuthorityKeyIdentifierStructure;
@@ -177,11 +177,22 @@ public class X509CertificateGenerator {
 		
 		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "' with "
 				+ (this.useBCAPI ? "Bouncycastle lightweight API" : "JCE API"));
-		KeyStore caKs = KeyStore.getInstance("PKCS12");
-		caKs.load(new FileInputStream(new File(caFile)), caPassword.toCharArray());
+
+		Object caKs;
+		Key key;
+		if (!useBCAPI) {
+			caKs = java.security.KeyStore.getInstance("PKCS12");
+			((java.security.KeyStore) caKs).load(new FileInputStream(new File(caFile)), caPassword.toCharArray());
 		
-		// load the key entry from the keystore
-		Key key = caKs.getKey(caAlias, caPassword.toCharArray());
+			// load the key entry from the keystore
+			key = ((java.security.KeyStore) caKs).getKey(caAlias, caPassword.toCharArray());
+		}
+		else {
+			caKs = new JDKPKCS12KeyStore(caAlias);
+			((JDKPKCS12KeyStore) caKs).engineLoad(new FileInputStream(new File(caFile)), caPassword.toCharArray());
+			key = ((JDKPKCS12KeyStore) caKs).engineGetKey(caAlias, caPassword.toCharArray());
+		}
+		
 		if (key == null) {
 			throw new RuntimeException("Got null key from keystore!"); 
 		}
@@ -189,11 +200,19 @@ public class X509CertificateGenerator {
 		RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) key;
 		caPrivateKey = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
 				privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
+		
 		// and get the certificate
-		caCert = (X509Certificate) caKs.getCertificate(caAlias);
+		if (!useBCAPI) {
+			caCert = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(caAlias);
+		}
+		else {
+			caCert = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(caAlias);
+		}
+
 		if (caCert == null) {
 			throw new RuntimeException("Got null cert from keystore!"); 
 		}
+		
 		logger.debug("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
 		caCert.verify(caCert.getPublicKey());
 		logger.debug("Successfully verified CA certificate with its own public key.");
@@ -359,20 +378,31 @@ public class X509CertificateGenerator {
             PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
             new SubjectKeyIdentifierStructure(tmpKey));*/
 
-        KeyStore store = KeyStore.getInstance("PKCS12");
-
-        store.load(null, null);
+        Object store;
+		if (!useBCAPI) {
+			store = java.security.KeyStore.getInstance("PKCS12");
+			((java.security.KeyStore) store).load(null, null);
+		}
+		else {
+			store = new JDKPKCS12KeyStore(CertificateExportFriendlyName);
+			((JDKPKCS12KeyStore) store).engineLoad(null, null);
+		}
 
         X509Certificate[] chain = new X509Certificate[2];
         // first the client, then the CA certificate
         chain[0] = clientCert;
         chain[1] = caCert;
-        
-        store.setKeyEntry(KeyExportFriendlyName, privKey, exportPassword.toCharArray(), chain);
 
         FileOutputStream fOut = new FileOutputStream(exportFile);
 
-        store.store(fOut, exportPassword.toCharArray());
+        if (!useBCAPI) {
+        		((java.security.KeyStore) store).setKeyEntry(KeyExportFriendlyName, privKey, exportPassword.toCharArray(), chain);
+        		((java.security.KeyStore) store).store(fOut, exportPassword.toCharArray());
+        }
+        else {
+    			((JDKPKCS12KeyStore)  store).engineSetKeyEntry(KeyExportFriendlyName, privKey, exportPassword.toCharArray(), chain);
+    			((JDKPKCS12KeyStore)  store).engineStore(fOut, exportPassword.toCharArray());
+        }
 		
         return true;
 	}
