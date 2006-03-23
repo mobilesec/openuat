@@ -42,7 +42,7 @@ public class BinaryBlockStreamerTest extends TestCase {
 
 	public void testOutputNotNullForSendCheck() {
 		try {
-			BinaryBlockStreamer streamer = new BinaryBlockStreamer(new ByteArrayInputStream(null), null);
+			BinaryBlockStreamer streamer = new BinaryBlockStreamer(new ByteArrayInputStream(new byte[] {0}), null);
 			streamer.sendBinaryBlock("test", new ByteArrayInputStream(new byte[] {0}), 1);
 		} catch (IOException e) {
 			// we expect this
@@ -78,13 +78,13 @@ public class BinaryBlockStreamerTest extends TestCase {
 		StringBuffer recvName = new StringBuffer();
 		ByteArrayOutputStream test1rcv = new ByteArrayOutputStream();
 		Assert.assertEquals("Did not receive the same amount of bytes as have been sent", test1.length, dst.receiveBinaryBlock(recvName, test1rcv));
-		Assert.assertEquals("THe received block name does not match the sent one", test1name, recvName.toString());
+		Assert.assertEquals("The received block name does not match the sent one", test1name, recvName.toString());
 		Assert.assertTrue("Received binary array does not match the sent one", compareByteArrays(test1, test1rcv.toByteArray()));
-		src.sendBinaryBlock(test1name, new ByteArrayInputStream(test2.getBytes()), test2.length());
+		src.sendBinaryBlock(test2name, new ByteArrayInputStream(test2.getBytes()), test2.length());
 		recvName = new StringBuffer();
 		ByteArrayOutputStream test2rcv = new ByteArrayOutputStream();
 		Assert.assertEquals("Did not receive the same amount of bytes as have been sent", test2.length(), dst.receiveBinaryBlock(recvName, test2rcv));
-		Assert.assertEquals("THe received block name does not match the sent one", test2name, recvName.toString());
+		Assert.assertEquals("The received block name does not match the sent one", test2name, recvName.toString());
 		Assert.assertEquals("Received string does not match the sent one", test2, test2rcv.toString());
 	}
 }
