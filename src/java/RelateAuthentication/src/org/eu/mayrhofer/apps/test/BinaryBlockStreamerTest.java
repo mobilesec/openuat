@@ -31,7 +31,7 @@ public class BinaryBlockStreamerTest extends TestCase {
 	
 	public void testInputNotNullForReceiveCheck() {
 		try {
-			BinaryBlockStreamer streamer = new BinaryBlockStreamer(null, new StringWriter());
+			BinaryBlockStreamer streamer = new BinaryBlockStreamer(null, new ByteArrayOutputStream());
 			streamer.receiveBinaryBlock(new StringBuffer(), new ByteArrayOutputStream());
 		} catch (IOException e) {
 			// we expect this
@@ -42,7 +42,7 @@ public class BinaryBlockStreamerTest extends TestCase {
 
 	public void testOutputNotNullForSendCheck() {
 		try {
-			BinaryBlockStreamer streamer = new BinaryBlockStreamer(new StringReader("test"), null);
+			BinaryBlockStreamer streamer = new BinaryBlockStreamer(new ByteArrayInputStream(null), null);
 			streamer.sendBinaryBlock("test", new ByteArrayInputStream(new byte[] {0}), 1);
 		} catch (IOException e) {
 			// we expect this
@@ -62,8 +62,8 @@ public class BinaryBlockStreamerTest extends TestCase {
 	
 	public void testSendAndReceive() throws IOException {
 		// need to BinaryBlockStreamers, coupled via a pipe (it's the easiest)
-		PipedWriter writePipe = new PipedWriter();
-		PipedReader readPipe = new PipedReader(writePipe);
+		PipedOutputStream writePipe = new PipedOutputStream();
+		PipedInputStream readPipe = new PipedInputStream(writePipe);
 		BinaryBlockStreamer src = new BinaryBlockStreamer(null, writePipe);
 		BinaryBlockStreamer dst = new BinaryBlockStreamer(readPipe, null);
 		
