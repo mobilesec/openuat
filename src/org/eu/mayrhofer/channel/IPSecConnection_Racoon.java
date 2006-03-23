@@ -27,7 +27,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-class IPSecConnection_Racoon implements SecureChannel {
+class IPSecConnection_Racoon implements IPSecConnection {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class);
 
@@ -35,10 +35,10 @@ class IPSecConnection_Racoon implements SecureChannel {
 	 * @see #init
 	 */
 	private String remoteHost = null;
-	/** To remember the useAsDefault parameter that was passed in init(). 
+	/** To remember the remoteNetwork and remoteNetmask parameters that were passed in init. 
 	 * @see #init
 	 */
-	private boolean useAsDefault;
+	private String remoteNetwork;
 
 	public IPSecConnection_Racoon() {
 	}
@@ -60,6 +60,37 @@ class IPSecConnection_Racoon implements SecureChannel {
 	 *         false if the channel has already been initialized previously.
 	 */
 	public boolean init(String remoteHost, boolean useAsDefault) {
+		if (! useAsDefault)
+			return init(remoteHost, null, 0);
+		else
+			return init(remoteHost, "0.0.0.0", 0);
+	}
+	
+	/** Initializes an instance of an IPSec connection. This implementation only remembers
+	 * remoteHost, remoteNetwork and remoteNetmask in member variables. 
+	 * 
+	 * This method is an alternative to the init method defined by the SecureChannel
+	 * interface. <b>Either of them must be called before any of the others.</b>
+	 *
+	 * @param remoteHost The remote host to establish the connection to. This string can 
+	 *                   either be a hostname, or an IP (version 4 or 6) address.
+	 * @param remoteNetwork The remote network behind the IPSec gateway specified with
+	 *                      remoteHost, if any. This parameter may be null to indicate
+	 *                      that no remote network should be used, but that the IPSec
+	 *                      connection should be created only for reaching the remote
+	 *                      host. Specifically, if this parameter is set to a network
+	 *                      (in IPv4 or IPv6 address notation), then an IPsec <b>tunnel</b>
+	 *                      connection will be created. If set to null, an IPSec
+	 *                      <b>transport</b> connection will be created.
+	 * @param remoteNetmask If remoteNetwork has been set, this parameter should be set
+	 *                      to the remote netmask in CIDR notation, i.e. the number of bits
+	 *                      that represent the remote network. It must be between 0 and 32
+	 *                      for IPv4 remote networks and between 0 and 128 for IPv6 remote
+	 *                      networks. If remoteNetwork is null, this parameter is ignored.
+	 * @return true if the channel could be initialized, false otherwise. It will return
+	 *         false if the channel has already been initialized previously.
+	 */
+	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
@@ -67,8 +98,12 @@ class IPSecConnection_Racoon implements SecureChannel {
 		}
 
 		this.remoteHost = remoteHost;
-		this.useAsDefault = useAsDefault;
-		logger.info("Initialized with remote '" + this.remoteHost + "'");
+		if (remoteNetwork != null)
+			this.remoteNetwork = remoteNetwork + "/" + remoteNetmask;
+		else
+			this.remoteNetwork = null;
+		
+		logger.info("Initialized with remote '" + this.remoteHost + "', network '" + this.remoteNetwork + "'");
 		return true;
 	}
 
@@ -86,7 +121,7 @@ class IPSecConnection_Racoon implements SecureChannel {
 		}
 		
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
-				" ipsec connection to host " + remoteHost + (useAsDefault ? " as default route" : ""));
+				" ipsec connection to host " + remoteHost + (remoteNetwork != null ? " to remote network " + remoteNetwork : ""));
 		// TODO: error checks on input parameters!
 		
 		// basically just create a new file and try to start the connection
@@ -176,15 +211,15 @@ class IPSecConnection_Racoon implements SecureChannel {
 				while (allLocalAddrs.size() > 0) {
 					String localAddr = (String) allLocalAddrs.removeFirst();
 					String setkeyCmds;
-					if (!useAsDefault) {
+					if (remoteNetwork == null) {
 						setkeyCmds =
 							"spdadd " + remoteHost + " " + localAddr + " any -P in ipsec esp/transport//use;\n" +
 							"spdadd " + localAddr + " " + remoteHost + " any -P out ipsec esp/transport//use;\n";
 					}
 					else {
 						setkeyCmds =
-							"spdadd 0.0.0.0 " + localAddr + " any -P in ipsec esp/tunnel/" + remoteHost + "-" + localAddr + "/require;\n" +
-							"spdadd " + localAddr + " 0.0.0.0 any -P out ipsec esp/tunnel/" + localAddr + "-" + remoteHost + "/require;\n";
+							"spdadd " + remoteNetwork + " " + localAddr + " any -P in ipsec esp/tunnel/" + remoteHost + "-" + localAddr + "/require;\n" +
+							"spdadd " + localAddr + " " + remoteNetwork + " any -P out ipsec esp/tunnel/" + localAddr + "-" + remoteHost + "/require;\n";
 					}
 					Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null);
 				}
@@ -237,15 +272,15 @@ class IPSecConnection_Racoon implements SecureChannel {
 			while (allLocalAddrs.size() > 0) {
 				String localAddr = (String) allLocalAddrs.removeFirst();
 				String setkeyCmds;
-				if (!useAsDefault) {
+				if (remoteNetwork == null) {
 					setkeyCmds = 
 						"spddelete " + remoteHost + " " + localAddr + " any -P in;\n" +
 						"spddelete " + localAddr + " " + remoteHost + " any -P out;\n";
 				}
 				else {
 					setkeyCmds =
-						"spddelete 0.0.0.0 " + localAddr + " any -P in;\n" +
-						"spddelete " + localAddr + " 0.0.0.0 any -P out;\n";
+						"spddelete " + remoteNetwork + " " + localAddr + " any -P in;\n" +
+						"spddelete " + localAddr + " " + remoteNetwork + " any -P out;\n";
 				}
 				System.out.println(Command.executeCommand(new String[] {"/usr/sbin/setkey", "-c"}, setkeyCmds, null));
 			}

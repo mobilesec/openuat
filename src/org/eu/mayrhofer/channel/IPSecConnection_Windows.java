@@ -24,7 +24,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-class IPSecConnection_Windows implements SecureChannel {
+class IPSecConnection_Windows implements IPSecConnection {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class);
 	
@@ -41,10 +41,14 @@ class IPSecConnection_Windows implements SecureChannel {
 	 * @see #init
 	 */
 	private String remoteHost = null;
-	/** To remember the useAsDefault parameter that was passed in init(). 
+	/** To remember the remoteNetwork parameter that was passed in init(). 
 	 * @see #init
 	 */
-	private boolean useAsDefault;
+	private String remoteNetwork;
+	/** To remember the remoteNetmask parameter that was passed in init(). 
+	 * @see #init
+	 */
+	private int remoteNetmask;
 	
 	/** Remember the GUID of the IPSec policy created by start() to be able to remove it again on stop(). */ 
 	private String policy = null;
@@ -91,6 +95,37 @@ class IPSecConnection_Windows implements SecureChannel {
 	 *         false if the channel has already been initialized previously.
 	 */
 	public boolean init(String remoteHost, boolean useAsDefault) {
+		if (! useAsDefault)
+			return init(remoteHost, null, 0);
+		else
+			return init(remoteHost, "0.0.0.0", 0);
+	}
+	
+	/** Initializes an instance of an IPSec connection. This implementation only remembers
+	 * remoteHost, remoteNetwork and remoteNetmask in member variables. 
+	 * 
+	 * This method is an alternative to the init method defined by the SecureChannel
+	 * interface. <b>Either of them must be called before any of the others.</b>
+	 *
+	 * @param remoteHost The remote host to establish the connection to. This string can 
+	 *                   either be a hostname, or an IP (version 4 or 6) address.
+	 * @param remoteNetwork The remote network behind the IPSec gateway specified with
+	 *                      remoteHost, if any. This parameter may be null to indicate
+	 *                      that no remote network should be used, but that the IPSec
+	 *                      connection should be created only for reaching the remote
+	 *                      host. Specifically, if this parameter is set to a network
+	 *                      (in IPv4 or IPv6 address notation), then an IPsec <b>tunnel</b>
+	 *                      connection will be created. If set to null, an IPSec
+	 *                      <b>transport</b> connection will be created.
+	 * @param remoteNetmask If remoteNetwork has been set, this parameter should be set
+	 *                      to the remote netmask in CIDR notation, i.e. the number of bits
+	 *                      that represent the remote network. It must be between 0 and 32
+	 *                      for IPv4 remote networks and between 0 and 128 for IPv6 remote
+	 *                      networks. If remoteNetwork is null, this parameter is ignored.
+	 * @return true if the channel could be initialized, false otherwise. It will return
+	 *         false if the channel has already been initialized previously.
+	 */
+	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
@@ -98,8 +133,16 @@ class IPSecConnection_Windows implements SecureChannel {
 		}
 
 		this.remoteHost = remoteHost;
-		this.useAsDefault = useAsDefault;
-		logger.info("Initialized with remote '" + this.remoteHost + "'");
+		if (remoteNetwork != null) {
+			this.remoteNetwork = remoteNetwork;
+			this.remoteNetmask = remoteNetmask;
+		}
+		else {
+			this.remoteNetwork = null;
+			this.remoteNetmask = 0;
+		}
+		
+		logger.info("Initialized with remote '" + this.remoteHost + "', network '" + this.remoteNetwork + "/" + remoteNetmask + "'");
 		return true;
 	}
 
@@ -116,7 +159,8 @@ class IPSecConnection_Windows implements SecureChannel {
 		}
 
 		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
-				" ipsec connection to host " + remoteHost + (useAsDefault ? " as default route" : ""));
+				" ipsec connection to host " + remoteHost + 
+				(remoteNetwork != null ? " to remote network " + remoteNetwork + "/" + remoteNetmask : ""));
 		// TODO: error checks on input parameters!
 
 		long handle = createPolicyHandle(CIPHER_3DES, MAC_SHA1, DHGROUP_MED, 600);
@@ -127,7 +171,7 @@ class IPSecConnection_Windows implements SecureChannel {
 			byte[][] addrs = new byte[allLocalAddrs.size()][];
 			for (int i=0; i<addrs.length; i++) {
 				String localAddr = (String) allLocalAddrs.removeFirst();
-				if (!useAsDefault) {
+				if (remoteNetwork == null) {
 					addPolicyPsk(handle,
 							addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
 							addressStringToByteArray(remoteHost), addressStringToByteArray("255.255.255.255"),
@@ -137,7 +181,7 @@ class IPSecConnection_Windows implements SecureChannel {
 				else {
 					addPolicyPsk(handle,
 							addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
-							addressStringToByteArray("0.0.0.0"), addressStringToByteArray("0.0.0.0"),
+							addressStringToByteArray(remoteNetwork), addressStringToByteArray(convertCidrMaskToAddressStyle(remoteNetmask)),
 							addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
 							CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
 				}
@@ -213,6 +257,31 @@ class IPSecConnection_Windows implements SecureChannel {
 	public boolean isEstablished() {
 		// TODO: how to check that??
 		return true;
+	}
+	
+	/** This is a small helper method to convert from the CIDR style 
+	 * network mask to the address style network mask formet, e.g. from
+	 * 24 to "255.255.255.0".
+	 *
+	 * @param cidrMask The number of bits in the netmask.
+	 * @return The netmask as address style string.
+	 */
+	protected String convertCidrMaskToAddressStyle(int cidrMask) {
+		String ret = "";
+		for (int i=0; i<4; i++) {
+			int octet = 0;
+			for (int j=0; j<8; j++) {
+				if (cidrMask-- > 0)
+					octet |= 1;
+				octet <<= 1;
+			}
+			ret += octet;
+			if (i<3)
+				ret += ".";
+		}
+		
+		logger.debug("Converted CIDR-style netmask '" + cidrMask + "' to address-style netmask '" + ret + "'");
+		return ret;
 	}
 
 	protected static native long createPolicyHandle(int cipher, int mac, int dhgroup, int lifetime);
