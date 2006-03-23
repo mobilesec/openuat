@@ -3,9 +3,9 @@ package org.eu.mayrhofer.apps;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
+import java.io.OutputStreamWriter;
 
 import org.apache.log4j.Logger;
 
@@ -27,11 +27,11 @@ public class BinaryBlockStreamer {
 	/** The input from which to read binary blocks. It may be null if this object is 
 	 * only used for writing.
 	 */
-	private Reader input;
+	private InputStream input;
 	/** The output to which binary blocks should be written. It may be null if this object is 
 	 * only used for reading.
 	 */
-	private Writer output;
+	private OutputStream output;
 	
 	/** Initializes the object with input and/or output. At least one of them must be
 	 * set.
@@ -43,7 +43,7 @@ public class BinaryBlockStreamer {
 	 *               sending binary blocks to a channel. 
 	 *               It can be null, but then input must be set. 
 	 */
-	public BinaryBlockStreamer(Reader input, Writer output) {
+	public BinaryBlockStreamer(InputStream input, OutputStream output) {
 		this.input = input;
 		this.output = output;
 		if (input == null && output == null) {
@@ -70,7 +70,7 @@ public class BinaryBlockStreamer {
 		}
 		
 		logger.info("Sending binary block with " + size + "B named '" + blockName + "'");
-		output.write(BinaryStreamCommand + " " + size + " " + blockName + "\n");
+		new OutputStreamWriter(output).write(BinaryStreamCommand + " " + size + " " + blockName + "\n");
 		for (int i=0; i<size; i++)
 			output.write(block.read());
 		logger.info("Successfully finished sending binary block");
@@ -105,7 +105,7 @@ public class BinaryBlockStreamer {
 		
 		// we can only go on if we actually get a proper start line
 		logger.debug("Trying to get prefix line");
-		String prefixLine = new BufferedReader(input).readLine();
+		String prefixLine = new BufferedReader(new InputStreamReader(input)).readLine();
 		if (prefixLine == null || ! prefixLine.startsWith(BinaryStreamCommand)) {
 			logger.error("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
 			return -1;
