@@ -70,9 +70,13 @@ public class BinaryBlockStreamer {
 		}
 		
 		logger.info("Sending binary block with " + size + "B named '" + blockName + "'");
-		new OutputStreamWriter(output).write(BinaryStreamCommand + " " + size + " " + blockName + "\n");
+		OutputStreamWriter lineWriter = new OutputStreamWriter(output);
+		lineWriter.write(BinaryStreamCommand + " " + size + " " + blockName + "\n");
+		lineWriter.flush();
+		lineWriter = null;
 		for (int i=0; i<size; i++)
 			output.write(block.read());
+		output.flush();
 		logger.info("Successfully finished sending binary block");
 	}
 	
@@ -105,7 +109,8 @@ public class BinaryBlockStreamer {
 		
 		// we can only go on if we actually get a proper start line
 		logger.debug("Trying to get prefix line");
-		String prefixLine = new BufferedReader(new InputStreamReader(input)).readLine();
+		BufferedReader lineReader = new BufferedReader(new InputStreamReader(input));
+		String prefixLine = lineReader.readLine();
 		if (prefixLine == null || ! prefixLine.startsWith(BinaryStreamCommand)) {
 			logger.error("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
 			return -1;
@@ -118,8 +123,7 @@ public class BinaryBlockStreamer {
 		logger.info("Receiving binary block with " + intendedSize + "B named '" + blockName + "'");
 		int i=0, buf;
 		do {
-			buf = input.read();
-			logger.debug("Read " + buf);
+			buf = lineReader.read();
 			if (buf != -1)
 				block.write(buf);
 			i++;
