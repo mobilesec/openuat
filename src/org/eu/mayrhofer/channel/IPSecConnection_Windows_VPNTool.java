@@ -1,3 +1,11 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-02
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.channel;
 
 import java.io.BufferedWriter;
@@ -13,7 +21,7 @@ import org.apache.commons.codec.binary.*;
  * command line tool, which in turn invokes ipsecpol/ipseccmd command line tools. 
  * 
  * @author Rene Mayrhofer
- *
+ * @version 1.0
  */
 class IPSecConnection_Windows_VPNTool implements SecureChannel {
 	/** Our log4j logger. */

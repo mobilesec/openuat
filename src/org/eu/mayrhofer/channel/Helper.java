@@ -1,3 +1,11 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-01
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.channel;
 
 import java.net.Inet6Address;
@@ -9,7 +17,11 @@ import java.util.LinkedList;
 
 import org.apache.log4j.Logger;
 
-/** This class implements various helper methods that don' really fit elsewhere. */
+/** This class implements various helper methods that don' really fit elsewhere. 
+ *
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
 public class Helper {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(Helper.class);

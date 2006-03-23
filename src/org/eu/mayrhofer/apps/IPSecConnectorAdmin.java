@@ -1,3 +1,11 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-03-20
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.apps;
 
 import org.eclipse.swt.widgets.Shell;
@@ -9,6 +17,9 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Spinner;
 
+/** @author Rene Mayrhofer
+ * @version 1.0
+ */
 public class IPSecConnectorAdmin {
 
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="4,11"

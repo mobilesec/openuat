@@ -1,3 +1,11 @@
+/* Copyright Rene Mayrhofer
+ * File created 2005-09
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.authentication;
 
 import org.eu.mayrhofer.authentication.exceptions.*;
@@ -45,6 +53,9 @@ import uk.ac.lancs.relate.auth.ProgressEventHandler;
  * The authentication failure and progress events to not go to these lengths and will
  * return either an InetAddress object or an Integer object as the remote parameter,
  * depending on the current stage of the Relate protocol when the event occurs.
+ * 
+ * @author Rene Mayrhofer
+ * @version 1.0
  */
 public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	/** Our log4j logger. */

@@ -1,3 +1,11 @@
+/* Copyright Rene Mayrhofer
+ * File created 2005-09
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.authentication;
 
 import org.eu.mayrhofer.authentication.exceptions.*;
@@ -9,8 +17,9 @@ import java.security.SecureRandom;
  * receive the remote public key and add it to this agreements and then get the shared authentication and session keys. Each 
  * caller is expected to handle the transmitted public keys and especially the private keys with care and not leak it to
  * an outside class. The steps must be done in exactly this order or a KeyAgreementProtocolException will be thrown.
+ * 
  * @author Rene Mayrhofer
- *
+ * @version 1.0
  */
 public class SimpleKeyAgreement {
 	/* These are our states of the key agreement protocol: 
