@@ -57,6 +57,7 @@ import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.DigestInfo;
 import org.bouncycastle.asn1.x509.RSAPublicKeyStructure;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
@@ -128,11 +129,22 @@ public class X509CertificateGenerator {
 	 *                 will be used. JCE may be faster depending on the provider implementation, but it might
 	 *                 not be available on embedded platforms, i.e. J2ME.
 	 * @return true if the CA could be created, self-signed, and exported successfully, false otherwise.
+	 * @throws CryptoException 
+	 * @throws IOException 
+	 * @throws InvalidKeySpecException 
+	 * @throws CertificateException 
+	 * @throws NoSuchProviderException 
+	 * @throws KeyStoreException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws SecurityException 
+	 * @throws DataLengthException 
+	 * @throws InvalidKeyException 
 	 */
 	public static boolean createNewCa(String commonName, int validityDays, 
-			String caFile, String caPassword, String caAlias, boolean useBCAPI) {
-		// TODO: implement me using constructor (null, null, null, useBCAPI) and createCertificate(....)
-		return false;
+			String caFile, String caPassword, String caAlias, boolean useBCAPI) throws InvalidKeyException, DataLengthException, SecurityException, SignatureException, NoSuchAlgorithmException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException, IOException, CryptoException {
+		X509CertificateGenerator g = new X509CertificateGenerator(useBCAPI);
+		return g.createCertificate(commonName, validityDays, caFile, caPassword, caAlias);
 	}
 
 	/** Converts from a PKCS12 encoded file to PEM encoded files readable by openssl (and subsequently 
@@ -152,6 +164,24 @@ public class X509CertificateGenerator {
 			String outCertFile, String outKeyFile, String outCertChainFile) {
 		// TODO: implement me
 		return false;
+	}
+
+	/** Initializes the objects without an existing CA. This is useful to create a new CA, because
+	 * createCertificate will create a self-signed certificate if no CA has been set. This 
+	 * constructor is used by createNewCa.
+	 * 
+	 * @see #createNewCa
+	 * @see #createCertificate
+	 * @param useBCAPI Set to true if the Bouncycastle lightweight API should be used for cryptographical
+	 *                 operations. If set to false, the JCE infrastructure with the configured default provider
+	 *                 will be used. JCE may be faster depending on the provider implementation, but it might
+	 *                 not be available on embedded platforms, i.e. J2ME.
+	 */
+	protected X509CertificateGenerator(boolean useBCAPI) {
+		this.useBCAPI = useBCAPI;
+		logger.debug("Protected constructor has been called. Assuming that no CA should be loaded but that a new one will be created");
+		caPrivateKey = null;
+		caCert = null;
 	}
 	
 	/** Initializes the object for creating certificates by loading the CA certificate and private key. 
@@ -175,6 +205,10 @@ public class X509CertificateGenerator {
 			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
 		this.useBCAPI = useBCAPI;
 		
+		if (caFile == null || caPassword == null || caAlias == null) {
+			throw new IllegalArgumentException("Can not work with null parameter");
+		}
+		
 		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "' with "
 				+ (this.useBCAPI ? "Bouncycastle lightweight API" : "JCE API"));
 
@@ -196,7 +230,6 @@ public class X509CertificateGenerator {
 		if (key == null) {
 			throw new RuntimeException("Got null key from keystore!"); 
 		}
-		System.out.println(key.getClass());
 		RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) key;
 		caPrivateKey = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
 				privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
@@ -234,23 +267,47 @@ public class X509CertificateGenerator {
 	 */
 	public boolean createCertificate(String commonName, int validityDays, String exportFile, String exportPassword) throws 
 			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException {
+		return createCertificate(commonName, validityDays, exportFile, exportPassword, null);
+	}
+	
+	/** This method implements the public one, but offers an additional parameter which is only used when
+	 * creating a new CA, namely the export alias to use.
+	 * @param commonName @see #createCertificate(String, int, String, String)
+	 * @param validityDays @see #createCertificate(String, int, String, String)
+	 * @param exportFile @see #createCertificate(String, int, String, String)
+	 * @param exportPassword @see #createCertificate(String, int, String, String)
+	 * @param exportAlias If this additional parameter is null, a default value will be used as the "friendly name" in the PKCS12 file.
+	 * @return @see #createCertificate(String, int, String, String)
+	 * 
+	 * @see #X509CertificateGenerator(boolean)
+	 */
+	protected boolean createCertificate(String commonName, int validityDays, String exportFile, String exportPassword, String exportAlias) throws 
+			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException {
+		if (commonName == null || exportFile == null || exportPassword == null || validityDays < 1) {
+			throw new IllegalArgumentException("Can not work with null parameter");
+		}
+		
 		logger.info("Generating certificate for distinguished common subject name '" + 
 				commonName + "', valid for " + validityDays + " days");
 		SecureRandom sr = new SecureRandom();
 		
+		// the JCE representation
 		PublicKey pubKey;
 		PrivateKey privKey;
+		
+		// the BCAPI representation
+		RSAPrivateCrtKeyParameters privateKey = null;
 		
 		logger.debug("Creating RSA keypair");
 		// generate the keypair for the new certificate
 		if (!useBCAPI) {
 			RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
 			// TODO: what are these values??
-			gen.init(new RSAKeyGenerationParameters(BigInteger.valueOf(3), sr, 1024, 80));
+			gen.init(new RSAKeyGenerationParameters(BigInteger.valueOf(0x10001), sr, 1024, 80));
 			AsymmetricCipherKeyPair keypair = gen.generateKeyPair();
 			logger.debug("Generated keypair, extracting components and creating public structure for certificate");
 			RSAKeyParameters publicKey = (RSAKeyParameters) keypair.getPublic();
-			RSAPrivateCrtKeyParameters privateKey = (RSAPrivateCrtKeyParameters) keypair.getPrivate();
+			privateKey = (RSAPrivateCrtKeyParameters) keypair.getPrivate();
 			// used to get proper encoding for the certificate
 			RSAPublicKeyStructure pkStruct = new RSAPublicKeyStructure(publicKey.getModulus(), publicKey.getExponent());
 			logger.debug("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
@@ -281,9 +338,15 @@ public class X509CertificateGenerator {
 
 		V3TBSCertificateGenerator certGen = new V3TBSCertificateGenerator();
 	    certGen.setSerialNumber(new DERInteger(BigInteger.valueOf(System.currentTimeMillis())));
-	    // Attention: this is a catch! Just using "new X509Name(caCert.getSubjectDN().getName())" will not work!
-	    // I don't know why, because the issuerDN strings look similar with both versions.
-		certGen.setIssuer(PrincipalUtil.getSubjectX509Principal(caCert));
+	    if (caCert != null) {
+	    	// Attention: this is a catch! Just using "new X509Name(caCert.getSubjectDN().getName())" will not work!
+	    	// I don't know why, because the issuerDN strings look similar with both versions.
+	    	certGen.setIssuer(PrincipalUtil.getSubjectX509Principal(caCert));
+	    }
+	    else {
+	    	// aha, no CA set, which means that we should create a self-signed certificate (called from createCA)
+	    	certGen.setIssuer(x509Name);
+	    }
 		certGen.setSubject(x509Name);
 		DERObjectIdentifier sigOID = X509Util.getAlgorithmOID(CertificateSignatureAlgorithm);
 		AlgorithmIdentifier sigAlgId = new AlgorithmIdentifier(sigOID, new DERNull());
@@ -298,18 +361,16 @@ public class X509CertificateGenerator {
 		// These X509v3 extensions are not strictly necessary, but be nice and provide them...
 	    Hashtable extensions = new Hashtable();
 	    Vector extOrdering = new Vector();
-		ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-		DEROutputStream dOut = new DEROutputStream(bOut);
-		dOut.writeObject(new SubjectKeyIdentifierStructure(pubKey));
-		extensions.put(X509Extensions.SubjectKeyIdentifier, 
-				new X509Extension(false, new DEROctetString(bOut.toByteArray())));
-		extOrdering.addElement(X509Extensions.SubjectKeyIdentifier);
-		bOut = new ByteArrayOutputStream();
-		dOut = new DEROutputStream(bOut);
-		dOut.writeObject(new AuthorityKeyIdentifierStructure(caCert));
-		extensions.put(X509Extensions.AuthorityKeyIdentifier, 
-				new X509Extension(false, new DEROctetString(bOut.toByteArray())));
-		extOrdering.addElement(X509Extensions.AuthorityKeyIdentifier);
+	    addExtensionHelper(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifierStructure(pubKey), extOrdering, extensions);
+		if (caCert != null) {
+			// again: only if we have set CA
+			addExtensionHelper(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(caCert), extOrdering, extensions);
+		} 
+		else {
+			// but if we create a new self-signed cert, set its capability to be a CA
+			// this is a critical extension (true)!
+			addExtensionHelper(X509Extensions.BasicConstraints, true, new BasicConstraints(0), extOrdering, extensions);
+		}
 		certGen.setExtensions(new X509Extensions(extOrdering, extensions));
 
 		logger.debug("Certificate structure generated, creating SHA1 digest");
@@ -318,8 +379,8 @@ public class X509CertificateGenerator {
 		AsymmetricBlockCipher rsa = new PKCS1Encoding(new RSAEngine());
 		TBSCertificateStructure tbsCert = certGen.generateTBSCertificate();
 
-		bOut = new ByteArrayOutputStream();
-		dOut = new DEROutputStream(bOut);
+		ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+		DEROutputStream dOut = new DEROutputStream(bOut);
 		dOut.writeObject(tbsCert);
 
 		// and now sign
@@ -332,20 +393,30 @@ public class X509CertificateGenerator {
 			byte[] hash = new byte[digester.getDigestSize()];
 			digester.doFinal(hash, 0);
 			// and sign that
-			rsa.init(true, caPrivateKey);
+			if (caCert != null) {
+				rsa.init(true, caPrivateKey);
+			} else {
+				// no CA - self sign
+				logger.info("No CA has been set, creating self-signed certificate as a new CA");
+				rsa.init(true, privateKey);
+			}
 			DigestInfo dInfo = new DigestInfo( new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1, null), hash);
 			byte[] digest = dInfo.getEncoded(ASN1Encodable.DER);
 			signature = rsa.processBlock(digest, 0, digest.length);
 		}
 		else {
 			// or the JCE way
-	        PrivateKey caPrivKey = KeyFactory.getInstance("RSA").generatePrivate(
-	        		new RSAPrivateCrtKeySpec(caPrivateKey.getModulus(), caPrivateKey.getPublicExponent(),
-	        				caPrivateKey.getExponent(), caPrivateKey.getP(), caPrivateKey.getQ(), 
-	        				caPrivateKey.getDP(), caPrivateKey.getDQ(), caPrivateKey.getQInv()));
-			
 	        Signature sig = Signature.getInstance(sigOID.getId());
-	        sig.initSign(caPrivKey, sr);
+			if (caCert != null) {
+		        PrivateKey caPrivKey = KeyFactory.getInstance("RSA").generatePrivate(
+		        		new RSAPrivateCrtKeySpec(caPrivateKey.getModulus(), caPrivateKey.getPublicExponent(),
+		        				caPrivateKey.getExponent(), caPrivateKey.getP(), caPrivateKey.getQ(), 
+		        				caPrivateKey.getDP(), caPrivateKey.getDQ(), caPrivateKey.getQInv()));
+				sig.initSign(caPrivKey, sr);
+			} else {
+				logger.info("No CA has been set, creating self-signed certificate as a new CA");
+				sig.initSign(privKey, sr);
+			}
 	        sig.update(bOut.toByteArray());
 	        signature = sig.sign();
 		}
@@ -360,14 +431,20 @@ public class X509CertificateGenerator {
 
         X509CertificateObject clientCert = new X509CertificateObject(new X509CertificateStructure(new DERSequence(v))); 
         logger.debug("Verifying certificate for correct signature with CA public key");
-        clientCert.verify(caCert.getPublicKey());
+        if (caCert != null) {
+        	clientCert.verify(caCert.getPublicKey());
+        }
+        else {
+        	clientCert.verify(pubKey);
+        }
 
         // and export as PKCS12 formatted file along with the private key and the CA certificate 
         logger.debug("Exporting certificate in PKCS12 format");
 
         PKCS12BagAttributeCarrier bagCert = clientCert;
+        // if exportAlias is set, use that, otherwise a default name
         bagCert.setBagAttribute(PKCSObjectIdentifiers.pkcs_9_at_friendlyName,
-        		new DERBMPString(CertificateExportFriendlyName));
+        		new DERBMPString(exportAlias == null ? CertificateExportFriendlyName : exportAlias));
         bagCert.setBagAttribute(
                 PKCSObjectIdentifiers.pkcs_9_at_localKeyId,
                 new SubjectKeyIdentifierStructure(pubKey));
@@ -384,28 +461,50 @@ public class X509CertificateGenerator {
 			((java.security.KeyStore) store).load(null, null);
 		}
 		else {
-			store = new JDKPKCS12KeyStore(CertificateExportFriendlyName);
+			store = new JDKPKCS12KeyStore(exportAlias == null ? KeyExportFriendlyName : exportAlias);
 			((JDKPKCS12KeyStore) store).engineLoad(null, null);
 		}
 
-        X509Certificate[] chain = new X509Certificate[2];
-        // first the client, then the CA certificate
-        chain[0] = clientCert;
-        chain[1] = caCert;
-
         FileOutputStream fOut = new FileOutputStream(exportFile);
+        X509Certificate[] chain;
+        
+        if (caCert != null) {
+        	chain = new X509Certificate[2];
+            // first the client, then the CA certificate - this is the expected order for a certificate chain
+            chain[0] = clientCert;
+            chain[1] = caCert;
+        }
+        else {
+        	// for a self-signed certificate, there is no chain...
+        	chain = new X509Certificate[1];
+        	chain[0] = clientCert;
+        }
 
         if (!useBCAPI) {
-        		((java.security.KeyStore) store).setKeyEntry(KeyExportFriendlyName, privKey, exportPassword.toCharArray(), chain);
+        		((java.security.KeyStore) store).setKeyEntry(exportAlias == null ? KeyExportFriendlyName : exportAlias, 
+        				privKey, exportPassword.toCharArray(), chain);
         		((java.security.KeyStore) store).store(fOut, exportPassword.toCharArray());
         }
         else {
-    			((JDKPKCS12KeyStore)  store).engineSetKeyEntry(KeyExportFriendlyName, privKey, exportPassword.toCharArray(), chain);
+    			((JDKPKCS12KeyStore)  store).engineSetKeyEntry(exportAlias == null ? KeyExportFriendlyName : exportAlias, 
+    					privKey, exportPassword.toCharArray(), chain);
     			((JDKPKCS12KeyStore)  store).engineStore(fOut, exportPassword.toCharArray());
         }
 		
         return true;
 	}
+	
+	/** This is only a small helper function for adding X.509v3 extensions 
+	 * @throws IOException */
+	private void addExtensionHelper(DERObjectIdentifier extId, boolean critical, ASN1Encodable extVal, Vector extensionsOrder, Hashtable extensions) throws IOException {
+		ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+		DEROutputStream dOut = new DEROutputStream(bOut);
+		dOut.writeObject(extVal);
+		extensions.put(extId, new X509Extension(critical, new DEROctetString(bOut.toByteArray())));
+		extensionsOrder.addElement(extId);
+    }
+    
+
 	
 	/** The test CA can e.g. be created with
 	 * 
@@ -421,8 +520,9 @@ public class X509CertificateGenerator {
 	 * @param args
 	 * @throws Exception
 	 */
-	
 	public static void main(String[] args) throws Exception {
+		System.out.println(X509CertificateGenerator.createNewCa("My Test CA", 365, "ca.p12", "test password", "Test CA", false));
+		
 		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA", false).createCertificate("Test CN", 30, "test.p12", "test"));
 	}
 }
