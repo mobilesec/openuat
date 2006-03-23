@@ -26,7 +26,7 @@ public class IPSecConnection_Factory {
 	/** Returns the appropriate instance of the ipsec secure channel implementation. or null if
 	 * no implementation is yet available for the running platform. 
 	 */
-	public static SecureChannel getImplementation() {
+	public static IPSecConnection getImplementation() {
 		String osname = System.getProperty("os.name");
 		String osversion = System.getProperty("os.version");
 		logger.debug("Trying to create IPSec secure channel implementation for '" + osname + "'/'" + osversion + "'");
@@ -74,7 +74,7 @@ public class IPSecConnection_Factory {
     public static void main(String[] args) throws Exception {
     		byte[] key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    		SecureChannel c = IPSecConnection_Factory.getImplementation();
+    		IPSecConnection c = IPSecConnection_Factory.getImplementation();
     		if (c == null) {
     			System.out.println("Could not get secure channel from IPSec factory");
     			return;
