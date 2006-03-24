@@ -225,7 +225,7 @@ public class X509CertificateGenerator {
 			key = ((java.security.KeyStore) caKs).getKey(caAlias, caPassword.toCharArray());
 		}
 		else {
-			caKs = new JDKPKCS12KeyStore(caAlias);
+			caKs = new JDKPKCS12KeyStore(null);
 			((JDKPKCS12KeyStore) caKs).engineLoad(new FileInputStream(new File(caFile)), caPassword.toCharArray());
 			key = ((JDKPKCS12KeyStore) caKs).engineGetKey(caAlias, caPassword.toCharArray());
 		}
