@@ -633,14 +633,14 @@ public class JDKPKCS12KeyStore
             PBEParameterSpec    defParams = new PBEParameterSpec(
                                                 pbeParams.getIV(),
                                                 pbeParams.getIterations().intValue());
-            SecretKey           k = new JCESecretKeyFactory.PBEWithSHAAndDES3Key().engineGenerateSecret(pbeSpec); /*keyFact.generateSecret(pbeSpec);*/
+            SecretKey           k = new JCESecretKeyFactory.PBEWithSHAAnd40BitRC2().engineGenerateSecret(pbeSpec); /*keyFact.generateSecret(pbeSpec);*/
             
             ((JCEPBEKey)k).setTryWrongPKCS12Zero(wrongPKCS12Zero);
 
             /*Cipher cipher = Cipher.getInstance(algorithm, "BC");*/
-            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.3 as algorithm in here)
+            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.6 as algorithm in here)
             // ATTENTION! THIS IS HARD CODED!!
-            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAndDES3Key();
+            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAnd40BitRC2();
 
             cipher.engineInit(Cipher.DECRYPT_MODE, k, defParams, null);
 
@@ -675,12 +675,12 @@ public class JDKPKCS12KeyStore
                                                 pbeParams.getIterations().intValue());
 
             /*Cipher cipher = Cipher.getInstance(algorithm, "BC");*/
-            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.3 as algorithm in here)
+            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.6 as algorithm in here)
             // ATTENTION! THIS IS HARD CODED!!
-            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAndDES3Key();
+            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAnd40BitRC2();
 
             cipher.engineInit(Cipher.ENCRYPT_MODE, /*keyFact.generateSecret(pbeSpec)*/
-            		new JCESecretKeyFactory.PBEWithSHAAndDES3Key().engineGenerateSecret(pbeSpec), defParams, null);
+            		new JCESecretKeyFactory.PBEWithSHAAnd40BitRC2().engineGenerateSecret(pbeSpec), defParams, null);
 
             out = cipher.engineDoFinal(data, 0, data.length);
         }
