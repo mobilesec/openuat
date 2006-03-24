@@ -339,6 +339,22 @@ public class SimpleKeyAgreement {
 			org.bouncycastle.crypto.params.DHPublicKeyParameters(new BigInteger(key), 
 					new org.bouncycastle.crypto.params.DHParameters(skip1024Modulus, skip1024Base));
 		sharedKey = ((org.bouncycastle.crypto.agreement.DHBasicAgreement) dh).calculateAgreement(remotePublicKey).toByteArray();
+		/* This is a fix for an interoperability problem between BC and JCE. According
+		 * to BC developer David Hook:
+		 * BigInteger.toByteArray() converts the big int to a 2's complement number
+		 * and occasionally this adds a leading zero to the byte array to prevent
+		 * the encoding from being negative. This leading zero needs to be dropped
+		 * if you want to correctly calculate the shared secret.
+		 */
+		if (sharedKey[0] == 0) {
+			byte[] sharedKeyNew = new byte[sharedKey.length-1];
+			System.arraycopy(sharedKey, 1, sharedKeyNew, 0, sharedKeyNew.length);
+			// be sure to wipe the old shared key....
+			for (int i=0; i<sharedKey.length; i++)
+				sharedKey[i] = 0;
+			sharedKey = sharedKeyNew;
+		}
+		
 		state = STATE_COMPLETED;
 	}
 	

@@ -60,6 +60,12 @@ public class BC_JCE_InteroperabilityTest extends TestCase {
 	public static final BigInteger skip1024Base = BigInteger.valueOf(2);
 
 	public void testDHAgreement() throws Exception {
+		/** No longer need to test it - it was just for solving the interoperability problem
+		 * and is now tested for by the SimpleKeyAgreementTest_Mixed cases.
+		 */ 
+		if (1==1)
+			return;
+		
 		// the error only happens with some probability, so try more often
 		for (int i=0; i<10; i++) {
 			System.out.println("Try " + i);
@@ -96,6 +102,14 @@ public class BC_JCE_InteroperabilityTest extends TestCase {
 			DHPublicKeyParameters remotePublicKey2 = new DHPublicKeyParameters(new BigInteger(publicKey1), 
 					new DHParameters(skip1024Modulus, skip1024Base));
 			byte[] sharedKey2 = dh2.calculateAgreement(remotePublicKey2).toByteArray();
+			if (sharedKey2[0] == 0) {
+				byte[] sharedKeyNew = new byte[sharedKey2.length-1];
+				System.arraycopy(sharedKey2, 1, sharedKeyNew, 0, sharedKeyNew.length);
+				// be sure to wipe the old shared key....
+				for (int j=0; j<sharedKey2.length; j++)
+					sharedKey2[j] = 0;
+				sharedKey2 = sharedKeyNew;
+			}
 
 			// and compare - must be equal
 			Assert.assertTrue("Shared keys to not match", compareByteArrays(sharedKey1, sharedKey2));
