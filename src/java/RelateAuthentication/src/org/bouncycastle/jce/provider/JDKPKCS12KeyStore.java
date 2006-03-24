@@ -550,22 +550,25 @@ public class JDKPKCS12KeyStore
 
         try
         {
-            SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
-                                                algorithm, "BC");
+            /*SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
+                                                algorithm, "BC");*/
             PBEParameterSpec    defParams = new PBEParameterSpec(
                                                 pbeParams.getIV(),
                                                 pbeParams.getIterations().intValue());
 
-            SecretKey           k = keyFact.generateSecret(pbeSpec);
+            SecretKey           k = new JCESecretKeyFactory.PBEWithSHAAndDES3Key().engineGenerateSecret(pbeSpec); /*keyFact.generateSecret(pbeSpec);*/
             
             ((JCEPBEKey)k).setTryWrongPKCS12Zero(wrongPKCS12Zero);
 
-            Cipher cipher = Cipher.getInstance(algorithm, "BC");
+            /*Cipher cipher = Cipher.getInstance(algorithm, "BC");*/
+            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.3 as algorithm in here)
+            // ATTENTION! THIS IS HARD CODED!!
+            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAndDES3Key();
 
-            cipher.init(Cipher.UNWRAP_MODE, k, defParams);
+            cipher.engineInit(Cipher.UNWRAP_MODE, k, defParams, null);
 
             // we pass "" as the key algorithm type as it is unknown at this point
-            out = (PrivateKey)cipher.unwrap(data, "", Cipher.PRIVATE_KEY);
+            out = (PrivateKey)cipher.engineUnwrap(data, "", Cipher.PRIVATE_KEY);
         }
         catch (Exception e)
         {
@@ -587,17 +590,20 @@ public class JDKPKCS12KeyStore
 
         try
         {
-            SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
-                                                algorithm, "BC");
+            /*SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
+                                                algorithm, "BC");*/
             PBEParameterSpec    defParams = new PBEParameterSpec(
                                                 pbeParams.getIV(),
                                                 pbeParams.getIterations().intValue());
 
-            Cipher cipher = Cipher.getInstance(algorithm, "BC");
+            /*Cipher cipher = Cipher.getInstance(algorithm, "BC");*/
+            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.3 as algorithm in here)
+            // ATTENTION! THIS IS HARD CODED!!
+            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAndDES3Key();
+            cipher.engineInit(Cipher.WRAP_MODE, /*keyFact.generateSecret(pbeSpec)*/
+            		new JCESecretKeyFactory.PBEWithSHAAndDES3Key().engineGenerateSecret(pbeSpec), defParams, null);
 
-            cipher.init(Cipher.WRAP_MODE, keyFact.generateSecret(pbeSpec), defParams);
-
-            out = cipher.wrap(key);
+            out = cipher.engineWrap(key);
         }
         catch (Exception e)
         {
@@ -622,20 +628,23 @@ public class JDKPKCS12KeyStore
 
         try
         {
-            SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
-                                                algorithm, "BC");
+            /*SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
+                                                algorithm, "BC");*/
             PBEParameterSpec    defParams = new PBEParameterSpec(
                                                 pbeParams.getIV(),
                                                 pbeParams.getIterations().intValue());
-            SecretKey           k = keyFact.generateSecret(pbeSpec);
+            SecretKey           k = new JCESecretKeyFactory.PBEWithSHAAndDES3Key().engineGenerateSecret(pbeSpec); /*keyFact.generateSecret(pbeSpec);*/
             
             ((JCEPBEKey)k).setTryWrongPKCS12Zero(wrongPKCS12Zero);
 
-            Cipher cipher = Cipher.getInstance(algorithm, "BC");
+            /*Cipher cipher = Cipher.getInstance(algorithm, "BC");*/
+            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.3 as algorithm in here)
+            // ATTENTION! THIS IS HARD CODED!!
+            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAndDES3Key();
 
-            cipher.init(Cipher.DECRYPT_MODE, k, defParams);
+            cipher.engineInit(Cipher.DECRYPT_MODE, k, defParams, null);
 
-            out = cipher.doFinal(data);
+            out = cipher.engineDoFinal(data, 0, data.length);
         }
         catch (Exception e)
         {
@@ -659,17 +668,21 @@ public class JDKPKCS12KeyStore
 
         try
         {
-            SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
-                                                algorithm, "BC");
+            /*SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(
+                                                algorithm, "BC");*/
             PBEParameterSpec    defParams = new PBEParameterSpec(
                                                 pbeParams.getIV(),
                                                 pbeParams.getIterations().intValue());
 
-            Cipher cipher = Cipher.getInstance(algorithm, "BC");
+            /*Cipher cipher = Cipher.getInstance(algorithm, "BC");*/
+            // This is according to BouncyCastleProvider.java (we get number 1.2.840.113549.1.12.1.3 as algorithm in here)
+            // ATTENTION! THIS IS HARD CODED!!
+            JCEBlockCipher cipher = new JCEBlockCipher.PBEWithSHAAndDES3Key();
 
-            cipher.init(Cipher.ENCRYPT_MODE, keyFact.generateSecret(pbeSpec), defParams);
+            cipher.engineInit(Cipher.ENCRYPT_MODE, /*keyFact.generateSecret(pbeSpec)*/
+            		new JCESecretKeyFactory.PBEWithSHAAndDES3Key().engineGenerateSecret(pbeSpec), defParams, null);
 
-            out = cipher.doFinal(data);
+            out = cipher.engineDoFinal(data, 0, data.length);
         }
         catch (Exception e)
         {
@@ -731,16 +744,19 @@ public class JDKPKCS12KeyStore
 
             try
             {
-                Mac                 mac = Mac.getInstance(algId.getObjectId().getId(), "BC");
-                SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(algId.getObjectId().getId(), "BC");
+                /*Mac                 mac = Mac.getInstance(algId.getObjectId().getId(), "BC");
+                SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(algId.getObjectId().getId(), "BC");*/
+            		JCEMac mac = new JCEMac.PBEWithSHA();
+            	
                 PBEParameterSpec    defParams = new PBEParameterSpec(salt, itCount);
                 PBEKeySpec          pbeSpec = new PBEKeySpec(password);
 
-                mac.init(keyFact.generateSecret(pbeSpec), defParams);
+                mac.engineInit(/*keyFact.generateSecret(pbeSpec)*/
+                		new JCESecretKeyFactory.PBEWithSHA().engineGenerateSecret(pbeSpec), defParams);
 
-                mac.update(data);
+                mac.engineUpdate(data, 0, data.length);
 
-                byte[]  res = mac.doFinal();
+                byte[]  res = mac.engineDoFinal();
                 byte[]  dig = dInfo.getDigest();
 
                 if (res.length != dInfo.getDigest().length)
@@ -771,15 +787,15 @@ public class JDKPKCS12KeyStore
                 //
                 if (!okay)
                 {
-                    SecretKey k = keyFact.generateSecret(pbeSpec);
+                    SecretKey k = new JCESecretKeyFactory.PBEWithSHA().engineGenerateSecret(pbeSpec); /*keyFact.generateSecret(pbeSpec);*/
                     
                     ((JCEPBEKey)k).setTryWrongPKCS12Zero(true);
                     
-                    mac.init(k, defParams);
+                    mac.engineInit(k, defParams);
     
-                    mac.update(data);
+                    mac.engineUpdate(data, 0, data.length);
     
-                    res = mac.doFinal();
+                    res = mac.engineDoFinal();
                     dig = dInfo.getDigest();
                     
                     for (int i = 0; i != res.length; i++)
@@ -1450,16 +1466,19 @@ public class JDKPKCS12KeyStore
 
         try
         {
-            Mac                 mac = Mac.getInstance(id_SHA1.getId(), "BC");
-            SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(id_SHA1.getId(), "BC");
+            /*Mac                 mac = Mac.getInstance(id_SHA1.getId(), "BC");
+            SecretKeyFactory    keyFact = SecretKeyFactory.getInstance(id_SHA1.getId(), "BC");*/
+        		JCEMac mac = new JCEMac.PBEWithSHA();
+        			
             PBEParameterSpec    defParams = new PBEParameterSpec(mSalt, itCount);
             PBEKeySpec          pbeSpec = new PBEKeySpec(password);
 
-            mac.init(keyFact.generateSecret(pbeSpec), defParams);
+            mac.engineInit(/*keyFact.generateSecret(pbeSpec)*/
+            		new JCESecretKeyFactory.PBEWithSHA().engineGenerateSecret(pbeSpec), defParams);
 
-            mac.update(data);
+            mac.engineUpdate(data, 0, data.length);
 
-            byte[]      res = mac.doFinal();
+            byte[]      res = mac.engineDoFinal();
 
             AlgorithmIdentifier     algId = new AlgorithmIdentifier(id_SHA1, new DERNull());
             DigestInfo              dInfo = new DigestInfo(algId, res);

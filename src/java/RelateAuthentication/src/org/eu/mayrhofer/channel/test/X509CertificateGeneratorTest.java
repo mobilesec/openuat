@@ -130,7 +130,7 @@ public class X509CertificateGeneratorTest extends TestCase {
 		String certExportPw = "test";
 		Assert.assertTrue("Could not generate new certificate", g.createCertificate("My test CN", 30, tempCert.getAbsolutePath(), certExportPw));
 
-		// but we also verify...
+		// but we also verify (always with JCE to test interoperability)...
 		KeyStore caKs = KeyStore.getInstance("PKCS12");
 		caKs.load(new FileInputStream(tempCa), caExportPw.toCharArray());
 		X509Certificate caCert = (X509Certificate) caKs.getCertificate(caExportAlias);
