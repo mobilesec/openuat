@@ -755,7 +755,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		if (serverSocket == null) {
 			serverSocket = new HostServerSocket(TcpPort, true, useJSSE);
 			HostAuthenticationEventHandler hostServerHandler = new HostAuthenticationEventHandler();
-    			serverSocket.addAuthenticationProgressHandler(hostServerHandler);
+    		serverSocket.addAuthenticationProgressHandler(hostServerHandler);
     		serverSocket.startListening();
 		}
 		else
@@ -818,94 +818,94 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			Object s;
 			
 			public TempAuthenticationEventHandler(int mode) {
-    				this.mode = mode;
+    			this.mode = mode;
     				
-    				if (useProgressBar) {
-    					d = new org.eclipse.swt.widgets.Display();
-    					s = new org.eclipse.swt.widgets.Shell((org.eclipse.swt.widgets.Display) d);
-    					((org.eclipse.swt.widgets.Shell) s).setLayout(new org.eclipse.swt.layout.GridLayout());
-    					pb = new org.eclipse.swt.widgets.ProgressBar((org.eclipse.swt.widgets.Shell) s, org.eclipse.swt.SWT.HORIZONTAL | org.eclipse.swt.SWT.SMOOTH);
-    					((org.eclipse.swt.widgets.ProgressBar) pb).setLayoutData(new org.eclipse.swt.layout.GridData(org.eclipse.swt.layout.GridData.FILL_HORIZONTAL));
-    					((org.eclipse.swt.widgets.ProgressBar) pb).setMinimum(0);
-    					((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(5);
-    					((org.eclipse.swt.widgets.Shell) s).open();
-    				}
+    			if (useProgressBar) {
+    				d = new org.eclipse.swt.widgets.Display();
+    				s = new org.eclipse.swt.widgets.Shell((org.eclipse.swt.widgets.Display) d);
+    				((org.eclipse.swt.widgets.Shell) s).setLayout(new org.eclipse.swt.layout.GridLayout());
+    				pb = new org.eclipse.swt.widgets.ProgressBar((org.eclipse.swt.widgets.Shell) s, org.eclipse.swt.SWT.HORIZONTAL | org.eclipse.swt.SWT.SMOOTH);
+    				((org.eclipse.swt.widgets.ProgressBar) pb).setLayoutData(new org.eclipse.swt.layout.GridData(org.eclipse.swt.layout.GridData.FILL_HORIZONTAL));
+    				((org.eclipse.swt.widgets.ProgressBar) pb).setMinimum(0);
+    				((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(5);
+    				((org.eclipse.swt.widgets.Shell) s).open();
     			}
+    		}
     		
-    			synchronized public void AuthenticationSuccess(Object sender, Object remote, Object result)
-    			{
-    				Object[] remoteParam = (Object[]) remote;
-    				logger.info("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
-    				System.out.println("SUCCESS");
+    		synchronized public void AuthenticationSuccess(Object sender, Object remote, Object result)
+    		{
+    			Object[] remoteParam = (Object[]) remote;
+    			logger.info("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
+    			System.out.println("SUCCESS");
 
-    				// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
-    				/*try {
-    				 Thread.sleep(500); // should be long enough to send the last packet, if necessary
-    				 } catch (InterruptedException e) {}
-    				 outer.serialConn.switchDiagnosticMode(false);*/
-   	        	
-    				if (mode == 0) {
-    					if (! System.getProperty("os.name").startsWith("Windows CE")) 
-    						Runtime.getRuntime().exit(0);
-    				}
-    				else if (mode == 2) {
-    					// give it time to settle....
-    					try {
-    						Thread.sleep(3000);
-    					} catch (InterruptedException e) {}
-    					resetBothDongles();
+    			// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
+    			/*try {
+    			 Thread.sleep(500); // should be long enough to send the last packet, if necessary
+    			 } catch (InterruptedException e) {}
+    			 outer.serialConn.switchDiagnosticMode(false);*/
+   	        
+    			if (mode == 0) {
+    				if (! System.getProperty("os.name").startsWith("Windows CE")) 
     					Runtime.getRuntime().exit(0);
-    				}
     			}
+    			else if (mode == 2) {
+    				// give it time to settle....
+    				try {
+    					Thread.sleep(3000);
+    				} catch (InterruptedException e) {}
+    				resetBothDongles();
+    				Runtime.getRuntime().exit(0);
+    			}
+    		}
     	    
-    			synchronized public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
-    			{
-    				logger.info("Received relate authentication failure event with " + remote);
-    				Throwable exc = e;
-    				while (exc != null) {
-    					logger.info("Exception: " + exc);
-    					exc = exc.getCause();
-    				}
-    				if (msg != null)
-    	            logger.info("Message: " + msg);
+    		synchronized public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
+    		{
+    			logger.info("Received relate authentication failure event with " + remote);
+    			Throwable exc = e;
+    			while (exc != null) {
+    				logger.info("Exception: " + exc);
+    				exc = exc.getCause();
+    			}
+    			if (msg != null)
+    				logger.info("Message: " + msg);
 
-    				// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
-    				/*try {
-    				 Thread.sleep(500); // should be long enough to send the last packet, if necessary
-    				 } catch (InterruptedException e1) {}
-    				 outer.serialConn.switchDiagnosticMode(false);*/
-    	        
-    				if (mode == 0) {
-    					if (! System.getProperty("os.name").startsWith("Windows CE"))
-    						Runtime.getRuntime().exit(1);
-    				}
-    				else if (mode == 2) {
-    					resetBothDongles();
+    			// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
+    			/*try {
+    			Thread.sleep(500); // should be long enough to send the last packet, if necessary
+    			} catch (InterruptedException e1) {}
+    			outer.serialConn.switchDiagnosticMode(false);*/
+    	       
+    			if (mode == 0) {
+    				if (! System.getProperty("os.name").startsWith("Windows CE"))
     					Runtime.getRuntime().exit(1);
-    				}
     			}
+    			else if (mode == 2) {
+    				resetBothDongles();
+   					Runtime.getRuntime().exit(1);
+   				}
+   			}
 
-    			public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
-    			{
-    				logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
-    				if (useProgressBar) {
-    					final int m = max;
-    					final int c = cur;
-    					((org.eclipse.swt.widgets.Display) d).asyncExec(new Runnable() { public void run() { 
-    						((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(m); ((org.eclipse.swt.widgets.ProgressBar) pb).setSelection(c); }});
-    				}
-    			}
-    		}
+   			public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
+   			{
+   				logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+   				if (useProgressBar) {
+   					final int m = max;
+   					final int c = cur;
+   					((org.eclipse.swt.widgets.Display) d).asyncExec(new Runnable() { public void run() { 
+   						((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(m); ((org.eclipse.swt.widgets.ProgressBar) pb).setSelection(c); }});
+   				}
+   			}
+   		}
     
-    		boolean useJSSEServer = true;
-    		boolean useJSSEClient = true;
-    		if (System.getProperty("os.name").startsWith("Windows CE")) {
-    			useJSSEServer = useJSSEClient = false;
-    		}
+   		boolean useJSSEServer = true;
+   		boolean useJSSEClient = true;
+   		if (System.getProperty("os.name").startsWith("Windows CE")) {
+   			useJSSEServer = useJSSEClient = false;
+   		}
     	
         if (args.length > 1 && args[0].equals("server")) {
-        		logger.info("Starting server mode");
-        		String serialPort = args[1];
+        	logger.info("Starting server mode");
+        	String serialPort = args[1];
         		
             HostServerSocket h1 = new HostServerSocket(TcpPort, true, useJSSEServer);
 
@@ -923,8 +923,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1);
             r.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh = r.new HostAuthenticationEventHandler();
-        		h1.addAuthenticationProgressHandler(hh);
-        		// and start....
+        	h1.addAuthenticationProgressHandler(hh);
+        	// and start....
             h1.startListening();
             //new BufferedReader(new InputStreamReader(System.in)).readLine();
 
@@ -933,15 +933,15 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             //h1.stopListening();
         } 
         else if (args.length > 4 && args[0].equals("client")) {
-        		System.out.println("starting client mode: port=" + args[1] + ", server=" + args[2] + ", remoteid=" + args[3] + ", rounds=" + args[4]);
-        		String serialPort = args[1];
-        		logger.info("Starting client mode");
+        	System.out.println("starting client mode: port=" + args[1] + ", server=" + args[2] + ", remoteid=" + args[3] + ", rounds=" + args[4]);
+        	String serialPort = args[1];
+        	logger.info("Starting client mode");
             EventDispatcher.getDispatcher(new String[] {serialPort});
             MeasurementManager man = new MeasurementManager(serialPort);
-        		RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
-        		TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
-        		r.addAuthenticationProgressHandler(t);
-        		r.startAuthentication(args[2], (byte) Integer.parseInt(args[3]), Integer.parseInt(args[4]));
+        	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
+        	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
+        	r.addAuthenticationProgressHandler(t);
+        	r.startAuthentication(args[2], (byte) Integer.parseInt(args[3]), Integer.parseInt(args[4]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
             new Thread(new Runnable() {
@@ -962,44 +962,44 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
             //new BufferedReader(new InputStreamReader(System.in)).readLine();
 
             if (TempAuthenticationEventHandler.useProgressBar) {
-            		while (! ((org.eclipse.swt.widgets.Shell) t.s).isDisposed()) {
-            			if (((org.eclipse.swt.widgets.Display) t.d).readAndDispatch())
-            				((org.eclipse.swt.widgets.Display) t.d).sleep();
-            		}
+            	while (! ((org.eclipse.swt.widgets.Shell) t.s).isDisposed()) {
+            		if (((org.eclipse.swt.widgets.Display) t.d).readAndDispatch())
+            			((org.eclipse.swt.widgets.Display) t.d).sleep();
+            	}
             }
             else
                 while (true) Thread.sleep(1000);
         }
         else if (args.length == 2 && args[0].equals("both")) {
-        		logger.info("Starting mutual authentication mode with two dongles");
-        		int localId1 = -1, localId2 = -1;
-        		String serialPort1 = "/dev/ttyUSB0", serialPort2 = "/dev/ttyUSB1";
+        	logger.info("Starting mutual authentication mode with two dongles");
+        	int localId1 = -1, localId2 = -1;
+        	String serialPort1 = "/dev/ttyUSB0", serialPort2 = "/dev/ttyUSB1";
 
-        		// first need to get my local ids
-        		try {
-        			SerialConnector s1 = SerialConnector.getSerialConnector(serialPort1);
-        			localId1 = s1.getLocalRelateId();
-        			Thread.sleep(3000);
-        			SerialConnector s2 = SerialConnector.getSerialConnector(serialPort2);
-        			localId2 = s2.getLocalRelateId();
-        		}
-        		catch (DongleException e) {
-        			logger.error("-------- failed to connect to dongle, didn't get my ID.");
-        			System.out.println(e);
-        			//e.printStackTrace();
-        			if (! System.getProperty("os.name").startsWith("Windows CE"))
-        				System.exit(1);
-        		}
+        	// first need to get my local ids
+        	try {
+        		SerialConnector s1 = SerialConnector.getSerialConnector(serialPort1);
+        		localId1 = s1.getLocalRelateId();
+        		Thread.sleep(3000);
+        		SerialConnector s2 = SerialConnector.getSerialConnector(serialPort2);
+        		localId2 = s2.getLocalRelateId();
+        	}
+        	catch (DongleException e) {
+        		logger.error("-------- failed to connect to dongle, didn't get my ID.");
+        		System.out.println(e);
+        		//e.printStackTrace();
+        		if (! System.getProperty("os.name").startsWith("Windows CE"))
+        			System.exit(1);
+        	}
 
-        		logger.info("Connected to my two dongles: ID " + localId1 + " on " + serialPort1 + ", and ID " + localId2 + " on " + serialPort2);
+        	logger.info("Connected to my two dongles: ID " + localId1 + " on " + serialPort1 + ", and ID " + localId2 + " on " + serialPort2);
 
             EventDispatcher.getDispatcher(new String[] {serialPort1, serialPort2});
             MeasurementManager man1 = new MeasurementManager(serialPort1);
             MeasurementManager man2 = new MeasurementManager(serialPort2);
         		
-        		// server side
-        		TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
-        		HostServerSocket h1 = new HostServerSocket(TcpPort, true, useJSSEServer);
+        	// server side
+        	TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
+        	HostServerSocket h1 = new HostServerSocket(TcpPort, true, useJSSEServer);
             RelateAuthenticationProtocol r_serv = new RelateAuthenticationProtocol(serialPort1, man1, useJSSEServer, false, null);
             r_serv.addAuthenticationProgressHandler(ht);
             HostAuthenticationEventHandler hh_serv = r_serv.new HostAuthenticationEventHandler();
@@ -1008,21 +1008,21 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
             // client side
             RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol(serialPort2, man2, useJSSEClient, false, null);
-        		r_client.addAuthenticationProgressHandler(ht);
-        		r_client.startAuthentication("localhost", (byte) localId1, Integer.parseInt(args[1]));
+        	r_client.addAuthenticationProgressHandler(ht);
+        	r_client.startAuthentication("localhost", (byte) localId1, Integer.parseInt(args[1]));
         	
-        		// safety belt
+        	// safety belt
             new Thread(new Runnable() {
-            		public void run() {
-            			System.out.println("******** Starting timer");
-            			// two minutes should really be enough
-            			try {
-            				Thread.sleep(120 * 1000);
-            			} catch (InterruptedException e) {}
-            			System.out.println("******** Timed out");
-            			statisticsLogger.error("- Timer killed client");
-            			if (	! System.getProperty("os.name").startsWith("Windows CE"))
-            				System.exit(100);
+            	public void run() {
+            		System.out.println("******** Starting timer");
+            		// two minutes should really be enough
+            		try {
+            			Thread.sleep(120 * 1000);
+            		} catch (InterruptedException e) {}
+            		System.out.println("******** Timed out");
+            		statisticsLogger.error("- Timer killed client");
+            		if (! System.getProperty("os.name").startsWith("Windows CE"))
+            			System.exit(100);
             		}
             	}).start();
 
@@ -1032,6 +1032,6 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         
         // problem with the javax.comm API - doesn't release its native thread
         if (! System.getProperty("os.name").startsWith("Windows CE"))
-        		System.exit(0);
+       		System.exit(0);
 	}
 }
