@@ -528,8 +528,7 @@ public class X509CertificateObject
 
     public PublicKey getPublicKey()
     {
-    		throw new RuntimeException("Not implemented under J2ME");
-        //return JDKKeyFactory.createPublicKeyFromPublicKeyInfo(c.getSubjectPublicKeyInfo());
+        return JDKKeyFactory.createPublicKeyFromPublicKeyInfo(c.getSubjectPublicKeyInfo());
     }
 
     public byte[] getEncoded()
