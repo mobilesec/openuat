@@ -8,6 +8,9 @@
  */
 package org.eu.mayrhofer.apps;
 
+import java.io.IOException;
+
+import org.apache.log4j.Logger;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.ProgressBar;
@@ -16,11 +19,17 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Spinner;
+import org.eu.mayrhofer.authentication.exceptions.ConfigurationErrorException;
+import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
+
+import uk.ac.lancs.relate.core.DongleException;
 
 /** @author Rene Mayrhofer
  * @version 1.0
  */
-public class IPSecConnectorAdmin {
+public class IPSecConnectorAdmin extends IPSecConnectorCommon {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(IPSecConnectorAdmin.class);
 
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="4,11"
 	private ProgressBar certificateProgress = null;
@@ -42,8 +51,12 @@ public class IPSecConnectorAdmin {
 
 	/**
 	 * @param args
+	 * @throws IOException 
+	 * @throws InternalApplicationException 
+	 * @throws ConfigurationErrorException 
+	 * @throws DongleException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
 		// TODO Auto-generated method stub
 		/* Before this is run, be sure to set up the launch configuration (Arguments->VM Arguments)
 		 * for the correct SWT library path in order to run with the SWT dlls. 
@@ -52,8 +65,7 @@ public class IPSecConnectorAdmin {
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
 		Display display = Display.getDefault();
-		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin();
-		thisClass.createSShell();
+		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin("/dev/ttyUSB0");
 		thisClass.sShell.open();
 
 		while (!thisClass.sShell.isDisposed()) {
@@ -61,6 +73,11 @@ public class IPSecConnectorAdmin {
 				display.sleep();
 		}
 		display.dispose();
+	}
+	
+	public IPSecConnectorAdmin(String serialPort) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+		super(true, serialPort);
+		createSShell();
 	}
 
 	/**
@@ -118,4 +135,13 @@ public class IPSecConnectorAdmin {
 		cancelButton.setText("Cancel");
 	}
 
+	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+		Object[] remoteParam = (Object[]) remote;
+		logger.info("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
+		System.out.println("SUCCESS");
+		// TODO: wait for certificate to be generated completely in background thread
+		// TODO: transmit IPSec configuration
+		// TODO: transmit IPSec certificate
+		// TODO: close socket
+	}
 }
