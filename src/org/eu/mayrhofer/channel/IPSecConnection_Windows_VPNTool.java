@@ -28,11 +28,11 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	private static Logger logger = Logger.getLogger(IPSecConnection_Windows_VPNTool.class);
 
 	/** To remember the remote host address that was passed in init(). 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteHost = null;
 	/** To remember the remoteNetwork and remoteNetmask parameters that were passed in init. 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteNetwork;
 	/** To store the temporary path where to create the config file. */
@@ -119,6 +119,27 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	 * @param persistent Unsupported. It connections will always be persistent until removed again.
 	 */
 	public boolean start(byte[] sharedSecret, boolean persistent) {
+		return start(sharedSecret, null, persistent);
+	}
+	
+	/** Creates a new connection entry for Windows XP by creating a config file for and calling
+	 * ipsec.exe.
+	 * 
+	 * @param caDistinguishedName The CA that is used to sign the certificates, can be null
+	 *                            to accept any valid certificate.
+	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
+	 *                   it will be set to auto=add.
+	 */
+	public boolean start(String caDistinguishedName, boolean persistent) {
+		return start(null, caDistinguishedName, persistent);
+	}
+	
+	/** This is the base implementation for the two public start methods.
+	 * Either sharedSecret of caDistinguishedName must be null, can't use both! 
+	 * (But both can be null, this will indicate X.509 certificate authentication
+	 * with any valid certificate.)
+	 */
+	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
 			logger.error("Can not start connection, remoteHost not yet set");
 			return false;
@@ -159,7 +180,12 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				writerConn.write("    right=" + remoteHost + "\n");
 				// need to use start here unconditionally!
 				writerConn.write("    auto=" + "start" /*(persistent ? "start" : "add")*/ + "\n");
-				writerConn.write("    presharedkey=" + new String(Hex.encodeHex(sharedSecret)) + "\n");
+				if (sharedSecret != null) {
+					writerConn.write("    presharedkey=" + new String(Hex.encodeHex(sharedSecret)) + "\n");
+				}
+				else {
+					writerConn.write("    rightca=\"" + caDistinguishedName + "\"\n");
+				}
 				if (remoteNetwork == null) {
 					writerConn.write("    type=transport\n");
 				}
@@ -224,6 +250,13 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	public boolean isEstablished() {
 		// how to check?
 		return remoteHost != null;
+	}
+
+	/** This implementation does nothing at the moment. 
+	 * TODO: implement me
+	 */
+	public int importCertificate(String file, String password, boolean overwriteExisting) {
+		return -1;
 	}
 	
 	public void dispose() {

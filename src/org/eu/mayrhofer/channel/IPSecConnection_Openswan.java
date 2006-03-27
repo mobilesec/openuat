@@ -45,11 +45,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
     public static final String IPSEC_ESTABLISHED = "IPsec SA established";
 
 	/** To remember the remote host address that was passed in init(). 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteHost = null;
 	/** To remember the remoteNetwork and remoteNetmask parameters that were passed in init. 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteNetwork;
 	/** To remember if the connection is supposed to be persistent (used in dispose() to decide if to stop or not). */
@@ -142,8 +142,33 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 *                   it will be set to auto=add.
 	 */
 	public boolean start(byte[] sharedSecret, boolean persistent) {
+		return start(sharedSecret, null, persistent);
+	}
+	
+	/** Creates a new connection entry for openswan/strongswan/freeswan and tries to
+	 * start that connection.
+	 * 
+	 * @param caDistinguishedName The CA that is used to sign the certificates, can be null
+	 *                            to accept any valid certificate.
+	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
+	 *                   it will be set to auto=add.
+	 */
+	public boolean start(String caDistinguishedName, boolean persistent) {
+		return start(null, caDistinguishedName, persistent);
+	}
+	
+	/** This is the base implementation for the two public start methods.
+	 * Either sharedSecret of caDistinguishedName must be null, can't use both! 
+	 * (But both can be null, this will indicate X.509 certificate authentication
+	 * with any valid certificate.)
+	 */
+	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
 			logger.error("Can not start connection, remoteHost not yet set");
+			return false;
+		}
+		if (sharedSecret != null && caDistinguishedName != null) {
+			logger.error("Can't use both secret key and X.509 certificate authentication");
 			return false;
 		}
 
@@ -190,9 +215,16 @@ class IPSecConnection_Openswan implements IPSecConnection {
 				
 				writerConn.write("conn " + createConnName(localAddr, remoteHost) + "\n");
 				writerConn.write("    left=" + localAddr + "\n");
-				// this is necessary so that the certificate ID isn't used for the ipsec.secrets lookup
-				writerConn.write("    leftcert=\n");
-				writerConn.write("    authby=secret\n");
+				if (sharedSecret != null) {
+					writerConn.write("    authby=secret\n");
+					// this is necessary so that the certificate ID isn't used for the ipsec.secrets lookup
+					writerConn.write("    leftcert=\n");
+				} 
+				else {
+					writerConn.write("    authby=cert\n");
+					if (caDistinguishedName != null)
+						writerConn.write("    rightca=\"" + caDistinguishedName + "\"\n");
+				}
 				writerConn.write("    right=" + remoteHost + "\n");
 				writerConn.write("    auto=" + (persistent ? "start" : "add") + "\n");
 				if (remoteNetwork == null) {
@@ -204,8 +236,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
 				}
 				writerConn.flush();
 
-				writerPsk.write(localAddr + " " + remoteHost + " : PSK \"" + new String(Hex.encodeHex(sharedSecret)) + "\"\n");
-				writerPsk.flush();
+				if (sharedSecret != null) {
+					writerPsk.write(localAddr + " " + remoteHost + " : PSK \"" + new String(Hex.encodeHex(sharedSecret)) + "\"\n");
+					writerPsk.flush();
+				}
+				// for certificate authentication, don't need to do anything (just create an empty PSK file)...
 				
 				// reload the secrets and try to start the connection
 				try {
@@ -327,6 +362,13 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			logger.error("Could not execute command: " + e);
 			return false;
 		}
+	}
+	
+	/** This implementation does nothing at the moment. 
+	 * TODO: implement me
+	 */
+	public int importCertificate(String file, String password, boolean overwriteExisting) {
+		return -1;
 	}
 	
 	public void dispose() {

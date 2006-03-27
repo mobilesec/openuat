@@ -8,14 +8,11 @@
  */
 package org.eu.mayrhofer.apps;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.net.Socket;
 
 import org.apache.commons.codec.binary.Hex;
@@ -26,14 +23,10 @@ import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.Spinner;
 import org.eu.mayrhofer.authentication.exceptions.ConfigurationErrorException;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.channel.IPSecConnection;
 import org.eu.mayrhofer.channel.IPSecConnection_Factory;
-import org.eu.mayrhofer.channel.IPSecConnection_Windows;
-import org.eu.mayrhofer.channel.X509CertificateGenerator;
 
 import uk.ac.lancs.relate.core.DongleException;
 
@@ -46,7 +39,6 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="4,11"
 	private ProgressBar certificateProgress = null;
-	private Label label = null;
 	private Label label1 = null;
 	private Label gatewayLabel = null;
 	private Label label4 = null;
@@ -60,13 +52,6 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	private Label label3 = null;
 	private Label validityLabel = null;
 	private Button cancelButton = null;
-	
-	/** This string holds the temporary file name of the certificate that
-	 * has been received.
-	 * 
-	 * @see #asyncCreateCertificate
-	 */
-	private String certificateFilename = null;
 	
 	/** This represents the configuration of the IPSec tunnel. It is used
 	 * to parse the XML-encoded config block received from the admin end.
@@ -258,15 +243,14 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			return;
 		}
 
-		// TODO: make me work for Linux and Mac too
 		// and import into the registry (overwriting existing certificates)
-		IPSecConnection_Windows.importCertificate(tempCertFile.getAbsolutePath(), 
+		IPSecConnection conn = IPSecConnection_Factory.getImplementation();
+		conn.importCertificate(tempCertFile.getAbsolutePath(), 
 				new String(Hex.encodeHex(sharedKey)), true);
 		
 		// finally, everything is in place, start the IPSec connection
-		IPSecConnection conn = IPSecConnection_Factory.getImplementation();
 		conn.init(config.getGateway(), config.getRemoteNetwork(), config.getRemoteNetmask());
-		// TODO: actually use the certificate...
-		conn.start(new String(Hex.encodeHex(sharedKey), true);
+		// TODO: fetch the CA distinguished name from the certificate and use it here
+		conn.start((String) null, true);
 	}
 }
