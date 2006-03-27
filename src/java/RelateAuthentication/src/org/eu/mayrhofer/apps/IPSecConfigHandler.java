@@ -34,11 +34,15 @@ public class IPSecConfigHandler {
 	private final static String GatewayTag = "gateway";
 	/** This is the name of the XML tag representing the network behind the remote gateway. */
 	private final static String RemoteNetworkTag = "remote_network";
+	/** This is the name of the XML tag representing the netmask of the network behind the remote gateway. */
+	private final static String RemoteNetmaskTag = "remote_netmask";
 	
 	/** The remote gateway. */
 	private String gateway;
 	/** The network behind the remote gateway. */
 	private String remoteNetwork;
+	/** The netmask of the network behind the remote gateway. */
+	private int remoteNetmask;
 
 	/** This constructor actually does nothing. */
 	public IPSecConfigHandler() {
@@ -64,6 +68,16 @@ public class IPSecConfigHandler {
 		this.remoteNetwork = remoteNetwork;
 	}
 
+	/** Returns the value to be used for the netmask of the remote network behind the remote gateway of the IPSec tunnel. */
+	public int getRemoteNetmask() {
+		return remoteNetmask;
+	}
+	
+	/** Sets the value to be used for the remote network behind the remote gateway of the IPSec tunnel. */
+	public void setRemoteNetmask(int remoteNetmask) {
+		this.remoteNetmask = remoteNetmask;
+	}
+	
 	/** Parses an existing configuration and extracts the gateway and optionally the remote 
 	 * remote network (if it exists in the configuration).
 	 * 
@@ -110,6 +124,9 @@ public class IPSecConfigHandler {
 					} else if (lastTag != null && lastTag.equals(RemoteNetworkTag)) {
 						logger.debug("Associating with remote network field");
 						remoteNetwork = str.toString();
+					} else if (lastTag != null && lastTag.equals(RemoteNetmaskTag)) {
+						logger.debug("Associating with remote netmask field");
+						remoteNetmask = Integer.parseInt(str.toString());
 					} else
 						logger.warn("Encountered unkown tag '" + lastTag + "', ignoring it");
 				} else
@@ -163,8 +180,10 @@ public class IPSecConfigHandler {
 			
 			writeTag(serializer, GatewayTag, gateway, true);
 			// if we have a defined remote network, also write that...
-			if (remoteNetwork != null)
+			if (remoteNetwork != null) {
 				writeTag(serializer, RemoteNetworkTag, remoteNetwork, true);
+				writeTag(serializer, RemoteNetmaskTag, Integer.toString(remoteNetmask), true);
+			}
 			
 			// finished with the config
 			serializer.endDocument();

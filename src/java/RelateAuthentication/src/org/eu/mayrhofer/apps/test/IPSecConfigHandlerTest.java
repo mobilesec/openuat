@@ -49,6 +49,16 @@ public class IPSecConfigHandlerTest extends TestCase {
 		handler.setRemoteNetwork(test2);
 		Assert.assertEquals("Property not working properly", test2, handler.getRemoteNetwork());
 	}
+
+	public void testRemoteNetmaskProperty(){
+		Assert.assertEquals("Should be initialized with 0", 0, handler.getRemoteNetmask());
+		int test1 = 24;
+		handler.setRemoteNetmask(test1);
+		Assert.assertEquals("Property not working properly", test1, handler.getRemoteNetmask());
+		int test2 = 32;
+		handler.setRemoteNetmask(test2);
+		Assert.assertEquals("Property not working properly", test2, handler.getRemoteNetmask());
+	}
 	
 	public void testEnforceGatewaySet() {
 		Assert.assertNull("Should be initialized with null", handler.getGateway());
@@ -81,8 +91,10 @@ public class IPSecConfigHandlerTest extends TestCase {
 	public void testWriteAndParseGatewayAndNetwork() throws IOException {
 		String gate = "test gateway 2";
 		String net = "test network";
+		int mask = 24;
 		handler.setGateway(gate);
 		handler.setRemoteNetwork(net);
+		handler.setRemoteNetmask(mask);
 		File temp = File.createTempFile("configFileTest", ".xml");
 		temp.deleteOnExit();
 		Assert.assertTrue("Could not write to temporary test file", temp.canWrite());
@@ -90,7 +102,8 @@ public class IPSecConfigHandlerTest extends TestCase {
 		
 		handler = new IPSecConfigHandler();
 		Assert.assertTrue("Could not read config", handler.parseConfig(new FileReader(temp)));
-		Assert.assertEquals("Gateway read is different from gateway written", handler.getGateway(), gate);
-		Assert.assertEquals("Remote network read is different from remote network written", handler.getRemoteNetwork(), net);
+		Assert.assertEquals("Gateway read is different from gateway written", gate, handler.getGateway());
+		Assert.assertEquals("Remote network read is different from remote network written", net, handler.getRemoteNetwork());
+		Assert.assertEquals("Remote netmask read is different from remote netmask written", mask, handler.getRemoteNetmask());
 	}
 }
