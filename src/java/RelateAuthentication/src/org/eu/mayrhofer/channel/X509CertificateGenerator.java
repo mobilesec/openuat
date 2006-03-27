@@ -171,7 +171,7 @@ public class X509CertificateGenerator {
 	 * constructor is used by createNewCa.
 	 * 
 	 * @see #createNewCa
-	 * @see #createCertificate
+	 * @see #createCertificate(String, int, String, String, String)
 	 * @param useBCAPI Set to true if the Bouncycastle lightweight API should be used for cryptographical
 	 *                 operations. If set to false, the JCE infrastructure with the configured default provider
 	 *                 will be used. JCE may be faster depending on the provider implementation, but it might
