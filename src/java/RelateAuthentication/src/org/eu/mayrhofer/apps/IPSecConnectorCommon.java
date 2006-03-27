@@ -36,6 +36,16 @@ import uk.ac.lancs.relate.core.MeasurementManager;
 public abstract class IPSecConnectorCommon implements AuthenticationProgressHandler {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnectorCommon.class);
+	
+	/** This name is used as a prefix for transmitting the XML-encoded
+	 * configuration block from the admin end to the client end.
+	 */
+	protected final static String BLOCKNAME_CONFIG = "config";
+	
+	/** This name is used as a prefix for transmitting the certificate
+	 * from the admin end to the client end.
+	 */
+	protected final static String BLOCKNAME_CERTIFICATE = "certificate";
 
 	/** True if this is the admin end, false if it is the client end.
 	 * It just remembers whatever value was given to the constructor.
@@ -62,7 +72,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 	 * derived class, or at least before the AuthenticationProgress handler
 	 * has a chance of being called.
 	 */
-	protected ProgressBar authenticationProgress;
+	protected ProgressBar authenticationProgress = null;
 	/** This variable <b>must</b> be initalized in the constructor of the 
 	 * derived class, or at least before the AuthenticationProgress handler
 	 * has a chance of being called.
