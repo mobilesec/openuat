@@ -32,11 +32,11 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class);
 
 	/** To remember the remote host address that was passed in init(). 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteHost = null;
 	/** To remember the remoteNetwork and remoteNetmask parameters that were passed in init. 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteNetwork;
 
@@ -115,6 +115,29 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	 *                   will not persist a reboot.
 	 */
 	public boolean start(byte[] sharedSecret, boolean persistent) {
+		return start(sharedSecret, null, persistent);
+	}
+	
+	/** Creates a new connection entry for racoon, sets the kernel security policies (in SPD), and tries to
+	 * start that connection.
+	 * 
+	 * @param caDistinguishedName The CA that is used to sign the certificates, can be null
+	 *                            to accept any valid certificate.
+	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
+	 *                   it will be set to auto=add.
+	 */
+	public boolean start(String caDistinguishedName, boolean persistent) {
+		// TODO: implement me
+		throw new RuntimeException("CA authentication currently not supported with Racoon");
+		//return start(null, caDistinguishedName, persistent);
+	}
+	
+	/** This is the base implementation for the two public start methods.
+	 * Either sharedSecret of caDistinguishedName must be null, can't use both! 
+	 * (But both can be null, this will indicate X.509 certificate authentication
+	 * with any valid certificate.)
+	 */
+	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
 			logger.error("Can not start connection, remoteHost not yet set");
 			return false;
@@ -181,22 +204,25 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			writerConn.flush();
 			writerConn.close();
 
-			BufferedWriter writerPskTmp = new BufferedWriter(new FileWriter(configPskTmp));
-			// check if a PSK for this remote address is already in the file, if not, add it
-			// (we basically just copy the file except the old line, if there, and append one line)
-			BufferedReader readerPsk = new BufferedReader(new FileReader(configPsk));
-			String line = readerPsk.readLine();
-			while (line != null) {
-				if (! line.startsWith(remoteHost))
-					writerPskTmp.write(line + "\n");
-				line = readerPsk.readLine();
+			if (sharedSecret != null) {
+				BufferedWriter writerPskTmp = new BufferedWriter(new FileWriter(configPskTmp));
+				// check if a PSK for this remote address is already in the file, if not, add it
+				// (we basically just copy the file except the old line, if there, and append one line)
+				BufferedReader readerPsk = new BufferedReader(new FileReader(configPsk));
+				String line = readerPsk.readLine();
+				while (line != null) {
+					if (! line.startsWith(remoteHost))
+						writerPskTmp.write(line + "\n");
+					line = readerPsk.readLine();
+				}
+				readerPsk.close();
+				writerPskTmp.write(remoteHost + " " + new String(Hex.encodeHex(sharedSecret)) + "\n");
+				writerPskTmp.flush();
+				writerPskTmp.close();
+				// and move the temporary file to the one we want to change
+				configPskTmp.renameTo(configPsk);
 			}
-			readerPsk.close();
-			writerPskTmp.write(remoteHost + " " + new String(Hex.encodeHex(sharedSecret)) + "\n");
-			writerPskTmp.flush();
-			writerPskTmp.close();
-			// and move the temporary file to the one we want to change
-			configPskTmp.renameTo(configPsk);
+			// for certificate authentication, don't need to do anything...
 				
 			// force racoon to reload its config, set the kernel policy, and try to start the connection
 			try {
@@ -315,6 +341,13 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			logger.error("Could not execute command: " + e);
 			return false;
 		}
+	}
+
+	/** This implementation does nothing at the moment. 
+	 * TODO: implement me
+	 */
+	public int importCertificate(String file, String password, boolean overwriteExisting) {
+		return -1;
 	}
 	
 	public void dispose() {

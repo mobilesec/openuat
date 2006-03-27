@@ -38,15 +38,15 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	private static final int DHGROUP_MED = 2;
 
 	/** To remember the remote host address that was passed in init(). 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteHost = null;
 	/** To remember the remoteNetwork parameter that was passed in init(). 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private String remoteNetwork;
 	/** To remember the remoteNetmask parameter that was passed in init(). 
-	 * @see #init
+	 * @see #init(String, String, int)
 	 */
 	private int remoteNetmask;
 	
@@ -153,6 +153,27 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	 * @param persistent Not supported right now. The security policies (in SPD) will always be permanent right now.
 	 */
 	public boolean start(byte[] sharedSecret, boolean persistent) {
+		return start(sharedSecret, null, persistent);
+	}
+	
+	/** Creates a new connection entry for Windows 2000/XP. This does not start the connection - it will be 
+	 * started when the first matching packet triggers it.
+	 * 
+	 * @param caDistinguishedName The CA that is used to sign the certificates, can be null
+	 *                            to accept any valid certificate.
+	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
+	 *                   it will be set to auto=add.
+	 */
+	public boolean start(String caDistinguishedName, boolean persistent) {
+		return start(null, caDistinguishedName, persistent);
+	}
+	
+	/** This is the base implementation for the two public start methods.
+	 * Either sharedSecret of caDistinguishedName must be null, can't use both! 
+	 * (But both can be null, this will indicate X.509 certificate authentication
+	 * with any valid certificate.)
+	 */
+	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
 			logger.error("Can not start connection, remoteHost not yet set");
 			return false;
@@ -171,19 +192,38 @@ public class IPSecConnection_Windows implements IPSecConnection {
 			byte[][] addrs = new byte[allLocalAddrs.size()][];
 			for (int i=0; i<addrs.length; i++) {
 				String localAddr = (String) allLocalAddrs.removeFirst();
+				// ouch, four different cases here: transport/tunnel and PSK/X.509
 				if (remoteNetwork == null) {
-					addPolicyPsk(handle,
-							addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
-							addressStringToByteArray(remoteHost), addressStringToByteArray("255.255.255.255"),
-							addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
-							CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+					if (sharedSecret != null) {
+						addPolicyPsk(handle,
+								addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
+								addressStringToByteArray(remoteHost), addressStringToByteArray("255.255.255.255"),
+								addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
+								CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+					}
+					else {
+						addPolicyCA(handle,
+								addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
+								addressStringToByteArray(remoteHost), addressStringToByteArray("255.255.255.255"),
+								addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
+								CIPHER_3DES, MAC_SHA1, true, caDistinguishedName);
+						}
 				}
 				else {
-					addPolicyPsk(handle,
-							addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
-							addressStringToByteArray(remoteNetwork), addressStringToByteArray(convertCidrMaskToAddressStyle(remoteNetmask)),
-							addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
-							CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+					if (sharedSecret != null) {
+						addPolicyPsk(handle,
+								addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
+								addressStringToByteArray(remoteNetwork), addressStringToByteArray(convertCidrMaskToAddressStyle(remoteNetmask)),
+								addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
+								CIPHER_3DES, MAC_SHA1, true, new String(Hex.encodeHex(sharedSecret)));
+					}
+					else {
+						addPolicyCA(handle,
+								addressStringToByteArray(localAddr), addressStringToByteArray("255.255.255.255"),
+								addressStringToByteArray(remoteNetwork), addressStringToByteArray(convertCidrMaskToAddressStyle(remoteNetmask)),
+								addressStringToByteArray(localAddr), addressStringToByteArray(remoteHost), 
+								CIPHER_3DES, MAC_SHA1, true, caDistinguishedName);
+					}
 				}
 			}
 			String policyId = registerPolicy(handle);
@@ -294,28 +334,17 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	protected static native boolean deactivatePolicy(String id);
 	protected static native boolean removePolicy(String id);
 	
-	/** This native method allows to import an X.509 certificate into the correct Windows certificate store
-	 * for use with IPSec authentication.
-	 * 
-	 * @param file The file name of the certificate to import. It must point to a PKCS#12 encoded file that
-	 *             contains the X.509 client certificate and the corresponding private key that should be used
-	 *             for authentication as well as the CA certificate chain up to the root CA certificate that
-	 *             represents the trusted path of the client certificate. The other end of the IPSec tunnel
-	 *             must present a certificate that has been signed by the same CA as the client certificate
-	 *             imported from this file.
-	 * @param password The password necessary to decrypt the PKCS#12 file.
-	 * @param overwriteExisting If true, existing certificates with the same common name and serial number and
-	 *                          signed by the same CA will be overwritten.
-	 * @return 0 if the certificates and the private key could be imported successfully, 
-	 *         1 if the file could not be found or opened,
-	 *         2 if the private key could not be decrypted (password mismatch),
-	 *         3 if it could not be decoded,
-	 *         4 if importing failed,
-	 *         5 if (at least one of the) certificates existed already and overwriteExisting was set to false
-	 *         5 if anything else went wrong (like parameter error).
+	/** This native method is used to implement the matching method from the
+	 * IPSecConnection interface.
 	 */
-	public static native int importCertificate(String file, String password, boolean oveŕwriteExisting);
+	protected static native int nativeImportCertificate(String file, String password, boolean overwriteExisting);
 	
+	/** Implementation based on nativeImportCertificate.
+	 * @see #nativeImportCertificate(String, String, boolean)
+	 */
+	public int importCertificate(String file, String password, boolean overwriteExisting) {
+		return nativeImportCertificate(file, password, overwriteExisting);
+	}
 	
 	
 	/////////////////////////// Test code begins here ////////////////////////////
@@ -324,7 +353,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 		System.out.println("Trying to import certificates into certificate store from file '" + 
 				file + "' with password '" + pass + "'");
 		
-		switch(importCertificate(file, pass, true)) {
+		switch(nativeImportCertificate(file, pass, true)) {
 		case 0: 
 			System.out.println("success");
 			break;
