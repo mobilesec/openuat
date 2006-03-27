@@ -24,7 +24,7 @@ import org.apache.commons.codec.binary.*;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-class IPSecConnection_Windows implements IPSecConnection {
+public class IPSecConnection_Windows implements IPSecConnection {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class);
 	
@@ -314,7 +314,7 @@ class IPSecConnection_Windows implements IPSecConnection {
 	 *         5 if (at least one of the) certificates existed already and overwriteExisting was set to false
 	 *         5 if anything else went wrong (like parameter error).
 	 */
-	protected static native int importCertificate(String file, String password, boolean oveŕwriteExisting);
+	public static native int importCertificate(String file, String password, boolean oveŕwriteExisting);
 	
 	
 	
