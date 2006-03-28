@@ -81,8 +81,19 @@ public class IPSecConnection_Factory {
     		}
     		System.out.println("Created class " + c + " from factory");
     		
-    		System.out.print("Starting connection to " + args[0] + ": ");
-    		System.out.print("init=" + c.init(args[0], false));
+    		String remoteHost = args[0];
+    		String remoteNet = null;
+    		int remoteMask = 0;
+    		if (args.length > 2) {
+    			remoteNet = args[1];
+    			remoteMask = Integer.parseInt(args[2]);
+    		}
+    		
+    		System.out.print("Starting connection to " + remoteHost + (remoteNet != null ? "net " + remoteNet + "/" + remoteMask : "") + ": ");
+    		if (remoteNet == null)
+    			System.out.print("init=" + c.init(remoteHost, false));
+    		else
+    			System.out.print("init=" + c.init(remoteHost, remoteNet, remoteMask));
     		System.out.println(", start=" + c.start(key, false));
 
     		System.in.read();
