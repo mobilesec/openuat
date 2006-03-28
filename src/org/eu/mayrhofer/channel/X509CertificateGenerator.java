@@ -99,7 +99,17 @@ import org.bouncycastle.x509.extension.SubjectKeyIdentifierStructure;
  */
 public class X509CertificateGenerator {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
+	//private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
+	
+	private static class logger {
+		static void debug(String msg) {
+			System.out.println(msg);
+		}
+		
+		static void info(String msg) {
+			System.out.println(msg);
+		}
+	}
 	
 	/** This method is used for signing the certificate. */
 	public static final String CertificateSignatureAlgorithm = "SHA1WithRSAEncryption";
@@ -431,12 +441,12 @@ public class X509CertificateGenerator {
 
         X509CertificateObject clientCert = new X509CertificateObject(new X509CertificateStructure(new DERSequence(v))); 
 		logger.debug("Verifying certificate for correct signature with CA public key");
-        if (caCert != null) {
+/*        if (caCert != null) {
         	clientCert.verify(caCert.getPublicKey());
         }
         else {
         	clientCert.verify(pubKey);
-        }
+        }*/
 
         // and export as PKCS12 formatted file along with the private key and the CA certificate 
 		logger.debug("Exporting certificate in PKCS12 format");

@@ -25,11 +25,9 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 import javax.crypto.Cipher;
-import javax.crypto.Mac;
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.PBEParameterSpec;
+//import javax.crypto.spec.PBEKeySpec;
+//import javax.crypto.spec.PBEParameterSpec;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
