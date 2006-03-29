@@ -105,8 +105,8 @@
 	       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="1.1" source="1.2" />
 	
 	<!-- Compile the BC openssl interoperability dependencies -->
-	<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
-	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.1" source="1.2" />
+	<!--<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
+	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.1" source="1.2" />-->
 	
 	<!-- Compile our own classes... -->
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
