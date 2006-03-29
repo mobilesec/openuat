@@ -11,14 +11,49 @@
 
 <project name="spatial-authentication" default="junit" basedir=".">
     <property name="src" location="src"/>
-    <property name="bin" location="bin"/>
+    <property name="build" location="src"/>
+    <property name="bin" location="${build}/bin"/>
     <property name="lib" location="lib"/>
+    <property name="nativelib" location="nativelib"/>
     <property name="dist" location="dist"/>
-    <property name="dist.mainclass" value="org.eu.mayrhofer.authentication.RelateAuthenticationProtocol"/>
-    <property name="jarfile" location="${dist}/${ant.project.name}.jar"/>
-    <property name="reports.tests" location="reports/tests"/>
+    <property name="dist.webstart" location="${dist}/webstart"/>
+    <property name="dist.javadoc" location="${dist}/javadoc"/>
+    <property name="reports" location="reports"/>
+    <property name="reports.tests" location="${reports}/tests"/>
+    <property name="thirdparty" location="thirdparty"/>
+    <property name="thirdparty-BC-core" location="${thirdparty}/bouncycastle-core-deps"/>
+    <property name="bin-BC-core" location="${build}/bin-bouncycastle-core"/>
+    <property name="thirdparty-BC-x509" location="${thirdparty}/bouncycastle-x509-deps"/>
+    <property name="bin-BC-x509" location="${build}/bin-bouncycastle-x509"/>
+    <property name="thirdparty-BC-openssl" location="${thirdparty}/bouncycastle-openssl-deps"/>
+    <property name="bin-BC-openssl" location="${build}/bin-bouncycastle-openssl"/>
     <property name="compile.debug" value="true"/>
 
+    <!-- these are the target JARs -->
+    <property name="dist.mainclass" value="org.eu.mayrhofer.authentication.RelateAuthenticationProtocol"/>
+    <property name="dist.mainclass.ipsecclient" value="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
+    <!-- This is just the core JAR file, implementing basic key agreement
+	 between hosts and the Relate authentication protocol. It has only 
+	 minor dependencies on crypto classes. -->
+    <property name="jarfile.core" location="${dist}/${ant.project.name}-core.jar"/>
+    <property name="dependencies.core" value="${thirdparty-BC-core}"/>
+    <!-- This one includes the secure channels package and the available
+	 implementations for secure channels. Since the IPSec secure 
+	 channel implementations can support X.509 certificates, this
+	 has huge dependencies on the X.509 support in Bouncycastle. 
+	 It of course needs the core. -->
+    <property name="jarfile.channels" location="${dist}/${ant.project.name}-channels.jar"/>
+    <property name="dependencies.channels" value="${thirdparty-BC-x509}"/>
+    <!-- And finally the applications. This needs the channels. -->
+    <property name="jarfile.apps" location="${dist}/${ant.project.name}-apps.jar"/>
+    <property name="dependencies.channels" value="${thirdparty-BC-openssl}"/>
+    <!-- This is the distribution bundle including everything, even the 
+    <property name="jarfile.distbundle" location="${dist}/${ant.project.name}-distbundle.jar"/>
+    <!-- the javadoc tree -->
+    <property name="zipfile.javadoc" location="${dist}/relate-doc.zip" />
+    <!-- the source tree, excluding files which can't be redistributed because of their license -->
+    <property name="zipfile.source" location="${dist}/relate-src.zip" />
+    
     <!-- for MIDP builds -->
     <property name="preverified" location="bin-preverified"/>
     <property name="midp_home" value="/opt/j2me/WTK2.2" />
@@ -32,14 +67,43 @@
     <!-- this can be used in a refid for classpaths -->
     <path id="lib.path">
         <fileset refid="lib.alljars"/>
+	<!-- We also need SWT to compile, but can't include it in the 
+	     distribution JAR because there are multiple OS versions. 
+	     Therefore, include it only in this class path but not in
+	     the JAR collection set. -->
+	<pathelement location="../relate/lib/linux/swt-3.1.1_gtk.linux.x86.jar"/>
     </path>
 
     <target name="compile" description="Compile code">
         <mkdir dir="${bin}"/>
-        <mkdir dir="${lib}"/>
+	<mkdir dir="${bin-BC-core}"/>
+	<mkdir dir="${bin-BC-x509}"/>
+	<mkdir dir="${bin-BC-openssl}"/>
+	
+	<!-- Compile the BC core dependencies -->
+	<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
+	       classpathref="lib.path" debug="${compile.debug}" target="1.1" source="1.2"/>
+	
+	<!-- Compile the BC X.509 dependencies -->
+	<javac srcdir="${thirdparty-BC-x509}" destdir="${bin-BC-x509}" includeAntRuntime="no"
+	       classpathref="lib.path" debug="${compile.debug}" target="1.1" source="1.2">
+	    <pathelement location="${bin-BC-core}"/>
+	</javac>
+	
+	<!-- Compile the BC openssl interoperability dependencies -->
+	<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
+	       classpathref="lib.path" debug="${compile.debug}" target="1.1" source="1.2">
+            <pathelement location="${bin-BC-core}"/>
+	    <pathelement location="${bin-BC-x509}"/>
+	</javac>
+	
+	<!-- Compile our own classes... -->
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
                classpathref="lib.path" debug="${compile.debug}" target="1.1" source="1.2">
-        </javac>
+	    <pathelement location="${bin-BC-core}"/>
+	    <pathelement location="${bin-BC-x509}"/>
+	    <pathelement location="${bin-BC-openssl}"/>
+	</javac>
     </target>
 
     <target name="compile-midp" description="Compile special classes for MIDP2.0">
@@ -52,27 +116,58 @@
     <target name="preverify" depends="compile">
         <mkdir dir="${preverified}" />
         <exec executable="${midp_home}/bin/preverify">
-				    <arg line="-classpath ${midp_libs}"/>
-				    <arg line="-d ${preverified}"/>
- 				    <arg line="${bin}"/>
-			  </exec>
+	    <arg line="-classpath ${midp_libs}"/>
+	    <arg line="-d ${preverified}"/>
+	    <arg line="${bin}"/>
+	</exec>
     </target>
 
     <target name="jar" depends="compile" description="Build jar">
         <mkdir dir="${dist}"/>
-        <jar jarfile="${jarfile}" basedir="${bin}" manifest="Manifest">
-            <!-- Merge library jars into final jar file -->
-            <!-- <zipgroupfileset refid="lib.jars"/> -->
+        <jar jarfile="${jarfile.core}" basedir="${bin}" manifest="S{src}/Manifest"
+	     update="false" duplicate="fail" index="true">
+	    <fileset dir="${bin}"
+                includes="org.eu.mayrhofer.authentication/**/*.class" />
+            <fileset dir="${bin-BC-core}" />
+	    <fileset dir="${src}" includes="*.properties" />
         </jar>
+    
+	<jar jarfile="${jarfile.channels}" basedir="${bin}" manifest="S{src}/Manifest"
+	     update="false" duplicate="fail" index="true">
+		<fileset dir="${bin}"
+			 includes="org.eu.mayrhofer.channel/**/*.class" />
+		<fileset dir="${bin-BC-x509}" />
+	</jar>
+    
+	<jar jarfile="${jarfile.apps}" basedir="${bin}" manifest="S{src}/Manifest"
+	     update="false" duplicate="fail" index="true">
+		<fileset dir="${bin}"
+			 includes="org.eu.mayrhofer.apps/**/*.class" />
+		<fileset dir="${bin-BC-openssl}" />
+	</jar>
+    
+	<jar jarfile="${jarfile.distbundle}" basedir="${bin}" manifest="S{src}/Manifest"
+	     update="false" duplicate="fail" index="true">
+		<fileset dir="${bin}" />
+ 		<fileset dir="${bin-BC-core}" />
+		<fileset dir="${bin-BC-x509}" />
+		<fileset dir="${bin-BC-openssl}" />
+		<fileset dir="${src}" includes="*.properties" />
+		<!-- Merge library jars into final jar file -->
+		<zipgroupfileset refid="lib.alljars" />
+		<fileset dir="${lib}" includes="*-copyright" />
+	</jar>
     </target>
 
     <target name="junit" depends="jar" description="Run unit tests">
 	    <mkdir dir="${reports.tests}"/>
-	    <junit printsummary="on" haltonfailure="true">
-		    <sysproperty key="java.library.path" value="nativelib/linux" />
+	    <junit printsummary="on" haltonfailure="true" haltonerror="true" showoutput="true" fork="true">
+		    <jvmarg value="-Djava.library.path=nativelib/linux" />
 		    <classpath>
 			    <fileset refid="lib.alljars"/>
-			    <pathelement location="${jarfile}"/>
+			    <pathelement location="${jarfile.core}"/>
+			    <pathelement location="${jarfile.channels}"/>
+			    <pathelement location="${jarfile.apps}"/>
 		    </classpath>
 		    <batchtest todir="${reports.tests}">
 			    <fileset dir="${src}">
@@ -100,6 +195,7 @@
       	<pathelement location="${lib}/wat-12.jar"/>
       </classpath>
     </taskdef>
+    
     <target name="installer" depends="junit" description="Create installers">
     	<nsis script="${dist}/windows.nsi" verbosity="4" nocd="yes">
         <define name="distdir" value="${dist}"/>
@@ -108,12 +204,101 @@
       </nsis>
     </target>
 
+<!--    <target name="dist-webstart" depends="jar" description="Create distribution for Java webstart">
+	    <mkdir dir="${dist.webstart}"/>-->
+	    <!-- Linux native libraries -->
+<!--	    <copy file="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar" 
+		  tofile="${dist.webstart}/swt-3.1_gtk.linux.x86.jar"/>
+	    <zip zipfile="${dist.webstart}/swt-3.1-native_gtk.linux.x86.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${thirdparty.nativelib}/linux/" includes="libswt*.so" />
+	    </zip>
+	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_linux.x86.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${thirdparty.nativelib}/linux/" includes="librxtxSerial.so" />
+	    </zip>-->
+	    
+	    <!-- Windows native libraries -->
+<!--	    <copy file="${lib}/win32/swt-3.1_win32.x86.jar" 
+		  tofile="${dist.webstart}/swt-3.1_win32.x86.jar"/>
+	    <zip zipfile="${dist.webstart}/swt-3.1-native_win32.x86.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${thirdparty.nativelib}/win32/" includes="swt*.dll" />
+	    </zip>
+	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_win32.x86.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${thirdparty.nativelib}/win32/" includes="rxtxSerial.dll" />
+	    </zip>-->
+	    
+	    <!-- MacOXX native libraries -->
+<!--	    <copy file="${lib}/macosx/swt-3.1_macosx.jar" 
+		  tofile="${dist.webstart}/swt-3.1_macosx.jar"/>
+	    <zip zipfile="${dist.webstart}/swt-3.1-native_macosx.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${thirdparty.nativelib}/macosx/" includes="libswt*.jnilib" />
+	    </zip>
+	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_macosx.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${thirdparty.nativelib}/macosx/" includes="librxtxSerial.jnilib" />
+	    </zip>-->
+	    
+	    <!-- and the relate distribution itself, including the JNLP file -->
+<!--	    <copy file="${jarfile.dist}" tofile="${dist.webstart}/relate-dist.jar" />
+	    <copy file="${dist}/relate.jnlp" tofile="${dist.webstart}/relate.jnlp" />-->
+	    
+	    <!-- the key was created with 
+		 "keytool -genkey -keystore dist/keystore -alias relate -validity 1500"
+		 with password "relate" for both the keystore and the key -->
+<!--	    <signjar alias="relate" storepass="relate" keystore="${dist}/keystore">
+		    <fileset dir="${dist.webstart}/" includes="*.jar"/>
+	    </signjar>-
+    </target>-->
+    
+    <target name="dist-javadoc" description="Create distribution files for the documentation (Javadoc)">
+	    <mkdir dir="${dist.javadoc}"/>
+	    <javadoc sourcepath="${src}" destdir="${dist.javadoc}" 
+		     packagenames="org.eu.mayrhofer.*"
+		     classpathref="lib.path"
+		     access="protected"
+		     version="true" author="true" source="1.5">
+		    <bottom><![CDATA[<i>2005-2006, Rene Mayrhofer.</i>]]></bottom>
+		    <link href="www.mayrhofer.eu.org"/>
+	    </javadoc>
+	    
+	    <!-- and also zip it up -->
+	    <zip zipfile="${zipfile.javadoc}" update="true" duplicate="fail">
+		    <fileset dir="${dist.javadoc}"/>
+	    </zip>
+    </target>
+    
+    <target name="dist-source" description="Create source distribution">
+	    <zip zipfile="${zipfile.source}" update="true" duplicate="fail">
+		    <fileset dir="." 
+			     includes="build.xml,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/keystore,dist/*.jnlp,thirdparty/bouncycastle/**/*"/>
+	    </zip>
+    </target>
+    
+    <target name="dist" depends="dist-webstart,dist-javadoc,dist-source"
+	    description="Create a complete distribution, including webstart, source, and docs"/>
+    
+<!--    <target name="deploy-webstart" depends="dist-webstart" 
+	    description="Upload the web start distribution files to the web server">
+	    <scp todir="root@ubicomp.lancs.ac.uk:/home/httpd/fileadmin/relate/webstart/"
+		 trust="false" failonerror="true">
+		    <fileset dir="${dist.webstart}"/>
+	    </scp>
+	    <sshexec host="ubicomp.lancs.ac.uk" username="root" trust="false" 
+		     failonerror="true" 
+		     command="chown www-data:www-data /home/httpd/fileadmin/relate/webstart/*"/>
+    </target>-->
 
     <target name="clean" description="Remove build and dist directories">
         <delete dir="${bin}"/>
+	<!-- <delete dir="${reports}"/> -->
         <delete>
-        	<fileset dir="${dist}" includes="*.jar"/>
+        	<fileset dir="${dist}" includes="*.jar,*.zip"/>
         </delete>
-				<delete dir="${reports.tests}"/>
+	<delete dir="${dist.webstart}"/>
+	<delete dir="${dist.javadoc}"/>
     </target>
 </project>
