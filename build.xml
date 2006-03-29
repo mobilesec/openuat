@@ -105,8 +105,8 @@
 	       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="1.1" source="1.2" />
 	
 	<!-- Compile the BC openssl interoperability dependencies -->
-	<!--<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
-	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.1" source="1.2" />-->
+	<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
+	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.1" source="1.2" />
 	
 	<!-- Compile our own classes... -->
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
@@ -132,25 +132,25 @@
 
     <target name="jar" depends="compile" description="Build jar">
         <mkdir dir="${dist}"/>
-        <jar jarfile="${jarfile.core}" basedir="${bin}" manifest="${src}/Manifest"
+        <jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 	    <fileset dir="${bin}"
-                includes="org.eu.mayrhofer.authentication/**/*.class" />
+                includes="org/eu/mayrhofer/authentication/**/*.class" />
             <fileset dir="${bin-BC-core}" />
 	    <fileset dir="${src}" includes="*.properties" />
         </jar>
     
-	<jar jarfile="${jarfile.channels}" basedir="${bin}" manifest="${src}/Manifest"
+	<jar jarfile="${jarfile.channels}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 		<fileset dir="${bin}"
-			 includes="org.eu.mayrhofer.channel/**/*.class" />
+			 includes="org/eu/mayrhofer/channel/**/*.class" />
 		<fileset dir="${bin-BC-x509}" />
 	</jar>
     
-	<jar jarfile="${jarfile.apps}" basedir="${bin}" manifest="${src}/Manifest"
+	<jar jarfile="${jarfile.apps}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 		<fileset dir="${bin}"
-			 includes="org.eu.mayrhofer.apps/**/*.class" />
+			 includes="org/eu/mayrhofer/apps/**/*.class" />
 		<fileset dir="${bin-BC-openssl}" />
 	</jar>
     
