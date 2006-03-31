@@ -20,6 +20,20 @@ import org.apache.commons.codec.binary.*;
 /** This is an implementation of a secure channel using Windows 2000/XP and the VPNtool
  * command line tool, which in turn invokes ipsecpol/ipseccmd command line tools. 
  * 
+ * This class expects the ipsec.exe command to tbe executable within the system path,
+ * so it is recommended to either augment the PATH variable or copy the simple ipsec.exe
+ * file e.g. to %SystemRoot%\System32. Additionally, this tool requires the Windows XP
+ * support tools to be installed for Windows XP or the ipsecpol.exe to be installed for
+ * Windows 2000. The latter can be downloaded from 
+ * http://www.microsoft.com/windows2000/techinfo/reskit/tools/existing/ipsecpol-o.asp,
+ * and the files Ipsecpol.exe, Ipsecutil.dll, and Text2pol.dll need to be installed
+ * and executable from the system path, e.g. again into %SystemRoot%\System32.
+ * The latter can not be downloaded without checking for a valid Windows XP license
+ * (from http://support.microsoft.com/?kbid=838079), but it is contained on the Windows 
+ * XP install CD under \SUPPORT\TOOLS. During installation, the "Complete" installation 
+ * option needs to be selected! Then simply copy the ipseccmd.exe again to the system 
+ * path, e.g. %SystemRoot%\System32.
+ * 
  * @author Rene Mayrhofer
  * @version 1.0
  */
@@ -198,7 +212,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 			writerConn.close();
 				
 			try {
-				Command.executeCommand(new String[] {"ipsec"}, null, tempPath);
+				Command.executeCommand(new String[] {"ipsec", "-nosleep"}, null, tempPath);
 				return true;
 			}
 			catch (ExitCodeException e) {
@@ -249,6 +263,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	
 	public boolean isEstablished() {
 		// how to check?
+		// TODO: use netdiag /test:ipsec /v /debug
 		return remoteHost != null;
 	}
 
