@@ -531,6 +531,7 @@ public class X509CertificateGenerator {
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception {
+		if (args.length > 0 && args[0].equals("newca"))
 		System.out.println(X509CertificateGenerator.createNewCa("My Test CA", 365, "ca.p12", "test password", "Test CA", true));
 		
 		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA", true).createCertificate("Test CN", 30, "test.p12", "test"));
