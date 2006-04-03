@@ -1,0 +1,41 @@
+<?xmlversion="1.0" encoding="utf-8"?>
+   <jnlp spec="1.0+" codebase="http://www.mayrhofer.eu.org/downloads/authentication/webstart/" href="IPSecConnectorClient.jnlp">
+       <information>
+               <title>IPSec Connector Client</title>
+               <vendor>Rene Mayrhofer</vendor>
+               <homepage href="http://www.mayrhofer.eu.org/authentication"/>
+               <description>IPSec Connector demo application, client part</description>
+               <description kind="short">Client part of the IPSec Connector demo application</description>
+               <offline-allowed/>
+               <icon kind="splash" href="IPSecConnectorClient-splash.gif"/>
+               <icon href="IPSecConnectorClient-icon.gif"/>
+       </information>
+       <security>
+                <all-permissions/>
+       </security>
+       <resources>
+                <j2se version="1.4+"/>
+                <jar href="spatial-authentication-apps.jar"/>
+                <jar href="spatial-authentication-channels.jar"/>
+                <jar href="spatial-authentication-core.jar"/>
+                <jar href="relatecore.jar"/>
+        </resources>
+        <resources os="Windows"> 
+                <jar href="swt-3.1_win32.x86.jar"/>
+                <nativelib href="swt-3.1-native_win32.x86.jar"/>
+                <nativelib href="rxtx-2.1-native_win32.x86.jar"/>
+                <nativelib href="ipsec-1.0-native_win32.x86.jar"/>
+        </resources>
+        <resources os="Linux"> 
+                <jar href="swt-3.1_gtk.linux.x86.jar"/>
+                <nativelib href="swt-3.1-native_gtk.linux.x86.jar"/>
+                <nativelib href="rxtx-2.1-native_linux.x86.jar"/>
+        </resources>
+        <resources os="MacOSX"> 
+                <jar href="swt-3.1-native_macosx.jar"/>
+                <nativelib href="swt-3.1-native_macosx.jar"/>
+                <nativelib href="rxtx-2.1-native_macosx.jar"/>
+        </resources>
+        <application-desc/>
+        <application-descmain-class="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
+</jnlp>
