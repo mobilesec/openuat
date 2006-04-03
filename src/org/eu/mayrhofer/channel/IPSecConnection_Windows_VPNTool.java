@@ -8,11 +8,14 @@
  */
 package org.eu.mayrhofer.channel;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.LinkedList;
+import java.util.Vector;
 
 import org.apache.log4j.Logger;
 import org.apache.commons.codec.binary.*;
@@ -48,7 +51,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	/** To remember the remoteNetwork and remoteNetmask parameters that were passed in init. 
 	 * @see #init(String, String, int)
 	 */
-	private String remoteNetwork;
+	private String remoteNetwork = null;
 	/** To store the temporary path where to create the config file. */
 	private String tempPath;
 
@@ -139,8 +142,14 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	/** Creates a new connection entry for Windows XP by creating a config file for and calling
 	 * ipsec.exe.
 	 * 
-	 * @param caDistinguishedName The CA that is used to sign the certificates, can be null
-	 *                            to accept any valid certificate.
+	 * @param caDistinguishedName The CA that is used to sign the certificates. It must be set,
+	 *                            because Windows will only use X.509 authentication when the
+	 *                            CA is explicitly specified. This string must be exactly in the
+	 *                            form accepted by Windows, e.g.
+	 *                            "C=AT,S=Upper Austria,L=Steyr,O=Gibraltar,OU=Gibraltar development,CN=Gibraltar firewall CA (created at 1143805227),Email=not specified"
+	 *                            or "CN=My Test CA", depending on which fields are specified in
+	 *                            the certificate. The first example can be used as reference for
+	 *                            the names and the order of the fields. 
 	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
 	 *                   it will be set to auto=add.
 	 */
@@ -150,12 +159,17 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	
 	/** This is the base implementation for the two public start methods.
 	 * Either sharedSecret of caDistinguishedName must be null, can't use both! 
-	 * (But both can be null, this will indicate X.509 certificate authentication
-	 * with any valid certificate.)
+	 * 
+	 * @see #start(byte[], boolean)
+	 * @see #start(String, boolean)
 	 */
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
 			logger.error("Can not start connection, remoteHost not yet set");
+			return false;
+		}
+		if (sharedSecret == null && caDistinguishedName == null) {
+			logger.error("Either sharedSecret or caDistringuishedName must be set");
 			return false;
 		}
 
@@ -194,6 +208,8 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				writerConn.write("    right=" + remoteHost + "\n");
 				// need to use start here unconditionally!
 				writerConn.write("    auto=" + "start" /*(persistent ? "start" : "add")*/ + "\n");
+				// this doesn't work - need to find out why
+				//writerConn.write("    rekey=120s/10000K");
 				if (sharedSecret != null) {
 					writerConn.write("    presharedkey=" + new String(Hex.encodeHex(sharedSecret)) + "\n");
 				}
@@ -205,7 +221,14 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				}
 				else {
 					writerConn.write("    type=tunnel\n");
-					writerConn.write("    rightsubnet=" + remoteNetwork + "\n");
+					// catch a special case: the any-subnet
+					if (remoteNetwork.equals("0.0.0.0/0")) {
+						logger.info("Detected special remote network '" + remoteNetwork + 
+								"', setting to '*'");
+						writerConn.write("    rightsubnet=*\n");
+					}
+					else
+						writerConn.write("    rightsubnet=" + remoteNetwork + "\n");
 				}
 				writerConn.flush();
 			}
@@ -213,6 +236,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				
 			try {
 				Command.executeCommand(new String[] {"ipsec", "-nosleep"}, null, tempPath);
+				// can not return isEstablished() here, because the actual connection can be delayed
 				return true;
 			}
 			catch (ExitCodeException e) {
@@ -257,21 +281,324 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 			return false;
 		}
 		
-		return true;
-		//return !isEstablished();
+		return !isEstablished();
 	}
 	
 	public boolean isEstablished() {
-		// how to check?
-		// TODO: use netdiag /test:ipsec /v /debug
+		if (remoteHost == null) {
+			logger.warn("Warning: isEstablished called before start, returning false");
+			return false;
+		}
+		
+		try {
+			String ret = Command.executeCommand(new String[] {"ipseccmd", "show", "sas"}, null, null);
+			SecurityAssociation[] sas = new SecurityAssociationParser(ret).parse();
+			if (sas == null) {
+				logger.error("Could not parse output of ipseccmd");
+				return false;
+			}
+		}
+		catch (ExitCodeException e) {
+			logger.error("Could not execute command: " + e);
+			return false;
+		}
+		catch (IOException e) {
+			logger.error("Could not execute command: " + e);
+			return false;
+		}
+		
 		return remoteHost != null;
 	}
+	
+	private class SecurityAssociation {
+		/** These are the tunnel endpoints (gateways), printed for Main Mode SA. */
+		public String gatewayFrom, gatewayTo;
+		/** These are the networks/addresses for the tunnel, printed for Quick Mode SA. */
+		public String networkFrom, networkTo;
+		/** Contains the description of the main mode offer (e.g. "3DES SHA1  DH Group 2"), 
+		 * printed for Main Mode SA. */
+		public String mainOffer;
+		/** Contains the description of the quick mode offer (e.g. 
+		 * "Encryption 3DES MD5 (24bytes/0rounds) (16secbytes/0secrounds)", 
+		 * printed for Quick Mode SA. */
+		public String quickOffer;
+		/** The local SPI value for this SA. */
+		public int localSpi;
+		/** The remote SPI value for this SA. */
+		public int peerSpi;
+		/** The maximum lifetime of the quick mode SA in KBytes, printed for Main Modes SA. */
+		public int quickLifetimeKB;
+		/** The maximum lifetime of the quick mode SA in seconds, printed for Main Modes SA. */
+		public int quickLifeTimeSec;
+		/** Contains the authentication description for main mode (e.g. "RSA (Cert) Signature"). */
+		public String mainAuth;
+		/** These two strings are used to match Main Mode SA with Quick Mode SA. */
+		public String initiatorCookie, responderCookie;
+		/** True if PFS is used, false otherwise. */
+		public boolean pfs;
+		// TODO: add support for parsing transport-mode connections
+		// TODO: add support for more specifiy protocol filter parsing
+	}
+	
+	private class SecurityAssociationParser {
+		private BufferedReader reader;
+		
+		public SecurityAssociationParser(String ipseccmdOutput) {
+			if (ipseccmdOutput == null) {
+				logger.error("Received null input");
+				throw new IllegalArgumentException("Can not deal with null String");
+			}
 
-	/** This implementation does nothing at the moment. 
-	 * TODO: implement me
+			BufferedReader r = new BufferedReader(new StringReader(ipseccmdOutput));
+		}
+		
+		// gets the next significant line (skipping blank and dashed lines)
+		private String getNextLine() throws IOException {
+			String line = reader.readLine();
+			while (line != null && (line.equals("") || line.startsWith("----")))
+				line = reader.readLine();
+			return line;
+		}
+		
+		public SecurityAssociation[] parse() throws IOException {
+			Vector mainSas = new Vector(), completeSas = new Vector();
+
+			String line = getNextLine();
+			if (line.equals("Main Mode SAs")) {
+				logger.debug("Found start of Main Mode SAs");
+			}
+			else {
+				logger.error("Expected start of Main Mode SAs, but got '" + line + "'");
+				return null;
+			}
+			
+			line = getNextLine();
+			while (line != null && line.startsWith("Main Mode SA #")) {
+				SecurityAssociation sa = new SecurityAssociation();
+				int saNum = Integer.parseInt(line.substring(14, 
+						line.indexOf(':')));
+				logger.debug("Parsing Main Mode SA number " + saNum);
+				line = getNextLine();
+				if (!line.startsWith(" From ")) {
+					logger.error("Expected From description in Main mode, but got '" + line + "'");
+					return null;
+				}
+				sa.gatewayFrom = line.substring(6);
+				logger.info("  from " + sa.gatewayFrom);
+				
+				line = getNextLine();
+				if (!line.startsWith("  To 	 ")) {
+					logger.error("Expected To description in Main mode, but got '" + line + "'");
+					return null;
+				}
+				sa.gatewayTo = line.substring(6);
+				logger.debug("  to " + sa.gatewayTo);
+				
+				// skip the "Policy Id" line
+				getNextLine();
+				
+				line = getNextLine();
+				if (!line.equals(" Offer Used : ")) {
+					logger.error("Expected Offer description in Main mode, but got '" + line + "'");
+					return null;
+				}
+				line = getNextLine();
+				sa.mainOffer = line.substring(1);
+				logger.debug("  offer " + sa.mainOffer);
+				line = getNextLine();
+				sa.quickLifetimeKB = Integer.parseInt(line.substring(
+						line.indexOf("Lifetime")+9, line.indexOf("Kbytes")));
+				sa.quickLifeTimeSec = Integer.parseInt(line.substring(
+						line.indexOf('/')+1, line.indexOf("seconds")));
+				logger.debug("  lifetime " + sa.quickLifetimeKB + "KB/" + sa.quickLifeTimeSec + "s");
+				
+				line = getNextLine();
+				if (!line.startsWith(" Auth Used : ")) {
+					logger.error("Expected Auth description in Main mode, but got '" + line + "'");
+					return null;
+				}
+				sa.mainAuth = line.substring(13);
+				logger.debug("  auth " + sa.mainAuth);
+				
+				line = getNextLine();
+				if (!line.startsWith(" Initiator cookie ")) {
+					logger.error("Expected Initiator Cookie in Main mode, but got '" + line + "'");
+					return null;
+				}
+				sa.initiatorCookie = line.substring(18);
+				logger.debug("  initiator cookie " + sa.initiatorCookie);
+
+				line = getNextLine();
+				if (!line.startsWith(" Responder cookie ")) {
+					logger.error("Expected Responder Cookie in Main mode, but got '" + line + "'");
+					return null;
+				}
+				sa.responderCookie = line.substring(18);
+				logger.debug("  responder cookie " + sa.responderCookie);
+				
+				// and skip the encap line
+				line = getNextLine();
+				
+				// but remember the main SA
+				mainSas.add(sa);
+			}
+
+			if (line.equals("Quick Mode SAs")) {
+				logger.debug("Found start of Quick Mode SAs");
+			}
+			else {
+				logger.error("Expected start of Quick Mode SAs, but got '" + line + "'");
+				return null;
+			}
+			
+			line = getNextLine();
+			while (line != null && line.startsWith("Quick Mode SA #")) {
+				int saNum = Integer.parseInt(line.substring(15, 
+						line.indexOf(':')));
+				logger.debug("Parsing Quick Mode SA number " + saNum);
+				
+				// skip Filter Id and next line
+				getNextLine();
+				getNextLine();
+				
+				line = getNextLine();
+				if (!line.startsWith(" From ")) {
+					logger.error("Expected From description in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				// can't find the matching main mode SA now, so remember temporarily
+				String from = line.substring(6);
+				logger.debug("  from " + from);
+				
+				line = getNextLine();
+				if (!line.startsWith("  To  ")) {
+					logger.error("Expected To description in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				String to = line.substring(6);
+				// but correct special "Any" case
+				if (to.equals("Any")) {
+					logger.debug("Detected special 'Any' remote subnet, normalizing");
+					to = "0.0.0.0/0";
+				}
+				logger.debug("  to " + to);
+				
+				// skip protocol filter and direction lines
+				getNextLine();
+				getNextLine();
+				
+				line = getNextLine();
+				if (!line.startsWith(" Tunnel From ")) {
+					logger.error("Expected Tunnel From description in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				String tunnelFrom = line.substring(13);
+				logger.debug("  tunnel from " + tunnelFrom);
+				
+				line = getNextLine();
+				if (!line.startsWith(" Tunnel To ")) {
+					logger.error("Expected Tunnel To description in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				String tunnelTo = line.substring(13);
+				logger.debug("  tunnel to " + tunnelTo);
+
+				// skip the "Policy Id" line
+				getNextLine();
+				
+				line = getNextLine();
+				if (!line.equals(" Offer Used : ")) {
+					logger.error("Expected Offer description in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				line = getNextLine();
+				String quickOffer = line.substring(line.indexOf(":"+2));
+				logger.debug("  offer " + quickOffer);
+				line = getNextLine();
+				int localSpi = Integer.parseInt(line.substring(
+						line.indexOf("MySpi")+6, line.indexOf("PeerSpi")-1));
+				int peerSpi = Integer.parseInt(line.substring(
+						line.indexOf("PeerSpi")+1));
+				logger.debug("  local spi " + localSpi + " peer spi " + peerSpi);
+
+				line = getNextLine();
+				if (!line.startsWith("\tPFS : ")) {
+					logger.error("Expected PFS description in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				boolean pfs;
+				if (line.substring(7, 11).equals("True"))
+					pfs = true;
+				else if (line.substring(7, 12).equals("False"))
+					pfs = false;
+				else {
+					logger.error("Can't parse PFS value from line '" + line + "'");
+					return null;
+				}
+				logger.debug("  pfs " + pfs);
+				
+				line = getNextLine();
+				if (!line.startsWith(" Initiator cookie ")) {
+					logger.error("Expected Initiator Cookie in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				String initiatorCookie = line.substring(18);
+				logger.debug("  initiator cookie " + initiatorCookie);
+
+				line = getNextLine();
+				if (!line.startsWith(" Responder cookie ")) {
+					logger.error("Expected Responder Cookie in Quick mode, but got '" + line + "'");
+					return null;
+				}
+				String responderCookie = line.substring(18);
+				logger.debug("  responder cookie " + responderCookie);
+				
+				// ok, parsed all fields, now try to find the matching Main Mode SA
+				boolean matched = false;
+				for (int i=0; i<mainSas.size(); i++) {
+					SecurityAssociation sa = (SecurityAssociation) mainSas.get(i);
+					if (sa.gatewayFrom.equals(tunnelFrom) &&
+						sa.gatewayTo.equals(tunnelTo) &&
+						sa.initiatorCookie == initiatorCookie &&
+						sa.responderCookie == responderCookie) {
+						logger.debug("Found matching Main Mode SA");
+						sa.networkFrom = from;
+						sa.networkTo = to;
+						sa.quickOffer = quickOffer;
+						sa.localSpi = localSpi;
+						sa.peerSpi = peerSpi;
+						sa.pfs = pfs;
+						
+						completeSas.add(sa);
+						matched = true;
+						break;
+					}
+				}
+				if (!matched) {
+					logger.error("Could not find matching Main Mode SA while parsing Quick Mode SA");
+					return null;
+				}
+			}
+			
+			// and the last sanity check
+			line = getNextLine();
+			if (!line.equals("The command completed successfully.")) {
+				logger.error("Did not get final command completed message");
+				return null;
+			}
+			
+			SecurityAssociation[] saArray = new SecurityAssociation[completeSas.size()];
+			for (int i=0; i<completeSas.size(); i++)
+				saArray[i] = (SecurityAssociation) completeSas.get(i);
+			return saArray;
+		}
+	}
+	
+	/** This implementation calls IPSecConnection_Windows.importCertificate to use
+	 * the native method to access the Windows certificate store.
 	 */
 	public int importCertificate(String file, String password, boolean overwriteExisting) {
-		return -1;
+		return IPSecConnection_Windows.nativeImportCertificate(file, password, overwriteExisting);
 	}
 	
 	public void dispose() {
