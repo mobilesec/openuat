@@ -89,7 +89,6 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 * @throws DongleException 
 	 */
 	public static void main(String[] args) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
-		// TODO Auto-generated method stub
 		/* Before this is run, be sure to set up the launch configuration (Arguments->VM Arguments)
 		 * for the correct SWT library path in order to run with the SWT dlls. 
 		 * The dlls are located in the SWT plugin jar.  
@@ -97,9 +96,14 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
 		Display display = Display.getDefault();
-		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin("/dev/ttyUSB0", 
-				"/tmp/ca.p12", "test password", "Test CA", "/tmp/ipsec-conf.xml");
+		// TODO: hard-coding is not nice...
+		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(null, //"/dev/ttyUSB0", 
+				"ca.p12", "test password", "Test CA", "ipsec-conf.xml");
 		thisClass.sShell.open();
+		
+		// test code
+		if (args.length > 0)
+			thisClass.auth.startAuthentication(args[0], (byte) 0, 2);
 
 		while (!thisClass.sShell.isDisposed()) {
 			if (!display.readAndDispatch())
@@ -129,6 +133,15 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			logger.error("Could not load IPSec configuration from " + configFilename);
 			// TODO: display an error message and abort
 			System.exit(2);
+		}
+		
+		// and if the CA DN is not pre-set, fetch it from the CA
+		if (config.getCaDistinguishedName() == null) {
+			config.setCaDistinguishedName(certGenerator.getCaDistinguishedName());
+			logger.info("Set CA distinguished name from loaded CA: '" + config.getCaDistinguishedName() + "'");
+		}
+		else {
+			logger.info("Using pre-set CA distinguished name: '" + config.getCaDistinguishedName() + "'");
 		}
 	}
 

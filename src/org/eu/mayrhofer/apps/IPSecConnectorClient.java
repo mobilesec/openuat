@@ -74,7 +74,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
 		Display display = Display.getDefault();
-		IPSecConnectorClient thisClass = new IPSecConnectorClient("/dev/ttyUSB0");
+		IPSecConnectorClient thisClass = new IPSecConnectorClient(null /*"/dev/ttyUSB0"*/);
 		thisClass.sShell.open();
 
 		while (!thisClass.sShell.isDisposed()) {
@@ -242,6 +242,8 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			// TODO: display error message
 			return;
 		}
+		
+		// TODO: display the certificate and CA (!!!) details (at least some of them) and connection setting and ask to user to continure
 
 		// and import into the registry (overwriting existing certificates)
 		IPSecConnection conn = IPSecConnection_Factory.getImplementation();
@@ -250,7 +252,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		
 		// finally, everything is in place, start the IPSec connection
 		conn.init(config.getGateway(), config.getRemoteNetwork(), config.getRemoteNetmask());
-		// TODO: fetch the CA distinguished name from the certificate and use it here
-		conn.start((String) null, true);
+		// TODO: make the persistent flag configurable
+		conn.start(config.getCaDistinguishedName(), true);
 	}
 }
