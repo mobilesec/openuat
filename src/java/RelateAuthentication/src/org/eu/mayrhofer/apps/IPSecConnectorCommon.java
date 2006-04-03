@@ -79,6 +79,11 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 	 */
 	protected Display display;
 
+	/** @param adminEnd Should be set to true on the admin side (i.e. for IPSecConnectorAdmin) and false for the
+	 * 					client side (i.e. for IPSecConnectorClient).
+	 * @param serialPort The serial port to use. A special value of null means that we are in simulation mode and
+	 *                   not using any dongles at all (just assuming that dongle authentication always succeeds).
+	 */
 	protected IPSecConnectorCommon(boolean adminEnd, String serialPort) 
 			throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
 		this.adminEnd = adminEnd;
@@ -88,8 +93,16 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			PropertyConfigurator.configure("log4j.properties");
 		}
 		
-        EventDispatcher.getDispatcher(new String[] {serialPort});
-        manager = new MeasurementManager(serialPort);
+		if (serialPort != null) {
+			logger.info("Initializing with serial port " + serialPort);
+	        EventDispatcher.getDispatcher(new String[] {serialPort});
+	        manager = new MeasurementManager(serialPort);
+		}
+		else {
+			logger.warn("Initializing in simulation mode without dongles");
+			manager = null;
+			RelateAuthenticationProtocol.setSimulationMode(true);
+		}
 		auth = new RelateAuthenticationProtocol(serialPort, manager, !adminEnd, true, null);
 		auth.addAuthenticationProgressHandler(this);
 		
