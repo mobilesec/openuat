@@ -94,7 +94,10 @@ public class IPSecConnection_Factory {
     			System.out.print("init=" + c.init(remoteHost, false));
     		else
     			System.out.print("init=" + c.init(remoteHost, remoteNet, remoteMask));
-    		System.out.println(", start=" + c.start(key, false));
+    		if (args.length > 3)
+    			System.out.println(", start=" + c.start(args[3], false));
+    		else
+    			System.out.println(", start=" + c.start(key, false));
 
     		System.in.read();
     		
