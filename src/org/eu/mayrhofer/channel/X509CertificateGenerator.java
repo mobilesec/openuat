@@ -109,6 +109,10 @@ public class X509CertificateGenerator {
 		static void info(String msg) {
 			System.out.println(msg);
 		}
+
+		static void error(String msg) {
+			System.out.println(msg);
+		}
 	}
 	
 	/** This method is used for signing the certificate. */
@@ -253,12 +257,26 @@ public class X509CertificateGenerator {
 		}
 
 		if (caCert == null) {
+			logger.error("Got null certificate from keystore, initialization failed");
 			throw new RuntimeException("Got null cert from keystore!"); 
 		}
 		
 		logger.debug("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
 		caCert.verify(caCert.getPublicKey());
 		logger.debug("Successfully verified CA certificate with its own public key.");
+	}
+	
+	/** Returns the distinguished name of the CA used to sign the newly generated certificates.
+	 * This is important e.g. when using the new certificates for IPSec connections under
+	 * Windows 2000/XP, because the CA DN must be specified for such connections.
+	 * @return The CA DN.
+	 */
+	public String getCaDistinguishedName() {
+		if (caCert == null) {
+			logger.error("CA has not been loaded properly, can not get distinguished name");
+			return null;
+		}
+		return caCert.getSubjectDN().toString();
 	}
 	
 	/** This method should create something similar to:
