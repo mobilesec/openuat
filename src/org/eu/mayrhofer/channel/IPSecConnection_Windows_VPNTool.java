@@ -297,6 +297,20 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				logger.error("Could not parse output of ipseccmd");
 				return false;
 			}
+			
+			// and just check if "our" connection is among the returned
+			for (int i=0; i<sas.length; i++) {
+				if (sas[i].gatewayFrom.equals(remoteHost) && 
+						(remoteNetwork == null || sas[i].networkTo.equals(remoteNetwork))) {
+					logger.info("Connection to host " + remoteHost + 
+							(remoteNetwork != null ? ", network " + remoteNetwork : "") +
+							" found: local SPI " + sas[i].localSpi + 
+							", peer SPI " + sas[i].peerSpi);
+					return true;
+				}
+			}
+			// not found
+			return false;
 		}
 		catch (ExitCodeException e) {
 			logger.error("Could not execute command: " + e);
@@ -306,8 +320,6 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 			logger.error("Could not execute command: " + e);
 			return false;
 		}
-		
-		return remoteHost != null;
 	}
 	
 	private class SecurityAssociation {
@@ -349,7 +361,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				throw new IllegalArgumentException("Can not deal with null String");
 			}
 
-			BufferedReader r = new BufferedReader(new StringReader(ipseccmdOutput));
+			reader = new BufferedReader(new StringReader(ipseccmdOutput));
 		}
 		
 		// gets the next significant line (skipping blank and dashed lines)
@@ -441,6 +453,10 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				
 				// but remember the main SA
 				mainSas.add(sa);
+			}
+			if (line.equals("No SAs")) {
+				logger.debug("No Main Mode SAs set");
+				line = getNextLine();
 			}
 
 			if (line.equals("Quick Mode SAs")) {
@@ -579,10 +595,13 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 					return null;
 				}
 			}
+			if (line.equals("No SAs")) {
+				logger.debug("No Quick Mode SAs set");
+				line = getNextLine();
+			}
 			
 			// and the last sanity check
-			line = getNextLine();
-			if (!line.equals("The command completed successfully.")) {
+			if (line == null || !line.equals("The command completed successfully.")) {
 				logger.error("Did not get final command completed message");
 				return null;
 			}
