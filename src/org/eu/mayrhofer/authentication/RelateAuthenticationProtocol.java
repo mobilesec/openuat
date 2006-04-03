@@ -64,7 +64,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * so that it's possible to turn statistics on an off independently.
 	 */
 	private static Logger statisticsLogger = Logger.getLogger("statistics.relateauthentication");
-
+	
 	public static final int TcpPort = 54321;
 	
 	/** Possible value of state, indicates that the authentication has not been started yet. 
@@ -88,6 +88,12 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	 * @see #state 
 	 */
 	private final static int STATE_FAILED = 5;
+	
+	/** If set to true, then all the code will run without communicating with a dongle. This is helpful
+	 * for simulation the authentication without the actual dongle. It can be used for debugging and
+	 * testing.
+	 */
+	private static boolean simulation = false;
 	
 	/** The current state of the spatial authentication, one of STATE_IDLE,
 	 * STATE_HOST_AUTH_RUNNING, STATE_DONGLE_AUTH_RUNNING, STATE_SUCCEEDED, STATE_FAILED.
@@ -288,8 +294,11 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
 				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) 
 			throws ConfigurationErrorException, InternalApplicationException {
-		this.serialPort = serialPort;
-		this.manager = manager;
+		if (!simulation) {
+			// when simulating, we won't have these
+			this.serialPort = serialPort;
+			this.manager = manager;
+		}
 		this.useJSSE = useJSSE;
 		this.keepSocketConnected = keepSocketConnected;
 		this.relateEventHandler = relateEventHandler;
@@ -378,32 +387,37 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		
 		state = STATE_HOST_AUTH_RUNNING;
 		
-		// this code block only gets our local relate id so that it can be transmitted to the other host
-		SerialConnector serialConn;
-		try {
-			// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-			serialConn = SerialConnector.getSerialConnector(serialPort);
-			logger.info("-------- connected successfully to dongle at port " + serialPort + ", including first handshake. My ID is " + serialConn.getLocalRelateId());
-		}
-		catch (DongleException e) {
-			logger.error("-------- failed to connect to dongle at port " + serialPort + ", didn't get my ID.");
-			//throw new ConfigurationErrorException("Can't connect to dongle.", e);
-			return false;
-		}
+		int localRelateId = -1;
+		if (!simulation) {
+			// this code block only gets our local relate id so that it can be transmitted to the other host
+			SerialConnector serialConn;
+			try {
+				// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
+				serialConn = SerialConnector.getSerialConnector(serialPort);
+				logger.info("-------- connected successfully to dongle at port " + serialPort + ", including first handshake. My ID is " + serialConn.getLocalRelateId());
+			}
+			catch (DongleException e) {
+				logger.error("-------- failed to connect to dongle at port " + serialPort + ", didn't get my ID.");
+				// throw new ConfigurationErrorException("Can't connect to dongle.", e);
+				return false;
+			}
 		
-		/* This is simple in the implementation, because we just need to start the
-		 * host authentication here. When that suceeds, the event handler will 
-		 * continue to start the dongle authentication.
-		 */ 
-		int localRelateId = serialConn.getLocalRelateId();
-		if (localRelateId == -1)
-			//throw new InternalApplicationException("Dongle reports id -1, which is an error case.");
-			return false;
+			/* This is simple in the implementation, because we just need to start the
+			 * host authentication here. When that suceeds, the event handler will 
+			 * continue to start the dongle authentication.
+			 */ 
+			localRelateId = serialConn.getLocalRelateId();
+			if (localRelateId == -1)
+				//throw new InternalApplicationException("Dongle reports id -1, which is an error case.");
+				return false;
 
-		/* And remember the last reference measurement taken to the remote relate id for
-		 * future use (i.e. computing the delays).
-		 */
-		referenceMeasurement = fetchReferenceMeasurement(remoteRelateId);
+			/* And remember the last reference measurement taken to the remote relate id for
+			 * future use (i.e. computing the delays).
+			 */
+			referenceMeasurement = fetchReferenceMeasurement(remoteRelateId);
+		}
+		else
+			logger.warn("Skipping to get local relate id and reference measurement due to simulation mode");
 		
 		// create the optional parameter object to pass, consisting of the relate id and the number of rounds
 		String param = Integer.toString(localRelateId) + " " + Integer.toString(rounds);
@@ -511,16 +525,23 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	         */
 	        socketToRemote = (Socket) res[3];
 
-	        // and use the agreed authentication key to start the dongle authentication
-	        logger.debug("Starting dongle authentication at dongle " + serialPort + " with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
-	        DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, otherRelateId, useJSSE);
-	        dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
-	        state = STATE_DONGLE_AUTH_RUNNING;
-	        /* IMPORTANT NOTE: this uses the authentication key, and not the shared secret on purpose! The
-	         * authentication key is used for no other purpose, so even a problem with the protocol should
-	         * not reveal the shared secret key.
-	         */
-	        dh.startAuthentication((byte[]) res[1], rounds, referenceMeasurement);
+	        if (!simulation) {
+	        	// and use the agreed authentication key to start the dongle authentication
+	        	logger.debug("Starting dongle authentication at dongle " + serialPort + " with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
+	        	DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, otherRelateId, useJSSE);
+	        	dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler(rounds));
+	        	state = STATE_DONGLE_AUTH_RUNNING;
+	        	/* IMPORTANT NOTE: this uses the authentication key, and not the shared secret on purpose! The
+	        	 * authentication key is used for no other purpose, so even a problem with the protocol should
+	        	 * not reveal the shared secret key.
+	        	 */
+	        	dh.startAuthentication((byte[]) res[1], rounds, referenceMeasurement);
+	        }
+	        else {
+	        	logger.warn("Skipping to start dongle authentication with " + rounds + " rounds due to simulation mode, assuming immediate authentication success");
+	        	state = STATE_DONGLE_AUTH_RUNNING;
+	        	new DongleAuthenticationEventHandler(rounds).AuthenticationSuccess(null, new Integer(-1), null);
+	        }
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
@@ -610,49 +631,55 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 */
 		private String remoteStatusExchange(Object remote, String reportToRemote) {
 			try {
-	        		BufferedReader fromRemote = new BufferedReader(new InputStreamReader(socketToRemote.getInputStream()));
-	        		// this enables auto-flush
-	        		PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
-	        		toRemote.println(reportToRemote);
-	        		toRemote.flush();
-	        		String remoteStatus = fromRemote.readLine();
-	        		if (remoteStatus == null) {
-	        			logger.error("Could not get status message from remote host at port " + serialPort + "");
-	        			logFailure("Could not get status message from remote host at port " + serialPort + "");
-	        			authenticationFailed(remote, null, "Could not get status message from remote host");
-	        		}
-	        		return remoteStatus;
+        		BufferedReader fromRemote = new BufferedReader(new InputStreamReader(socketToRemote.getInputStream()));
+        		// this enables auto-flush
+        		PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
+        		toRemote.println(reportToRemote);
+        		toRemote.flush();
+        		String remoteStatus = fromRemote.readLine();
+        		if (remoteStatus == null) {
+        			logger.error("Could not get status message from remote host at port " + serialPort + "");
+        			logFailure("Could not get status message from remote host at port " + serialPort + "");
+        			authenticationFailed(remote, null, "Could not get status message from remote host");
+        		}
+        		return remoteStatus;
 	        }
 	        catch (IOException e) {
-        			logger.error("Could not report success to remote host or get status message from remote host (at port " + serialPort + "): " + e);
-        			logFailure(e.toString());
-        			authenticationFailed(remote, e, "Could not report success to remote host or get status message from remote host");
-        			// don't forget to close our side of the socket properly, even if communication failed already
-        			closeSocket();
-        			return null;
+	        	logger.error("Could not report success to remote host or get status message from remote host (at port " + serialPort + "): " + e);
+	        	logFailure(e.toString());
+	        	authenticationFailed(remote, e, "Could not report success to remote host or get status message from remote host");
+	        	// don't forget to close our side of the socket properly, even if communication failed already
+	        	closeSocket();
+	        	return null;
 	        }
 		}
 		
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-	    		if (state != STATE_DONGLE_AUTH_RUNNING) {
-	    			logger.error("Received dongle authentication success event with remote id " + remote + 
+	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
+	    		logger.error("Received dongle authentication success event with remote id " + remote + 
 	    				" while not expecting one! This event will be ignored.");
-	    			return;
-	    		}
+	    		return;
+	    	}
 			
-	        logger.info("Received dongle authentication success event at port " + serialPort + " with id " + remote);
+	    	logger.info("Received dongle authentication success event at port " + serialPort + " with id " + remote);
 	        
-	        // before forwarding the success event, send a success message to the remote and wait for its success message
-        		DongleProtocolHandler h = (DongleProtocolHandler) sender;
+	    	String localTimes = "";
+	    	DongleProtocolHandler h = null;
+	    	if (!simulation) {
+	    		// before forwarding the success event, send a success message to the remote and wait for its success message
+        		h = (DongleProtocolHandler) sender;
     			// (also report the time it took on this side to the remote)
-        		String remoteStatus = remoteStatusExchange(remote,
-        				Protocol_Success + h.getSendCommandTime() + " " + h.getDongleInterlockTime());
-        		if (remoteStatus != null) {
-	        		if (remoteStatus.startsWith(Protocol_Success)) {
-	        			logger.info("Received success status from remote host at port " + serialPort + "");
+        		localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
+	    	}
+	    	String remoteStatus = remoteStatusExchange(remote, Protocol_Success + localTimes);
+        		
+	    	if (remoteStatus != null) {
+	    		if (remoteStatus.startsWith(Protocol_Success)) {
+	    			logger.info("Received success status from remote host at port " + serialPort + "");
 
 			        state = STATE_SUCCEEDED;
-			        logSuccess(h, remoteStatus);
+			        if (!simulation)
+			        	logSuccess(h, remoteStatus);
 			        /* for sending the success events, first figure out both aspects of the remote host
 			           (i.e. the IP address and the Relate id) */
 			        // since we are in a DongleAuthenticationHandler right now, this must be an Integer object...
@@ -663,13 +690,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 			        if (!keepSocketConnected)
 				        /* our result object is here the secret key that is shared (host authentication) 
 				           and now spatially authenticated (dongle authentication) */
-			        		raiseAuthenticationSuccessEvent(remoteParam, sharedKey);
+			        	raiseAuthenticationSuccessEvent(remoteParam, sharedKey);
 			        else
-			        		/* It has been requested that the socket be kept open, so pass it over
-			        		 * in addition to the shared secret key.
-			        		 * As we need to pass two parameters in this case, again use an array...
-			        		 */
-			        		raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, socketToRemote});
+			        	/* It has been requested that the socket be kept open, so pass it over
+			        	 * in addition to the shared secret key.
+			        	 * As we need to pass two parameters in this case, again use an array...
+			        	 */
+			        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, socketToRemote});
 			        		
 					if (relateEventHandler != null)
 						relateEventHandler.success(serialPort, remoteAddrPart.getHostAddress(), 
@@ -677,28 +704,28 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 					// if the socket is not going to be re-used, don't forget to close it properly
 					if (!keepSocketConnected)
 						closeSocket();
-	        		}
-	        		else if (remoteStatus.startsWith(Protocol_Failure)) {
-	        			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed at port " + serialPort + ".");
-			        logFailure("Received authentication failure status from remote host");
-	        			authenticationFailed(remote, null, "Received authentication failure status from remote host");
-	        			// no need to keep the socket around in any case - close it properly
-		        		closeSocket();
-	        		}
-	        		else {
-	        			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "') at port " + serialPort);
-	        		}
-        		} // if remoteStatus == null, just ignore here because the helper already fired the failure event
+	    		}
+	    		else if (remoteStatus.startsWith(Protocol_Failure)) {
+	    			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed at port " + serialPort + ".");
+	    			logFailure("Received authentication failure status from remote host");
+	    			authenticationFailed(remote, null, "Received authentication failure status from remote host");
+	    			// no need to keep the socket around in any case - close it properly
+	    			closeSocket();
+	        	}
+	    		else {
+	    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "') at port " + serialPort);
+	        	}
+	    	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
 	        reset();
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
-	    		if (state != STATE_DONGLE_AUTH_RUNNING) {
-	    			logger.error("Received dongle authentication failure event with remote id " + remote + 
-	    				" while not expecting one! This event will be ignored.");
-	    			return;
-	    		}
+	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
+	    		logger.error("Received dongle authentication failure event with remote id " + remote + 
+	    			" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.info("Received dongle authentication failure event at port " + serialPort + " with id " + remote);
 	        if (e != null)
@@ -706,32 +733,35 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        if (msg != null)
 	            logger.info("Message: " + msg);
 	        
-	        // and also send an authentication failed status to the remote
-	        DongleProtocolHandler h = (DongleProtocolHandler) sender;
-	        String remoteStatus = remoteStatusExchange(remote,
-	        		Protocol_Failure + h.getSendCommandTime() + " " + h.getDongleInterlockTime());
+	        String localTimes = "";
+	        if (!simulation) {
+	        	// and also send an authentication failed status to the remote
+	        	DongleProtocolHandler h = (DongleProtocolHandler) sender;
+	        	localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
+	        }
+	        String remoteStatus = remoteStatusExchange(remote, Protocol_Failure + localTimes);
 	        if (remoteStatus.startsWith(Protocol_Success)) {
-    				logger.info("Received success status from remote host at port " + serialPort + " after reporting local failure");
+	        	logger.info("Received success status from remote host at port " + serialPort + " after reporting local failure");
 	        } else if (remoteStatus.startsWith(Protocol_Failure)) { 
-	        		logger.info("Received failure status from remote host to match local failure at port " + serialPort + " ."
-	        				+ "Good that we agreed.");
+	        	logger.info("Received failure status from remote host to match local failure at port " + serialPort + " ."
+	        			+ "Good that we agreed.");
 	        } else {
-	        		logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "') at port " + serialPort);
-	        	}
+	        	logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "') at port " + serialPort);
+	        }
   			// no need to keep the socket around in any case - close it properly
-        		closeSocket();
+	        closeSocket();
 
-        		logFailure((e != null ? e.toString() : "") + "/" + msg);
+	        logFailure((e != null ? e.toString() : "") + "/" + msg);
 	        authenticationFailed(remote, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
-	    		if (state != STATE_DONGLE_AUTH_RUNNING) {
-	    			logger.error("Received dongle authentication success event with remote id " + remote + 
-	    				" while not expecting one! This event will be ignored.");
-	    			return;
-	    		}
+	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
+	    		logger.error("Received dongle authentication success event with remote id " + remote + 
+	    			" while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
 			
 	        logger.debug("Received dongle authentication progress event at port " + serialPort + " with id " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, HostProtocolHandler.AuthenticationStages + cur, 
@@ -781,6 +811,9 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
 	
 	/////////////////// Test code starting here, don't look below, it might make your eyes cross ////////////////////
+	public static void setSimulationMode(boolean simulation) {
+		RelateAuthenticationProtocol.simulation = simulation;
+	}
 	
 	// helper function to better facilitate the experiments, just interrupt both dongles
 	private static void resetBothDongles() {
