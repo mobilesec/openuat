@@ -36,6 +36,8 @@ public class IPSecConfigHandler {
 	private final static String RemoteNetworkTag = "remote_network";
 	/** This is the name of the XML tag representing the netmask of the network behind the remote gateway. */
 	private final static String RemoteNetmaskTag = "remote_netmask";
+	/** This is the name of the XML tag representing the netmask of the network behind the remote gateway. */
+	private final static String CaDistinguishedNameTag = "ca_dn";
 	
 	/** The remote gateway. */
 	private String gateway;
@@ -43,6 +45,10 @@ public class IPSecConfigHandler {
 	private String remoteNetwork;
 	/** The netmask of the network behind the remote gateway. */
 	private int remoteNetmask;
+	/** The distinguished name of the CA that signed both the gateway and the client
+	 * X.509 certificates (only when X.509 authentication is used).
+	 */
+	private String caDistinguishedName;
 
 	/** This constructor actually does nothing. */
 	public IPSecConfigHandler() {
@@ -76,6 +82,16 @@ public class IPSecConfigHandler {
 	/** Sets the value to be used for the remote network behind the remote gateway of the IPSec tunnel. */
 	public void setRemoteNetmask(int remoteNetmask) {
 		this.remoteNetmask = remoteNetmask;
+	}
+
+	/** Returns the value to be used for the CA distinguished name. */
+	public String getCaDistinguishedName() {
+		return caDistinguishedName;
+	}
+	
+	/** Sets the value to be used for the CA distinguished name. */
+	public void setCaDistinguishedName(String caDistinguishedName) {
+		this.caDistinguishedName = caDistinguishedName;
 	}
 	
 	/** Parses an existing configuration and extracts the gateway and optionally the remote 
@@ -127,6 +143,9 @@ public class IPSecConfigHandler {
 					} else if (lastTag != null && lastTag.equals(RemoteNetmaskTag)) {
 						logger.debug("Associating with remote netmask field");
 						remoteNetmask = Integer.parseInt(str.toString());
+					} else if (lastTag != null && lastTag.equals(CaDistinguishedNameTag)) {
+						logger.debug("Associating with CA distinguished name field");
+						caDistinguishedName = str.toString();
 					} else
 						logger.warn("Encountered unkown tag '" + lastTag + "', ignoring it");
 				} else
@@ -184,6 +203,8 @@ public class IPSecConfigHandler {
 				writeTag(serializer, RemoteNetworkTag, remoteNetwork, true);
 				writeTag(serializer, RemoteNetmaskTag, Integer.toString(remoteNetmask), true);
 			}
+			if (caDistinguishedName != null)
+				writeTag(serializer, CaDistinguishedNameTag, caDistinguishedName, true);
 			
 			// finished with the config
 			serializer.endDocument();

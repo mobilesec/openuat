@@ -106,4 +106,26 @@ public class IPSecConfigHandlerTest extends TestCase {
 		Assert.assertEquals("Remote network read is different from remote network written", net, handler.getRemoteNetwork());
 		Assert.assertEquals("Remote netmask read is different from remote netmask written", mask, handler.getRemoteNetmask());
 	}
+
+	public void testWriteAndParseGatewayAndNetworkAndCaDn() throws IOException {
+		String gate = "test gateway 2";
+		String net = "test network";
+		String caDn = "my super duper CA";
+		int mask = 24;
+		handler.setGateway(gate);
+		handler.setRemoteNetwork(net);
+		handler.setRemoteNetmask(mask);
+		handler.setCaDistinguishedName(caDn);
+		File temp = File.createTempFile("configFileTest", ".xml");
+		temp.deleteOnExit();
+		Assert.assertTrue("Could not write to temporary test file", temp.canWrite());
+		Assert.assertTrue("Could not write config", handler.writeConfig(new FileWriter(temp)));
+		
+		handler = new IPSecConfigHandler();
+		Assert.assertTrue("Could not read config", handler.parseConfig(new FileReader(temp)));
+		Assert.assertEquals("Gateway read is different from gateway written", gate, handler.getGateway());
+		Assert.assertEquals("Remote network read is different from remote network written", net, handler.getRemoteNetwork());
+		Assert.assertEquals("Remote netmask read is different from remote netmask written", mask, handler.getRemoteNetmask());
+		Assert.assertEquals("CA DN read is different from CA DN written", caDn, handler.getCaDistinguishedName());
+	}
 }
