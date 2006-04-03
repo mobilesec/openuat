@@ -300,7 +300,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 			
 			// and just check if "our" connection is among the returned
 			for (int i=0; i<sas.length; i++) {
-				if (sas[i].gatewayFrom.equals(remoteHost) && 
+				if (sas[i].gatewayTo.equals(remoteHost) && 
 						(remoteNetwork == null || sas[i].networkTo.equals(remoteNetwork))) {
 					logger.info("Connection to host " + remoteHost + 
 							(remoteNetwork != null ? ", network " + remoteNetwork : "") +
@@ -335,9 +335,9 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 		 * printed for Quick Mode SA. */
 		public String quickOffer;
 		/** The local SPI value for this SA. */
-		public int localSpi;
+		public long localSpi;
 		/** The remote SPI value for this SA. */
-		public int peerSpi;
+		public long peerSpi;
 		/** The maximum lifetime of the quick mode SA in KBytes, printed for Main Modes SA. */
 		public int quickLifetimeKB;
 		/** The maximum lifetime of the quick mode SA in seconds, printed for Main Modes SA. */
@@ -373,7 +373,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 		}
 		
 		public SecurityAssociation[] parse() throws IOException {
-			Vector mainSas = new Vector(), completeSas = new Vector();
+			Vector mainSas = new Vector(), allSas = new Vector();
 
 			String line = getNextLine();
 			if (line.equals("Main Mode SAs")) {
@@ -399,7 +399,7 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				logger.info("  from " + sa.gatewayFrom);
 				
 				line = getNextLine();
-				if (!line.startsWith("  To 	 ")) {
+				if (!line.startsWith("  To  ")) {
 					logger.error("Expected To description in Main mode, but got '" + line + "'");
 					return null;
 				}
@@ -453,6 +453,8 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				
 				// but remember the main SA
 				mainSas.add(sa);
+				
+				line = getNextLine();
 			}
 			if (line.equals("No SAs")) {
 				logger.debug("No Main Mode SAs set");
@@ -478,20 +480,20 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				getNextLine();
 				
 				line = getNextLine();
-				if (!line.startsWith(" From ")) {
+				if (!line.startsWith("  From ")) {
 					logger.error("Expected From description in Quick mode, but got '" + line + "'");
 					return null;
 				}
 				// can't find the matching main mode SA now, so remember temporarily
-				String from = line.substring(6);
+				String from = line.substring(7);
 				logger.debug("  from " + from);
 				
 				line = getNextLine();
-				if (!line.startsWith("  To  ")) {
+				if (!line.startsWith("   To  ")) {
 					logger.error("Expected To description in Quick mode, but got '" + line + "'");
 					return null;
 				}
-				String to = line.substring(6);
+				String to = line.substring(7);
 				// but correct special "Any" case
 				if (to.equals("Any")) {
 					logger.debug("Detected special 'Any' remote subnet, normalizing");
@@ -504,19 +506,19 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				getNextLine();
 				
 				line = getNextLine();
-				if (!line.startsWith(" Tunnel From ")) {
+				if (!line.startsWith("  Tunnel From ")) {
 					logger.error("Expected Tunnel From description in Quick mode, but got '" + line + "'");
 					return null;
 				}
-				String tunnelFrom = line.substring(13);
+				String tunnelFrom = line.substring(14);
 				logger.debug("  tunnel from " + tunnelFrom);
 				
 				line = getNextLine();
-				if (!line.startsWith(" Tunnel To ")) {
+				if (!line.startsWith("  Tunnel  To  ")) {
 					logger.error("Expected Tunnel To description in Quick mode, but got '" + line + "'");
 					return null;
 				}
-				String tunnelTo = line.substring(13);
+				String tunnelTo = line.substring(14);
 				logger.debug("  tunnel to " + tunnelTo);
 
 				// skip the "Policy Id" line
@@ -528,13 +530,13 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 					return null;
 				}
 				line = getNextLine();
-				String quickOffer = line.substring(line.indexOf(":"+2));
+				String quickOffer = line.substring(line.indexOf(":")+2);
 				logger.debug("  offer " + quickOffer);
 				line = getNextLine();
-				int localSpi = Integer.parseInt(line.substring(
+				long localSpi = Long.parseLong(line.substring(
 						line.indexOf("MySpi")+6, line.indexOf("PeerSpi")-1));
-				int peerSpi = Integer.parseInt(line.substring(
-						line.indexOf("PeerSpi")+1));
+				long peerSpi = Long.parseLong(line.substring(
+						line.indexOf("PeerSpi")+8));
 				logger.debug("  local spi " + localSpi + " peer spi " + peerSpi);
 
 				line = getNextLine();
@@ -573,10 +575,15 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				boolean matched = false;
 				for (int i=0; i<mainSas.size(); i++) {
 					SecurityAssociation sa = (SecurityAssociation) mainSas.get(i);
+					logger.debug("Checking main mode SA for match: '" +
+							sa.gatewayFrom + "' ?= '" + tunnelFrom + "', '" +
+							sa.gatewayTo + "' ?= '" + tunnelTo + "', '" +
+							sa.initiatorCookie + "' ?= '" + initiatorCookie + "', '" +
+							sa.responderCookie + "' ?= '" + responderCookie + "'");
 					if (sa.gatewayFrom.equals(tunnelFrom) &&
 						sa.gatewayTo.equals(tunnelTo) &&
-						sa.initiatorCookie == initiatorCookie &&
-						sa.responderCookie == responderCookie) {
+						sa.initiatorCookie.equals(initiatorCookie) &&
+						sa.responderCookie.equals(responderCookie)) {
 						logger.debug("Found matching Main Mode SA");
 						sa.networkFrom = from;
 						sa.networkTo = to;
@@ -585,15 +592,29 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 						sa.peerSpi = peerSpi;
 						sa.pfs = pfs;
 						
-						completeSas.add(sa);
+						allSas.add(sa);
 						matched = true;
 						break;
 					}
 				}
 				if (!matched) {
-					logger.error("Could not find matching Main Mode SA while parsing Quick Mode SA");
-					return null;
+					logger.debug("Could not find matching Main Mode SA while parsing Quick Mode SA");
+					// create a new SA
+					SecurityAssociation sa = new SecurityAssociation();
+					sa.gatewayFrom = tunnelFrom;
+					sa.gatewayTo = tunnelTo;
+					sa.initiatorCookie = initiatorCookie;
+					sa.responderCookie = responderCookie;
+					sa.networkFrom = from;
+					sa.networkTo = to;
+					sa.quickOffer = quickOffer;
+					sa.localSpi = localSpi;
+					sa.peerSpi = peerSpi;
+					sa.pfs = pfs;
+					allSas.add(sa);
 				}
+				
+				line = getNextLine();
 			}
 			if (line.equals("No SAs")) {
 				logger.debug("No Quick Mode SAs set");
@@ -606,9 +627,9 @@ class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 				return null;
 			}
 			
-			SecurityAssociation[] saArray = new SecurityAssociation[completeSas.size()];
-			for (int i=0; i<completeSas.size(); i++)
-				saArray[i] = (SecurityAssociation) completeSas.get(i);
+			SecurityAssociation[] saArray = new SecurityAssociation[allSas.size()];
+			for (int i=0; i<allSas.size(); i++)
+				saArray[i] = (SecurityAssociation) allSas.get(i);
 			return saArray;
 		}
 	}
