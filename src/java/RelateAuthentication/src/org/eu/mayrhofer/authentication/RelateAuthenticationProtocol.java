@@ -426,8 +426,22 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 * registered with a temporary HostProtocolHandler object, which will
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
-		HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, new HostAuthenticationEventHandler(), 
-				true, param, useJSSE);
+		try {
+			HostProtocolHandler.startAuthenticationWith(remoteHost, TcpPort, 
+					new HostAuthenticationEventHandler(), 
+					true, param, useJSSE);
+		} 
+		catch (UnknownHostException e) {
+			// when we can't start here, be sure to reset to a clean state
+			reset();
+			// and simply rethrow;
+			throw e;
+		}
+		catch (IOException e) {
+			// dt.
+			reset();
+			throw e;
+		}
 		return true;
 	}
 	
@@ -441,6 +455,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		referenceMeasurement = -1;
 		// and finally reset the state
 		state = STATE_IDLE;
+		logger.debug("Reset object to idle set");
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
@@ -500,6 +515,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	        /* and also extract the optional parameters (in the case of the RelateAuthenticationProtocol: the remote
 	           relate id to authenticate with and the number of rounds - we assume them to be set) as well as the 
 	           socket (which is assumed to be still connected to the remote) */
+	        logger.debug("Splitting received param string '" + (String) res[2] + "'");
 	        String param1 = ((String) res[2]).substring(0, ((String) res[2]).indexOf(' '));
 	        String param2 = ((String) res[2]).substring(((String) res[2]).indexOf(' ')+1, ((String) res[2]).length());
 	        // distinguish between client and server mode here
@@ -517,9 +533,14 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    			 * future use (i.e. computing the delays). For client mode, it has been set even
 	    			 * before starting the host authentication phase.
 	    			 */
-	    			referenceMeasurement = fetchReferenceMeasurement(otherRelateId);
+	        		if (!simulation)
+	        			referenceMeasurement = fetchReferenceMeasurement(otherRelateId);
+	        		else
+	        			logger.warn("Skipping to get reference measurement due to simulation mode");
 	        }
 	        int rounds = Integer.parseInt(param2);
+	        logger.debug("Parameters for dongle authentication are now remoteId=" + 
+	        		otherRelateId + ", rounds=" + rounds);
 	        /* TODO: this could need some error handling, but at the moment we depend on it being set
 	         * (it should be, since we set keepSocketConnected=true for HostProtocolHandler)
 	         */
@@ -631,12 +652,24 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 		 */
 		private String remoteStatusExchange(Object remote, String reportToRemote) {
 			try {
-        		BufferedReader fromRemote = new BufferedReader(new InputStreamReader(socketToRemote.getInputStream()));
         		// this enables auto-flush
         		PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
+    	    	logger.debug("Sending status to remote: '" + reportToRemote + "'");
         		toRemote.println(reportToRemote);
         		toRemote.flush();
-        		String remoteStatus = fromRemote.readLine();
+        		logger.debug("Status sent, waiting for status from remote");
+				/* do not use a BufferedReader here because that would potentially mess up
+				 * the stream for other users of the socket (by consuming too many bytes)
+				 */
+        		InputStream fromRemote = socketToRemote.getInputStream();
+        		String remoteStatus = "";
+        		int ch = fromRemote.read();
+        		// TODO: this might need proper conversion of line endings
+        		while (ch != -1 && ch != '\n') {
+        			remoteStatus += (char) ch;
+       				ch = fromRemote.read();
+        		}
+    	    	logger.debug("Received remote status: '" + remoteStatus + "'");
         		if (remoteStatus == null) {
         			logger.error("Could not get status message from remote host at port " + serialPort + "");
         			logFailure("Could not get status message from remote host at port " + serialPort + "");
