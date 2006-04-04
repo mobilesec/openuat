@@ -14,6 +14,7 @@
     <property name="build" location="build"/>
     <property name="bin" location="${build}/bin"/>
     <property name="lib" location="lib"/>
+    <property name="relate-lib" location="../relate/lib"/>
     <property name="nativelib" location="nativelib"/>
     <property name="dist" location="dist"/>
     <property name="dist.webstart" location="${dist}/webstart"/>
@@ -21,6 +22,7 @@
     <property name="reports" location="reports"/>
     <property name="reports.tests" location="${reports}/tests"/>
     <property name="thirdparty" location="thirdparty"/>
+    <property name="relate-thirdparty.nativelib" location="../relate/thirdparty/nativelib"/>
     <property name="thirdparty-BC-core" location="${thirdparty}/bouncycastle-core-deps"/>
     <property name="bin-BC-core" location="${build}/bin-bouncycastle-core"/>
     <property name="thirdparty-BC-x509" location="${thirdparty}/bouncycastle-x509-deps"/>
@@ -51,9 +53,9 @@
 	 dependencies -->
     <property name="jarfile.distbundle" location="${dist}/${ant.project.name}-distbundle.jar"/>
     <!-- the javadoc tree -->
-    <property name="zipfile.javadoc" location="${dist}/relate-doc.zip" />
+    <property name="zipfile.javadoc" location="${dist}/spatial-authentication-doc.zip" />
     <!-- the source tree, excluding files which can't be redistributed because of their license -->
-    <property name="zipfile.source" location="${dist}/relate-src.zip" />
+    <property name="zipfile.source" location="${dist}/spatial-authentication-src.zip" />
     
     <!-- for MIDP builds -->
     <property name="preverified" location="bin-preverified"/>
@@ -213,61 +215,73 @@
       </nsis>
     </target>
 
-<!--    <target name="dist-webstart" depends="jar" description="Create distribution for Java webstart">
-	    <mkdir dir="${dist.webstart}"/>-->
+    <target name="dist-webstart" depends="jar" description="Create distribution for Java webstart">
+	    <mkdir dir="${dist.webstart}"/>
 	    <!-- Linux native libraries -->
-<!--	    <copy file="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar" 
+	    <copy file="${relate-lib}/linux/swt-3.1.1_gtk.linux.x86.jar" 
 		  tofile="${dist.webstart}/swt-3.1_gtk.linux.x86.jar"/>
 	    <zip zipfile="${dist.webstart}/swt-3.1-native_gtk.linux.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${thirdparty.nativelib}/linux/" includes="libswt*.so" />
+		    <fileset dir="${relate-thirdparty.nativelib}/linux/" includes="libswt*.so" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_linux.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${thirdparty.nativelib}/linux/" includes="librxtxSerial.so" />
-	    </zip>-->
+		    <fileset dir="${relate-thirdparty.nativelib}/linux/" includes="librxtxSerial.so" />
+	    </zip>
 	    
 	    <!-- Windows native libraries -->
-<!--	    <copy file="${lib}/win32/swt-3.1_win32.x86.jar" 
+	    <copy file="${relate-lib}/win32/swt-3.1_win32.x86.jar" 
 		  tofile="${dist.webstart}/swt-3.1_win32.x86.jar"/>
 	    <zip zipfile="${dist.webstart}/swt-3.1-native_win32.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${thirdparty.nativelib}/win32/" includes="swt*.dll" />
+		    <fileset dir="${relate-thirdparty.nativelib}/win32/" includes="swt*.dll" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_win32.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${thirdparty.nativelib}/win32/" includes="rxtxSerial.dll" />
-	    </zip>-->
+		    <fileset dir="${relate-thirdparty.nativelib}/win32/" includes="rxtxSerial.dll" />
+	    </zip>
+	    <zip zipfile="${dist.webstart}/ipsec-1.0-native_win32.x86.jar" 
+		 update="true" duplicate="fail">
+		    <fileset dir="${nativelib}/win32/" includes="ipsecJNI.dll" />
+	    </zip>
 	    
 	    <!-- MacOXX native libraries -->
-<!--	    <copy file="${lib}/macosx/swt-3.1_macosx.jar" 
+	    <copy file="${relate-lib}/macosx/swt-3.1_macosx.jar" 
 		  tofile="${dist.webstart}/swt-3.1_macosx.jar"/>
 	    <zip zipfile="${dist.webstart}/swt-3.1-native_macosx.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${thirdparty.nativelib}/macosx/" includes="libswt*.jnilib" />
+		    <fileset dir="${relate-thirdparty.nativelib}/macosx/" includes="libswt*.jnilib" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_macosx.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${thirdparty.nativelib}/macosx/" includes="librxtxSerial.jnilib" />
-	    </zip>-->
+		    <fileset dir="${relate-thirdparty.nativelib}/macosx/" includes="librxtxSerial.jnilib" />
+	    </zip>
 	    
-	    <!-- and the relate distribution itself, including the JNLP file -->
-<!--	    <copy file="${jarfile.dist}" tofile="${dist.webstart}/relate-dist.jar" />
-	    <copy file="${dist}/relate.jnlp" tofile="${dist.webstart}/relate.jnlp" />-->
+	    <!-- don't forget the relate core -->
+	    <copy file="${lib}/relatecore.jar" todir="${dist.webstart}" />
+	    <!-- nor the required support libraries -->
+	    <copy file="${lib}/log4j-1.2.jar" todir="${dist.webstart}" />
+	    <copy file="${lib}/kxml2-2.2.2.jar" todir="${dist.webstart}" />
+	    
+	    <!-- and the spatial authentication distribution itself, including the JNLP file -->
+	    <copy file="${jarfile.core}" todir="${dist.webstart}" />
+	    <copy file="${jarfile.channels}" todir="${dist.webstart}" />
+	    <copy file="${jarfile.apps}" todir="${dist.webstart}" />
+	    <copy file="${dist}/IPSecConnectorClient.jnlp" todir="${dist.webstart}" />
 	    
 	    <!-- the key was created with 
-		 "keytool -genkey -keystore dist/keystore -alias relate -validity 1500"
-		 with password "relate" for both the keystore and the key -->
-<!--	    <signjar alias="relate" storepass="relate" keystore="${dist}/keystore">
+		 "keytool -genkey -keystore dist/keystore -alias authentication -validity 1500"
+		 with password "authentication" for both the keystore and the key -->
+	    <signjar alias="authentication" storepass="authentication" keystore="${dist}/keystore">
 		    <fileset dir="${dist.webstart}/" includes="*.jar"/>
-	    </signjar>-
-    </target>-->
+	    </signjar>
+    </target>
     
     <target name="dist-javadoc" description="Create distribution files for the documentation (Javadoc)">
 	    <mkdir dir="${dist.javadoc}"/>
 	    <javadoc sourcepath="${src}" destdir="${dist.javadoc}" 
 		     packagenames="org.eu.mayrhofer.*"
-		     classpathref="lib.path"
+		     classpathref="lib.path.all"
 		     access="protected"
 		     version="true" author="true" source="1.5">
 		    <bottom><![CDATA[<i>2005-2006, Rene Mayrhofer.</i>]]></bottom>
@@ -287,8 +301,8 @@
 	    </zip>
     </target>
     
-<!--    <target name="dist" depends="dist-webstart,dist-javadoc,dist-source"
-	    description="Create a complete distribution, including webstart, source, and docs"/>-->
+    <target name="dist" depends="dist-webstart,dist-javadoc,dist-source"
+	    description="Create a complete distribution, including webstart, source, and docs"/>
     
 <!--    <target name="deploy-webstart" depends="dist-webstart" 
 	    description="Upload the web start distribution files to the web server">
