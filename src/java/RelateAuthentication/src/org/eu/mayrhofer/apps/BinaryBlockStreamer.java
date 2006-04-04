@@ -9,10 +9,8 @@
 
 package org.eu.mayrhofer.apps;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
@@ -119,8 +117,16 @@ public class BinaryBlockStreamer {
 		
 		// we can only go on if we actually get a proper start line
 		logger.debug("Trying to get prefix line");
-		BufferedReader lineReader = new BufferedReader(new InputStreamReader(input));
-		String prefixLine = lineReader.readLine();
+		/* do not use a BufferedReader here because that would potentially mess up
+		 * the stream for other users of the socket (by consuming too many bytes)
+		 */
+		String prefixLine = "";
+		int buf = input.read();
+		// TODO: this might need proper conversion of line endings
+		while (buf != -1 && buf != '\n') {
+			prefixLine += (char) buf;
+			buf = input.read();
+		}
 		if (prefixLine == null || ! prefixLine.startsWith(BinaryStreamCommand)) {
 			logger.error("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
 			return -1;
@@ -131,9 +137,9 @@ public class BinaryBlockStreamer {
 		int intendedSize = Integer.parseInt(prefixLine.substring(BinaryStreamCommand.length()+1, offset));
 		blockName.append(prefixLine.substring(offset+1, prefixLine.length()));
 		logger.info("Receiving binary block with " + intendedSize + "B named '" + blockName + "'");
-		int i=0, buf;
+		int i=0;
 		do {
-			buf = lineReader.read();
+			buf = input.read();
 			if (buf != -1)
 				block.write(buf);
 			i++;
