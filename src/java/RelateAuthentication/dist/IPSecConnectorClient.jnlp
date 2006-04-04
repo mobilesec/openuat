@@ -1,5 +1,5 @@
 <?xmlversion="1.0" encoding="utf-8"?>
-   <jnlp spec="1.0+" codebase="http://www.mayrhofer.eu.org/downloads/authentication/webstart/" href="IPSecConnectorClient.jnlp">
+   <jnlp spec="1.0+" codebase="http://www.mayrhofer.eu.org/downloads/projects/authentication/webstart/" href="IPSecConnectorClient.jnlp">
        <information>
                <title>IPSec Connector Client</title>
                <vendor>Rene Mayrhofer</vendor>
@@ -19,6 +19,8 @@
                 <jar href="spatial-authentication-channels.jar"/>
                 <jar href="spatial-authentication-core.jar"/>
                 <jar href="relatecore.jar"/>
+                <jar href="log4j-1.2.jar"/>
+                <jar href="kxml2-2.2.2.jar"/>
         </resources>
         <resources os="Windows"> 
                 <jar href="swt-3.1_win32.x86.jar"/>
@@ -36,6 +38,5 @@
                 <nativelib href="swt-3.1-native_macosx.jar"/>
                 <nativelib href="rxtx-2.1-native_macosx.jar"/>
         </resources>
-        <application-desc/>
-        <application-descmain-class="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
+        <application-desc main-class="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
 </jnlp>

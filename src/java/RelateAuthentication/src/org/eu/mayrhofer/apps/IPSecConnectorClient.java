@@ -41,7 +41,6 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	private static Logger logger = Logger.getLogger(IPSecConnectorClient.class);
 
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="1,1"
-	private ProgressBar certificateProgress = null;
 	private Label label1 = null;
 	private Label gatewayLabel = null;
 	private Label label5 = null;
@@ -133,8 +132,6 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		sShell = new Shell();
 		sShell.setText("IPSec Connector Client");
 		sShell.setSize(new org.eclipse.swt.graphics.Point(249,382));
-		certificateProgress = new ProgressBar(sShell, SWT.NONE);
-		certificateProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(6,254,217,30));
 		label1 = new Label(sShell, SWT.NONE);
 		label1.setBounds(new org.eclipse.swt.graphics.Rectangle(7,50,108,18));
 		label1.setText("IPSec gateway");
@@ -145,10 +142,11 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		label5.setBounds(new org.eclipse.swt.graphics.Rectangle(8,231,201,17));
 		label5.setText("Authentication progress");
 		authenticationProgress = new ProgressBar(sShell, SWT.NONE);
-		authenticationProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(6,297,219,31));
+		authenticationProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(6,270,219,31));
 		continueButton = new Button(sShell, SWT.NONE);
 		continueButton.setBounds(new org.eclipse.swt.graphics.Rectangle(4,317,163,28));
 		continueButton.setText("Import and Start IPSec");
+		continueButton.setEnabled(false);
 		continueButton
 				.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
 					public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
@@ -319,5 +317,8 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			// TODO: display error message
 			return;
 		}
+		
+		// finally allow the button to be clicked for the user to continue
+		continueButton.setEnabled(true);
 	}
 }
