@@ -268,7 +268,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 				toRemote.close();
 				return;
 			}
-			if (!certName.toString().equals(BLOCKNAME_CONFIG)) {
+			if (!certName.toString().equals(BLOCKNAME_CERTIFICATE)) {
 				logger.error("Binary block name is '" + certName + 
 						"' instead of the expected '" + BLOCKNAME_CERTIFICATE +
 						"'. Is the admin application running on the other end?");
@@ -305,6 +305,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			// TODO: display error message
 			return;
 		}
+		logger.debug("Wrote received certificate to temporary file " + tempCertFile.getAbsolutePath());
 		
 		// and display some details from the certificate
 		display.syncExec(new Runnable() { public void run() { 
