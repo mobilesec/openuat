@@ -15,6 +15,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
@@ -66,6 +67,11 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 * @see #asyncCreateCertificate
 	 */
 	private String certificateFilename = null;
+	/** This object is just used for synchronizing access to the 
+	 * certificateFilename object.
+	 * @see #certificateFilename
+	 */
+	private Object certificateFilenameLock = new Object();
 	
 	/** This is the X.509 certificate generator used to create new certificates.
 	 * It is initialized in the constructor.
@@ -80,6 +86,8 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 * transmit to the client.
 	 */
 	private IPSecConfigHandler config;
+	
+	private String remoteHost = null;
 
 	/**
 	 * @param args
@@ -95,27 +103,28 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		 * For example, on Windows the Eclipse SWT 3.1 plugin jar is:
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
-		Display display = Display.getDefault();
 		// TODO: hard-coding is not nice...
 		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(null, //"/dev/ttyUSB0", 
 				"ca.p12", "test password", "Test CA", "ipsec-conf.xml");
+		thisClass.display = Display.getDefault();
 		thisClass.sShell.open();
 		
 		// test code
-		if (args.length > 0)
-			thisClass.auth.startAuthentication(args[0], (byte) 0, 2);
+		if (args.length > 0) {
+			thisClass.remoteHost = args[0];
+			thisClass.startButton.setEnabled(true);
+		}
 
 		while (!thisClass.sShell.isDisposed()) {
-			if (!display.readAndDispatch())
-				display.sleep();
+			if (!thisClass.display.readAndDispatch())
+				thisClass.display.sleep();
 		}
-		display.dispose();
+		thisClass.display.dispose();
 	}
 	
 	public IPSecConnectorAdmin(String serialPort, String caFile, String caPassword, String caAlias, 
 			String configFilename) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
 		super(true, serialPort);
-		createSShell();
 		
 		// also initialize the certificate generator
 		try {
@@ -143,6 +152,9 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		else {
 			logger.info("Using pre-set CA distinguished name: '" + config.getCaDistinguishedName() + "'");
 		}
+
+		// and finally create the shell (with all information now available)
+		createSShell();
 	}
 
 	/**
@@ -158,11 +170,11 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		label.setBounds(new org.eclipse.swt.graphics.Rectangle(4,215,198,18));
 		label.setText("Creating X.509 certificate");
 		label1 = new Label(sShell, SWT.NONE);
-		label1.setBounds(new org.eclipse.swt.graphics.Rectangle(8,8,89,18));
+		label1.setBounds(new org.eclipse.swt.graphics.Rectangle(8,8,108,18));
 		label1.setText("IPSec gateway");
 		gatewayLabel = new Label(sShell, SWT.NONE);
-		gatewayLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(123,8,81,20));
-		gatewayLabel.setText("0.0.0.0");
+		gatewayLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(123,8,113,20));
+		gatewayLabel.setText(config.getGateway());
 		label4 = new Label(sShell, SWT.NONE);
 		label4.setBounds(new org.eclipse.swt.graphics.Rectangle(9,113,171,19));
 		label4.setText("Common name for certificate");
@@ -176,18 +188,34 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		startButton = new Button(sShell, SWT.NONE);
 		startButton.setBounds(new org.eclipse.swt.graphics.Rectangle(6,169,69,28));
 		startButton.setText("Start");
+		startButton.setEnabled(false);
+		startButton.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
+			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+				// TODO: other two parameters...
+				try {
+					auth.startAuthentication(remoteHost, (byte) 0, 2);
+				}
+				catch (UnknownHostException ee) {
+					// TODO: display error message
+					logger.error("Could not start authentication: " + ee);
+				} catch (IOException ee) {
+					// TODO: display error message
+					logger.error("Could not start authentication: " + ee);
+				}
+			}
+		});
 		label2 = new Label(sShell, SWT.NONE);
-		label2.setBounds(new org.eclipse.swt.graphics.Rectangle(7,52,107,17));
+		label2.setBounds(new org.eclipse.swt.graphics.Rectangle(7,52,228,17));
 		label2.setText("Certificate authority");
 		caDnLabel = new Label(sShell, SWT.NONE);
-		caDnLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(121,52,116,17));
-		caDnLabel.setText("O=Bla, CN=My CA");
+		caDnLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(8,68,225,17));
+		caDnLabel.setText(config.getCaDistinguishedName());
 		label6 = new Label(sShell, SWT.NONE);
-		label6.setBounds(new org.eclipse.swt.graphics.Rectangle(8,31,90,17));
+		label6.setBounds(new org.eclipse.swt.graphics.Rectangle(8,31,107,17));
 		label6.setText("Remote network");
 		remoteNetworkLabel = new Label(sShell, SWT.NONE);
-		remoteNetworkLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(121,32,84,16));
-		remoteNetworkLabel.setText("0.0.0.0/0");
+		remoteNetworkLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(121,32,116,16));
+		remoteNetworkLabel.setText(config.getRemoteNetwork() + "/" + config.getRemoteNetmask());
 		label3 = new Label(sShell, SWT.NONE);
 		label3.setBounds(new org.eclipse.swt.graphics.Rectangle(8,90,105,17));
 		label3.setText("Validity in days");
@@ -198,6 +226,12 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		cancelButton = new Button(sShell, SWT.NONE);
 		cancelButton.setBounds(new org.eclipse.swt.graphics.Rectangle(163,170,62,30));
 		cancelButton.setText("Cancel");
+		cancelButton
+				.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
+					public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+						sShell.close();
+					}
+				});
 	}
 	
 	/** This method encapsulates the creation of a X.509 certificate in a background
@@ -221,10 +255,12 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 * @see #certificateFilename
 	 */
 	protected boolean asyncCreateCertificate(String commonName, int validityDays, String exportPassword) {
-		synchronized (certificateFilename) {
+		logger.debug("Starting thread to create certificate for CN='" + 
+				commonName + "' valid for " + validityDays + " days");
+		synchronized (certificateFilenameLock) {
 			// this states that it is not yet ready, and that the thread is running		
 			certificateFilename = "";
-			certificateFilename.notify();
+			certificateFilenameLock.notify();
 		}
 
 		// create a new temporary file for the certificate
@@ -238,6 +274,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			return false;
 		}
 		tempCertFile.deleteOnExit();
+		logger.debug("Created temporary file '" + tempCertFile.getAbsolutePath() + "'");
 
 		final String cn = commonName;
 		final int val = validityDays;
@@ -245,27 +282,30 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		final String pass = exportPassword;
 		// and start the certificate generation in the background
 		new Thread(new Runnable() { public void run() {
+			logger.debug("Certificate creation thread started");
 			try {
 				if (certGenerator.createCertificate(cn, val, file, pass)) {
+					logger.debug("Finished creating certificate with success");
 					// ok, finished creating the file - store the name and wake up other threads that might be waiting
-					synchronized (certificateFilename) {
+					synchronized (certificateFilenameLock) {
 						certificateFilename = file;
-						certificateFilename.notify();
+						certificateFilenameLock.notify();
 					}
 				}
 				else {
+					logger.error("Finished creating certificate with error");
 					// error during creating
-					synchronized (certificateFilename) {
+					synchronized (certificateFilenameLock) {
 						certificateFilename = "ERROR";
-						certificateFilename.notify();
+						certificateFilenameLock.notify();
 					}
 				}
 			}
 			catch (Exception e) {
 				logger.error("Certificate generation failed with: " + e);
-				synchronized (certificateFilename) {
+				synchronized (certificateFilenameLock) {
 					certificateFilename = "ERROR: " + e;
-					certificateFilename.notify();
+					certificateFilenameLock.notify();
 				}
 			}
 		} }).start();
@@ -278,15 +318,18 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		System.out.println("SUCCESS");
 		
 		// since we use RelateAuthenticationProtocol with keepSocketConnected=true, ...
-		byte[] sharedKey = (byte[]) ((Object[] ) result)[0];
+		final byte[] sharedKey = (byte[]) ((Object[] ) result)[0];
 		Socket toRemote = (Socket) ((Object[] ) result)[1];
 		
 		// ok, got the shared password - use it to create the certificate (in the background)
-		asyncCreateCertificate(commonNameInput.getText(), validityInput.getSelection(), 
-				new String(Hex.encodeHex(sharedKey)));
+		// (and need to get the text fields in the SWT UI thread) 
+		display.syncExec(new Runnable() { public void run() { 
+			asyncCreateCertificate(commonNameInput.getText(), validityInput.getSelection(), 
+					new String(Hex.encodeHex(sharedKey)));
+		}});
 
 		// first of all, wait for the certificate to be generated (if not already)
-		synchronized (certificateFilename) {
+		synchronized (certificateFilenameLock) {
 			if (certificateFilename == null) {
 				// hmm, thread not started yet - can't cope
 				logger.error("Certificate generation thread was not started properly, can not continue");
@@ -303,7 +346,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 				if (certificateFilename.equals("")) {
 					// ok, thread still running, wait for it to end
 					try {
-						certificateFilename.wait();
+						certificateFilenameLock.wait();
 					}
 					catch (InterruptedException e) {
 					// just ignore that

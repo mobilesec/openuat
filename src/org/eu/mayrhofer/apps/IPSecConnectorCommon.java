@@ -107,6 +107,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		auth.addAuthenticationProgressHandler(this);
 		
 		if (! adminEnd) {
+			logger.debug("Client end, starting authentication server");
 			auth.startServer();
 		}
 	}
@@ -134,7 +135,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		// only update the ProgressBar...
 		final int m = max;
 		final int c = cur;
-		display.asyncExec(new Runnable() { public void run() { 
+		display.syncExec(new Runnable() { public void run() { 
 			authenticationProgress.setMaximum(m); authenticationProgress.setSelection(c); }});
 	}
 }

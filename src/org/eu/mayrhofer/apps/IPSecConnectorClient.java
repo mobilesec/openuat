@@ -109,19 +109,19 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		 * For example, on Windows the Eclipse SWT 3.1 plugin jar is:
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
-		Display display = Display.getDefault();
 		IPSecConnectorClient thisClass = new IPSecConnectorClient(null /*"/dev/ttyUSB0"*/);
+		thisClass.display = Display.getDefault();
 		thisClass.sShell.open();
 
 		while (!thisClass.sShell.isDisposed()) {
-			if (!display.readAndDispatch())
-				display.sleep();
+			if (!thisClass.display.readAndDispatch())
+				thisClass.display.sleep();
 		}
-		display.dispose();
+		thisClass.display.dispose();
 	}
 	
 	public IPSecConnectorClient(String serialPort) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
-		super(true, serialPort);
+		super(false, serialPort);
 		createSShell();
 	}
 
@@ -198,8 +198,10 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		System.out.println("SUCCESS");
 		
 		// first update the status
-		statusLabel.setText("success, receiving");
-		statusLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_BLUE));
+		display.syncExec(new Runnable() { public void run() { 
+			statusLabel.setText("success, receiving");
+			statusLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_BLUE));
+		}});
 		
 		// since we use RelateAuthenticationProtocol with keepSocketConnected=true, ...
 		sharedKey = (byte[]) ((Object[] ) result)[0];
@@ -233,15 +235,16 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 				toRemote.close();
 				return;
 			}
-			if (!confName.equals(BLOCKNAME_CONFIG)) {
+			if (!confName.toString().equals(BLOCKNAME_CONFIG)) {
 				logger.error("Binary block name is '" + confName + 
 						"' instead of the expected '" + BLOCKNAME_CONFIG +
-						". Is the admin application running on the other end?");
+						"'. Is the admin application running on the other end?");
 				// TODO: display error message
 				toRemote.close();
 				return;
 			}
 			logger.debug("Received configuration block from admin (" + recvSize + "B), parsing now");
+			config = new IPSecConfigHandler();
 			if (!config.parseConfig(new StringReader(confBlock.toString()))) {
 				logger.error("Could not parse IPSec configuration from XML");
 				// TODO: display error message
@@ -249,9 +252,11 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 				return;
 			}
 			// also update the GUI
-			gatewayLabel.setText(config.getGateway());
-			remoteNetworkLabel.setText(config.getRemoteNetwork());
-			caDnLabel.setText(config.getCaDistinguishedName());
+			display.syncExec(new Runnable() { public void run() { 
+				gatewayLabel.setText(config.getGateway());
+				remoteNetworkLabel.setText(config.getRemoteNetwork());
+				caDnLabel.setText(config.getCaDistinguishedName());
+			}});
 			
 			// and now the certificate
 			ByteArrayOutputStream certBlock = new ByteArrayOutputStream();
@@ -263,10 +268,10 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 				toRemote.close();
 				return;
 			}
-			if (!certName.equals(BLOCKNAME_CONFIG)) {
+			if (!certName.toString().equals(BLOCKNAME_CONFIG)) {
 				logger.error("Binary block name is '" + certName + 
 						"' instead of the expected '" + BLOCKNAME_CERTIFICATE +
-						". Is the admin application running on the other end?");
+						"'. Is the admin application running on the other end?");
 				// TODO: display error message
 				toRemote.close();
 				return;
@@ -302,23 +307,25 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		}
 		
 		// and display some details from the certificate
-		statusLabel.setText("complete");
-		statusLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_GREEN));
-		try {
-			clientDnLabel.setText(X509CertificateGenerator.getCertificateDistinguishedName(
-				new FileInputStream(tempCertFile), new String(Hex.encodeHex(sharedKey)), 
-				X509CertificateGenerator.KeyExportFriendlyName, false));
-			validityLabel.setText(Integer.toString(X509CertificateGenerator.getCertificateValidity(
+		display.syncExec(new Runnable() { public void run() { 
+			statusLabel.setText("complete");
+			statusLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_GREEN));
+			try {
+				clientDnLabel.setText(X509CertificateGenerator.getCertificateDistinguishedName(
 					new FileInputStream(tempCertFile), new String(Hex.encodeHex(sharedKey)), 
-					X509CertificateGenerator.KeyExportFriendlyName, false)));
-		}
-		catch (IOException e) {
-			logger.error("Unable to open certificate: " + e);
-			// TODO: display error message
-			return;
-		}
-		
-		// finally allow the button to be clicked for the user to continue
-		continueButton.setEnabled(true);
+					X509CertificateGenerator.KeyExportFriendlyName, false));
+				validityLabel.setText(Integer.toString(X509CertificateGenerator.getCertificateValidity(
+						new FileInputStream(tempCertFile), new String(Hex.encodeHex(sharedKey)), 
+						X509CertificateGenerator.KeyExportFriendlyName, false)));
+			}
+			catch (IOException e) {
+				logger.error("Unable to open certificate: " + e);
+				// TODO: display error message
+				return;
+			}
+			
+			// finally allow the button to be clicked for the user to continue
+			continueButton.setEnabled(true);
+		}});
 	}
 }
