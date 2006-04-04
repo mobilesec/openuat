@@ -298,7 +298,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     shutdownSocketCleanly();
                     return;
                 }
-        		}
+        	}
             raiseAuthenticationProgressEvent(remote, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
             byte[] remotePubKey = null;
@@ -380,6 +380,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         catch (Exception e)
         {
             logger.fatal("UNEXPECTED EXCEPTION: " + e /*+ "\n" + e.getStackTrace()*/);
+            e.printStackTrace();
             shutdownSocketCleanly();
         }
         finally {
