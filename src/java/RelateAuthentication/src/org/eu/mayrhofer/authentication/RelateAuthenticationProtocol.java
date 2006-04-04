@@ -664,9 +664,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
         		InputStream fromRemote = socketToRemote.getInputStream();
         		String remoteStatus = "";
         		int ch = fromRemote.read();
-        		// TODO: this might need proper conversion of line endings
         		while (ch != -1 && ch != '\n') {
-        			remoteStatus += (char) ch;
+        			// TODO: check if this is enough to deal with line ending problems
+        			if (ch != '\r')
+        				remoteStatus += (char) ch;
        				ch = fromRemote.read();
         		}
     	    	logger.debug("Received remote status: '" + remoteStatus + "'");
