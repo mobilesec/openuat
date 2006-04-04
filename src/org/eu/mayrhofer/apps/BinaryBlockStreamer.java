@@ -122,9 +122,9 @@ public class BinaryBlockStreamer {
 		 */
 		String prefixLine = "";
 		int buf = input.read();
-		// TODO: this might need proper conversion of line endings
 		while (buf != -1 && buf != '\n') {
-			prefixLine += (char) buf;
+			if (buf != '\r')
+				prefixLine += (char) buf;
 			buf = input.read();
 		}
 		if (prefixLine == null || ! prefixLine.startsWith(BinaryStreamCommand)) {
