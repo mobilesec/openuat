@@ -15,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -531,7 +532,87 @@ public class X509CertificateGenerator {
 		extensions.put(extId, new X509Extension(critical, new DEROctetString(bOut.toByteArray())));
 		extensionsOrder.addElement(extId);
     }
-    
+	
+	/** This is a helper function for loading a certificate from a PKCS12 file.
+	 * 
+	 * @param keystore The keystore/PKCS12 file to load from.
+	 * @param password The password used to encrypt the keystore/PKCS12 file.
+	 * @param alias The alias used to store the certificate in the keystore/PKCS12 file.
+	 * @param useBCAPI Set to true if the Bouncycastle API should be used instead of JCE.
+	 * @return The certificate if it could be successfully loaded, null otherwise.
+	 * @throws IOException 
+	 */
+	private static X509Certificate loadCertificateFromKeyStore(InputStream keystore,
+			String password, String alias, boolean useBCAPI) {
+		X509Certificate cert;
+
+		try {
+			if (!useBCAPI) {
+				java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
+				ks.load(keystore, password.toCharArray());
+				cert = (X509Certificate) ks.getCertificate(alias);
+			}
+			else {
+				JDKPKCS12KeyStore ks = new JDKPKCS12KeyStore(null);
+				ks.engineLoad(keystore, password.toCharArray());
+				cert = (X509Certificate) ks.engineGetCertificate(alias);
+			}
+
+			if (cert == null) {
+				logger.error("Got null certificate from keystore, can not load");
+				return null;
+			}
+			
+			return cert;
+		} 
+		catch (IOException e) {
+			logger.error("Could not load from key store: " + e);
+			return null;
+		} catch (KeyStoreException e) {
+			logger.error("Could not load from key store: " + e);
+			return null;
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("Could not load from key store: " + e);
+			return null;
+		} catch (CertificateException e) {
+			logger.error("Could not load from key store: " + e);
+			return null;
+		}
+	}
+	
+	/** This is a helper function for fetching the distinguished name from a certificate.
+	 * 
+	 * @param keystore The keystore/PKCS12 file to load from.
+	 * @param password The password used to encrypt the keystore/PKCS12 file.
+	 * @param alias The alias used to store the certificate in the keystore/PKCS12 file.
+	 * @param useBCAPI Set to true if the Bouncycastle API should be used instead of JCE.
+	 * @return The subject DN if the certificate could be successfully loaded, null otherwise.
+	 */
+	public static String getCertificateDistinguishedName(InputStream keystore,
+			String password, String alias, boolean useBCAPI) {
+		X509Certificate cert = loadCertificateFromKeyStore(keystore, password, alias, useBCAPI);
+		if (cert == null)
+			return null;
+		return cert.getSubjectDN().toString();
+	}
+
+	/** This is a helper function for fetching the validity from a certificate.
+	 * 
+	 * @param keystore The keystore/PKCS12 file to load from.
+	 * @param password The password used to encrypt the keystore/PKCS12 file.
+	 * @param alias The alias used to store the certificate in the keystore/PKCS12 file.
+	 * @param useBCAPI Set to true if the Bouncycastle API should be used instead of JCE.
+	 * @return The validity in days (from now) if the certificate could be loaded successfully, 
+	 *         -1 otherwise
+	 */
+	public static int getCertificateValidity(InputStream keystore,
+			String password, String alias, boolean useBCAPI) {
+		X509Certificate cert = loadCertificateFromKeyStore(keystore, password, alias, useBCAPI);
+		if (cert == null)
+			return -1;
+		return (int) ((cert.getNotAfter().getTime() - System.currentTimeMillis()) / 1000 / 3600 / 24);
+	}
+	
 
 	
 	/** The test CA can e.g. be created with

@@ -8,7 +8,7 @@
 	<classpathentry kind="var" path="JUNIT_HOME/junit.jar"/>
 	<classpathentry kind="lib" path="lib/log4j-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/relatecore.jar"/>
-	<classpathentry kind="lib" path="lib/swt-3.1.jar"/>
 	<classpathentry kind="lib" path="lib/kxml2-2.2.2.jar"/>
+	<classpathentry kind="con" path="SWT_CONTAINER/JFACE/PLATFORM"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
