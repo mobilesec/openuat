@@ -1,0 +1,1 @@
+java -cp src:dist/spatial-authentication-core.jar:dist/spatial-authentication-channels.jar:dist/spatial-authentication-apps.jar:lib/relatecore.jar:lib/swt-3.1.jar:lib/log4j-1.2.jar:lib/kxml2-2.2.2.jar -Djava.library.path=../relate/thirdparty/nativelib/linux org.eu.mayrhofer.apps.IPSecConnectorAdmin $@
