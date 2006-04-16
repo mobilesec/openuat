@@ -1,0 +1,1 @@
+255#\wsdd\bin\j9.exe -Xdebug -jcl:foun -cp \;\wsdd\lib\jclPPro\ppro-ui-win.zip;\relate\core.jar;\relate\auth.jar;\relate\RXTXcomm.jar;\relate\log4jMini.jar org.eu.mayrhofer.channel.X509CertificateGenerator
