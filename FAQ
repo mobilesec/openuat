@@ -1,0 +1,8 @@
+1. Why LGPL and not X??
+- it is very free, can also be used by non-open-source projects
+- since it's about security protocols, they should be open to inspection --> new protocols/methods/tools within the toolkit must be open
+
+2. why is Bouncycastle included?
+- because some classes have been modified to work with J2ME
+- but you can use the normal BC distribution instead of the included classes
+
