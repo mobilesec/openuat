@@ -1,0 +1,16 @@
+Authentication based on:
+- Relative position --> Relate --> Ultrasound
+- Relative position --> Camera
+- Direction/Range --> Infrared
+- Motion --> Accelerometers
+- Spatial Proximity/Range --> Audio
+
+Authentication Proxy
+
+Secure Channels
+- IPSec
+- TLS-PSK
+
+Utility Functions
+- X.509
+- Windows Certificate Store
