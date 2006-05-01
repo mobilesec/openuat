@@ -5,6 +5,7 @@ Authentication based on:
 - Motion --> Accelerometers
 - Spatial Proximity/Range --> Audio
 - Squeeze --> Load Cells
+- WLAN or Bluetooth environment --> context prediction framework features
 
 Authentication Proxy
 
