@@ -88,6 +88,10 @@ public class TimeSeries implements SamplesSink {
 	 *                   computing the window mean and variance.
 	 */
 	public TimeSeries(int windowSize) {
+		if (windowSize <= 0) {
+			throw new IllegalArgumentException("Window size must by > 0");
+		}
+
 		circularBuffer = new float[windowSize];
 	}
 	
@@ -317,6 +321,10 @@ public class TimeSeries implements SamplesSink {
 	 * @param subtractWindowMean The current value of subtractWindowMean.
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
+		if (subtractTotalMean == true && subtractWindowMean == true) {
+			logger.error("Can not set both subtractWindowMean and subtractTotalMean");
+			return;
+		}
 		this.subtractWindowMean = subtractWindowMean;
 	}
 
@@ -333,6 +341,10 @@ public class TimeSeries implements SamplesSink {
 	 * @param subtractTotalMean The current value of subtractTotalMean.
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
+		if (subtractTotalMean == true && subtractWindowMean == true) {
+			logger.error("Can not set both subtractWindowMean and subtractTotalMean");
+			return;
+		}
 		this.subtractTotalMean = subtractTotalMean;
 	}
 
@@ -352,6 +364,5 @@ public class TimeSeries implements SamplesSink {
 		this.activeVarianceThreshold = activeVarianceThreshold;
 	}
 	
-	// TODO: detect active and passive segments automatically and fire off events on transitions when requested
 	// TODO: provide default parameter values, but allow to override them
 }
