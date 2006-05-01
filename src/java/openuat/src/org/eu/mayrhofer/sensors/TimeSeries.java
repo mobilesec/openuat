@@ -196,7 +196,7 @@ public class TimeSeries implements SamplesSink {
 	/** Removes a previously registered sink.
 	 * 
 	 * @param sink The sink to stop pushing samples to.
-	 * @return true if removed, false if not (i.e. if they have not been added previously).
+	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
 	public boolean removeSink(SamplesSink sink) {
 		return nextStageSinks.remove(sink);
