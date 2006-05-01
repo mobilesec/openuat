@@ -8,9 +8,10 @@
  */
 package org.eu.mayrhofer.sensors;
 
-import org.apache.log4j.Logger;
+import java.util.LinkedList;
+import java.util.ListIterator;
 
-import org.jfree.data.xy.*;
+import org.apache.log4j.Logger;
 
 /** This class represents a possibly multi-dimensional time series of a single
  * sensor. It computes simply statistical values, can distinguish active from
@@ -19,7 +20,7 @@ import org.jfree.data.xy.*;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class TimeSeries {
+public class TimeSeries implements SamplesSink {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(TimeSeries.class);
 
@@ -63,6 +64,24 @@ public class TimeSeries {
 	 */
 	private boolean subtractTotalMean = false;
 	
+	/** Holds the "listeners" for samples in the next stage, i.e. after filtering by
+	 * this object.
+	 * @see #addNextStageSink(SamplesSink)
+	 * @see #removeSink(SamplesSink)
+	 */
+	private LinkedList nextStageSinks = new LinkedList();
+	
+	/** The variance threshold to detect active segments. Only if this is set > 0, 
+	 * detection of active segments (and thus calculation of the variance) will be
+	 * done.
+	 */ 
+	private float activeVarianceThreshold = 0;
+	
+	/** true if the current segment has previously been detected to be active, falls if
+	 * previously detected to be quiescent.
+	 */
+	private boolean isActive = false;
+	
 	/** Initializes the time series circular buffer with the specified window size.
 	 * 
 	 * @param windowSize Specifies the number of past samples kept in memory and used for
@@ -72,16 +91,21 @@ public class TimeSeries {
 		circularBuffer = new float[windowSize];
 	}
 	
-	/////// test
-	XYSeries series = new XYSeries("Line", false);
-	/////// test
-
 	/** Adds a new sample to the time series in-memory buffer, updates statistics and
 	 * may forward to the next stage.
 	 * 
 	 * @param sample The sample value to add.
+	 * @param index The number of the sample to add. As this class keeps internal count
+	 *              of how many samples have already been added, this is used for checking
+	 *              that all samples are received and no duplicates happen. index is assumed
+	 *              to start at 0.
 	 */
-	public void addSample(float sample) {
+	public void addSample(float sample, int sampleNum) {
+		if (sampleNum != totalNum) {
+			logger.warn("Sample index " + sampleNum + " does not correspond to number of samples already received "
+					+ "(" + totalNum + ")");
+		}
+		
 		// if circular buffer is already full, remove oldest (i.e. update statistics
 		if (full) {
 			windowSum -= circularBuffer[index];
@@ -113,9 +137,65 @@ public class TimeSeries {
 		// and then apply optional linear transformation
 		nextStageSample = nextStageSample * multiplicator + offset;
 		logger.debug("Pushing value " + nextStageSample + " to next stage");
+    	if (nextStageSinks != null)
+    		for (ListIterator j = nextStageSinks.listIterator(); j.hasNext(); ) {
+    			SamplesSink s = (SamplesSink) j.next();
+    			s.addSample(nextStageSample, sampleNum);
+    		}
 		
-		// test
-		series.add(totalNum-1, nextStageSample);
+		// detect active segments
+    	if (logger.isDebugEnabled())
+    		logger.debug("Checking for activity: window variance is " + getWindowVariance() + 
+    				", threshold is " + activeVarianceThreshold);
+    	if (activeVarianceThreshold > 0 && getWindowVariance() >= activeVarianceThreshold
+    			&& !isActive) {
+    		logger.info("Detected transition to active at index " + sampleNum);
+    		isActive = true;
+        	if (nextStageSinks != null)
+        		for (ListIterator j = nextStageSinks.listIterator(); j.hasNext(); ) {
+        			SamplesSink s = (SamplesSink) j.next();
+        			// we define the active segment to start at the end of an active window
+        			s.segmentStart(sampleNum);
+        		}
+    	}
+    	if (activeVarianceThreshold > 0 && getWindowVariance() < activeVarianceThreshold
+    			&& isActive) {
+    		logger.info("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
+    		isActive = false;
+        	if (nextStageSinks != null)
+        		for (ListIterator j = nextStageSinks.listIterator(); j.hasNext(); ) {
+        			SamplesSink s = (SamplesSink) j.next();
+        			// and to end at the beginning of a quiescent window
+        			s.segmentEnd(sampleNum-circularBuffer.length+1);
+        		}
+    	}
+	}
+	
+	/** Dummy implementation of SamplesSink.segmentStart. Does nothing. */
+	public void segmentStart(int index) {
+		logger.warn("segmentStart method of TimeSeries called. This should not happen");
+	}
+
+	/** Dummy implementation of SamplesSink.segmentEnd. Does nothing. */
+	public void segmentEnd(int index) {
+		logger.warn("segmentEnd method of TimeSeries called. This should not happen");
+	}
+	
+	/** Registers a sink, which will receive all new values as they are sampled.
+	 * 
+	 * @param The sink to push new pre-processed samples to.
+	 */
+	public void addNextStageSink(SamplesSink sink) {
+		nextStageSinks.add(sink);
+	}
+
+	/** Removes a previously registered sink.
+	 * 
+	 * @param sink The sink to stop pushing samples to.
+	 * @return true if removed, false if not (i.e. if they have not been added previously).
+	 */
+	public boolean removeSink(SamplesSink sink) {
+		return nextStageSinks.remove(sink);
 	}
 	
 	/** Helper method for computing the arithmetical average, i.e. the mean. */
@@ -128,8 +208,9 @@ public class TimeSeries {
 	
 	/** Helper method for computing the variance. */
 	private float getVariance(float sum, float sum2, int num) {
-		if (num > 1)
-			return (sum2 - 2*sum*sum/num + num*sum*sum) / (num -1);
+		if (num > 1) {
+			return (sum2 - 2*sum*sum/num + sum*sum/num) / (num -1);
+		}
 		else
 			return 0;
 	}
@@ -151,7 +232,44 @@ public class TimeSeries {
 	
 	/** Returns the variance over all values in the time series buffer, i.e. the last window size samples. */
 	public float getWindowVariance() {
-		return getVariance(windowSum, windowSum2, full ? circularBuffer.length : index);
+		float var = getVariance(windowSum, windowSum2, full ? circularBuffer.length : index); 
+		if (! logger.isDebugEnabled())
+			return var;
+		else {
+			// debugging, so check if our formula is correct by calculating "slowly"
+			float[] arr = getSamplesInWindow();
+			float mean = 0;
+			for (int i=0; i<arr.length; i++) {
+				mean += arr[i];
+			}
+			mean /= (full ? circularBuffer.length : index);
+			logger.debug("Window mean calculated slowly=" + mean + ", online=" + getWindowMean());
+			float var2 = 0;
+			float sum = 0, sum2 = 0;
+			for (int i=0; i<arr.length; i++) {
+				float val = arr[i];
+				var2 += (val - mean) * (val - mean);
+				sum += val;
+				sum2 += val * val;
+			}
+			var2 /= (full ? circularBuffer.length : index)-1;
+			logger.debug("Window variance calculated slowly=" + var2 + ", online=" + var +
+					", ssum=" + sum + ", ssum2=" + sum2 + ", osum=" + windowSum + ", osum2=" + windowSum2);
+			return var;
+		}
+	}
+	
+	/** Returns all samples currently contained in the time window. */
+	public float[] getSamplesInWindow() {
+		// TODO: this can be optimized with 2 System.ArrayCopy calls
+		int startInd = full ? index : 0;
+		int num = full ? circularBuffer.length : index;
+		float[] ret = new float[num];
+		
+		for (int i=0; i<num; i++)
+			ret[i] = circularBuffer[(startInd+i)%circularBuffer.length];
+		
+		return ret;
 	}
 	
 	/** Gets the current value of offset.
@@ -216,6 +334,22 @@ public class TimeSeries {
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
 		this.subtractTotalMean = subtractTotalMean;
+	}
+
+	/** Gets the current value of activeVarianceThreshold.
+	 * @see #activeVarianceThreshold
+	 * @return The current value of activeVarianceThreshold.
+	 */
+	public float getActiveVarianceThreshold() {
+		return activeVarianceThreshold;
+	}
+
+	/** Sets the current value of activeVarianceThreshold.
+	 * @see #activeVarianceThreshold
+	 * @param activeVarianceThreshod The current value of activeVarianceThreshold.
+	 */
+	public void setActiveVarianceThreshold(float activeVarianceThreshold) {
+		this.activeVarianceThreshold = activeVarianceThreshold;
 	}
 	
 	// TODO: detect active and passive segments automatically and fire off events on transitions when requested
