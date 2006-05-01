@@ -238,7 +238,7 @@ public class ParallelPortPWMReader {
 	
 	/////////////////////////// test code begins here //////////////////////////////
 	public static void main(String[] args) throws IOException {
-		class XYSink implements SamplesSink {
+		/*class XYSink implements SamplesSink {
 			XYSeries series = new XYSeries("Line", false);
 			int num=0;
 			ArrayList segment = null;
@@ -289,6 +289,57 @@ public class ParallelPortPWMReader {
 			JFreeChart segChart = ChartFactory.createXYLineChart("Segment at line " + i, "Number [100Hz]", 
 					"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
 			ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
+		}*/
+
+		
+		class SegmentSink implements SegmentsSink {
+			private String filename;
+			public SegmentSink(String filename) {
+				this.filename = filename;
+			}
+			public void addSegment(float[] segment, int startIndex) {
+				logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
+
+				if (filename != null) {
+					XYSeries series = new XYSeries("Segment", false);
+					for (int i=0; i<segment.length; i++)
+						series.add(i, segment[i]);
+					XYDataset data = new XYSeriesCollection(series);
+					JFreeChart chart = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+						"Sample", data, PlotOrientation.VERTICAL, true, true, false);
+					try {
+						ChartUtilities.saveChartAsJPEG(new File(filename), chart, 500, 300);
+					} 
+					catch (Exception e) {
+						e.printStackTrace();
+						return;
+					}
+					filename = null;
+				}
+			}
 		}
+		
+		int samplerate = 128;
+		int windowsize = samplerate/2; // 1/2 second
+		int minsegmentsize = windowsize; // 1/2 second
+		float varthreshold = 350;
+		ParallelPortPWMReader r2_a = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2}, samplerate);
+		ParallelPortPWMReader r2_b = new ParallelPortPWMReader(args[0], new int[] {4, 5, 6}, samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		r2_a.addSink(aggr_a.getInitialSinks());
+		r2_b.addSink(aggr_b.getInitialSinks());
+		aggr_a.addNextStageSink(new SegmentSink("/tmp/aggrA.jpg"));
+		aggr_b.addNextStageSink(new SegmentSink("/tmp/aggrB.jpg"));
+		aggr_a.setOffset(0);
+		aggr_a.setMultiplicator(1/128f);
+		aggr_a.setSubtractTotalMean(true);
+		aggr_a.setActiveVarianceThreshold(varthreshold);
+		aggr_b.setOffset(0);
+		aggr_b.setMultiplicator(1/128f);
+		aggr_b.setSubtractTotalMean(true);
+		aggr_b.setActiveVarianceThreshold(varthreshold);
+		r2_a.simulateSampling();
+		r2_b.simulateSampling();
 	}
 }
