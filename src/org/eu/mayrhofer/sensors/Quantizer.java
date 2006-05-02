@@ -1,0 +1,91 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-05-02
+ * 
+ * This implementation is based on the "cohere", "pwelch", "hanning", 
+ * and "conj" functions in Octave and Octave Forge.
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+package org.eu.mayrhofer.sensors;
+
+import org.apache.log4j.Logger;
+
+/** This class implements a simple linear quantizer to transform double-valued
+ * signals into small-ranged integer-valued ones. 
+ * 
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
+public class Quantizer {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(Quantizer.class);
+
+	/** Quantifies a signal according to the parameters. Every value of the
+	 * input vector is quantized independently.
+	 * 
+	 * @param vector The input signal to quantize.
+	 * @param lower The lower end of the range in which the input signal should be quantized.
+	 *              All values in vector less than this lower end will simply be quantized to
+	 *              the minimum quantization level, i.e. to 0. 
+	 * @param upper The upper end of the range in which the input signal should be quantized.
+	 *              All values in vector greater than this upper end will simply be quantized to
+	 *              the maximum quantization level, i.e. to numLevels-1
+	 * @param numLevels The number of levels to distinguish. All output values will be in the
+	 *                  (integer) range [0;numLevels-1] with the exception of "error" values
+	 *                  when using error zones, which will be set to -1.
+	 * @param offset A value between -0.5 and +0.5 to specify an offset in the quantization. 
+	 *               It can be used to change the start of the quantization levels slightly 
+	 *               to account for small differences in the original data that would lead to 
+	 *               mismatch in the quantized data. Set to 0 if not needed.
+	 * @param errorZone If set to true, an error zone will be created around each quantum value 
+	 *                  and values outside those error zones will be marked in the output by being 
+	 *                  set to -1. If set to false, no error zones will be used.
+	 * @return The quantized values. This array will have the same number of elements as the input.
+	 */
+	public static int[] quantize(double[] vector, double lower, double upper, int numLevels, double offset, boolean errorZone) {
+		if (lower >= upper)
+			throw new IllegalArgumentException("lower must be < upper");
+		if (numLevels < 2)
+			throw new IllegalArgumentException("Need at least 2 quantization levels");
+		if (offset < -0.5 || offset > 0.5)
+			throw new IllegalArgumentException("Invalid offset value, must be between -0.5 and 0.5");
+
+		// first generate the quantization intervals
+		double errorMargin;
+		if (errorZone)
+			// when we use an error zone, the valid intervals are smaller
+			errorMargin = (upper-lower) / numLevels / 4;
+		else 
+			errorMargin = 0;
+		// holds both upper and lower ends of the intervals
+		double intervals[][] = new double[2][];
+		intervals[0] = new double[numLevels];
+		intervals[1] = new double[numLevels];
+		for (int i=0; i<numLevels; i++) {
+			intervals[0][i] = (i+offset) * (upper-lower)/numLevels + lower + errorMargin;
+			intervals[1][i] = (i+1+offset) * (upper-lower)/numLevels + lower - errorMargin;
+			logger.debug("Using interval " + i + " from " + intervals[0][i] + " to " + intervals[1][i]);
+		}
+		// but (when using no error zones), set first and last intervals to be open
+		intervals[0][0] = Double.NEGATIVE_INFINITY;
+		intervals[1][numLevels-1] = Double.POSITIVE_INFINITY;
+
+		// and quantize each value
+		int[] quantized = new int[vector.length];
+		for (int i=0; i<vector.length; i++) {
+			quantized[i] = -1;
+			for (int j=0; j<numLevels; j++) {
+				if (vector[i] >= intervals[0][j] && vector[i] <= intervals[1][j]) {
+					quantized[i] = j;
+					logger.debug(i + ": " + vector[i] + " is in " + j + ": [" + 
+							intervals[0][j] + ";" + intervals[1][j] + "], setting to " + quantized[i]);
+				}
+			}
+		}
+		
+		return quantized;
+	}
+}
