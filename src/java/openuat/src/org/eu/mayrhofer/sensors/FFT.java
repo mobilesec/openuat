@@ -137,6 +137,27 @@ public class FFT {
     		powspec[i] = (x[i].getRe() * x[i].getRe() + x[i].getIm() * x[i].getIm()) / x.length;
     	return powspec;
     }
+    
+    /** This is a helper function which computes the FFT power spectrum coefficients
+     * of a signal in time domain. It first creates a Complex array out of the double
+     * array (with imaginary parts set to 0), then computes the complex FFT coefficients
+     * and finally returns the power spectrum of these coefficients. 
+     * 
+     * @param x The input time series.
+     * @param offset Values will be taken from the time series starting at this offset.
+     * @param len This number of values will be used from the time series.
+     */
+    public static double[] fftPowerSpectrum(double[] x, int offset, int len) {
+    	if (len > x.length)
+    		throw new IllegalArgumentException("Length requested is larger than the number of elements in the time series");
+    	if (offset < 0 || offset > x.length-len+1)
+    		throw new IllegalArgumentException("offset must be >= 0 and <= x.length-len+1");
+    	
+    	Complex[] x1 = new Complex[len];
+    	for (int i=0; i<len; i++)
+    		x1[i] = new Complex(x[offset+i], 0);
+    	return powerSpectrum(fft(x1));
+    }
 
 
 
