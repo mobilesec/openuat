@@ -78,6 +78,18 @@ public class ParallelPortPWMReader {
 	 */
 	private int numSamples;
 	
+	/** The thread that does the actual reading from the port.
+	 * @see #start()
+	 * @see #stop()
+	 */
+	private Thread samplingThread = null;
+	
+	/** Used to signal the sampling thread to terminate itself.
+	 * @see #stop()
+	 * @see RunHelper#run()
+	 */
+	boolean alive = true;
+	
 	/** Initializes the parallel port PWM log reader. It only saves the
 	 * passed parameters and opens the InputStream to read from the specified
 	 * file, and thus implicitly to check if the file exists and can be opened.
@@ -139,14 +151,41 @@ public class ParallelPortPWMReader {
 		return sinks.remove(sink);
 	}
 	
-	public void startSampling() {
-		
+	/** Starts a new background thread to read from the file and create sample
+	 * values as the lines are read.
+	 */
+	public void start() {
+		if (samplingThread == null) {
+			logger.debug("Starting sampling thread");
+			samplingThread = new Thread(new RunHelper());
+			samplingThread.start();
+		}
+	}
+
+	/** Stops the background thread, if started previously. */
+	public void stop() {
+		if (samplingThread != null) {
+			logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
+			alive = false;
+			try {
+				samplingThread.interrupt();
+				samplingThread.join();
+			}
+			catch (InterruptedException e) {
+				if (! System.getProperty("os.name").startsWith("Windows CE")) {
+					logger.error("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
+				}
+				else {
+					// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
+					logger.error("Error waiting for sampling thread to terminate: " + e.toString());
+				}
+			}
+			logger.error("Sampling thread stopped");
+			samplingThread = null;
+		}
 	}
 	
-	public void stopStampling() {
-		
-	}
-	
+	/** Simulate sampling by reading all available lines from the spcified file. */
 	public void simulateSampling() throws IOException {
 		BufferedReader r = new BufferedReader(new InputStreamReader(port));
 		
@@ -157,6 +196,10 @@ public class ParallelPortPWMReader {
 		}
 	}
 	
+	/** A helper function to parse single line of the format produced by 
+	 * parport-pulsewidth. This method creates the samples and emits events.
+	 * @param line The line to parse.
+	 */
 	private void parseLine(String line) {
 		StringTokenizer st = new StringTokenizer(line, " .", false);
 		// first two columns (with a '.' in between) are the timestamp (sec and usec)
@@ -241,11 +284,50 @@ public class ParallelPortPWMReader {
 			logger.debug("This is an empty reading containing only a timestamp");
 	}
 	
+	/** This causes the reader to be shut down properly by calling stop() and making
+	 * sure that all ressources are freed properly when this object is garbage collected.
+	 * #see stop
+	 */
+	public void dispose() {
+		stop();
+		try {
+			port.close();
+		}
+		catch (Exception e) {
+			logger.error("Could not properly close input stream");
+		}
+	}
+
+	
+	/** This is a helper class that implements the Runnable interface internally. This way, one <b>has</b> to use the
+	 * start and stop methods of the outer class to start the thread, which is cleaner from an interface point of view.
+	 */
+	private class RunHelper implements Runnable {
+		public void run() {
+			BufferedReader r = new BufferedReader(new InputStreamReader(port));
+			
+			try {
+				String line = r.readLine();
+				while (alive && line != null) {
+					parseLine(line);
+					line = r.readLine();
+				}
+				if (! alive)
+					logger.debug("Background sampling thread terminated regularly due to request");
+				else
+					logger.warn("Background sampling thread received empty line! This should not happen when reading from a FIFO");
+			}
+			catch (Exception e) {
+				logger.error("Could not read from file: " + e);
+			}
+		}
+	}
+	
 	// TODO: create a general interface for a sensor source, but keep it simple --> timestamped, using TimeSeries
 	
 	
 	/////////////////////////// test code begins here //////////////////////////////
-	class XYSink implements SamplesSink {
+	static class XYSink implements SamplesSink {
 		XYSeries series = new XYSeries("Line", false);
 		int num=0;
 		ArrayList segment = null;
@@ -294,7 +376,7 @@ public class ParallelPortPWMReader {
 
 	
 	public static void main(String[] args) throws IOException {
-		/*ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2, 3, 4, 5, 6, 7}, 100);
+		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2, 3, 4, 5, 6, 7}, 100);
 		TimeSeries[] t = new TimeSeries[8];
 		XYSink[] s = new XYSink[8];
 		for (int i=0; i<8; i++) {
@@ -319,7 +401,7 @@ public class ParallelPortPWMReader {
 			JFreeChart segChart = ChartFactory.createXYLineChart("Segment at line " + i, "Number [100Hz]", 
 					"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
 			ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
-		}*/
+		}
 
 		
 	
@@ -346,7 +428,7 @@ public class ParallelPortPWMReader {
 		r2_a.simulateSampling();
 		r2_b.simulateSampling();
 
-		/*XYSeries seg1 = new XYSeries("Segment 1", false);
+		XYSeries seg1 = new XYSeries("Segment 1", false);
 		for (int i=0; i<SegmentSink.segs[0].length; i++)
 			seg1.add(i, SegmentSink.segs[0][i]);
 		XYDataset dat1 = new XYSeriesCollection(seg1);
@@ -360,7 +442,7 @@ public class ParallelPortPWMReader {
 		XYDataset dat2 = new XYSeriesCollection(seg2);
 		JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
 			"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
-		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);*/
+		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
 
 		// make sure they have similar length
 		int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
@@ -372,13 +454,13 @@ public class ParallelPortPWMReader {
 			s2[i] = SegmentSink.segs[1][i];
 		}
 		double[] coherence = Coherence.cohere(s1, s2, 128, 0);
-		/*XYSeries c = new XYSeries("Coefficients", false);
+		XYSeries c = new XYSeries("Coefficients", false);
 		for (int i=0; i<coherence.length; i++)
 			c.add(i, coherence[i]);
 		XYDataset c1 = new XYSeriesCollection(c);
 		JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
 			"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-		ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);*/
+		ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
 		
 		double coherenceMean = Coherence.mean(coherence);
 		System.out.println("Coherence mean: " + coherenceMean);

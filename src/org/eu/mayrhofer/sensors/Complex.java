@@ -6,7 +6,8 @@
  * GNU LGPL. 
  * File created 2006-05-01
  * 
- * Extended by Rene Mayrhofer to support getRe and getIm
+ * Extended by Rene Mayrhofer to support getRe and getIm and added correct 
+ * Javadoc comments.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -22,24 +23,26 @@ package org.eu.mayrhofer.sensors;
  *  keyword when declaring re and im enforces this rule, making it
  *  a compile-time error to change the .re or .im fields after
  *  they've been initialized.
+ *  
+ * @author Adapted by Rene Mayrhofer, very heavily based on code by Robert Sedgewick and Kevin Wayne
  */
 public class Complex {
     private final double re;   // the real part
     private final double im;   // the imaginary part
 
-    // create a new object with the given real and imaginary parts
+    /** Create a new object with the given real and imaginary parts. */
     public Complex(double real, double imag) {
         this.re = real;
         this.im = imag;
     }
 
-    // return a string representation of the invoking object
+    /** return a string representation of the invoking object. */
     public String toString()  { return re + " + " + im + "i"; }
 
-    // return |this|
+    /** return |this| */
     public double abs() { return Math.sqrt(re*re + im*im);  }
 
-    // return a new object whose value is (this + b)
+    /** return a new object whose value is (this + b). */
     public Complex plus(Complex b) { 
         Complex a = this;             // invoking object
         double real = a.re + b.re;
@@ -48,7 +51,7 @@ public class Complex {
         return sum;
     }
 
-    // return a new object whose value is (this - b)
+    /** return a new object whose value is (this - b). */
     public Complex minus(Complex b) { 
         Complex a = this;   
         double real = a.re - b.re;
@@ -57,7 +60,7 @@ public class Complex {
         return diff;
     }
 
-    // return a new object whose value is (this * b)
+    /** return a new object whose value is (this * b). */
     public Complex times(Complex b) {
         Complex a = this;
         double real = a.re * b.re - a.im * b.im;
@@ -66,24 +69,26 @@ public class Complex {
         return prod;
     }
 
-    // return a new object whose value is (this * alpha)
+    /** return a new object whose value is (this * alpha). */
     public Complex times(double alpha) {
         return new Complex(alpha * re, alpha * im);
     }
 
-    // return a new object whose value is the conjugate of this
+    /** return a new object whose value is the conjugate of this. */
     public Complex conjugate() {  return new Complex(re, -im); }
     
+    /** Return the real part. */
     public double getRe() {
     	return re;
     }
     
+    /** Return the imaginary part. */
     public double getIm() {
     	return im;
     }
 
 
-    // sample client for testing
+    //////////// testing code begins here /////////////////////
     public static void main(String[] args) {
         Complex a = new Complex( 5.0, 6.0);
         System.out.println("a = " + a);

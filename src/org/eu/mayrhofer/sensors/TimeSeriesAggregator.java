@@ -53,6 +53,7 @@ public class TimeSeriesAggregator {
 		 * @see TimeSeriesAggregator#curSampleReceived is reset when all sample dimensions are complete and have been aggregated
 		 */
 		public void addSample(double sample, int numSample) {
+			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
 			curSample[seriesIndex] = sample;
 			curSampleReceived[seriesIndex] = true;
 			// if currently active, aggregatedSeries will be set
@@ -178,10 +179,13 @@ public class TimeSeriesAggregator {
 	 */
 	public TimeSeriesAggregator(int numSeries, int windowSize, int minSegmentSize) {
 		if (numSeries <= 0) {
-			throw new IllegalArgumentException("Number of time series must by > 0");
+			throw new IllegalArgumentException("Number of time series must be > 0");
 		}
 		if (windowSize <= 0) {
-			throw new IllegalArgumentException("Window size must by > 0");
+			throw new IllegalArgumentException("Window size must be > 0");
+		}
+		if (minSegmentSize <= 0 || minSegmentSize > windowSize) {
+			throw new IllegalArgumentException("Minimum segment size must be > 0 and <= windowSize");
 		}
 		
 		this.windowSize = windowSize;

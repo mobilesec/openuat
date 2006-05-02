@@ -6,7 +6,8 @@
  * GNU LGPL. 
  * File created 2006-05-01
  * 
- * Extended by Rene Mayrhofer to compute powerSpectrum
+ * Extended by Rene Mayrhofer to compute powerSpectrum and added correct 
+ * Javadoc comments.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -27,9 +28,11 @@ package org.eu.mayrhofer.sensors;
  *      an object type for representing complex numbers and because
  *      it re-allocates memory for the subarray, instead of doing
  *      in-place or reusing a single temporary array)
+ *  
+ * @author Adapted by Rene Mayrhofer, very heavily based on code by Robert Sedgewick and Kevin Wayne
  */
 public class FFT {
-    // compute the FFT of x[], assuming its length is a power of 2
+    /** compute the FFT of x[], assuming its length is a power of 2. */
     public static Complex[] fft(Complex[] x) {
         int N = x.length;
 
@@ -61,7 +64,7 @@ public class FFT {
     }
 
 
-    // compute the inverse FFT of x[], assuming its length is a power of 2
+    /** compute the inverse FFT of x[], assuming its length is a power of 2. */
     public static Complex[] ifft(Complex[] x) {
         int N = x.length;
         Complex[] y = new Complex[N];
@@ -85,7 +88,7 @@ public class FFT {
 
     }
 
-    // compute the circular convolution of x and y
+    /** compute the circular convolution of x and y. */
     public static Complex[] cconvolve(Complex[] x, Complex[] y) {
 
         // should probably pad x and y with 0s so that they have same length
@@ -108,7 +111,7 @@ public class FFT {
     }
 
 
-    // compute the linear convolution of x and y
+    /** compute the linear convolution of x and y. */
     public static Complex[] convolve(Complex[] x, Complex[] y) {
         Complex ZERO = new Complex(0, 0);
 
@@ -137,7 +140,7 @@ public class FFT {
 
 
 
-    // test client
+    //////////////////// testing code begins here //////////////////
     public static void main(String[] args) { 
         int N = Integer.parseInt(args[0]);
         Complex[] x = new Complex[N];
