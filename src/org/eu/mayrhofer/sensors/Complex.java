@@ -5,6 +5,8 @@
  * it is okay to release their implementation with this toolkit under the terms of the
  * GNU LGPL. 
  * File created 2006-05-01
+ * 
+ * Extended by Rene Mayrhofer to support getRe and getIm
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
