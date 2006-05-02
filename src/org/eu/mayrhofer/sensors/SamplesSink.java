@@ -22,7 +22,7 @@ public interface SamplesSink {
 	 * @param index The index of this sample. All samples are required
 	 *              to be equally spaced.
 	 */
-	public void addSample(float sample, int index);
+	public void addSample(double sample, int index);
 
 	/** Should be called when it is detected that an active segment
 	 * starts, i.e. when it is detected that the source has become

@@ -20,5 +20,5 @@ public interface SegmentsSink {
 	 * @param index The start index of this segment. All samples are required
 	 *              to be equally spaced.
 	 */
-	public void addSegment(float[] segment, int startIndex);
+	public void addSegment(double[] segment, int startIndex);
 }

@@ -71,6 +71,14 @@ public class Complex {
 
     // return a new object whose value is the conjugate of this
     public Complex conjugate() {  return new Complex(re, -im); }
+    
+    public double getRe() {
+    	return re;
+    }
+    
+    public double getIm() {
+    	return im;
+    }
 
 
     // sample client for testing

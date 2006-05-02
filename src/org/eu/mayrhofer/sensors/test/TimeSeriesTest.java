@@ -37,16 +37,16 @@ public class TimeSeriesTest extends TestCase {
 	}*/
 
 	public void testCalculateWindowVariance() {
-		float[] arr = s.getSamplesInWindow();
-		float mean = 0;
+		double[] arr = s.getSamplesInWindow();
+		double mean = 0;
 		for (int i=0; i<arr.length; i++) {
 			mean += arr[i];
 		}
 		mean /= arr.length;
-		float var2 = 0;
-		float sum = 0, sum2 = 0;
+		double var2 = 0;
+		double sum = 0, sum2 = 0;
 		for (int i=0; i<arr.length; i++) {
-			float val = arr[i];
+			double val = arr[i];
 			var2 += (val - mean) * (val - mean);
 			sum += val;
 			sum2 += val * val;

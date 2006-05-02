@@ -18,6 +18,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
@@ -70,7 +71,7 @@ public class ParallelPortPWMReader {
 	/** Remember the last sample values, in case there is a sample period with no samples from
 	 * the sensors. In this case the last values are just repeated.
 	 */
-	private float[] lastSampleValues;
+	private double[] lastSampleValues;
 	
 	/** The total number of samples read until currently. Changed by parseLine.
 	 * @see #parseLine(String) 
@@ -106,7 +107,7 @@ public class ParallelPortPWMReader {
 		this.curSample = new ArrayList[lines.length];
 		for (int i=0; i<lines.length; i++)
 			curSample[i] = new ArrayList();
-		this.lastSampleValues = new float[lines.length];
+		this.lastSampleValues = new double[lines.length];
 		
 		this.sinks = new LinkedList();
 		this.lastSampleAt = 0;
@@ -159,9 +160,16 @@ public class ParallelPortPWMReader {
 	private void parseLine(String line) {
 		StringTokenizer st = new StringTokenizer(line, " .", false);
 		// first two columns (with a '.' in between) are the timestamp (sec and usec)
-		int timestampSecs = Integer.parseInt(st.nextToken()); 
-		int timestampUSecs = Integer.parseInt(st.nextToken());
-		long timestamp = (long)timestampSecs*1000000 + timestampUSecs;
+		long timestamp = 0;
+		try {
+			int timestampSecs = Integer.parseInt(st.nextToken()); 
+			int timestampUSecs = Integer.parseInt(st.nextToken());
+			timestamp = (long)timestampSecs*1000000 + timestampUSecs;
+		}
+		catch (NoSuchElementException e) {
+			logger.warn("Short line with incomplete timestamp, ignoring line");
+			return;
+		}
 		logger.debug("Reading at timestamp " + timestamp + " us");
 		// sanity check
 		if (timestamp <= lastSampleAt) {
@@ -237,34 +245,56 @@ public class ParallelPortPWMReader {
 	
 	
 	/////////////////////////// test code begins here //////////////////////////////
-	public static void main(String[] args) throws IOException {
-		/*class XYSink implements SamplesSink {
-			XYSeries series = new XYSeries("Line", false);
-			int num=0;
-			ArrayList segment = null;
-			XYSeries firstActiveSegment = null;
-			
-			public void addSample(float s, int index) {
-				if (index != num++)
-					logger.error("Sample index invalid");
-				series.add(index, s);
-				if (segment != null)
-					segment.add(new Float(s));
-			}
-			public void segmentStart(int index) {
-				if (firstActiveSegment == null)
-					segment = new ArrayList();
-			}
-			public void segmentEnd(int index) {
-				if (segment != null) {
-					firstActiveSegment = new XYSeries("Segment", false);
-					for (int i=0; i<segment.size(); i++)
-						firstActiveSegment.add(i, ((Float) segment.get(i)).floatValue());
-				}
+	class XYSink implements SamplesSink {
+		XYSeries series = new XYSeries("Line", false);
+		int num=0;
+		ArrayList segment = null;
+		XYSeries firstActiveSegment = null;
+	
+		public void addSample(double s, int index) {
+			if (index != num++)
+				logger.error("Sample index invalid");
+			series.add(index, s);
+			if (segment != null)
+				segment.add(new Double(s));
+		}
+		public void segmentStart(int index) {
+			if (firstActiveSegment == null)
+				segment = new ArrayList();
+		}
+		public void segmentEnd(int index) {
+			if (segment != null) {
+				firstActiveSegment = new XYSeries("Segment", false);
+				for (int i=0; i<segment.size(); i++)
+					firstActiveSegment.add(i, ((Double) segment.get(i)).doubleValue());
 			}
 		}
-		
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2, 3, 4, 5, 6, 7}, 100);
+	}
+
+	static class SegmentSink implements SegmentsSink {
+		static double[][] segs = new double[2][];
+		static {
+			segs[0] = null;
+			segs[1] = null;
+		}
+
+		private int index;
+		public SegmentSink(int index) {
+			this.index = index;
+		}
+		public void addSegment(double[] segment, int startIndex) {
+			logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
+
+			if (segs[index] == null)
+				segs[index] = segment;
+			else
+				logger.warn("Already received segment " + index + ", this is a second significant one!");
+		}
+	}
+
+	
+	public static void main(String[] args) throws IOException {
+		/*ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2, 3, 4, 5, 6, 7}, 100);
 		TimeSeries[] t = new TimeSeries[8];
 		XYSink[] s = new XYSink[8];
 		for (int i=0; i<8; i++) {
@@ -292,45 +322,19 @@ public class ParallelPortPWMReader {
 		}*/
 
 		
-		class SegmentSink implements SegmentsSink {
-			private String filename;
-			public SegmentSink(String filename) {
-				this.filename = filename;
-			}
-			public void addSegment(float[] segment, int startIndex) {
-				logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
-
-				if (filename != null) {
-					XYSeries series = new XYSeries("Segment", false);
-					for (int i=0; i<segment.length; i++)
-						series.add(i, segment[i]);
-					XYDataset data = new XYSeriesCollection(series);
-					JFreeChart chart = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-						"Sample", data, PlotOrientation.VERTICAL, true, true, false);
-					try {
-						ChartUtilities.saveChartAsJPEG(new File(filename), chart, 500, 300);
-					} 
-					catch (Exception e) {
-						e.printStackTrace();
-						return;
-					}
-					filename = null;
-				}
-			}
-		}
-		
+	
 		int samplerate = 128;
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
-		float varthreshold = 350;
+		double varthreshold = 350;
 		ParallelPortPWMReader r2_a = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2}, samplerate);
 		ParallelPortPWMReader r2_b = new ParallelPortPWMReader(args[0], new int[] {4, 5, 6}, samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		r2_a.addSink(aggr_a.getInitialSinks());
 		r2_b.addSink(aggr_b.getInitialSinks());
-		aggr_a.addNextStageSink(new SegmentSink("/tmp/aggrA.jpg"));
-		aggr_b.addNextStageSink(new SegmentSink("/tmp/aggrB.jpg"));
+		aggr_a.addNextStageSink(new SegmentSink(0));
+		aggr_b.addNextStageSink(new SegmentSink(1));
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
@@ -341,5 +345,42 @@ public class ParallelPortPWMReader {
 		aggr_b.setActiveVarianceThreshold(varthreshold);
 		r2_a.simulateSampling();
 		r2_b.simulateSampling();
+
+		/*XYSeries seg1 = new XYSeries("Segment 1", false);
+		for (int i=0; i<SegmentSink.segs[0].length; i++)
+			seg1.add(i, SegmentSink.segs[0][i]);
+		XYDataset dat1 = new XYSeriesCollection(seg1);
+		JFreeChart chart1 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+			"Sample", dat1, PlotOrientation.VERTICAL, true, true, false);
+		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrA.jpg"), chart1, 500, 300);
+
+		XYSeries seg2 = new XYSeries("Segment 2", false);
+		for (int i=0; i<SegmentSink.segs[1].length; i++)
+			seg2.add(i, SegmentSink.segs[1][i]);
+		XYDataset dat2 = new XYSeriesCollection(seg2);
+		JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+			"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
+		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);*/
+
+		// make sure they have similar length
+		int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
+		System.out.println("Using " + len + " samples for coherence computation");
+		double[] s1 = new double[len];
+		double[] s2 = new double[len];
+		for (int i=0; i<len; i++) {
+			s1[i] = SegmentSink.segs[0][i];
+			s2[i] = SegmentSink.segs[1][i];
+		}
+		double[] coherence = Coherence.cohere(s1, s2, 128, 0);
+		/*XYSeries c = new XYSeries("Coefficients", false);
+		for (int i=0; i<coherence.length; i++)
+			c.add(i, coherence[i]);
+		XYDataset c1 = new XYSeriesCollection(c);
+		JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+			"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+		ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);*/
+		
+		double coherenceMean = Coherence.mean(coherence);
+		System.out.println("Coherence mean: " + coherenceMean);
 	}
 }
