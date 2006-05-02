@@ -45,7 +45,8 @@ public class Quantizer {
 	 *                  set to -1. If set to false, no error zones will be used.
 	 * @return The quantized values. This array will have the same number of elements as the input.
 	 */
-	public static int[] quantize(double[] vector, double lower, double upper, int numLevels, double offset, boolean errorZone) {
+	public static int[] quantize(double[] vector, double lower, double upper, int numLevels, 
+			double offset, boolean errorZone) {
 		if (lower >= upper)
 			throw new IllegalArgumentException("lower must be < upper");
 		if (numLevels < 2)
@@ -87,5 +88,48 @@ public class Quantizer {
 		}
 		
 		return quantized;
+	}
+	
+	/** Helper function to return the maximum value in a vector. */
+	public static double max(double[] vector) {
+		double max = Double.NEGATIVE_INFINITY;
+		for (int i=0; i<vector.length; i++)
+			if (vector[i] > max)
+				max = vector[i];
+		return max;
+	}
+	
+	/** Generates multiple quantization candidates with different offset values.
+	 * 
+	 * @param vector @see quantize
+	 * @param lower @see quantize
+	 * @param upper @see quantize
+	 * @param numLevels @see quantize
+	 * @param numCandidates The number of candidates to create. That is, 
+	 *                      numCandidates offset values will be used from 0 to 0.5. It
+	 *                      must be at least 2 to make sense.
+	 * @param errorZone @see quantize
+	 * @return An array of candidates, where the first dimension represents the
+	 *         different candidates (thus, the number of elements in the first
+	 *         dimension is numCandidates) and the second dimension represents the
+	 *         vector values (thus, the number of elements in the second dimension
+	 *         is vector.length).
+	 */
+	public static int[][] generateCandidates(double[] vector, double lower, double upper, int numLevels, 
+			int numCandidates, boolean errorZone) {
+		if (numCandidates < 2)
+			throw new IllegalArgumentException("numCandidates must >= 2");
+		
+		logger.debug("Generating " + numCandidates + " quantization candidates for lower=" 
+				+ lower + ", upper=" + upper + ", numLevels=" + numLevels + 
+				(errorZone ? " with" : " without") + " error zones");
+		
+		int[][] candidates = new int[numCandidates][];
+		for (int i=0; i<numCandidates; i++) {
+			// with numCandidates different values, there's (numCandidates-1) additions in between...
+			double offset = i * 0.5 / (numCandidates-1);
+			candidates[i] = quantize(vector, lower, upper, numLevels, offset, errorZone);
+		}
+		return candidates;
 	}
 }
