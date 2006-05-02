@@ -1,8 +1,8 @@
 /* Copyright Rene Mayrhofer
  * File created 2006-04-28
  * 
- * This implementation is based on the "cohere" and "pwelch" 
- * functions in Octave Forge.
+ * This implementation is based on the "cohere", "pwelch", "hanning", 
+ * and "conj" functions in Octave and Octave Forge.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -57,8 +57,17 @@ public class Coherence {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(Coherence.class);
 
-	public float[] cohere(float[] s1, float[] s2, int windowsize, int samplerate, int overlap
-			/*float confidenceInterval*/) {
+	/** Compute the coherence between two signals. 
+	 * 
+	 * @param s1 Signal 1. Both signals must have equal length.
+	 * @param s2 Signal 2. Both signals must have equal length.
+	 * @param windowsize The window size to use, i.e. the number of FFT coefficients to compute. Defaults to
+	 *                   min(256, s1.length) if set to <= 0.
+	 * @param overlap The overlap of the windows to compute. Defaults to windowsize/2 when set to <= 0.
+	 * @return The coherence coefficients.
+	 */
+	public static double[] cohere(double[] s1, double[] s2, int windowsize, int overlap
+			/*double confidenceInterval*/) {
 		if (s1.length != s2.length) {
 			logger.error("Signals have different length");
 			return null;
@@ -67,131 +76,120 @@ public class Coherence {
 		// default for windowsize
 		if (windowsize <= 0)
 			windowsize = s1.length >= 256 ? s1.length : 256;
-		// default for samplerate
-		if (samplerate <= 0)
-			samplerate = 2; // Hz
 		// default for overlap
 		if (overlap <= 0)
 			overlap = windowsize / 2;
 		// default confidence interval - not needed just for the coherence
 		/*if (confidenceInterval <= 0)
-			confidenceInterval = 0.95f;*/
-		
-		// generate hanning window
-		// normalize hanning window: window = window / norm(window);
-		
-		return null;
-	}
-/*
-## Fill in defaults for arguments that aren't specified
-if isempty(window), window = hanning(nfft); endif
+			confidenceInterval = 0.95f;
 if isempty(trend), trend=-1; endif
-if isempty(use_dB),
-  ## don't default to db for cohere, or for returned values
-  use_dB = (ftype!=3 && nargout == 0);
-endif
+		*/
+		
+		logger.info("Computing coherence between two signals of length " + s1.length + 
+				" with a window size/number of FFT coefficients of " + windowsize + " and " +
+				overlap + " overlap");
+		
+		double[] hann = hanning(windowsize);	
+		// sanity check
+		if (hann.length != windowsize) {
+			logger.error("FFT window size is different from than the hanning window size, can not cope");
+			return null;
+		}
+		// normalize the hanning window
+		double hannNorm = l2Norm(hann);
+		for (int i=0; i<windowsize; i++)
+			hann[i] = hann[i] / hannNorm;
+		if (logger.isDebugEnabled() && Math.abs(l2Norm(hann) - 1) > 0.00001)
+			logger.debug("Norm of normalized hann window is not 1");
+		
+		// the self- and cross-correlations of the frequency power spectra of the signals
+		// they are initialized to 0 by the JVM
+		double[] Pxx = new double[windowsize];
+		double[] Pyy = new double[windowsize];
+		Complex[] Pxy = new Complex[windowsize];
+		for (int i=0; i<windowsize; i++)
+			Pxy[i] = new Complex(0, 0);
+		
+		// this calculates the average of the P** over all slices
+		for (int offset=0; offset<s1.length-windowsize+1; offset+=windowsize-overlap) {
+			logger.debug("Using slice at offset " + offset);
+			// optional: detrend - not used here right now
+			//   if trend>=0, a=detrend(a,trend); endif
+			//   if trend>=0, b=detrend(b,trend); endif
 
-## compute window offsets
-win_size = length(window);
-if (win_size > nfft)
-  nfft = win_size;
-  warning (sprintf("%s fft size adjusted to %d", calledby, nfft));
-end
-step = win_size - overlap;
-
-## Determine which correlations to compute
-Pxx = Pyy = Pxy = [];
-if ftype!=2, Pxx = zeros(nfft,1); endif # Not needed for csd
-if ftype==3, Pyy = zeros(nfft,1); endif # Only needed for cohere
-if ftype!=1, Pxy = zeros(nfft,1); endif # Not needed for psd
-
-## Average the slices
-offset = 1:step:length(x)-win_size+1;
-N = length(offset);
-for i=1:N
-  a = x(offset(i):offset(i)+win_size-1);
-  if trend>=0, a=detrend(a,trend); endif
-  a = fft(postpad(a.*window, nfft));
-  if !isempty(Pxx), Pxx = Pxx + a.*conj(a);  endif
-  if !isempty(Pxy)
-    b = y(offset(i):offset(i)+win_size-1);
-    if trend>=0, b=detrend(b,trend); endif
-    b = fft(postpad(b.*window, nfft));
-    Pxy = Pxy + a .*conj(b);
-    if !isempty(Pyy), Pyy = Pyy + b.*conj(b); endif
-  endif
-endfor
-if (ftype <= 2)
+			// create the slices and mask them with hanning
+			Complex[] a = new Complex[windowsize];
+			for (int i=0; i<windowsize; i++)
+				a[i] = new Complex(s1[offset+i] * hann[i], 0);
+			Complex[] b = new Complex[windowsize];
+			for (int i=0; i<windowsize; i++)
+				b[i] = new Complex(s2[offset+i] * hann[i], 0);
+			/* no padding is necessary because we set the hanning window to the same size 
+			 * as the number of FFT coefficients anyway */
+			a = FFT.fft(a);
+			b = FFT.fft(b);
+			// and add the slice to the power spectrum averages
+			for (int i=0; i<windowsize; i++) {
+				// this is just the sqare of the magnitude
+				//Pxx[i] += a[i].times(a[i].conjugate()).abs();
+				// quicker - saves unnecessary multiplicates (imaginary part becomes zero), copying and sqrt
+				Pxx[i] += a[i].getRe() * a[i].getRe() + a[i].getIm() * a[i].getIm(); 
+				Pyy[i] += b[i].getRe() * b[i].getRe() + b[i].getIm() * b[i].getIm();
+				// here we need to do the full thing
+				Pxy[i] = Pxy[i].plus(a[i].times(b[i].conjugate()));
+			}
+			
+			/*
   ## the factors of N cancel when computing cohere and tfe
   if !isempty(Pxx), Pxx = Pxx / N; endif
   if !isempty(Pxy), Pxy = Pxy / N; endif
   if !isempty(Pyy), Pyy = Pyy / N; endif
-endif
+			 */
+		}
 
-## Compute confidence intervals
-if ci > 0, Pci = zeros(nfft,1); endif
-if (ci > 0 && N > 1)
-  if ftype>2
-    error([calledby, ": internal error -- shouldn't compute Pci"]);
-  end
+		// this is the coherence
+		// the number of values to return - only half of the power spectrum is significant (+1 for even)
+		int retSize = windowsize%2 == 1 ? (windowsize+1) / 2 : windowsize/2 + 1;
+		double[] P = new double[retSize];
+		for (int i=0; i<retSize; i++)
+			// again: P = Pxy.*conj(Pxy)./Pxx./Pyy; gives the sqared magnitude 
+			P[i] = (Pxy[i].getRe() * Pxy[i].getRe() + Pxy[i].getIm() * Pxy[i].getIm()) / (Pxx[i] * Pyy[i]);
+			
+		return P;
+	}
+	
+	/** This function just generates a hanning window of specified size.
+	 * 
+	 * @param windowsize The size of the hanning window to generate.
+	 * @return The hanning window.
+	 */
+	public static double[] hanning(int windowsize) {
+		if (windowsize <= 0)
+			throw new IllegalArgumentException("Window size must be > 0");
+		
+		if (windowsize == 1)
+			return new double[] {1};
+		else {
+			double[] ret = new double[windowsize];
+			for (int i=0; i<windowsize; i++)
+				ret[i] = 0.5f - 0.5f * Math.cos(2 * Math.PI * i / windowsize);
+			return ret;
+		}
+	}
+	
+	/** Calculates the L2-norm of a vector. */
+	public static double l2Norm(double[] vector) {
+		double ret = 0;
+		for (int i=0; i<vector.length; i++)
+			ret += vector[i] * vector[i];
+		return Math.sqrt(ret);
+	}
 
-  ## c.i. = mean +/- dev
-  ## dev = z_ci*std/sqrt(n)
-  ## std = sqrt(sumsq(P-mean(P))/(N-1))
-  ## z_ci = normal_inv( 1-(1-ci)/2 ) = normal_inv( (1+ci)/2 );
-  ## normal_inv(x) = sqrt(2) * erfinv(2*x-1)
-  ##    => z_ci = sqrt(2)*erfinv(2*(1+ci)/2-1) = sqrt(2)*erfinv(ci)
-  for i=1:N
-    a=x(offset(i):offset(i)+win_size-1);
-    if trend>=0, a=detrend(a,trend); endif
-    a=fft(postpad(a.*window, nfft));
-    if ftype == 1 # psd
-      P = a.*conj(a) - Pxx;
-      Pci = Pci + P.*conj(P);
-    else          # csd
-      b=y(offset(i):offset(i)+win_size-1);
-      if trend>=0, b=detrend(b,trend); endif
-     b=fft(postpad(b.*window, nfft));
-      P = a.*conj(b) - Pxy;
-      Pci = Pci + P.*conj(P);
-    endif
-  endfor
-
-  Pci = ( erfinv(ci) * sqrt( 2/N/(N-1) ) ) * sqrt ( Pci );
-endif
-
-switch (ftype)
-  case 1, # psd
-    P = Pxx / Fs;
-    if ci > 0, Pci = Pci / Fs; endif
-  case 2, # csd
-    P = Pxy;
-  case 3, # cohere
-    P = Pxy.*conj(Pxy)./Pxx./Pyy;
-  case 4, # tfe
-    P = Pxy./Pxx;
-endswitch
-
-## compute confidence intervals
-if ci > 0, Pci = [ P - Pci, P + Pci ]; endif
-
-if use_dB
-  P = 10.0*log10(P);
-  if ci > 0, Pci = 10.0*log10(Pci); endif
-endif
-
-## extract the positive frequency components
-if whole
-  ret_n = nfft;
-elseif rem(nfft,2)==1
-  ret_n = (nfft+1)/2;
-else
-  ret_n = nfft/2 + 1;
-end
-P = P(1:ret_n, :);
-if ci > 0, Pci = Pci(1:ret_n, :); endif
-f = [0:ret_n-1]*Fs/nfft;
-
-*/	
-
+	/** Calculates the mean of the vector elements. */
+	public static double mean(double[] vector) {
+		double ret = 0;
+		for (int i=0; i<vector.length; i++)
+			ret += vector[i];
+		return ret / vector.length;
+	}
 }

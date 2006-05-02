@@ -162,6 +162,4 @@ public class FFT {
         System.out.println();
 
     }
-	
-	// TODO. implement power spectrum computation
 }

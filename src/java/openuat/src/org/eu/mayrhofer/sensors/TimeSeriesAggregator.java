@@ -52,19 +52,19 @@ public class TimeSeriesAggregator {
 		 * @see TimeSeriesAggregator#isCurSampleComplete() for checking if the current sample is complete
 		 * @see TimeSeriesAggregator#curSampleReceived is reset when all sample dimensions are complete and have been aggregated
 		 */
-		public void addSample(float sample, int numSample) {
+		public void addSample(double sample, int numSample) {
 			curSample[seriesIndex] = sample;
 			curSampleReceived[seriesIndex] = true;
 			// if currently active, aggregatedSeries will be set
 			if (aggregatedSeries != null && isCurSampleComplete()) {
 				// this time step is now complete, so immediately aggregate
 				curSampleIndex = numSample;
-				float magnitude = 0;
+				double magnitude = 0;
 				for (int i=0; i<curSample.length; i++) {
 					magnitude += curSample[i] * curSample[i];
 					curSampleReceived[i] = false;
 				}
-				aggregatedSeries.add(new Float(Math.sqrt(magnitude)));
+				aggregatedSeries.add(new Double(Math.sqrt(magnitude)));
 			}
 		}
 		
@@ -75,7 +75,7 @@ public class TimeSeriesAggregator {
 			boolean previouslyActive = isActive();
 			firstStagesActive[seriesIndex] = true;
 			if (!previouslyActive && isActive()) {
-				logger.debug("Time series " + seriesIndex + " is first to become active");
+				logger.debug("Time series " + seriesIndex + " is first to become active at index " + numSample);
 				/* one of the time series just became active when no one was before 
 				 * --> start of active segment, start aggregating
 				 */
@@ -101,9 +101,9 @@ public class TimeSeriesAggregator {
 				if (aggregatedSeries.size() > windowSize && 
 						aggregatedSeries.size()-windowSize >= minSegmentSize) {
 					
-					float[] segment = new float[aggregatedSeries.size()-windowSize];
+					double[] segment = new double[aggregatedSeries.size()-windowSize];
 					for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
-						segment[i] = ((Float) aggregatedSeries.get(i)).floatValue();
+						segment[i] = ((Double) aggregatedSeries.get(i)).doubleValue();
 					if (sinks != null) {
 						logger.debug("Forwarding to " + sinks.size() + " registered sinks");
 						for (ListIterator j = sinks.listIterator(); j.hasNext(); ) {
@@ -138,7 +138,7 @@ public class TimeSeriesAggregator {
 	 * dimensions have been received and can thus be aggregated into a new value
 	 * appended to aggregatedSeries.
 	 */
-	private float[] curSample;
+	private double[] curSample;
 	/** Used to mark the sample dimensions that have already been received. It is 
 	 * managed solely by TimeSeries#addSample  
 	 */
@@ -187,7 +187,7 @@ public class TimeSeriesAggregator {
 		this.windowSize = windowSize;
 		this.minSegmentSize = minSegmentSize;
 		
-		curSample = new float[numSeries];
+		curSample = new double[numSeries];
 		curSampleReceived = new boolean[numSeries];
 		firstStageSeries = new TimeSeries[numSeries];
 		firstStageHandlers = new TimeSeriesSink[numSeries];
@@ -234,23 +234,23 @@ public class TimeSeriesAggregator {
 	}
 	
 	/** Sets the offset for all internally kept time series.
-	 * @see TimeSeries#setOffset(float)
+	 * @see TimeSeries#setOffset(double)
 	 */
-	public void setOffset(float offset) {
+	public void setOffset(double offset) {
 		for (int i=0; i<firstStageSeries.length; i++)
 			firstStageSeries[i].setOffset(offset);
 	}
 
 	/** Sets the multiplicator for all internally kept time series.
-	 * @see TimeSeries#setMultiplicator(float)
+	 * @see TimeSeries#setMultiplicator(double)
 	 */
-	public void setMultiplicator(float multiplicator) {
+	public void setMultiplicator(double multiplicator) {
 		for (int i=0; i<firstStageSeries.length; i++)
 			firstStageSeries[i].setMultiplicator(multiplicator);
 	}
 
 	/** Sets the subtractWindowMean for all internally kept time series.
-	 * @see TimeSeries#setSubtractWindowMean(float)
+	 * @see TimeSeries#setSubtractWindowMean(boolean)
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
 		for (int i=0; i<firstStageSeries.length; i++)
@@ -258,7 +258,7 @@ public class TimeSeriesAggregator {
 	}
 
 	/** Sets the subtractTotalMean for all internally kept time series.
-	 * @see TimeSeries#setSubtractTotalMean(float)
+	 * @see TimeSeries#setSubtractTotalMean(boolean)
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
 		for (int i=0; i<firstStageSeries.length; i++)
@@ -266,16 +266,16 @@ public class TimeSeriesAggregator {
 	}
 
 	/** Sets the activeVarianceThreshold for all internally kept time series.
-	 * @see TimeSeries#setActiveVarianceThreshold(float)
+	 * @see TimeSeries#setActiveVarianceThreshold(double)
 	 */
-	public void setActiveVarianceThreshold(float activeVarianceThreshold) {
+	public void setActiveVarianceThreshold(double activeVarianceThreshold) {
 		for (int i=0; i<firstStageSeries.length; i++)
 			firstStageSeries[i].setActiveVarianceThreshold(activeVarianceThreshold);
 	}
 
 	/** Registers a sink, which will receive all active segments when they are complete.
 	 * 
-	 * @param The sink to push new aggregated segments to.
+	 * @param sink The sink to push new aggregated segments to.
 	 */
 	public void addNextStageSink(SegmentsSink sink) {
 		sinks.add(sink);

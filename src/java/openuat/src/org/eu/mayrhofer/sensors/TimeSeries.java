@@ -25,34 +25,34 @@ public class TimeSeries implements SamplesSink {
 	private static Logger logger = Logger.getLogger(TimeSeries.class);
 
 	/** This is the internal circular buffer used to hold the values inside the time window. */
-	private float[] circularBuffer;
+	private double[] circularBuffer;
 	/** The current position inside the circular buffer. This marks the position where the next sample will be written to. */
 	private int index = 0;
 	/** This is a boolean because once filled, we never expect it to be contain less elements again. So using a boolean, the checking is faster.*/
 	private boolean full = false;
 	
 	/** Keeps a running total sum over all samples added to this time series so far (not only the current time window). */
-	private float totalSum = 0;
+	private double totalSum = 0;
 	/** Keeps a running total sum over all squared samples added to this time series so far (not only the current time window). */
-	private float totalSum2 = 0;
+	private double totalSum2 = 0;
 	/** The number of samples added to this time series so far (not only the current time window). */
 	private int totalNum;
 	
 	/** Keeps a running sum over all samples pf the current time window. */
-	private float windowSum = 0;
+	private double windowSum = 0;
 	/** Keeps a running sum over all squared samples pf the current time window. */
-	private float windowSum2 = 0;
+	private double windowSum2 = 0;
 
 	/** This offset is added to all sample values before passing them on to the next stage.
-	 * @see #setOffset(float)
+	 * @see #setOffset(double)
 	 * @see #getOffset() 
 	 */
-	private float offset = 0;
+	private double offset = 0;
 	/** All sample values are multiplied with this factor before passing them on to the next stage.
-	 * @see #setOffset(float)
+	 * @see #setOffset(double)
 	 * @see #getOffset() 
 	 */
-	private float multiplicator = 1.0f;
+	private double multiplicator = 1.0f;
 	/** If set to true, the window mean will be subtracted before passing a sample on to the next stage.
 	 * @see #setSubtractWindowMean(boolean)
 	 * @see #getSubtractWindowMean()
@@ -75,7 +75,7 @@ public class TimeSeries implements SamplesSink {
 	 * detection of active segments (and thus calculation of the variance) will be
 	 * done.
 	 */ 
-	private float activeVarianceThreshold = 0;
+	private double activeVarianceThreshold = 0;
 	
 	/** true if the current segment has previously been detected to be active, falls if
 	 * previously detected to be quiescent.
@@ -92,19 +92,19 @@ public class TimeSeries implements SamplesSink {
 			throw new IllegalArgumentException("Window size must by > 0");
 		}
 
-		circularBuffer = new float[windowSize];
+		circularBuffer = new double[windowSize];
 	}
 	
 	/** Adds a new sample to the time series in-memory buffer, updates statistics and
 	 * may forward to the next stage.
 	 * 
 	 * @param sample The sample value to add.
-	 * @param index The number of the sample to add. As this class keeps internal count
+	 * @param sampleNum The number of the sample to add. As this class keeps internal count
 	 *              of how many samples have already been added, this is used for checking
 	 *              that all samples are received and no duplicates happen. index is assumed
 	 *              to start at 0.
 	 */
-	public void addSample(float sample, int sampleNum) {
+	public void addSample(double sample, int sampleNum) {
 		if (sampleNum != totalNum) {
 			logger.warn("Sample index " + sampleNum + " does not correspond to number of samples already received "
 					+ "(" + totalNum + ")");
@@ -132,7 +132,7 @@ public class TimeSeries implements SamplesSink {
 		
 		// Now that this time series buffer has been updated, notify next stage.
 		// But optionally pre-process our values before forwarding them.
-		float nextStageSample = sample;
+		double nextStageSample = sample;
 		// first subtract mean (because that is in the same value range as the "raw" values)
 		if (subtractWindowMean)
 			nextStageSample -= getWindowMean();
@@ -203,7 +203,7 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Helper method for computing the arithmetical average, i.e. the mean. */
-	private float getMean(float sum, int num) {
+	private double getMean(double sum, int num) {
 		if (num > 0)
 			return sum / num;
 		else
@@ -211,7 +211,7 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Helper method for computing the variance. */
-	private float getVariance(float sum, float sum2, int num) {
+	private double getVariance(double sum, double sum2, int num) {
 		if (num > 1) {
 			return (sum2 - 2*sum*sum/num + sum*sum/num) / (num -1);
 		}
@@ -220,55 +220,31 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Returns the mean over all values added to this time series since its construction. */
-	public float getTotalMean() {
+	public double getTotalMean() {
 		return getMean(totalSum, totalNum);
 	}
 	
 	/** Returns the variance over all values added to this time series since its construction. */
-	public float getTotalVariance() {
+	public double getTotalVariance() {
 		return getVariance(totalSum, totalSum2, totalNum);
 	}
 
 	/** Returns the mean over all values in the time series buffer, i.e. the last window size samples. */
-	public float getWindowMean() {
+	public double getWindowMean() {
 		return getMean(windowSum, full ? circularBuffer.length : index);
 	}
 	
 	/** Returns the variance over all values in the time series buffer, i.e. the last window size samples. */
-	public float getWindowVariance() {
-		float var = getVariance(windowSum, windowSum2, full ? circularBuffer.length : index); 
-		if (! logger.isDebugEnabled())
-			return var;
-		else {
-			// debugging, so check if our formula is correct by calculating "slowly"
-			float[] arr = getSamplesInWindow();
-			float mean = 0;
-			for (int i=0; i<arr.length; i++) {
-				mean += arr[i];
-			}
-			mean /= (full ? circularBuffer.length : index);
-			logger.debug("Window mean calculated slowly=" + mean + ", online=" + getWindowMean());
-			float var2 = 0;
-			float sum = 0, sum2 = 0;
-			for (int i=0; i<arr.length; i++) {
-				float val = arr[i];
-				var2 += (val - mean) * (val - mean);
-				sum += val;
-				sum2 += val * val;
-			}
-			var2 /= (full ? circularBuffer.length : index)-1;
-			logger.debug("Window variance calculated slowly=" + var2 + ", online=" + var +
-					", ssum=" + sum + ", ssum2=" + sum2 + ", osum=" + windowSum + ", osum2=" + windowSum2);
-			return var;
-		}
+	public double getWindowVariance() {
+		return getVariance(windowSum, windowSum2, full ? circularBuffer.length : index); 
 	}
 	
 	/** Returns all samples currently contained in the time window. */
-	public float[] getSamplesInWindow() {
+	public double[] getSamplesInWindow() {
 		// TODO: this can be optimized with 2 System.ArrayCopy calls
 		int startInd = full ? index : 0;
 		int num = full ? circularBuffer.length : index;
-		float[] ret = new float[num];
+		double[] ret = new double[num];
 		
 		for (int i=0; i<num; i++)
 			ret[i] = circularBuffer[(startInd+i)%circularBuffer.length];
@@ -280,7 +256,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #offset
 	 * @return The current value of offset.
 	 */
-	public float getOffset() {
+	public double getOffset() {
 		return offset;
 	}
 	
@@ -288,7 +264,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #offset
 	 * @param offset The current value of offset.
 	 */
-	public void setOffset(float offset) {
+	public void setOffset(double offset) {
 		this.offset = offset;
 	}
 	
@@ -296,7 +272,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #multiplicator
 	 * @return The current value of multiplicator.
 	 */
-	public float getMultiplicator() {
+	public double getMultiplicator() {
 		return multiplicator;
 	}
 	
@@ -304,7 +280,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #multiplicator
 	 * @param multiplicator The current value of multiplicator.
 	 */
-	public void setMultiplicator(float multiplicator) {
+	public void setMultiplicator(double multiplicator) {
 		this.multiplicator = multiplicator;
 	}
 	
@@ -352,15 +328,15 @@ public class TimeSeries implements SamplesSink {
 	 * @see #activeVarianceThreshold
 	 * @return The current value of activeVarianceThreshold.
 	 */
-	public float getActiveVarianceThreshold() {
+	public double getActiveVarianceThreshold() {
 		return activeVarianceThreshold;
 	}
 
 	/** Sets the current value of activeVarianceThreshold.
 	 * @see #activeVarianceThreshold
-	 * @param activeVarianceThreshod The current value of activeVarianceThreshold.
+	 * @param activeVarianceThreshold The current value of activeVarianceThreshold.
 	 */
-	public void setActiveVarianceThreshold(float activeVarianceThreshold) {
+	public void setActiveVarianceThreshold(double activeVarianceThreshold) {
 		this.activeVarianceThreshold = activeVarianceThreshold;
 	}
 	
