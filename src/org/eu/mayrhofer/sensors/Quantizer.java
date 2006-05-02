@@ -65,6 +65,8 @@ public class Quantizer {
 		double intervals[][] = new double[2][];
 		intervals[0] = new double[numLevels];
 		intervals[1] = new double[numLevels];
+		logger.debug("Creating intervals with lower=" + lower + ", upper=" + upper + 
+				", numLevels=" + numLevels + ", offset=" + offset + ", errorMargin=" + errorMargin);
 		for (int i=0; i<numLevels; i++) {
 			intervals[0][i] = (i+offset) * (upper-lower)/numLevels + lower + errorMargin;
 			intervals[1][i] = (i+1+offset) * (upper-lower)/numLevels + lower - errorMargin;

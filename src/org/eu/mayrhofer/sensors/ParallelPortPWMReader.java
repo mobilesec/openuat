@@ -232,7 +232,7 @@ public class ParallelPortPWMReader {
 			
 			// get the average over the last period's samples (if there are any, if not, just use the last period's samples)
 			if (curSample[0].size() > 0) {
-				logger.info("Averaging over " + curSample[0].size() + " values for the last sample");
+				logger.debug("Averaging over " + curSample[0].size() + " values for the last sample");
 				for (int i=0; i<lines.length; i++) {
 					lastSampleValues[i] = 0;
 					for (int j=0; j<curSample[i].size(); j++)
@@ -376,6 +376,7 @@ public class ParallelPortPWMReader {
 
 	
 	public static void main(String[] args) throws IOException {
+		/////// test 1: just plot all 8 time series
 		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2, 3, 4, 5, 6, 7}, 100);
 		TimeSeries[] t = new TimeSeries[8];
 		XYSink[] s = new XYSink[8];
@@ -404,8 +405,8 @@ public class ParallelPortPWMReader {
 		}
 
 		
-	
-		int samplerate = 128;
+		/////// test 2: plot the 2 extracted segments from the first and the second device 
+		int samplerate = 128; // Hz
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
 		double varthreshold = 350;
@@ -444,6 +445,7 @@ public class ParallelPortPWMReader {
 			"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
 		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
 
+		/////// test 3: calculate and plot the coherence between the segments from test 2
 		// make sure they have similar length
 		int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
 		System.out.println("Using " + len + " samples for coherence computation");
@@ -464,5 +466,42 @@ public class ParallelPortPWMReader {
 		
 		double coherenceMean = Coherence.mean(coherence);
 		System.out.println("Coherence mean: " + coherenceMean);
+
+		/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
+		int fftpoints = samplerate;
+		int numQuantLevels = 8;
+		int numCandidates = 6;
+		int cutOffFrequency = 15; // Hz
+		int windowOverlap = fftpoints/2;
+		// only compare until the cutoff frequency
+		int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
+		System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+		int numMatches = 0, numWindows = 0;
+		for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+			double[] fftCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
+			double[] fftCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+			// HACK HACK HACK: set DC components to 0
+			fftCoeff1[0] = 0;
+			fftCoeff2[0] = 0;
+			int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
+			int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
+			boolean match = false;
+			for (int i=0; i<cand1.length && !match; i++) {
+				for (int j=0; j<cand2.length && !match; j++) {
+					boolean equal = true;
+					for (int k=0; k<max_ind && equal; k++) {
+						if (cand1[i][k] != cand2[j][k])
+							equal = false;
+					}
+					if (equal) {
+						System.out.println("Match at i=" + i + ", j=" + j);
+						match = true;
+						numMatches++;
+					}
+				}
+			}
+			numWindows++;
+		}
+		System.out.println("match: " + (float) numMatches / numWindows + " (" + numMatches + " out of " + numWindows + ")");
 	}
 }
