@@ -13,51 +13,31 @@ package org.eu.mayrhofer.sensors;
 
 import org.apache.log4j.Logger;
 
-/**
-## usage: [Cxy, w] = cohere(x, y, ...)
-##
-## Estimate coherence between two signals.
-## This is simply Cxy = |Pxy|^2/(PxxPxy).
-##
-## See pwelch for an explanation of the available parameters.
-
- elseif nargout==1
-    Cxy=pwelch('cohere',varargin{:});
-    varargout{1} = Cxy;
-
-/**
-## Estimate power spectrum of a stationary signal. This chops the signal
-## into overlapping slices, windows each slice and applies a Fourier
-## transform to determine the frequency components at that slice. The
-## magnitudes of these slices are then averaged to produce the estimate Pxx.
-## The confidence interval around the estimate is returned in Pci.
-##
-## x: vector of samples
-## n: size of fourier transform window, or [] for default=256
-## Fs: sample rate, or [] for default=2 Hz
-## window: shape of the fourier transform window, or [] for default=hanning(n)
-##    Note: window length can be specified instead, in which case
-##    window=hanning(length)
-## overlap: overlap with previous window, or [] for default=length(window)/2
-## ci: confidence interval, or [] for default=0.95
-##    ci must be between 0 and 1; if ci is not passed, or if it is
-##    passed as 0, then no confidence intervals will be computed.
-## range: 'whole',  or [] for default='half'
-##    show all frequencies, or just half of the frequencies
-## units: 'squared', or [] for default='db'
-##    show results as magnitude squared or as log magnitude squared
-## trend: 'mean', 'linear', or [] for default='none'
-##    remove trends from the data slices before computing spectral estimates
-
+/** This class implements computation of the coherence function. It is
+ * modelled after the Matlab/Octave "coher" function, but en explanation
+ * can e.g. be found at http://ccrma.stanford.edu/~jos/mdft/Coherence_Function_Matlab.html
+ * It uses the FFT class.
  * 
- * @author rene
- *
+ * The coherence is estimated as the power spectrum correlation between two
+ * signals split into overlapping slices. For each slice, the Fourier 
+ * coefficients are computed and the magnitudes of these slices are averaged
+ * to compute the power spectra.
+ * 
+ * <b>Note:</b> This class does not yet implement estimation of confidence
+ * intervals or de-trending like the Matlab/Octave implementations do. It is
+ * not necessary in the current use cases and has thus been omitted.
+ * 
+ * @author Rene Mayrhofer
+ * @version 1.0
  */
 public class Coherence {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(Coherence.class);
 
-	/** Compute the coherence between two signals. 
+	/** Compute the coherence between two signals. Overlapping windows are
+	 * created with a length of exactly the number of FFT coefficients. The
+	 * windows are then dot-multiplied with a von-Hann (sometimes called hanning) 
+	 * window and averaged. 
 	 * 
 	 * @param s1 Signal 1. Both signals must have equal length.
 	 * @param s2 Signal 2. Both signals must have equal length.
@@ -66,8 +46,7 @@ public class Coherence {
 	 * @param overlap The overlap of the windows to compute. Defaults to windowsize/2 when set to <= 0.
 	 * @return The coherence coefficients.
 	 */
-	public static double[] cohere(double[] s1, double[] s2, int windowsize, int overlap
-			/*double confidenceInterval*/) {
+	public static double[] cohere(double[] s1, double[] s2, int windowsize, int overlap) {
 		if (s1.length != s2.length) {
 			logger.error("Signals have different length");
 			return null;
@@ -79,17 +58,12 @@ public class Coherence {
 		// default for overlap
 		if (overlap <= 0)
 			overlap = windowsize / 2;
-		// default confidence interval - not needed just for the coherence
-		/*if (confidenceInterval <= 0)
-			confidenceInterval = 0.95f;
-if isempty(trend), trend=-1; endif
-		*/
 		
 		logger.info("Computing coherence between two signals of length " + s1.length + 
 				" with a window size/number of FFT coefficients of " + windowsize + " and " +
 				overlap + " overlap");
 		
-		double[] hann = hanning(windowsize);	
+		double[] hann = hann(windowsize);	
 		// sanity check
 		if (hann.length != windowsize) {
 			logger.error("FFT window size is different from than the hanning window size, can not cope");
@@ -113,9 +87,6 @@ if isempty(trend), trend=-1; endif
 		// this calculates the average of the P** over all slices
 		for (int offset=0; offset<s1.length-windowsize+1; offset+=windowsize-overlap) {
 			logger.debug("Using slice at offset " + offset);
-			// optional: detrend - not used here right now
-			//   if trend>=0, a=detrend(a,trend); endif
-			//   if trend>=0, b=detrend(b,trend); endif
 
 			// create the slices and mask them with hanning
 			Complex[] a = new Complex[windowsize];
@@ -138,14 +109,8 @@ if isempty(trend), trend=-1; endif
 				// here we need to do the full thing
 				Pxy[i] = Pxy[i].plus(a[i].times(b[i].conjugate()));
 			}
-			
-			/*
-  ## the factors of N cancel when computing cohere and tfe
-  if !isempty(Pxx), Pxx = Pxx / N; endif
-  if !isempty(Pxy), Pxy = Pxy / N; endif
-  if !isempty(Pyy), Pyy = Pyy / N; endif
-			 */
 		}
+		// no need to divide P** by the number of slices here, because these factors cancel when computing the coherence below
 
 		// this is the coherence
 		// the number of values to return - only half of the power spectrum is significant (+1 for even)
@@ -158,12 +123,13 @@ if isempty(trend), trend=-1; endif
 		return P;
 	}
 	
-	/** This function just generates a hanning window of specified size.
+	/** This function just generates a von-Hann window of specified size, as defined
+	 * at http://www.mathworks.com/access/helpdesk/help/toolbox/signal/hann.html
 	 * 
-	 * @param windowsize The size of the hanning window to generate.
-	 * @return The hanning window.
+	 * @param windowsize The size of the von-Hann window to generate.
+	 * @return The von-Hann window.
 	 */
-	public static double[] hanning(int windowsize) {
+	public static double[] hann(int windowsize) {
 		if (windowsize <= 0)
 			throw new IllegalArgumentException("Window size must be > 0");
 		
@@ -177,7 +143,7 @@ if isempty(trend), trend=-1; endif
 		}
 	}
 	
-	/** Calculates the L2-norm of a vector. */
+	/** Helper function: calculates the L2-norm of a vector. */
 	public static double l2Norm(double[] vector) {
 		double ret = 0;
 		for (int i=0; i<vector.length; i++)
@@ -185,7 +151,7 @@ if isempty(trend), trend=-1; endif
 		return Math.sqrt(ret);
 	}
 
-	/** Calculates the mean of the vector elements. */
+	/** Helper function: calculates the mean of the vector elements. */
 	public static double mean(double[] vector) {
 		double ret = 0;
 		for (int i=0; i<vector.length; i++)
