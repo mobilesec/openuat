@@ -187,7 +187,7 @@ public class TimeSeries implements SamplesSink {
 	
 	/** Registers a sink, which will receive all new values as they are sampled.
 	 * 
-	 * @param The sink to push new pre-processed samples to.
+	 * @param sink The sink to push new pre-processed samples to.
 	 */
 	public void addNextStageSink(SamplesSink sink) {
 		nextStageSinks.add(sink);
