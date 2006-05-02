@@ -120,6 +120,18 @@ public class FFT {
 
         return cconvolve(a, b);
     }
+    
+    /** Computes the power spectrum of a complex signal, see e.g.
+     * http://www.mathworks.com/access/helpdesk/help/techdoc/ref/fft.html
+     */
+    public static double[] powerSpectrum(Complex[] x) {
+    	double[] powspec = new double[x.length];
+    	// the definition is Pff = x .* conj(x) / fftpoints
+    	// but x * conj(x) just gives us the squared magnitude, so do it quicker
+    	for (int i=0; i<x.length; i++)
+    		powspec[i] = (x[i].getRe() * x[i].getRe() + x[i].getIm() * x[i].getIm()) / x.length;
+    	return powspec;
+    }
 
 
 
