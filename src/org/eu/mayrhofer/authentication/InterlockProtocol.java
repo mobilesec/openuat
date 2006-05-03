@@ -127,7 +127,7 @@ public class InterlockProtocol {
 		this.useJSSE = useJSSE;
 
 		// compute a few helper variables
-		if (numMessageBits == BlockByteLength*8) {
+		if (sharedKey == null || numMessageBits == BlockByteLength*8) {
 			// simple - one block
 			logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes");
 			numCipherTextBlocks = 1;
@@ -295,6 +295,7 @@ public class InterlockProtocol {
 
 		// in any case, the number of parts is equal to the number of rounds
 		byte[][] parts = new byte[rounds][];
+		// need to explicitly check for the size length because of recursive calling
 		if (cipherText.length == BlockByteLength) {
 			logger.debug("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + rounds + " parts");
 			// simple case: the parts are just taken one after each other
@@ -392,11 +393,7 @@ public class InterlockProtocol {
 					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 					if (curBits > 0) {
-						byte[] partInBlock = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
-						extractPart(partInBlock, messages[round], block*curBits, curBits);
-						logger.debug("Extracting " + curBits + " bits of block " + block + " from part " + round);
-						addPart(cipherText, partInBlock, 
-								block*BlockByteLength*8+round*cipherBitsPerRoundPerBlock, curBits);
+						distributeBlockSlicesHelper(cipherText, messages[round], round, block, curBits);
 					}
 					else { 
 						if (messages[round] != null) {
@@ -408,6 +405,19 @@ public class InterlockProtocol {
 		}
 		
 		return cipherText;
+	}
+	
+	/** This is only an internal helper function to add block parts correctly 
+	 * on reassambly. Called from reassamble() and addMessage.
+	 * @throws InternalApplicationException 
+	 */
+	private void distributeBlockSlicesHelper(byte[] cipherText, byte[] message,
+			int round, int block, int numBits) throws InternalApplicationException {
+		byte[] partInBlock = new byte[numBits%8 == 0 ? numBits/8 : numBits/8+1];
+		extractPart(partInBlock, message, block*numBits, numBits);
+		logger.debug("Extracting " + numBits + " bits of block " + block + " from part " + round);
+		addPart(cipherText, partInBlock, 
+				block*BlockByteLength*8+round*cipherBitsPerRoundPerBlock, numBits);
 	}
 	
 	/** This method only checks that all rounds have actually been received
@@ -444,8 +454,7 @@ public class InterlockProtocol {
 	 */
 	public boolean addMessage(byte[] message, int offset, int numBits, int round)
 			throws InternalApplicationException {
-		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7 ||
-				message.length*8 < cipherBitsPerRoundPerBlock*numCipherTextBlocks)
+		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7)
 			throw new InvalidParameterException("Message length does not match expected length, " +
 					"got " + message.length + " bytes, but expected " + 
 					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits");
@@ -468,7 +477,17 @@ public class InterlockProtocol {
 		}		
 		receivedRounds.set(round, true);
 
-		addPart(assembledCipherText, message, offset, numBits);
+		// also need to distinguish between the two cases here
+		if (numCipherTextBlocks == 1) {
+			// simple case
+			addPart(assembledCipherText, message, offset, numBits);
+		}
+		else {
+			// the more complex one: need to split the blocks from this message and add them in slides
+			for (int block=0; block<numCipherTextBlocks; block++) {
+				distributeBlockSlicesHelper(assembledCipherText, message, round, block, numBits);
+			}
+		}
 		logger.info("Added message part " + round + " (" + numBits + " bits at offset " + offset + ")");
 		return true;
 	}
@@ -487,8 +506,7 @@ public class InterlockProtocol {
 	 */
     public boolean addMessage(byte[] message, int round)
     		throws InternalApplicationException {
-		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7 ||
-				message.length*8 < cipherBitsPerRoundPerBlock*numCipherTextBlocks)
+		if (message != null && message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7)
 			throw new InvalidParameterException("Message length does not match expected length, " +
 					"got " + message.length + " bytes, but expected " + 
 					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits");
@@ -504,6 +522,8 @@ public class InterlockProtocol {
 		}
 		else {
 			logger.info("Ignoring message part " + round + ": " + curBits + " bits. Reason: cipher text already complete.");
+			// but still set the bit to mark that it has actually been "delivered"
+			receivedRounds.set(round, true);
 			return false;
 		}
     }
