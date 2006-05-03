@@ -144,10 +144,8 @@ public class InterlockProtocol {
 			throw new InternalApplicationException("Can not encrypt without shared key");
 		
 		byte[] cipherText;
-		if (useJSSE)
-			cipherText = processBlock_JSSE(initCipher_JSSE(true), plainText);
-		else
-			cipherText = processBlock_BCAPI(initCipher_BCAPI(true), plainText);
+		Object cipher = useJSSE ? initCipher_JSSE(true) : initCipher_BCAPI(true);
+		cipherText = useJSSE ? processBlock_JSSE(cipher, plainText) : processBlock_BCAPI(cipher, plainText);
 
 		return cipherText;
 	}
@@ -171,10 +169,8 @@ public class InterlockProtocol {
 			throw new InternalApplicationException("Can not encrypt without shared key");
 
 		byte[] plainText;
-		if (useJSSE)
-			plainText = processBlock_JSSE(initCipher_JSSE(false), cipherText);
-		else
-			plainText = processBlock_BCAPI(initCipher_BCAPI(false), cipherText);
+		Object cipher = useJSSE ? initCipher_JSSE(false) : initCipher_BCAPI(false);
+		plainText = useJSSE ? processBlock_JSSE(cipher, cipherText) : processBlock_BCAPI(cipher, cipherText);
 
 		return plainText;
 	}
