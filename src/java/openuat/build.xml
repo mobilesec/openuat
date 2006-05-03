@@ -32,7 +32,7 @@
     <property name="compile.debug" value="true"/>
 
     <!-- these are the target JARs -->
-    <property name="dist.mainclass" value="org.eu.mayrhofer.authentication.RelateAuthenticationProtocol"/>
+    <property name="dist.mainclass" value="no-main-class-at-the-moment"/>
     <property name="dist.mainclass.ipsecclient" value="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
     <!-- This is just the core JAR file, implementing basic key agreement
 	 between hosts and the Relate authentication protocol. It has only 

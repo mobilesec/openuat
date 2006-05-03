@@ -15,9 +15,9 @@ import org.apache.log4j.PropertyConfigurator;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eu.mayrhofer.authentication.AuthenticationProgressHandler;
-import org.eu.mayrhofer.authentication.RelateAuthenticationProtocol;
 import org.eu.mayrhofer.authentication.exceptions.ConfigurationErrorException;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
+import org.eu.mayrhofer.authentication.relate.RelateAuthenticationProtocol;
 
 import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.core.EventDispatcher;
