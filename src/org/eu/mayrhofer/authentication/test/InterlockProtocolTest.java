@@ -228,20 +228,21 @@ public class InterlockProtocolTest extends TestCase {
 		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
 	}
 	
-	/*public void testSplitAndReassemble_Variant1() throws InternalApplicationException {
-		for (int rounds=2; rounds<50; rounds++) {
-			for (int messageBytes=16; messageBytes<48; messageBytes++) {
+	public void testSplitAndReassemble_Variant1() throws InternalApplicationException {
+/*		for (int rounds=2; rounds<=50; rounds++) {
+			for (int messageBytes=16; messageBytes<=128; messageBytes+=16) {*/
 		int rounds=2, messageBytes=16;
 		
-				InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes, useJSSE);
+				InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes*8, useJSSE);
 				byte[] plainText = new byte[messageBytes];
 				for (int i=0; i<plainText.length; i++)
 					plainText[i] = (byte) (plainText.length-1-i);
 				byte[][] parts = p.split(plainText);
+				Assert.assertEquals("number of parts does not match requested number of rounds", rounds, parts.length);
 				byte[] plainText2 = p.reassemble(parts);
 				Assert.assertTrue("reassembled plain text has invalid length", plainText2.length == plainText.length);
 				Assert.assertTrue("reassemlbed plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
-			}
-		}
-	}*/
+/*			}
+		}*/
+	}
 }
