@@ -308,15 +308,18 @@ public class InterlockProtocol {
 					logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes");
 					extractPart(parts[round], cipherText, round*cipherBitsPerRoundPerBlock, curBits);
 				}
-				else
+				else {
 					// no more left
+					logger.debug("Part " + round + " is empty");
 					parts[round] = null;
+				}
 			}
 		}
 		else {
 			// the more complicated case is reduced to the simple case - each block split independently, then merged
 			logger.debug("Case 2: splitting cipher text of " + cipherText.length + " bytes with " 
-					+ numCipherTextBlocks + " blocks into " + rounds + " parts");
+					+ numCipherTextBlocks + " blocks into " + rounds + " parts: " + 
+					SerialConnector.byteArrayToBinaryString(cipherText));
 			for (int block=0; block<numCipherTextBlocks; block++) {
 				byte[] cipherBlock = new byte[BlockByteLength];
 				System.arraycopy(cipherText, block*BlockByteLength, cipherBlock, 0, BlockByteLength);
@@ -335,14 +338,21 @@ public class InterlockProtocol {
 							int partBits = curBits*numCipherTextBlocks;
 							parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
 						}
+						logger.debug("Adding " + curBits + " bits of block " + block + " to part " + 
+								round + " at offset " + (block*cipherBitsPerRoundPerBlock) + ": " +
+								SerialConnector.byteArrayToBinaryString(blockParts[round]));
 						addPart(parts[round], blockParts[round], 
 								block*cipherBitsPerRoundPerBlock, curBits);
 					}
-					else
+					else {
 						// no more left
+						logger.debug("Part " + round + " is empty");
 						parts[round] = null;
+					}
 				}
-				
+			}
+			for (int i=0; i<rounds; i++) {
+				logger.debug("Message part " + i + " is now " + SerialConnector.byteArrayToBinaryString(parts[i]));
 			}
 		}
 		return parts;
@@ -438,7 +448,15 @@ public class InterlockProtocol {
 	 */
 	public boolean addMessage(byte[] message, int offset, int numBits, int round)
 			throws InternalApplicationException {
-		// TODO: check parameters
+		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7 ||
+				message.length*8 < cipherBitsPerRoundPerBlock*numCipherTextBlocks)
+			throw new InvalidParameterException("Message length does not match expected length, " +
+					"got " + message.length + " bytes, but expected " + 
+					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits");
+		if (round >= rounds || round < 0)
+			throw new InvalidParameterException("Round " + round + " invalid, must be between 0 and " +
+					rounds);
+		// offset and numBits will be checked in addPart
 		
 		if (assembledCipherText == null) {
 			logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds");
@@ -455,8 +473,7 @@ public class InterlockProtocol {
 		receivedRounds.set(round, true);
 
 		addPart(assembledCipherText, message, offset, numBits);
-		logger.info("Added message part " + round + " (" + numBits + " bits at offset " + offset + "):" + 
-				SerialConnector.byteArrayToHexString(message));
+		logger.info("Added message part " + round + " (" + numBits + " bits at offset " + offset + ")");
 		return true;
 	}
 		
@@ -474,7 +491,14 @@ public class InterlockProtocol {
 	 */
     public boolean addMessage(byte[] message, int round)
     		throws InternalApplicationException {
-		// TODO: check parameters
+		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7 ||
+				message.length*8 < cipherBitsPerRoundPerBlock*numCipherTextBlocks)
+			throw new InvalidParameterException("Message length does not match expected length, " +
+					"got " + message.length + " bytes, but expected " + 
+					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits");
+		if (round >= rounds || round < 0)
+			throw new InvalidParameterException("Round " + round + " invalid, must be between 0 and " +
+					rounds);
 
     	// if nearly all (or all) bits have already been transmitted, it might have less bits
 		int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
