@@ -223,7 +223,7 @@ public class InterlockProtocolTest extends TestCase {
 		}
 	}
 	
-	public void testEncryptDecryptSingleBlock() throws InternalApplicationException {
+	public void testEncryptDecrypt_SingleBlock() throws InternalApplicationException {
 		byte[] sharedKey = new byte[32];
 		for (int i=0; i<sharedKey.length; i++)
 			sharedKey[i] = (byte) i;
@@ -240,7 +240,7 @@ public class InterlockProtocolTest extends TestCase {
 		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
 	}
 
-	public void testEncryptDecryptMultipleBlocks() throws InternalApplicationException {
+	public void testEncryptDecrypt_MultipleBlocks() throws InternalApplicationException {
 		byte[] sharedKey = new byte[32];
 		for (int i=0; i<sharedKey.length; i++)
 			sharedKey[i] = (byte) i;
@@ -261,7 +261,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testSplitAndReassemble_Variant1_Case1() throws InternalApplicationException {
 		int messageBytes=16;
 		for (int rounds=2; rounds<=50; rounds++) {
-			InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes*8, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8, useJSSE);
 			byte[] plainText = new byte[messageBytes];
 			for (int i=0; i<plainText.length; i++)
 				plainText[i] = (byte) (plainText.length-1-i);
@@ -277,7 +277,7 @@ public class InterlockProtocolTest extends TestCase {
 		for (int rounds=2; rounds<=50; rounds++) {
 			for (int messageBytes=17; messageBytes<=128; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
-				InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes*8-7, useJSSE);
+				InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8-7, useJSSE);
 				System.out.println(p.getCipherTextBlocks()*16);
 				byte[] plainText = new byte[p.getCipherTextBlocks()*16];
 				for (int i=0; i<plainText.length; i++)
@@ -291,10 +291,10 @@ public class InterlockProtocolTest extends TestCase {
 		}
 	}
 
-	/*public void testSplitAndReassemble_Variant2_Case1() throws InternalApplicationException {
+	public void testSplitAndReassemble_Variant2_Case1() throws InternalApplicationException {
 		int messageBytes=16;
 		for (int rounds=2; rounds<=50; rounds++) {
-			InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes*8, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8, useJSSE);
 			byte[] plainText = new byte[messageBytes];
 			for (int i=0; i<plainText.length; i++)
 				plainText[i] = (byte) (plainText.length-1-i);
@@ -306,5 +306,49 @@ public class InterlockProtocolTest extends TestCase {
 			Assert.assertTrue("reassembled plain text has invalid length", plainText2.length == plainText.length);
 			Assert.assertTrue("reassemlbed plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
 		}
-	}*/
+	}
+
+	public void testSplitAndReassemble_Variant2_Case2() throws InternalApplicationException {
+		for (int rounds=2; rounds<=50; rounds++) {
+			for (int messageBytes=17; messageBytes<=128; messageBytes+=16) {
+				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
+				InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8-7, useJSSE);
+				System.out.println(p.getCipherTextBlocks()*16);
+				byte[] plainText = new byte[p.getCipherTextBlocks()*16];
+				for (int i=0; i<plainText.length; i++)
+					plainText[i] = (byte) (plainText.length-1-i);
+				byte[][] parts = p.split(plainText);
+				Assert.assertEquals("number of parts does not match requested number of rounds", rounds, parts.length);
+				for (int i=0; i<parts.length; i++)
+					p.addMessage(parts[i], i);
+				byte[] plainText2 = p.reassemble();
+				Assert.assertTrue("reassembled plain text has invalid length", plainText2.length == plainText.length);
+				Assert.assertTrue("reassemlbed plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
+			}
+		}
+	}
+
+	public void testEncryptSplitReassembleDecrypt_MultipleBlocks() throws InternalApplicationException {
+		byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 129, useJSSE);
+		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 129, useJSSE2);
+		// 17 bytes is more than one block, so the protocol should switch from ECB to CBC mode
+		byte[] plainText = new byte[17];
+		for (int i=0; i<plainText.length; i++)
+			plainText[i] = (byte) (plainText.length-1-i);
+		
+		byte[] cipherText = p1.encrypt(plainText);
+
+		byte[][] parts = p1.split(cipherText);
+		Assert.assertEquals("number of parts does not match requested number of rounds", 2, parts.length);
+		for (int i=0; i<parts.length; i++)
+			p2.addMessage(parts[i], i);
+
+		Assert.assertTrue("cipher text has invalid length", cipherText.length == p1.getCipherTextBlocks() * 16);
+		byte[] plainText2 = p2.decrypt(p2.reassemble());
+		Assert.assertTrue("decrypted plain text has invalid length", plainText2.length == plainText.length);
+		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
+	}
 }
