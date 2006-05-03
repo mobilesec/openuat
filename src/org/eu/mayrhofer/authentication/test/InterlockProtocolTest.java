@@ -273,8 +273,9 @@ public class InterlockProtocolTest extends TestCase {
 		}
 	}
 
-	/*public void testSplitAndReassemble_Variant1_Case2() throws InternalApplicationException {
-		for (int rounds=2; rounds<=50; rounds++) {
+	public void testSplitAndReassemble_Variant1_Case2() throws InternalApplicationException {
+		int rounds=2;
+		//for (int rounds=2; rounds<=50; rounds++) {
 			for (int messageBytes=17; messageBytes<=128; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
 				InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes*8-7, useJSSE);
@@ -288,6 +289,6 @@ public class InterlockProtocolTest extends TestCase {
 				Assert.assertTrue("reassembled plain text has invalid length", plainText2.length == plainText.length);
 				Assert.assertTrue("reassemlbed plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
 			}
-		}
-	}*/
+		//}
+	}
 }
