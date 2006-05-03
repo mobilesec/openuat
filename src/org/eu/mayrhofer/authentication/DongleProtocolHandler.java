@@ -150,8 +150,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			throw new DongleAuthenticationProtocolException("Expecting random nonce with a length of " + NonceByteLength + " Bytes.");
 		if (sentRfMessage == null || sentRfMessage.length != NonceByteLength)
 			throw new DongleAuthenticationProtocolException("Expecting RF message with a length of " + NonceByteLength + " Bytes.");
-/*		if (receivedRfMessage == null || receivedRfMessage.length != NonceByteLength)
-			throw new DongleAuthenticationProtocolException("Received RF message will have " + NonceByteLength + " Bytes, expecting pre-allocated array.");*/
 		if (rounds < 2)
 			throw new DongleAuthenticationProtocolException("Need at least 2 rounds for the interlock protocol to be secure.");
 
