@@ -120,7 +120,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testParameterCheckConstructor4() {
 		// this should not work with incorrect parameters
 		try {
-			InterlockProtocol p = new InterlockProtocol(null, 2, 127, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 127, useJSSE);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
 			Assert.assertTrue(true);
