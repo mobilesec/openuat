@@ -128,9 +128,9 @@ public class InterlockProtocolTest extends TestCase {
 	}
 	
 	public void testParameterCheckEncrypt1() {
-		// this should not work with incorrect parameters
 		InterlockProtocol p = new InterlockProtocol(null, 2, 128, useJSSE);
 		try {
+			// this should not work with incorrect parameters
 			p.encrypt(new byte[16]);
 			Assert.fail();
 		} catch (InternalApplicationException e) {
@@ -139,9 +139,9 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckEncrypt2() throws InternalApplicationException {
-		// this should not work with incorrect parameters
 		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
 		try {
+			// this should not work with incorrect parameters
 			p.encrypt(new byte[15]);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
@@ -150,9 +150,9 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckEncrypt3() throws InternalApplicationException {
-		// this should not work with incorrect parameters
 		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
 		try {
+			// this should not work with incorrect parameters
 			p.encrypt(new byte[17]);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
@@ -161,9 +161,9 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckEncrypt4() throws InternalApplicationException {
-		// this should not work with incorrect parameters
 		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
 		try {
+			// this should not work with incorrect parameters
 			p.encrypt(new byte[0]);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
@@ -172,9 +172,9 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckDecrypt1() {
-		// this should not work with incorrect parameters
 		InterlockProtocol p = new InterlockProtocol(null, 2, 128, useJSSE);
 		try {
+			// this should not work with incorrect parameters
 			p.encrypt(new byte[16]);
 			Assert.fail();
 		} catch (InternalApplicationException e) {
@@ -183,9 +183,9 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckDecrypt2() throws InternalApplicationException {
-		// this should not work with incorrect parameters
 		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
 		try {
+			// this should not work with incorrect parameters
 			p.encrypt(new byte[15]);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
@@ -227,4 +227,21 @@ public class InterlockProtocolTest extends TestCase {
 		Assert.assertTrue("decrypted plain text has invalid length", plainText2.length == plainText.length);
 		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
 	}
+	
+	/*public void testSplitAndReassemble_Variant1() throws InternalApplicationException {
+		for (int rounds=2; rounds<50; rounds++) {
+			for (int messageBytes=16; messageBytes<48; messageBytes++) {
+		int rounds=2, messageBytes=16;
+		
+				InterlockProtocol p = new InterlockProtocol(null, rounds, messageBytes, useJSSE);
+				byte[] plainText = new byte[messageBytes];
+				for (int i=0; i<plainText.length; i++)
+					plainText[i] = (byte) (plainText.length-1-i);
+				byte[][] parts = p.split(plainText);
+				byte[] plainText2 = p.reassemble(parts);
+				Assert.assertTrue("reassembled plain text has invalid length", plainText2.length == plainText.length);
+				Assert.assertTrue("reassemlbed plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
+			}
+		}
+	}*/
 }

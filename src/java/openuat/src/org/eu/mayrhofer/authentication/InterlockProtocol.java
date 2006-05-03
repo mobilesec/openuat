@@ -64,11 +64,18 @@ public class InterlockProtocol {
 	
 	/** This size of the plain text message in Bits. */
 	private int numMessageBits;
-	
-	/** The number of bits of the message that are transmitted each round.
+
+	/** The number of blocks the cipher text will take.
 	 * This is computed by the constructor.
 	 */
-	private int messageBitsPerRound;
+	private int numCipherTextBlocks;
+	
+	/** The number of bits of each cipher blocks that are transmitted each round.
+	 * In the multiple-block case, the number of cipher bits transmitted in each
+	 * round is cipherBitsPerRoundPerBlock * numCipherTextBlocks
+	 * This is computed by the constructor.
+	 */
+	private int cipherBitsPerRoundPerBlock;
 	
 	/** This array is only used when the combination of the functions
 	 * addMessage and reassemble is used. The addMessage methods add the
@@ -121,10 +128,26 @@ public class InterlockProtocol {
 		this.numMessageBits = numMessageBits;
 		this.useJSSE = useJSSE;
 
-		messageBitsPerRound = numMessageBits / rounds;
-		if (numMessageBits > messageBitsPerRound * rounds)
-			messageBitsPerRound++;
-		logger.info("Transmitting " + messageBitsPerRound + " bits of message each round");
+		// compute a few helper variables
+		if (numMessageBits == BlockByteLength*8) {
+			// simple - one block
+			logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes");
+			numCipherTextBlocks = 1;
+		}
+		else {
+			// more complicated: number of blocks plus IV block
+			numCipherTextBlocks = (numMessageBits%(BlockByteLength*8) == 0 ? 
+					numMessageBits/(BlockByteLength*8) : 
+					numMessageBits/(BlockByteLength*8) + 1) + 1;
+			logger.debug("Case 2: cipher takes " + numCipherTextBlocks + " blocks: " + 
+					(numCipherTextBlocks*BlockByteLength) + " bytes");
+		}
+		
+		cipherBitsPerRoundPerBlock = BlockByteLength*8 / rounds;
+		if (BlockByteLength*8 > cipherBitsPerRoundPerBlock * rounds)
+			cipherBitsPerRoundPerBlock++;
+		logger.info("Transmitting " + cipherBitsPerRoundPerBlock + " bits of message per block each round, " +
+				"total of " + cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits per message each round");
 	}
 	
 	/** Encrypt the plain text message with the shared key set in the constructor.
@@ -161,11 +184,11 @@ public class InterlockProtocol {
 			byte[] iv = new byte[BlockByteLength];
 			r.nextBytes(iv);
 			// the ciphertext will need to keep the whole message and the IV
-			cipherText = new byte[getCipherTextBlocks() * BlockByteLength];
+			cipherText = new byte[numCipherTextBlocks * BlockByteLength];
 			// first block is the IV
 			System.arraycopy(iv, 0, cipherText, 0, BlockByteLength);
 			// and then as many rounds of CBC as we need
-			for (int i=0; i<getCipherTextBlocks()-1; i++) {
+			for (int i=0; i<numCipherTextBlocks-1; i++) {
 				byte[] plainBlock = new byte[BlockByteLength];
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
@@ -200,9 +223,9 @@ public class InterlockProtocol {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
 			throw new InvalidParameterException("Can only decrypt multiples of the block cipher length");
-		if (cipherText.length != getCipherTextBlocks() * BlockByteLength)
+		if (cipherText.length != numCipherTextBlocks * BlockByteLength)
 			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
-					getCipherTextBlocks() * BlockByteLength + " bytes but got " + cipherText.length);
+					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length);
 		if (sharedKey == null)
 			throw new InternalApplicationException("Can not encrypt without shared key");
 
@@ -221,7 +244,7 @@ public class InterlockProtocol {
 			byte[] iv = new byte[BlockByteLength];
 			System.arraycopy(cipherText, 0, iv, 0, BlockByteLength);
 			// and then as many rounds of CBC as we need
-			for (int i=0; i<getCipherTextBlocks()-1; i++) {
+			for (int i=0; i<numCipherTextBlocks-1; i++) {
 				byte[] cipherBlock = new byte[BlockByteLength];
 				System.arraycopy(cipherText, (i+1)*BlockByteLength, cipherBlock, 0, BlockByteLength);
 				byte[] plainBlock = useJSSE ? processBlock_JSSE(cipher, cipherBlock) : processBlock_BCAPI(cipher, cipherBlock);
@@ -240,10 +263,78 @@ public class InterlockProtocol {
 		return plainText;
 	}
 	
-	public byte[][] split(byte[] cipherText) {
-		// TODO: implement me
-		
-		return null;
+	/** This method splits the cipher text into multiple parts for transmission
+	 * in an interlocked way. The caller <b>has</b> to make sure that part i+1 is
+	 * not sent until the other host has acknowledged receipt of part i and sent its
+	 * part i. If this is not followed, the interlock protocol is not secure!
+	 * 
+	 * How the splitting is done depends on the mode of the protocol: In the single-block
+	 * case, the cipher text consists of just a single block encrypted by one call
+	 * to the block cipher. Thus, this block is simply split into equally sized parts
+	 * (besides the last one) taken one after the other from the cipher text.
+	 * In the multi-block case, all blocks are split as in the single-block case and the
+	 * parts of the independent blocks are then concatenated to form the parts. This
+	 * makes sure that no single block can be decrypted before all of the message parts
+	 * have been delivered. 
+	 * 
+	 * @param cipherText The cipher text to split.
+	 * @return As many parts as there are rounds in the protocol in the first dimension
+	 *         of the returned array. The last arrays may be set to null if the cipher
+	 *         text does not split cleanly and the last rounds therefore do not contain
+	 *         any bits. The last array that is not null may be smaller than the previous
+	 *         arrays, but all other are equally sized. The last byte in each array might
+	 *         be padded with 0 on the top, i.e. the array will be filled from the LSB part.
+	 * @throws InternalApplicationException 
+	 */
+	public byte[][] split(byte[] cipherText) throws InternalApplicationException {
+		// sanity check
+		if (cipherText.length % BlockByteLength != 0)
+			throw new InvalidParameterException("Can only split multiples of the block cipher length");
+		if (cipherText.length != numCipherTextBlocks * BlockByteLength)
+			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
+					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length);
+
+		// in any case, the number of parts is equal to the number of rounds
+		byte[][] parts = new byte[rounds][];
+		if (cipherText.length == BlockByteLength) {
+			logger.debug("Splitting cipher text of " + cipherText.length + " bytes into " + rounds + " parts");
+			// simple case: the parts are just taken one after each other
+			for (int round=0; round<rounds; round++) {
+				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
+						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+				parts[round] = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
+				logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes");
+				extractPart(parts[round], cipherText, round*cipherBitsPerRoundPerBlock, curBits);
+			}
+		}
+		else {
+			// the more complicated case is reduced to the simple case - each block split independently, then merged
+			logger.debug("Splitting cipher text of " + cipherText.length + " bytes with " 
+					+ numCipherTextBlocks + " blocks into " + rounds + " parts");
+			for (int block=0; block<numCipherTextBlocks; block++) {
+				byte[] cipherBlock = new byte[BlockByteLength];
+				System.arraycopy(cipherText, block*BlockByteLength, cipherBlock, 0, BlockByteLength);
+				byte[][] blockParts = split(cipherBlock);
+				if (blockParts.length != parts.length) {
+					throw new InternalApplicationException("Split of a single block did not return as many parts as we wanted. This is wrong.");
+				}
+				// and immediately merge into the output
+				for (int round=0; round<rounds; round++) {
+					// these are now the bits for each of the blocks that should belong to this round
+					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
+							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+					// if this is the first block, then we need to create the array first
+					if (block==0) {
+						int partBits = curBits*numCipherTextBlocks;
+						parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
+					}
+					addPart(parts[round], blockParts[round], 
+							block*cipherBitsPerRoundPerBlock, curBits);
+				}
+				
+			}
+		}
+		return parts;
 	}
 	
 	/** This method only checks that all rounds have actually been received
@@ -290,7 +381,7 @@ public class InterlockProtocol {
 		
 		if (assembledCipherText == null) {
 			logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds");
-			assembledCipherText = new byte[getCipherTextBlocks() * BlockByteLength];
+			assembledCipherText = new byte[numCipherTextBlocks * BlockByteLength];
 			receivedRounds = new BitSet(rounds);
 		}
 		logger.debug("Adding cipher text message part " + round + ": " + numBits + " bits");
@@ -325,16 +416,52 @@ public class InterlockProtocol {
 		// TODO: check parameters
 
     	// if nearly all (or all) bits have already been transmitted, it might have less bits
-		int curBits = messageBitsPerRound * (round+1) <= numMessageBits ? 
-				messageBitsPerRound : (numMessageBits - messageBitsPerRound * round);
+		int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
+				cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock * round);
 		if (curBits > 0) {
-			return addMessage(message, round * messageBitsPerRound, curBits, round);
+			return addMessage(message, round*cipherBitsPerRoundPerBlock, curBits, round);
 		}
 		else {
 			logger.info("Ignoring message part " + round + ": " + curBits + " bits. Reason: cipher text already complete.");
 			return false;
 		}
     }
+    
+	/** Small helper function to extract a part from a byte array.
+	 * 
+	 * This method is only public for the JUnit tests, there's probably not much use for it elsewhere.
+	 * 
+	 * @param dest The byte array to put the part into. It is assumed that it has been allocated with sufficient length.
+	 * @param src The byte array from which the part should be extracted. It will be taken from the LSB part.
+	 * @param bitOffset The number of bits to shift src before adding to dest.
+	 * @param bitLen The number of bits to add from src to dest.
+	 */ 
+    static public void extractPart(byte[] dest, byte[] src, int bitOffset, int bitLen) throws InternalApplicationException {
+		if (src.length * 8 < bitOffset + bitLen)
+			throw new InternalApplicationException("Not enough bits in the given array, requested to copy " + bitLen +
+					" bits, but being called with an array of " + src.length + " bytes");
+		if (dest.length * 8 < bitLen)
+			throw new InternalApplicationException("Target array not long enough, requested to copy " + bitLen + 
+					" bits starting at offset " + bitOffset + " into a target array of " + dest.length + " bytes length");
+		
+		int bytePos = bitOffset / 8; // the byte to read from
+		int bitPos = bitOffset % 8;  // the bit (within the byte) to read from
+		// this could be more performant when bitOffset % 8 = 0 (i.e. when the byte boundaries match), but don't care about that right now
+		for (int i=0; i<bitLen; i++) {
+			// first get the current bit to copy from src
+			boolean bit = ((src[bytePos]) & (1 << bitPos)) != 0;
+			// and copy it to dest
+			if (bit)
+				dest[i/8] |= 1 << i%8;
+			else
+				dest[i/8] &= ~(1 << i%8);
+			bitPos++;
+			if (bitPos == 8) {
+				bytePos++;
+				bitPos = 0;
+			}
+		}
+	}
 
 	/** Small helper function to add a part to a byte array.
 	 * 
@@ -425,23 +552,8 @@ public class InterlockProtocol {
 		return output;
 	}
 	
-	/** This is a small helper function to calculate the overall length of
-	 * the cipher text.
-	 * @return The number of bytes the block the cipher text will take.
-	 */
+	/** Returns the number of cipher text blocks necessary to encode the message. */ 
 	public int getCipherTextBlocks() {
-		if (numMessageBits == BlockByteLength*8) {
-			// simple - one block
-			logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes");
-			return 1;
-		}
-		else {
-			// more complicated: number of blocks plus IV block
-			int blocks = (numMessageBits%(BlockByteLength*8) == 0 ? 
-					numMessageBits/(BlockByteLength*8) : 
-					numMessageBits/(BlockByteLength*8) + 1) + 1;
-			logger.debug("Case 2: cipher takes " + blocks + " blocks: " + (blocks*BlockByteLength) + " bytes");
-			return blocks;
-		}
+		return numCipherTextBlocks;
 	}
 }
