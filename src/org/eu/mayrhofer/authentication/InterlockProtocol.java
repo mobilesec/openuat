@@ -290,7 +290,8 @@ public class InterlockProtocol {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
 			throw new InvalidParameterException("Can only split multiples of the block cipher length");
-		if (cipherText.length != numCipherTextBlocks * BlockByteLength)
+		// second option is necessary for when we are called recursively
+		if (cipherText.length != numCipherTextBlocks * BlockByteLength && cipherText.length != BlockByteLength)
 			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
 					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length);
 
@@ -302,9 +303,14 @@ public class InterlockProtocol {
 			for (int round=0; round<rounds; round++) {
 				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
-				parts[round] = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
-				logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes");
-				extractPart(parts[round], cipherText, round*cipherBitsPerRoundPerBlock, curBits);
+				if (curBits > 0) {
+					parts[round] = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
+					logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes");
+					extractPart(parts[round], cipherText, round*cipherBitsPerRoundPerBlock, curBits);
+				}
+				else
+					// no more left
+					parts[round] = null;
 			}
 		}
 		else {
@@ -323,13 +329,18 @@ public class InterlockProtocol {
 					// these are now the bits for each of the blocks that should belong to this round
 					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
-					// if this is the first block, then we need to create the array first
-					if (block==0) {
-						int partBits = curBits*numCipherTextBlocks;
-						parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
+					if (curBits > 0) {
+						// if this is the first block, then we need to create the array first
+						if (block==0) {
+							int partBits = curBits*numCipherTextBlocks;
+							parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
+						}
+						addPart(parts[round], blockParts[round], 
+								block*cipherBitsPerRoundPerBlock, curBits);
 					}
-					addPart(parts[round], blockParts[round], 
-							block*cipherBitsPerRoundPerBlock, curBits);
+					else
+						// no more left
+						parts[round] = null;
 				}
 				
 			}
@@ -348,6 +359,9 @@ public class InterlockProtocol {
 		if (messages.length != rounds)
 			throw new InvalidParameterException("Number of message parts does not match number of rounds, "
 					+ "excpected " + rounds + " but received " + messages.length);
+		if (assembledCipherText != null)
+			throw new InternalApplicationException("Can not use both reassemble variants at the same time. " 
+					+ "Complete reassambly method called while iterative is active");
 		
 		// in any case, the reassembled cipher text will have the same length
 		byte[] cipherText = new byte[numCipherTextBlocks * BlockByteLength];
@@ -358,7 +372,12 @@ public class InterlockProtocol {
 			for (int round=0; round<rounds; round++) {
 				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
-				addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
+				if (curBits > 0)
+					addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
+				else 
+					if (messages[round] != null) {
+						logger.error("Expected null part, but got some content");
+					}
 			}
 		} 
 		else {
@@ -369,9 +388,15 @@ public class InterlockProtocol {
 				for (int round=0; round<rounds; round++) {
 					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
-					byte[] partInBlock = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
-					extractPart(messages[round], partInBlock, block*cipherBitsPerRoundPerBlock, curBits);
-					addPart(cipherText, partInBlock, block*BlockByteLength+round*cipherBitsPerRoundPerBlock, curBits);
+					if (curBits > 0) {
+						byte[] partInBlock = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
+						extractPart(partInBlock, messages[round], block*cipherBitsPerRoundPerBlock, curBits);
+						addPart(cipherText, partInBlock, block*BlockByteLength+round*cipherBitsPerRoundPerBlock, curBits);
+					}
+					else 
+						if (messages[round] != null) {
+							logger.error("Expected null part, but got some content");
+						}
 				}
 			}
 		}
@@ -475,10 +500,10 @@ public class InterlockProtocol {
     static public void extractPart(byte[] dest, byte[] src, int bitOffset, int bitLen) throws InternalApplicationException {
 		if (src.length * 8 < bitOffset + bitLen)
 			throw new InternalApplicationException("Not enough bits in the given array, requested to copy " + bitLen +
-					" bits, but being called with an array of " + src.length + " bytes");
+					" bits starting at offset " + bitOffset + " but being called with an array of " + src.length + " bytes");
 		if (dest.length * 8 < bitLen)
 			throw new InternalApplicationException("Target array not long enough, requested to copy " + bitLen + 
-					" bits starting at offset " + bitOffset + " into a target array of " + dest.length + " bytes length");
+					" bits into a target array of " + dest.length + " bytes length");
 		
 		int bytePos = bitOffset / 8; // the byte to read from
 		int bitPos = bitOffset % 8;  // the bit (within the byte) to read from
@@ -578,6 +603,7 @@ public class InterlockProtocol {
 		}
 	}
 	
+	/** Process a block with the previously initialized block cipher (just in ECB mode). */
 	private byte[] processBlock_BCAPI(Object cipher, byte[] input) {
     	byte[] output = new byte[BlockByteLength];
 		int processedBytes = ((org.bouncycastle.crypto.BlockCipher) cipher).processBlock(input, 0, output, 0);
