@@ -384,10 +384,11 @@ public class InterlockProtocol {
 						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 				if (curBits > 0)
 					addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
-				else 
+				else  {
 					if (messages[round] != null) {
 						logger.error("Expected null part, but got some content");
 					}
+				}
 			}
 		} 
 		else {
@@ -401,14 +402,19 @@ public class InterlockProtocol {
 					if (curBits > 0) {
 						byte[] partInBlock = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
 						extractPart(partInBlock, messages[round], block*cipherBitsPerRoundPerBlock, curBits);
-						addPart(cipherText, partInBlock, block*BlockByteLength+round*cipherBitsPerRoundPerBlock, curBits);
+						logger.debug("Extracting " + curBits + " bits of block " + block + " from part " + round + ": " +
+								SerialConnector.byteArrayToBinaryString(partInBlock));
+						addPart(cipherText, partInBlock, 
+								block*BlockByteLength*8+round*cipherBitsPerRoundPerBlock, curBits);
 					}
-					else 
+					else { 
 						if (messages[round] != null) {
 							logger.error("Expected null part, but got some content");
 						}
+					}
 				}
 			}
+			logger.debug("Cipher text is now " + SerialConnector.byteArrayToBinaryString(cipherText));
 		}
 		
 		return cipherText;
