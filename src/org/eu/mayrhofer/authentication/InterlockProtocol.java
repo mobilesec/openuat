@@ -112,8 +112,9 @@ public class InterlockProtocol {
 		if (sharedKey != null && sharedKey.length != KeyByteLength)
 			throw new InvalidParameterException("Expecting shared key with a length of " + KeyByteLength + 
 					" bytes, but got " + sharedKey.length);
-		if (numMessageBits < BlockByteLength*8)
-			throw new InvalidParameterException("Can not use with a message size less than the cipher block size");
+		if (sharedKey != null && numMessageBits < BlockByteLength*8)
+			throw new InvalidParameterException("Can not use with a message size less than the cipher block size " +
+					"(got message size of " + numMessageBits + " bits)");
 
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
