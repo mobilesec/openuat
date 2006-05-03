@@ -9,6 +9,7 @@
 package org.eu.mayrhofer.authentication;
 
 import java.security.InvalidParameterException;
+import java.security.SecureRandom;
 import java.util.BitSet;
 
 import org.apache.log4j.Logger;
@@ -111,6 +112,8 @@ public class InterlockProtocol {
 		if (sharedKey != null && sharedKey.length != KeyByteLength)
 			throw new InvalidParameterException("Expecting shared key with a length of " + KeyByteLength + 
 					" bytes, but got " + sharedKey.length);
+		if (numMessageBits < BlockByteLength*8)
+			throw new InvalidParameterException("Can not use with a message size less than the cipher block size");
 
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
@@ -145,7 +148,38 @@ public class InterlockProtocol {
 		
 		byte[] cipherText;
 		Object cipher = useJSSE ? initCipher_JSSE(true) : initCipher_BCAPI(true);
-		cipherText = useJSSE ? processBlock_JSSE(cipher, plainText) : processBlock_BCAPI(cipher, plainText);
+		
+		// now distinguish between the single-block and the multiple-block cases
+		if (plainText.length == BlockByteLength) {
+			// ok, the simple case - just one block in ECB mode
+			cipherText = useJSSE ? processBlock_JSSE(cipher, plainText) : processBlock_BCAPI(cipher, plainText);
+		}
+		else {
+			// more difficult: multiple block in CBC mode with prepended IV
+	        SecureRandom r = new SecureRandom();
+			byte[] iv = new byte[BlockByteLength];
+			r.nextBytes(iv);
+			// the ciphertext will need to keep the whole message and the IV
+			cipherText = new byte[getCipherTextBlocks() * BlockByteLength];
+			// first block is the IV
+			System.arraycopy(iv, 0, cipherText, 0, BlockByteLength);
+			// and then as many rounds of CBC as we need
+			for (int i=0; i<getCipherTextBlocks()-1; i++) {
+				byte[] plainBlock = new byte[BlockByteLength];
+				// the number of bytes left for this block - may be less for the last
+				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
+						BlockByteLength : plainText.length - i*BlockByteLength;
+				logger.debug("Encrypting block " + i + ": " + bytesInBlock + " bytes");
+				System.arraycopy(plainText, i*BlockByteLength, plainBlock, 0, bytesInBlock);
+				// if not filled, the rest is padded with zeros (initialized by the JVM)
+				// then XOR with the last cipher text block
+				for (int j=0; j<BlockByteLength; j++)
+					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
+				byte[] cipherBlock = useJSSE ? processBlock_JSSE(cipher, plainBlock) : processBlock_BCAPI(cipher, plainBlock);
+				// and finally add to the output
+				System.arraycopy(cipherBlock, 0, cipherText, (i+1)*BlockByteLength, BlockByteLength);
+			}
+		}
 
 		return cipherText;
 	}
@@ -165,12 +199,42 @@ public class InterlockProtocol {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
 			throw new InvalidParameterException("Can only decrypt multiples of the block cipher length");
+		if (cipherText.length != getCipherTextBlocks() * BlockByteLength)
+			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
+					getCipherTextBlocks() * BlockByteLength + " bytes but got " + cipherText.length);
 		if (sharedKey == null)
 			throw new InternalApplicationException("Can not encrypt without shared key");
 
 		byte[] plainText;
 		Object cipher = useJSSE ? initCipher_JSSE(false) : initCipher_BCAPI(false);
-		plainText = useJSSE ? processBlock_JSSE(cipher, cipherText) : processBlock_BCAPI(cipher, cipherText);
+		// now distinguish between the single-block and the multiple-block cases
+		if (cipherText.length == BlockByteLength) {
+			// ok, the simple case - just one block in ECB mode
+			plainText = useJSSE ? processBlock_JSSE(cipher, cipherText) : processBlock_BCAPI(cipher, cipherText);
+		}
+		else {
+			// more difficult: multiple block in CBC mode with prepended IV
+			// the plain text will only need to have enough bytes to extract the message
+			plainText = new byte[numMessageBits%8 == 0 ? numMessageBits/8 : numMessageBits/8+1];
+			// first block is the IV
+			byte[] iv = new byte[BlockByteLength];
+			System.arraycopy(cipherText, 0, iv, 0, BlockByteLength);
+			// and then as many rounds of CBC as we need
+			for (int i=0; i<getCipherTextBlocks()-1; i++) {
+				byte[] cipherBlock = new byte[BlockByteLength];
+				System.arraycopy(cipherText, (i+1)*BlockByteLength, cipherBlock, 0, BlockByteLength);
+				byte[] plainBlock = useJSSE ? processBlock_JSSE(cipher, cipherBlock) : processBlock_BCAPI(cipher, cipherBlock);
+				// then XOR with the last cipher text block
+				for (int j=0; j<BlockByteLength; j++)
+					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
+				// the number of bytes left for this block - may be less for the last
+				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
+						BlockByteLength : plainText.length - i*BlockByteLength; 
+				logger.debug("Decrypting block " + i + ": " + bytesInBlock + " bytes");
+				// and finally add to the output
+				System.arraycopy(plainBlock, 0, plainText, i*BlockByteLength, bytesInBlock);
+			}
+		}
 
 		return plainText;
 	}
@@ -225,7 +289,7 @@ public class InterlockProtocol {
 		
 		if (assembledCipherText == null) {
 			logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds");
-			assembledCipherText = new byte[numMessageBits%8 == 0 ? numMessageBits/8 : numMessageBits/8 + 1];
+			assembledCipherText = new byte[getCipherTextBlocks() * BlockByteLength];
 			receivedRounds = new BitSet(rounds);
 		}
 		logger.debug("Adding cipher text message part " + round + ": " + numBits + " bits");
@@ -358,5 +422,25 @@ public class InterlockProtocol {
 			return new byte[processedBytes];
 		}
 		return output;
+	}
+	
+	/** This is a small helper function to calculate the overall length of
+	 * the cipher text.
+	 * @return The number of bytes the block the cipher text will take.
+	 */
+	public int getCipherTextBlocks() {
+		if (numMessageBits == BlockByteLength*8) {
+			// simple - one block
+			logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes");
+			return 1;
+		}
+		else {
+			// more complicated: number of blocks plus IV block
+			int blocks = (numMessageBits%(BlockByteLength*8) == 0 ? 
+					numMessageBits/(BlockByteLength*8) : 
+					numMessageBits/(BlockByteLength*8) + 1) + 1;
+			logger.debug("Case 2: cipher takes " + blocks + " blocks: " + (blocks*BlockByteLength) + " bytes");
+			return blocks;
+		}
 	}
 }
