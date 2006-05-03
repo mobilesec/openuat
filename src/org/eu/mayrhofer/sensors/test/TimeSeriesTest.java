@@ -25,11 +25,11 @@ public class TimeSeriesTest extends TestCase {
 	}
 	
 	public void testCalculateTotalMean() {
-		Assert.assertEquals("Total mean calculated online does not match", (float) (10*9+15)/21f, s.getTotalMean(), 0.0001f);
+		Assert.assertEquals("Total mean calculated online does not match", (10*9+15)/21d, s.getTotalMean(), 0.0001d);
 	}
 
 	public void testCalculateWindowMean() {
-		Assert.assertEquals("Window mean calculated online does not match", (float) (10*9/2)/10f, s.getWindowMean(), 0.0001f);
+		Assert.assertEquals("Window mean calculated online does not match", (10*9/2)/10d, s.getWindowMean(), 0.0001d);
 	}
 
 	/*public void testCalculateTotalVariance() {
@@ -53,6 +53,6 @@ public class TimeSeriesTest extends TestCase {
 		}
 		var2 /= arr.length-1;
 		
-		Assert.assertEquals("Window variance calculated online does not match", var2, s.getWindowVariance(), 0.0001f);
+		Assert.assertEquals("Window variance calculated online does not match", var2, s.getWindowVariance(), 0.0001d);
 	}
 }
