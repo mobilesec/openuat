@@ -297,7 +297,7 @@ public class InterlockProtocol {
 		// in any case, the number of parts is equal to the number of rounds
 		byte[][] parts = new byte[rounds][];
 		if (cipherText.length == BlockByteLength) {
-			logger.debug("Splitting cipher text of " + cipherText.length + " bytes into " + rounds + " parts");
+			logger.debug("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + rounds + " parts");
 			// simple case: the parts are just taken one after each other
 			for (int round=0; round<rounds; round++) {
 				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
@@ -309,7 +309,7 @@ public class InterlockProtocol {
 		}
 		else {
 			// the more complicated case is reduced to the simple case - each block split independently, then merged
-			logger.debug("Splitting cipher text of " + cipherText.length + " bytes with " 
+			logger.debug("Case 2: splitting cipher text of " + cipherText.length + " bytes with " 
 					+ numCipherTextBlocks + " blocks into " + rounds + " parts");
 			for (int block=0; block<numCipherTextBlocks; block++) {
 				byte[] cipherBlock = new byte[BlockByteLength];
@@ -336,6 +336,48 @@ public class InterlockProtocol {
 		}
 		return parts;
 	}
+
+    /** This method is the inverse of split(). All comments there apply here. 
+     * 
+     * @param messages The parts to reassemble.
+     * @return The assembled cipher text.
+     * @throws InternalApplicationException 
+     */
+	public byte[] reassemble(byte[][] messages) throws InternalApplicationException {
+		// sanity check
+		if (messages.length != rounds)
+			throw new InvalidParameterException("Number of message parts does not match number of rounds, "
+					+ "excpected " + rounds + " but received " + messages.length);
+		
+		// in any case, the reassembled cipher text will have the same length
+		byte[] cipherText = new byte[numCipherTextBlocks * BlockByteLength];
+		if (numCipherTextBlocks == 1) {
+			// simple case
+			logger.debug("Case 1: reassembling " + rounds + " parts to cipher text of " + 
+					cipherText.length + " bytes");
+			for (int round=0; round<rounds; round++) {
+				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
+						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+				addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
+			}
+		} 
+		else {
+			// more complex case, need to reassemble blocks
+			logger.debug("Case 2: reassembling " + rounds + " parts to cipher text of " + 
+					cipherText.length + " bytes with " + numCipherTextBlocks + " blocks");
+			for (int block=0; block<numCipherTextBlocks; block++) {
+				for (int round=0; round<rounds; round++) {
+					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
+							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+					byte[] partInBlock = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
+					extractPart(messages[round], partInBlock, block*cipherBitsPerRoundPerBlock, curBits);
+					addPart(cipherText, partInBlock, block*BlockByteLength+round*cipherBitsPerRoundPerBlock, curBits);
+				}
+			}
+		}
+		
+		return cipherText;
+	}
 	
 	/** This method only checks that all rounds have actually been received
 	 * (i.e. that they have been added with one of the addMessage methods)
@@ -357,12 +399,6 @@ public class InterlockProtocol {
     	return assembledCipherText;
     }
 
-	public byte[] reassemble(byte[][] messages) {
-		// TODO: implement me
-
-		return null;
-	}
-    
 	/** Adds a message to the cipher text assemply. This method should only
 	 * be used if not the whole message is to be transferred and/or the
 	 * application has very specific needs concerning re-assembly. Better use
