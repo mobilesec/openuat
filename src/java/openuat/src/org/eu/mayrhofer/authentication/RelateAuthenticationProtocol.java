@@ -329,6 +329,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	private int fetchReferenceMeasurement(byte remoteRelateId) {
 		int ref = -1;
 		while (ref == -1) {
+			logger.debug("Fetching reference mesurements from dongle at port " + serialPort + " to remote id " + remoteRelateId);
 			/* this gives us all the measurements that the local dongle took (i.e. where the 
 			 * getDongleId() of MeasurementEvent was equal to the localRelateId) to the remote 
 			 * dongle (i.e. where Measurement.getRelatumId was equal to remoteRelateId) */
@@ -494,7 +495,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
 	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event in idle state - assuming to be the server.");
+	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server.");
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    		// but do some sanity checks
         		if (referenceMeasurement != -1)
@@ -569,7 +570,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
 	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event in idle state - assuming to be the server.");
+	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server.");
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
@@ -589,7 +590,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
 	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event in idle state - assuming to be the server.");
+	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server.");
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
@@ -692,7 +693,13 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
 	    		logger.error("Received dongle authentication success event with remote id " + remote + 
-	    				" while not expecting one! This event will be ignored.");
+	    				" from " + sender + " while not expecting one! This event will be ignored.");
+	    		return;
+	    	}
+	    	// this sanity check is basically just to get rid of the unused warning
+	    	if (result != null) {
+	    		logger.error("Received result object with dongle authentication success event with remote id " 
+	    				+ remote + " while none expected. This event will be ignored. Object is " + result);
 	    		return;
 	    	}
 			
@@ -758,7 +765,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    {
 	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
 	    		logger.error("Received dongle authentication failure event with remote id " + remote + 
-	    			" while not expecting one! This event will be ignored.");
+	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
 	    	}
 			
@@ -793,8 +800,8 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
 	    	if (state != STATE_DONGLE_AUTH_RUNNING) {
-	    		logger.error("Received dongle authentication success event with remote id " + remote + 
-	    			" while not expecting one! This event will be ignored.");
+	    		logger.error("Received dongle authentication progress event with remote id " + remote + 
+	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
 	    	}
 			
@@ -903,7 +910,10 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     		synchronized public void AuthenticationSuccess(Object sender, Object remote, Object result)
     		{
     			Object[] remoteParam = (Object[]) remote;
-    			logger.info("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
+    			logger.info("Received relate authentication success event from " + sender + 
+    					" with " + remoteParam[0] + "/" + remoteParam[1]);
+    			if (result != null)
+    				logger.error("Received result object while not expecting one: " + result);
     			System.out.println("SUCCESS");
 
     			// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
@@ -928,7 +938,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
     	    
     		synchronized public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
     		{
-    			logger.info("Received relate authentication failure event with " + remote);
+    			logger.info("Received relate authentication failure event from " + sender + " with " + remote);
     			Throwable exc = e;
     			while (exc != null) {
     				logger.info("Exception: " + exc);
@@ -955,7 +965,7 @@ public class RelateAuthenticationProtocol extends AuthenticationEventSender {
 
    			public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
    			{
-   				logger.info("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+   				logger.info("Received relate authentication progress event from " + sender + " with " + remote + " " + cur + " out of " + max + ": " + msg);
    				if (useProgressBar) {
    					final int m = max;
    					final int c = cur;
