@@ -8,8 +8,8 @@
  */
 package org.eu.mayrhofer.authentication.test;
 
-import org.eu.mayrhofer.authentication.DongleProtocolHandler;
 import org.eu.mayrhofer.authentication.exceptions.*;
+import org.eu.mayrhofer.authentication.relate.DongleProtocolHandler;
 
 import junit.framework.*;
 

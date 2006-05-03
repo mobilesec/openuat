@@ -6,8 +6,12 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.eu.mayrhofer.authentication;
+package org.eu.mayrhofer.authentication.relate;
 
+import org.eu.mayrhofer.authentication.AuthenticationEventSender;
+import org.eu.mayrhofer.authentication.AuthenticationProgressHandler;
+import org.eu.mayrhofer.authentication.HostProtocolHandler;
+import org.eu.mayrhofer.authentication.HostServerSocket;
 import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.io.*;

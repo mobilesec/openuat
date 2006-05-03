@@ -6,9 +6,12 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.eu.mayrhofer.authentication;
+package org.eu.mayrhofer.authentication.relate;
 
 import org.apache.log4j.Logger;
+import org.eu.mayrhofer.authentication.AuthenticationEventSender;
+import org.eu.mayrhofer.authentication.InterlockProtocol;
+import org.eu.mayrhofer.authentication.SafetyBeltTimer;
 import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.security.SecureRandom;
