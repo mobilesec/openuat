@@ -15,8 +15,6 @@ import java.util.BitSet;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 
-import uk.ac.lancs.relate.core.SerialConnector;
-
 /** This class implements the interlock protocol as first defined in
  * Ronald L. Rivest and Adi Shamir: "How to Expose an Eavesdropper", 1984.
  * 
@@ -318,8 +316,7 @@ public class InterlockProtocol {
 		else {
 			// the more complicated case is reduced to the simple case - each block split independently, then merged
 			logger.debug("Case 2: splitting cipher text of " + cipherText.length + " bytes with " 
-					+ numCipherTextBlocks + " blocks into " + rounds + " parts: " + 
-					SerialConnector.byteArrayToBinaryString(cipherText));
+					+ numCipherTextBlocks + " blocks into " + rounds + " parts");
 			for (int block=0; block<numCipherTextBlocks; block++) {
 				byte[] cipherBlock = new byte[BlockByteLength];
 				System.arraycopy(cipherText, block*BlockByteLength, cipherBlock, 0, BlockByteLength);
@@ -339,10 +336,8 @@ public class InterlockProtocol {
 							parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
 						}
 						logger.debug("Adding " + curBits + " bits of block " + block + " to part " + 
-								round + " at offset " + (block*cipherBitsPerRoundPerBlock) + ": " +
-								SerialConnector.byteArrayToBinaryString(blockParts[round]));
-						addPart(parts[round], blockParts[round], 
-								block*cipherBitsPerRoundPerBlock, curBits);
+								round + " at offset " + (block*cipherBitsPerRoundPerBlock));
+						addPart(parts[round], blockParts[round], block*curBits, curBits);
 					}
 					else {
 						// no more left
@@ -350,9 +345,6 @@ public class InterlockProtocol {
 						parts[round] = null;
 					}
 				}
-			}
-			for (int i=0; i<rounds; i++) {
-				logger.debug("Message part " + i + " is now " + SerialConnector.byteArrayToBinaryString(parts[i]));
 			}
 		}
 		return parts;
@@ -401,9 +393,8 @@ public class InterlockProtocol {
 							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 					if (curBits > 0) {
 						byte[] partInBlock = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
-						extractPart(partInBlock, messages[round], block*cipherBitsPerRoundPerBlock, curBits);
-						logger.debug("Extracting " + curBits + " bits of block " + block + " from part " + round + ": " +
-								SerialConnector.byteArrayToBinaryString(partInBlock));
+						extractPart(partInBlock, messages[round], block*curBits, curBits);
+						logger.debug("Extracting " + curBits + " bits of block " + block + " from part " + round);
 						addPart(cipherText, partInBlock, 
 								block*BlockByteLength*8+round*cipherBitsPerRoundPerBlock, curBits);
 					}
@@ -414,7 +405,6 @@ public class InterlockProtocol {
 					}
 				}
 			}
-			logger.debug("Cipher text is now " + SerialConnector.byteArrayToBinaryString(cipherText));
 		}
 		
 		return cipherText;
