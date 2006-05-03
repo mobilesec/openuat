@@ -199,4 +199,22 @@ public class InterlockProtocolTest extends TestCase {
 		Assert.assertTrue("decrypted plain text has invalid length", plainText2.length == plainText.length);
 		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
 	}
+
+	/*public void testEncryptDecryptMultipleBlocks() throws InternalApplicationException {
+		byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 129, useJSSE);
+		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 129, useJSSE2);
+		// 17 bytes is more than one block, so the protocol should switch from ECB to CBC mode
+		byte[] plainText = new byte[17];
+		for (int i=0; i<plainText.length; i++)
+			plainText[i] = (byte) (plainText.length-1-i);
+		
+		byte[] cipherText = p1.encrypt(plainText);
+		Assert.assertTrue("cipher text has invalid length", cipherText.length == plainText.length);
+		byte[] plainText2 = p2.decrypt(cipherText);
+		Assert.assertTrue("decrypted plain text has invalid length", plainText2.length == plainText.length);
+		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
+	}*/
 }

@@ -145,9 +145,9 @@ public class InterlockProtocol {
 		
 		byte[] cipherText;
 		if (useJSSE)
-			cipherText = encrypt_JSSE(plainText);
+			cipherText = processBlock_JSSE(initCipher_JSSE(true), plainText);
 		else
-			cipherText = encrypt_BCAPI(plainText);
+			cipherText = processBlock_BCAPI(initCipher_BCAPI(true), plainText);
 
 		return cipherText;
 	}
@@ -172,9 +172,9 @@ public class InterlockProtocol {
 
 		byte[] plainText;
 		if (useJSSE)
-			plainText = decrypt_JSSE(cipherText);
+			plainText = processBlock_JSSE(initCipher_JSSE(false), cipherText);
 		else
-			plainText = decrypt_BCAPI(cipherText);
+			plainText = processBlock_BCAPI(initCipher_BCAPI(false), cipherText);
 
 		return plainText;
 	}
@@ -312,14 +312,14 @@ public class InterlockProtocol {
 	}
 
 	/** Encrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
-	private byte[] encrypt_JSSE(byte[] plainText) throws InternalApplicationException {
+	private Object initCipher_JSSE(boolean encrypt) throws InternalApplicationException {
     	// encrypt already checks for correct length of plainText
         // need to specifically request no padding or padding would enlarge the one 128 bits block to two
         try {
 			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
-			cipher.init(javax.crypto.Cipher.ENCRYPT_MODE,
+			cipher.init(encrypt ? javax.crypto.Cipher.ENCRYPT_MODE : javax.crypto.Cipher.DECRYPT_MODE,
 					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
-			return cipher.doFinal(plainText);
+			return cipher;
 		} catch (java.security.NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Unable to get cipher object from crypto provider.", e);
@@ -329,64 +329,38 @@ public class InterlockProtocol {
 		} catch (java.security.InvalidKeyException e) {
 			throw new InternalApplicationException(
 					"Cipher does not accept its key.", e);
-		} catch (javax.crypto.IllegalBlockSizeException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested block size.", e);
-		} catch (javax.crypto.BadPaddingException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested padding.", e);
 		}
 	}
 	
-	/** Decrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
-	private byte[] decrypt_JSSE(byte[] cipherText) throws InternalApplicationException {
+	/** Initializes the block cipher for encryption or decryption. This implementation utilizes the 
+	 * Bouncycastle Lightweight API. */
+	private Object initCipher_BCAPI(boolean encrypt) {
+    	// encrypt already checks for correct length of plainText
+   		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
+    	cipher.init(encrypt, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
+    	return cipher;
+	}
+
+	/** Process a block with the previously initialized block cipher (just in ECB mode). */
+	private byte[] processBlock_JSSE(Object cipher, byte[] input) throws InternalApplicationException {
 		try {
-			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
-			cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
-					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
-			return cipher.doFinal(cipherText);
-		} catch (java.security.NoSuchAlgorithmException e) {
-			throw new InternalApplicationException(
-					"Unable to get cipher object from crypto provider.", e);
-		} catch (javax.crypto.NoSuchPaddingException e) {
-			throw new InternalApplicationException(
-					"Unable to get requested padding from crypto provider.", e);
-		} catch (java.security.InvalidKeyException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept its key.", e);
+			return ((javax.crypto.Cipher) cipher).doFinal(input);
 		} catch (javax.crypto.IllegalBlockSizeException e) {
 			throw new InternalApplicationException(
 					"Cipher does not accept requested block size.", e);
 		} catch (javax.crypto.BadPaddingException e) {
 			throw new InternalApplicationException(
-					"Cipher does not accept requested padding.", e);
+				"Cipher does not accept requested padding.", e);
 		}
 	}
-
-	/** Encrypt the nonce using the shared key. This implementation utilizes the Bouncycastle Lightweight API. */
-	private byte[] encrypt_BCAPI(byte[] plainText) throws InternalApplicationException {
-    	// encrypt already checks for correct length of plainText
-    	byte[] cipherText = new byte[BlockByteLength];
-   		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
-    	cipher.init(true, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
-		int encryptedBytes = cipher.processBlock(plainText, 0, cipherText, 0);
-		if (encryptedBytes != BlockByteLength) {
-   			logger.error("Encryption went wrong: unexpexted number of bytes returned");
-			return new byte[encryptedBytes];
+	
+	private byte[] processBlock_BCAPI(Object cipher, byte[] input) {
+    	byte[] output = new byte[BlockByteLength];
+		int processedBytes = ((org.bouncycastle.crypto.BlockCipher) cipher).processBlock(input, 0, output, 0);
+		if (processedBytes != BlockByteLength) {
+   			logger.error("Block processing went wrong: unexpexted number of bytes returned");
+			return new byte[processedBytes];
 		}
-		return cipherText;
-	}
-
-	/** Decrypt the nonce using the shared key. This implementation utilizes the Bouncycastle Lightweight API. */
-	private byte[] decrypt_BCAPI(byte[] cipherText) throws InternalApplicationException {
-		byte[] plainText = new byte[BlockByteLength];
-		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
-		cipher.init(false, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
-   		int decryptedBytes = cipher.processBlock(cipherText, 0, plainText, 0);
-   		if (decryptedBytes != BlockByteLength) {
-   			logger.error("Decryption went wrong: unexpexted number of bytes returned");
-   			return new byte[decryptedBytes];
-   		}
-   		return plainText;
+		return output;
 	}
 }
