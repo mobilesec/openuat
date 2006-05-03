@@ -12,7 +12,6 @@ import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.security.SecureRandom;
-import java.util.BitSet;
 
 import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.MessageQueue;
@@ -76,6 +75,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * startAuthentication to the Thread's run method.
 	 */
 	private byte[] sharedKey;
+
 	/** A temporary variable holding the number of rounds. It is used for passing data from
 	 * startAuthentication to the Thread's run method.
 	 */
@@ -119,17 +119,20 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *            The number of rounds to use. Due to the protocol and hardware
 	 *            limitations, the security of this authentication is given by
 	 *            rounds * EnropyBitsPerRound.
-	 * @param receivedDelays
+	 * @param interlockUs
 	 *            The received nonce transported by the ultrasond delays from
-	 *            the remote dongle. It is assumed that this array is
-	 *            initialized by the caller with the same length as nonce, but
-	 *            the contents are returned by this method. It will only carry
-	 *            EntropyBitsPerRound * rounds bits starting from the LSB.
-	 *            Higher bits will not be modified.
-	 * @param receivedRfMessage
-	 *            The RF message <b>received</b> from the remote dongle. It is
-	 *            assumed that this array is initialized by the caller with the
-	 *            same length as sentRfMessage, but the contents are returned by
+	 *            the remote dongle will be assembled with this InterlockProtocol
+	 *            instance. It is assumed that the object is initialized by the 
+	 *            caller with the same number of rounds used here, but the 
+	 *            messages are added by this method. The final, assembled message 
+	 *            will only carry (EntropyBitsPerRound * rounds) bits starting from 
+	 *            the LSB of the array that can be returned by interlockUs.
+	 *            Higher bits will not be added or touched in any way.
+	 * @param interlockRf
+	 *            The RF message <b>received</b> from the remote dongle will be
+	 *            assembled with this InterlockProtocol instance. It is assumed 
+	 *            that the object is initialized by the caller with the
+	 *            same number of rounds user here, but the messages are added by
 	 *            this method.
 	 * @return true if the authentication protocol completed, false otherwise.
 	 *         If true, returns the received RF message in receivedRfMessage. If
@@ -138,7 +141,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * @throws DongleAuthenticationProtocolException
 	 */
 	private boolean handleDongleCommunication(byte[] nonce, byte[] sentRfMessage, 
-			int rounds, byte[] receivedDelays, byte[] receivedRfMessage) 
+			int rounds, InterlockProtocol interlockUs, InterlockProtocol interlockRf) 
 			throws DongleAuthenticationProtocolException, InternalApplicationException {
 		// first check the parameters
 		if (remoteRelateId < 0)
@@ -147,8 +150,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			throw new DongleAuthenticationProtocolException("Expecting random nonce with a length of " + NonceByteLength + " Bytes.");
 		if (sentRfMessage == null || sentRfMessage.length != NonceByteLength)
 			throw new DongleAuthenticationProtocolException("Expecting RF message with a length of " + NonceByteLength + " Bytes.");
-		if (receivedRfMessage == null || receivedRfMessage.length != NonceByteLength)
-			throw new DongleAuthenticationProtocolException("Received RF message will have " + NonceByteLength + " Bytes, expecting pre-allocated array.");
+/*		if (receivedRfMessage == null || receivedRfMessage.length != NonceByteLength)
+			throw new DongleAuthenticationProtocolException("Received RF message will have " + NonceByteLength + " Bytes, expecting pre-allocated array.");*/
 		if (rounds < 2)
 			throw new DongleAuthenticationProtocolException("Need at least 2 rounds for the interlock protocol to be secure.");
 
@@ -211,11 +214,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		
 		// and wait for the measurements and authentication data to be received
 		int lastAuthPart = -1, lastCompletedRound = -1;
-		BitSet receivedRoundsRF = new BitSet(rounds), receivedRoundsUS = new BitSet(rounds);
-		int messageBitsPerRound = (sentRfMessage.length * 8) / rounds;
-		if (sentRfMessage.length * 8 > messageBitsPerRound * rounds)
-			messageBitsPerRound++;
-		logger.info("Transmitting " + messageBitsPerRound + " bits of the RF message each round");
 
 		/* This allows a clean exit when the dongle doesn't advance its reported round for too long
 		 * (e.g. when either the other side never enters authentication mode or it has been reset for
@@ -234,43 +232,29 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			}
 			if (e instanceof AuthenticationEvent && ((AuthenticationEvent) e).getRemoteDongleId() == remoteRelateId) {
 				AuthenticationEvent ae = (AuthenticationEvent) e;
-				// if nearly all (or all) bits have already been transmitted, it might have less bits
-				int curBits = messageBitsPerRound * ae.getRound ()<= receivedRfMessage.length * 8 ? 
-						messageBitsPerRound : 
-						(receivedRfMessage.length * 8 - messageBitsPerRound * (ae.getRound()-1));
 
 				// sanity check
 				if (ae.getRound() > rounds) {
 					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
-							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
+							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + ": " +
 							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: only expected + " + rounds + " rounds.");
 					continue;
 				}
-				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				if (receivedRoundsRF.get(ae.getRound()-1)) {
-					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
+				// authentication info event: just remember the bits received with it
+				if (! interlockRf.addMessage(ae.getAuthenticationPart(), ae.getRound()-1)) {
+					logger.warn("Could not add authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
-							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: already received this round.");
+							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " to interlock protocol: " +
+							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()));
 					continue;
 				}
-				receivedRoundsRF.set(ae.getRound()-1, true);
+				logger.info("Received authentication part from dongle " + remoteRelateId + 
+						": round " + ae.getRound() + 
+						(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " : " +
+						SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()));
 
 				// the last messages might not even carry any bits at all
-				if (curBits > 0) {
-					// authentication info event: just remember the bits received with it
-					addPart(receivedRfMessage, ae.getAuthenticationPart(), (ae.getRound()-1) * messageBitsPerRound, curBits);
-					logger.info("Received authentication part from dongle " + remoteRelateId + 
-						": round " + ae.getRound() + 
-						(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-						SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()));
-				}
-				else
-					logger.info("Ignoring authentication part from dongle " + remoteRelateId + 
-							": round " + ae.getRound() + 
-							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " (" + curBits + " bits): " +
-							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: RF message already complete.");
 				lastAuthPart = ae.getRound()-1;
 			}
 			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getDongleId() == localRelateId &&  
@@ -300,9 +284,9 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					delay++;
 				// if it is the last round, it might have less bits (but only for >= 43 rounds)
 				// if more than 43 rounds are used, it will basically overflow - allow that
-				int curBits = (receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8) >= EntropyBitsPerRound ? 
+				int curBits = (NonceByteLength * 8) - (EntropyBitsPerRound * lastAuthPart) % (NonceByteLength * 8) >= EntropyBitsPerRound ? 
 						EntropyBitsPerRound : 
-						(receivedDelays.length * 8) - (EntropyBitsPerRound * lastAuthPart) % (receivedDelays.length * 8);
+						(NonceByteLength * 8) - (EntropyBitsPerRound * lastAuthPart) % (NonceByteLength * 8);
 				
 				// sanity check
 				if (lastAuthPart >= rounds) {
@@ -327,18 +311,17 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 					continue;
 				}
 
-				// check if we already got that round - only use the first packet so to ignore any ack-only packets
-				if (receivedRoundsUS.get(lastAuthPart)) {
-					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
-							", round " + (lastAuthPart+1) +
-							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
-							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). already received this round.");
+				// and add to the receivedNonce for later comparison
+				if (! interlockUs.addMessage(new byte[] {delay}, 
+						(lastAuthPart * EntropyBitsPerRound) % (NonceByteLength * 8), 
+						curBits, lastAuthPart)) {
+					logger.warn("Could not add delayed measurement from dongle " + remoteRelateId + 
+							": " + delayedMeasurement + ", round " + (lastAuthPart+1) +
+							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + 
+							", computed nonce part from delay: " + (delay /*& 0x07*/) + 
+							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay})); 
 					continue;
 				}
-				receivedRoundsUS.set(lastAuthPart, true);
-				
-				// and add to the receivedNonce for later comparison
-				addPart(receivedDelays, new byte[] {delay}, (lastAuthPart * EntropyBitsPerRound) % (receivedDelays.length * 8), curBits);
 				lastCompletedRound = lastAuthPart;
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
@@ -371,26 +354,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		
 		serialConn.unregisterEventQueue(eventQueue);
 
-		// check if everything has been received correctly
-		if (receivedRoundsRF.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required authentication parts from remote dongle, first missing is round " + 
-					(receivedRoundsRF.nextClearBit(0)+1));
-			logger.error(receivedRoundsRF);
-			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
-					"Did not receive all required authentication parts from remote dongle, first missing is round " + 
-					(receivedRoundsRF.nextClearBit(0)+1));
-			return false;
-		}
-		if (receivedRoundsUS.nextClearBit(0) < rounds) {
-			logger.error("ERROR: Did not receive all required delayed measurements from remote dongle, first missing is round " + 
-					(receivedRoundsUS.nextClearBit(0)+1));
-			logger.error(receivedRoundsUS);
-			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
-					"Did not receive all required delayed measurements from remote dongle, first missing is round " + 
-					(receivedRoundsRF.nextClearBit(0)+1));
-			return false;
-		}
-		
 		return true;
 	}
 
@@ -403,15 +366,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
         byte[] nonce = new byte[NonceByteLength];
         r.nextBytes(nonce);
 
-    		logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
-    		logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
-    		logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
+   		logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
+   		logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
+   		logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
     		
-		byte[] rfMessage;
-		if (useJSSE)
-			rfMessage = encryptNonce_JSSE(nonce);
-		else
-			rfMessage = encryptNonce_BCAPI(nonce);
+   		InterlockProtocol interlockRf = new InterlockProtocol(sharedKey, rounds, nonce.length*8, useJSSE);
+   		byte[] rfMessage = interlockRf.encrypt(nonce);
+   		// this instance is only used for assembling the plain-text nonce received via US
+   		InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, useJSSE);
 		
 		if (rfMessage.length != NonceByteLength) {
 			logger.error("Encryption went wrong, got "
@@ -423,9 +385,22 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
 		
-		byte[] receivedDelays = new byte[NonceByteLength], receivedRfMessage = new byte[NonceByteLength];
-		if (!handleDongleCommunication(nonce, rfMessage, rounds, receivedDelays, receivedRfMessage)) {
-			// all occurances of return fals already raise an authentication failure event, so no need to do it here
+		if (!handleDongleCommunication(nonce, rfMessage, rounds, interlockUs, interlockRf)) {
+			// all occurances of return false already raise an authentication failure event, so no need to do it here
+			return;
+		}
+		
+		// check if everything has been received correctly
+		byte[] receivedDelays = interlockUs.reassemble();
+		if (receivedDelays == null) {
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
+					"Did not receive all required delayed measurements from remote dongle");
+			return;
+		}
+		byte[] receivedRfMessage = interlockRf.reassemble();
+		if (receivedRfMessage == null) {
+			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, 
+				"Did not receive all required authentication parts from remote dongle");
 			return;
 		}
 
@@ -433,11 +408,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToBinaryString(receivedDelays));
 
 		// check that the delays match the (encrypted) message sent by the remote
-		byte[] receivedNonce;
-		if (useJSSE)
-			receivedNonce = decryptNonce_JSSE(receivedRfMessage);
-		else
-			receivedNonce = decryptNonce_BCAPI(receivedRfMessage);
+		byte[] receivedNonce = interlockRf.decrypt(receivedRfMessage);
 
 		if (receivedNonce.length != NonceByteLength) {
 			logger.error("Decryption went wrong, got "
@@ -467,117 +438,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			logger.warn("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
 			logger.warn("Hamming distance between the strings is " + hammingDistance(receivedNonce, receivedDelays, numBitsToCheck));
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
-		}
-	}
-	
-	/** Encrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
-	private byte[] encryptNonce_JSSE(byte[] nonce) throws InternalApplicationException, DongleAuthenticationProtocolException {
-        // need to specifically request no padding or padding would enlarge the one 128 bits block to two
-        try {
-			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
-			cipher.init(javax.crypto.Cipher.ENCRYPT_MODE,
-					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
-			return cipher.doFinal(nonce);
-		} catch (java.security.NoSuchAlgorithmException e) {
-			throw new InternalApplicationException(
-					"Unable to get cipher object from crypto provider.", e);
-		} catch (javax.crypto.NoSuchPaddingException e) {
-			throw new InternalApplicationException(
-					"Unable to get requested padding from crypto provider.", e);
-		} catch (java.security.InvalidKeyException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept its key.", e);
-		} catch (javax.crypto.IllegalBlockSizeException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested block size.", e);
-		} catch (javax.crypto.BadPaddingException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested padding.", e);
-		}
-	}
-	
-	/** Decrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
-	private byte[] decryptNonce_JSSE(byte[] receivedRfMessage) throws InternalApplicationException, DongleAuthenticationProtocolException {
-		try {
-			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
-			cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
-					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
-			return cipher.doFinal(receivedRfMessage);
-		} catch (java.security.NoSuchAlgorithmException e) {
-			throw new InternalApplicationException(
-					"Unable to get cipher object from crypto provider.", e);
-		} catch (javax.crypto.NoSuchPaddingException e) {
-			throw new InternalApplicationException(
-					"Unable to get requested padding from crypto provider.", e);
-		} catch (java.security.InvalidKeyException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept its key.", e);
-		} catch (javax.crypto.IllegalBlockSizeException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested block size.", e);
-		} catch (javax.crypto.BadPaddingException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested padding.", e);
-		}
-	}
-
-	/** Encrypt the nonce using the shared key. This implementation utilizes the Bouncycastle Lightweight API. */
-	private byte[] encryptNonce_BCAPI(byte[] nonce) throws InternalApplicationException, DongleAuthenticationProtocolException {
-    		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
-    		cipher.init(true, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
-    		byte[] rfMessage = new byte[NonceByteLength];
-		int encryptedBytes = cipher.processBlock(nonce, 0, rfMessage, 0);
-		if (encryptedBytes != NonceByteLength) {
-			return new byte[encryptedBytes];
-		}
-		return rfMessage;
-	}
-
-	/** Decrypt the nonce using the shared key. This implementation utilizes the Bouncycastle Lightweight API. */
-	private byte[] decryptNonce_BCAPI(byte[] receivedRfMessage) throws InternalApplicationException, DongleAuthenticationProtocolException {
-		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
-		cipher.init(false, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
-    		byte[] receivedNonce = new byte[NonceByteLength];
-    		int decryptedBytes = cipher.processBlock(receivedRfMessage, 0, receivedNonce, 0);
-    		if (decryptedBytes != NonceByteLength) {
-    			return new byte[decryptedBytes];
-    		}
-    		return receivedNonce;
-	}
-	
-	/** Small helper function to add a part to a byte array.
-	 * 
-	 * This method is only public for the JUnit tests, there's probably not much use for it elsewhere.
-	 * 
-	 * @param dest The byte array to add to. It is assumed that it has been allocated with sufficient length.
-	 * @param src The part to add to dest. It will be added from the LSB part.
-	 * @param bitOffset The number of bits to shift src before adding to dest.
-	 * @param bitLen The number of bits to add from src to dest.
-	 */ 
-	static public void addPart(byte[] dest, byte[] src, int bitOffset, int bitLen) throws InternalApplicationException {
-		if (src.length * 8 < bitLen)
-			throw new InternalApplicationException("Not enough bits in the given array, requested to copy " + bitLen +
-					" bits, but being called with an array of " + src.length + " bytes");
-		if (dest.length * 8 < bitOffset + bitLen)
-			throw new InternalApplicationException("Target array not long enough, requested to copy " + bitLen + 
-					" bits starting at offset " + bitOffset + " into a target array of " + dest.length + " bytes length");
-		
-		int bytePos = bitOffset / 8; // the byte to write to
-		int bitPos = bitOffset % 8;  // the bit (within the byte) to write to
-		// this could be more performant when bitOffset % 8 = 0 (i.e. when the byte boundaries match), but don't care about that right now
-		for (int i=0; i<bitLen; i++) {
-			// first get the current bit to copy from src
-			boolean bit = ((src[i/8]) & (1 << (i%8))) != 0;
-			// and copy it to dest
-			if (bit)
-				dest[bytePos] |= 1 << bitPos;
-			else
-				dest[bytePos] &= ~(1 << bitPos);
-			bitPos++;
-			if (bitPos == 8) {
-				bytePos++;
-				bitPos = 0;
-			}
 		}
 	}
 	

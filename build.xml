@@ -111,7 +111,7 @@
 	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.1" source="1.2" />
 	
 	<!-- Compile our own classes... -->
-        <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+  <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 	       classpathref="lib.path.all" debug="${compile.debug}" target="1.1" source="1.2">
 	</javac>
     </target>
@@ -137,7 +137,7 @@
         <jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 	    <fileset dir="${bin}"
-                includes="org/eu/mayrhofer/authentication/**/*.class" />
+             includes="org/eu/mayrhofer/authentication/**/*.class org/eu/mayrhofer/sensors/**/*.class" />
             <fileset dir="${bin-BC-core}" />
 	    <fileset dir="${src}" includes="*.properties" />
         </jar>
