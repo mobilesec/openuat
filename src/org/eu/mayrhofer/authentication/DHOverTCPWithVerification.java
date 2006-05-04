@@ -327,7 +327,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 */
 	protected void verificationSuccess(Object optionalRemoteId, String optionalParameterToRemote) {
     	String remoteStatus = remoteStatusExchange(Protocol_Success + 
-    			optionalParameterToRemote != null ? optionalParameterToRemote : "", 
+    			(optionalParameterToRemote != null ? optionalParameterToRemote : ""), 
     			optionalRemoteId);
 		
     	if (remoteStatus != null) {
@@ -386,8 +386,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 */
 	protected void verificationFailure(Object optionalRemoteId, String optionalParameterToRemote,
 			Exception e, String msg) {
-        String remoteStatus = remoteStatusExchange(Protocol_Failure + 
-    			optionalParameterToRemote != null ? optionalParameterToRemote : "", 
+		String remoteStatus = remoteStatusExchange(Protocol_Failure + 
+    			(optionalParameterToRemote != null ? optionalParameterToRemote : ""), 
     			optionalRemoteId);
         
     	if (remoteStatus != null) {
