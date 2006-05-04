@@ -9,11 +9,17 @@
 package org.eu.mayrhofer.authentication.accelerometer;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.StringTokenizer;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.DHOverTCPWithVerification;
+import org.eu.mayrhofer.authentication.InterlockProtocol;
 import org.eu.mayrhofer.sensors.Coherence;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.SegmentsSink;
@@ -24,17 +30,20 @@ import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification {
+public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification implements SegmentsSink {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol1.class);
 
 	public static final int TcpPort = 54322;
-	
+
 	private double[] localSegment = null;
+	private Object localSegmentLock = new Object();
 	
 	private double[] remoteSegment = null;
 	
 	private double coherenceThreshold = 0.25;
+	
+	private Socket socketToRemote = null;
 	
 	private Thread interlockRunner = null;
 	
@@ -54,18 +63,23 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification {
 			Object optionalRemoteId, String optionalParameterFromRemote, 
 			byte[] sharedSessionKey) {
 		// nothing special to do, events have already been emitted by the base class
+		logger.debug("protocolSucceededHook called");
+		System.out.println("SUCCESS");
 	}
 	
 	/** Called by the base class when the whole authentication protocol failed. */
 	protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
+		logger.debug("protocolFailedHook called");
+		System.out.println("FAILURE");
 	}
 	
 	/** Called by the base class when the whole authentication protocol shows progress. */
 	protected void protocolProgressHook(InetAddress remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
+		logger.debug("protocolProgressHook called");
 	}
 	
 	/** Called by the base class when shared keys have been established and should be verified now.
@@ -74,7 +88,10 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification {
 	 */
 	protected void startVerification(byte[] sharedAuthenticationKey, 
 			InetAddress remote, String param, Socket socketToRemote) {
-		interlockRunner = new Thread(new AsyncInterlockHelper());
+		logger.info("startVerification hook called with " + remote + ", param " + param);
+	
+		this.socketToRemote = socketToRemote;
+		interlockRunner = new Thread(new AsyncInterlockHelper(sharedAuthenticationKey));
 		interlockRunner.start();
 	}
 
@@ -99,44 +116,159 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification {
 		return coherenceMean > coherenceThreshold;
 	}
 	
-	private class ActiveSegmentsListener implements SegmentsSink {
-		/** The implementation of SegmentsSink.addSegment. It will be called whenever
-		 * a significant active segment has been sampled completely, i.e. when the
-		 * source has become quiescent again.
-		 */
-		public void addSegment(double[] segment, int startIndex) {
-			logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
-			synchronized (localSegment) {
-				localSegment = segment;
-				localSegment.notify();
-			}
+	/** The implementation of SegmentsSink.addSegment. It will be called whenever
+	 * a significant active segment has been sampled completely, i.e. when the
+	 * source has become quiescent again.
+	 */
+	public void addSegment(double[] segment, int startIndex) {
+		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
+		synchronized (localSegmentLock) {
+			localSegment = segment;
+			localSegmentLock.notify();
 		}
 	}
 	
+	public void startAuthentication(String remoteHost) throws UnknownHostException, IOException {
+		logger.info("Starting authentication with " + remoteHost);
+		startAuthentication(remoteHost, null);
+	}
+	
 	private class AsyncInterlockHelper implements Runnable {
+		private byte[] sharedAuthenticationKey;
+		
+		AsyncInterlockHelper(byte[] authKey) {
+			this.sharedAuthenticationKey = authKey;
+		}
+		
 		public void run() {
+			try {
 			//while (remoteSegment == null) {
 				// first wait for the local segment to be received to start the interlock protocol
-			synchronized (localSegment) {
+			logger.debug("Waiting for local segment");
+			synchronized(localSegmentLock) {
 				while (localSegment == null) {
 					try {
-						localSegment.wait();
+						localSegmentLock.wait();
 					}
 					catch (InterruptedException e) {}
 				}
 			}
+			logger.debug("Local segment sampled, starting interlock protocol");
+			
+			// TODO: make configurable??? mabye not necessary
+			int rounds = 2;
 
-			if (remoteSegment != null) {
-				// ok, remote segment already received, can compare
-				System.out.println("COHERENCE MATCH: " + checkCoherence());
+			// TODO: optimize me for smaller arrays!
+			String tmp = "";
+			synchronized (localSegmentLock) {
+				for (int i=0; i<localSegment.length; i++) {
+					tmp += Double.toString(localSegment[i]);
+					if (i<localSegment.length-1)
+						tmp+=" ";
+				}
 			}
+			byte[] localPlainText = tmp.getBytes();
+			logger.debug("My segment is " + localPlainText.length + " bytes long");
+			
+			InterlockProtocol myIp = new InterlockProtocol(sharedAuthenticationKey, rounds, 
+					localPlainText.length*8, null, useJSSE);
+			byte[][] localParts = myIp.split(myIp.encrypt(localPlainText));
+			
+			PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
+			/* do not use a BufferedReader here because that would potentially mess up
+			 * the stream for other users of the socket (by consuming too many bytes)
+			 */
+			InputStream fromRemote = socketToRemote.getInputStream();
+			
+			// first exchange length of message
+			toRemote.println("ILCKINIT " + localPlainText.length);
+			toRemote.flush();
+			String remoteLength = "";
+			int remLen = -1;
+			int ch = fromRemote.read();
+			while (ch != -1 && ch != '\n') {
+				// TODO: check if this is enough to deal with line ending problems
+				if (ch != '\r')
+					remoteLength += (char) ch;
+				ch = fromRemote.read();
+			}
+			if (remoteLength.startsWith("ILCKINIT ")) {
+				remLen = Integer.parseInt(remoteLength.substring(9, remoteLength.length()));
+				logger.debug("Remote reported message lenght of" + remLen + " bytes");
+			}
+			else {
+				logger.error("Did not received interlock init line from remote. Can not continue");
+				verificationFailure(null, null, null, null);
+				return;
+			}
+			InterlockProtocol remoteIp = new InterlockProtocol(sharedAuthenticationKey, rounds, 
+					remLen*8, null, useJSSE);
+			
+			int round=0;
+			// TODO: this can be an endless loop - time for a SafetyBeltTimer
+			// TODO: for TCP, we should not even use retries.... that could give an attacker ideas
+			while (round < rounds) {
+				// sending my round
+				toRemote.println("ILCKRND " + round + " " + new String(Hex.encodeHex(localParts[round])));
+				logger.debug("Sent my round " + round + ", length of part is " + localParts[round].length + " bytes");
+				toRemote.flush();
+				String remotePart = "";
+				ch = fromRemote.read();
+				while (ch != -1 && ch != '\n') {
+					// TODO: check if this is enough to deal with line ending problems
+					if (ch != '\r')
+						remotePart += (char) ch;
+					ch = fromRemote.read();
+				}
+				if (remotePart.startsWith("ILCKRND ")) {
+					// TODO: do me properly!
+					int remoteRound = Integer.parseInt(remotePart.substring(8, 9));
+					logger.debug("Received remote round " + remoteRound);
+					if (remoteRound == round) {
+						byte[] part = Hex.decodeHex(remotePart.substring(10, remotePart.length()).toCharArray());
+						remoteIp.addMessage(part, round);
+						logger.debug("Received " + part.length + " bytes from other host");
+						logger.debug("The round is what I expected, going on to next round");
+						round++;
+					}
+				}
+				else {
+					logger.error("Unknown line from remote: " + remotePart);
+				}
+			}
+			logger.debug("Interlock protocol completed");
+			
+			byte[] remotePlainText = remoteIp.decrypt(remoteIp.reassemble());
+			logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
+			StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
+			remoteSegment = new double[st.countTokens()];
+			int i=0;
+			while (st.hasMoreTokens()) {
+				remoteSegment[i++] = Float.parseFloat(st.nextToken());
+			}
+			logger.debug("remote segment is " + remoteSegment.length + " elements long");
+			
+			boolean coherence = checkCoherence();
+			System.out.println("COHERENCE MATCH: " + coherence);
+			
+			if (coherence)
+				verificationSuccess(null, null);
+			else
+				verificationFailure(null, null, null, null);
+			
+			// HACK HACK HACK to make the application exit
+			stopServer();
+			
 			//}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
 	
 	/////////////////// testing code begins here ///////////////
-	public void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException {
 		int samplerate = 128; // Hz
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
@@ -147,8 +279,12 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification {
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		r2_a.addSink(aggr_a.getInitialSinks());
 		r2_b.addSink(aggr_b.getInitialSinks());
-		aggr_a.addNextStageSink(new MotionAuthenticationProtocol1(true).new ActiveSegmentsListener());
-		aggr_b.addNextStageSink(new MotionAuthenticationProtocol1(true).new ActiveSegmentsListener());
+		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(true); 
+		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(true); 
+		aggr_a.addNextStageSink(ma1);
+		aggr_b.addNextStageSink(ma2);
+		ma1.startServer();
+		ma2.startAuthentication("localhost");
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
