@@ -170,75 +170,14 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			byte[] localPlainText = tmp.getBytes();
 			logger.debug("My segment is " + localPlainText.length + " bytes long");
 			
-			InterlockProtocol myIp = new InterlockProtocol(sharedAuthenticationKey, rounds, 
-					localPlainText.length*8, null, useJSSE);
-			byte[][] localParts = myIp.split(myIp.encrypt(localPlainText));
-			
-			PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
-			/* do not use a BufferedReader here because that would potentially mess up
-			 * the stream for other users of the socket (by consuming too many bytes)
-			 */
-			InputStream fromRemote = socketToRemote.getInputStream();
-			
-			// first exchange length of message
-			toRemote.println("ILCKINIT " + localPlainText.length);
-			toRemote.flush();
-			String remoteLength = "";
-			int remLen = -1;
-			int ch = fromRemote.read();
-			while (ch != -1 && ch != '\n') {
-				// TODO: check if this is enough to deal with line ending problems
-				if (ch != '\r')
-					remoteLength += (char) ch;
-				ch = fromRemote.read();
-			}
-			if (remoteLength.startsWith("ILCKINIT ")) {
-				remLen = Integer.parseInt(remoteLength.substring(9, remoteLength.length()));
-				logger.debug("Remote reported message lenght of" + remLen + " bytes");
-			}
-			else {
-				logger.error("Did not received interlock init line from remote. Can not continue");
+			byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
+					socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
+					sharedAuthenticationKey, rounds, false, 0, useJSSE);
+			if (remotePlainText == null) {
 				verificationFailure(null, null, null, null);
 				return;
 			}
-			InterlockProtocol remoteIp = new InterlockProtocol(sharedAuthenticationKey, rounds, 
-					remLen*8, null, useJSSE);
 			
-			int round=0;
-			// TODO: this can be an endless loop - time for a SafetyBeltTimer
-			// TODO: for TCP, we should not even use retries.... that could give an attacker ideas
-			while (round < rounds) {
-				// sending my round
-				toRemote.println("ILCKRND " + round + " " + new String(Hex.encodeHex(localParts[round])));
-				logger.debug("Sent my round " + round + ", length of part is " + localParts[round].length + " bytes");
-				toRemote.flush();
-				String remotePart = "";
-				ch = fromRemote.read();
-				while (ch != -1 && ch != '\n') {
-					// TODO: check if this is enough to deal with line ending problems
-					if (ch != '\r')
-						remotePart += (char) ch;
-					ch = fromRemote.read();
-				}
-				if (remotePart.startsWith("ILCKRND ")) {
-					// TODO: do me properly!
-					int remoteRound = Integer.parseInt(remotePart.substring(8, 9));
-					logger.debug("Received remote round " + remoteRound);
-					if (remoteRound == round) {
-						byte[] part = Hex.decodeHex(remotePart.substring(10, remotePart.length()).toCharArray());
-						remoteIp.addMessage(part, round);
-						logger.debug("Received " + part.length + " bytes from other host");
-						logger.debug("The round is what I expected, going on to next round");
-						round++;
-					}
-				}
-				else {
-					logger.error("Unknown line from remote: " + remotePart);
-				}
-			}
-			logger.debug("Interlock protocol completed");
-			
-			byte[] remotePlainText = remoteIp.decrypt(remoteIp.reassemble());
 			logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 			StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
 			remoteSegment = new double[st.countTokens()];

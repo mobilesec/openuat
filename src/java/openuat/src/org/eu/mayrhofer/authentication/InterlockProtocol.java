@@ -8,10 +8,15 @@
  */
 package org.eu.mayrhofer.authentication;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.security.InvalidParameterException;
 import java.security.SecureRandom;
 import java.util.BitSet;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 
@@ -50,6 +55,17 @@ public class InterlockProtocol {
 	
 	/** The current block size of the used cipher in bytes. */
 	private static final int BlockByteLength = 16;
+	
+	/** This is the start of the line sent during initializing the interlock
+	 * exchange.
+	 * @see #interlockExchange
+	 */
+	private static final String ProtocolLine_Init = "ILCKINIT";
+	
+	/** This is the start of the line sent each round of the interlock exchange.
+	 * @see #interlockExchange
+	 */
+	private static final String ProtocolLine_Round = "ILCKRND";
 	
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	private boolean useJSSE;
@@ -537,6 +553,133 @@ public class InterlockProtocol {
 		logger.info("Added message part " + round + " (" + numBits + " bits at offset " + offset + ")" + 
 				(instanceId != null ? " [instance " + instanceId : ""));
 		return true;
+	}
+	
+	/** This is a small helper function to exchange a line with the remote host. First,
+	 * the own line is sent, and then it waits for a line to be received.
+	 * @param command The command name that describes this line. It is prepended to the
+	 *                actual value (the two are separated by a space). Only when the other
+	 *                host sends a line staring with the same command, its line is accepted.
+	 * @param value The value to send
+	 * @return The value that the other host sent, or null if no matching line has been
+	 *         received.
+	 * @throws IOException 
+	 */
+	private static String swapLine(String command, String value, 
+			InputStream fromRemote, PrintWriter toRemote) throws IOException {
+		logger.debug("Sending line to remote host: command '" + command + "', value '" + value + "'");
+		toRemote.println(command + " " + value);
+		toRemote.flush();
+		String remoteLine = "";
+		int ch = fromRemote.read();
+		while (ch != -1 && ch != '\n') {
+			// TODO: check if this is enough to deal with line ending problems
+			if (ch != '\r')
+				remoteLine += (char) ch;
+			ch = fromRemote.read();
+		}
+		if (remoteLine.startsWith(command + " ")) {
+			String ret = remoteLine.substring(command.length() + 1);
+			logger.debug("Received line from remote host: command '" + command + "', value + '" + ret + "'");
+			return ret;
+		}
+		else {
+			logger.error("Did not receive proper line from remote, expected command '" + command + 
+					"', received line '" + remoteLine + "'");
+			return null;
+		}
+		
+	}
+	
+	/** This method runs a complete interlock exchange with another host. To this end,
+	 * this method must be started on both sides with the same values for the number of
+	 * rounds and, obviously, for the shared key.
+	 * @param message The message to send to the remote host.
+	 * @param fromRemote This stream is used for receiving bytes from the remote host. This
+	 *                   method takes care not to consume any more bytes than stricly 
+	 *                   necessary, so that this stream can be re-used for subsequent
+	 *                   communication betweem the hosts.
+	 * @param toRemote This stream is used for sending bytes to the remote host.
+	 * @param sharedKey The shared key to use for encryption and decryption. Must be equal
+	 *                  on both sides or the messages will not decrypt successfully (and 
+	 *                  this indicates a man-in-the-middle attack).
+	 * @param rounds The number of rounds to use.
+	 * @param retransmit Is set to true, lost messages are allowed and rounds will be
+	 *                   retransmitted until the other end acknowledges it or a timeout
+	 *                   occurs. THIS IS CURRENTLY NOT IMPLEMENTED. SET TO FALSE.
+	 * @param timeoutMs If retransmit is set to true, every round will be limited to take
+	 *                  this amount of milliseconds. If the other side has not acknowledged
+	 *                  the receipt within this time, the protocol aborts. THIS IS CURRENTLY
+	 *                  NOT IMPLEMENTED.
+	 * @return The message that the remote host sent, or null if the interlock protocol 
+	 *         could not be completed successfully.
+	 * @throws IOException 
+	 * @throws InternalApplicationException 
+	 */
+	public static byte[] interlockExchange(byte[] message, InputStream fromRemote, OutputStream toRemote,
+			byte[] sharedKey, int rounds, boolean retransmit, int timeoutMs, boolean useJSSE) 
+			throws IOException, InternalApplicationException {
+		if (fromRemote == null || toRemote == null)
+			throw new InvalidParameterException("Both input and output stream must be set");
+		if (retransmit)
+			throw new InvalidParameterException("Retransmit is currently not implemented");
+
+		logger.info("Running interlock exchange with " + rounds + " rounds. My message is " + 
+				message.length + " bytes long");
+		
+		InterlockProtocol myIp = new InterlockProtocol(sharedKey, rounds, 
+				message.length*8, null, useJSSE);
+		byte[][] localParts = myIp.split(myIp.encrypt(message));
+		
+		PrintWriter writer = new PrintWriter(toRemote, true);
+		/* do not use a BufferedReader here because that would potentially mess up
+		 * the stream for other users of the socket (by consuming too many bytes)
+		 */
+		
+		// first exchange length of message
+		String remoteLength = swapLine(ProtocolLine_Init, Integer.toString(message.length), fromRemote, writer);
+		if (remoteLength == null) {
+			logger.error("Did not receive remote message length. Can not continue.");
+			return null;
+		}
+		int remLen = Integer.parseInt(remoteLength);
+
+		InterlockProtocol remoteIp = new InterlockProtocol(sharedKey, rounds, 
+				remLen*8, null, useJSSE);
+		
+		// TODO: this can be an endless loop - time for a SafetyBeltTimer
+		for (int round=0; round<rounds; round++) {
+			logger.debug("Sending my round " + round + ", length of part is " + localParts[round].length + " bytes");
+			String remotePart = swapLine(ProtocolLine_Round, 
+					round + " " + new String(Hex.encodeHex(localParts[round])),
+					fromRemote, writer);
+			if (remotePart == null) {
+				logger.error("Did not received round " + round + " from remote. Can not continue.");
+				return null;
+			}
+
+			// first part is the round number, then the part
+			int remoteRound = Integer.parseInt(remotePart.substring(0, remotePart.indexOf(' ')));
+			logger.debug("Received remote round " + remoteRound);
+			if (remoteRound == round) {
+				try { 
+					byte[] part = Hex.decodeHex(remotePart.substring(remotePart.indexOf(' ')+1).toCharArray());
+					remoteIp.addMessage(part, round);
+					logger.debug("Received " + part.length + " bytes from other host");
+				}
+				catch (Exception e) {
+					logger.error("Could not decode remote byte array. Can not continue.");
+					return null;
+				}
+			}
+			else {
+				logger.error("Round number does not match local round. Can not continue.");
+				return null;
+			}
+		}
+		logger.debug("Interlock protocol completed");
+		
+		return remoteIp.decrypt(remoteIp.reassemble());
 	}
 		
 	/** Adds a message to the cipher text assemply. This is a convenience

@@ -8,6 +8,11 @@
  */
 package org.eu.mayrhofer.authentication.test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.security.InvalidParameterException;
 
 import org.eu.mayrhofer.authentication.InterlockProtocol;
@@ -348,5 +353,62 @@ public class InterlockProtocolTest extends TestCase {
 		byte[] plainText2 = p2.decrypt(p2.reassemble());
 		Assert.assertTrue("decrypted plain text has invalid length", plainText2.length == plainText.length);
 		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
+	}
+	
+	public void testExchangeHelper() throws IOException, InterruptedException {
+		PipedOutputStream writePipe1 = new PipedOutputStream();
+		PipedOutputStream writePipe2 = new PipedOutputStream();
+		PipedInputStream readPipe1 = new PipedInputStream(writePipe2);
+		PipedInputStream readPipe2 = new PipedInputStream(writePipe1);
+		
+		final byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		
+		class Helper implements Runnable {
+			byte[] myMsg;
+			byte[] remoteMsg;
+			InputStream in;
+			OutputStream out;
+			boolean myUseJSSE;
+			
+			public void run() {
+				try {
+					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, sharedKey, 2, false, 0, myUseJSSE);
+				} catch (Exception e) {
+					e.printStackTrace();
+					Assert.fail();
+				}
+			}
+		}
+		
+		Helper h1 = new Helper();
+		Helper h2 = new Helper();
+		h1.in = readPipe1;
+		h1.out = writePipe1;
+		h1.myMsg = new byte[25];
+		h1.myUseJSSE = useJSSE;
+		for (int i=0; i<h1.myMsg.length; i++)
+			h1.myMsg[i] = (byte) (h1.myMsg.length-1-i);
+		h2.in = readPipe2;
+		h2.out = writePipe2;
+		h2.myMsg = new byte[27];
+		h2.myUseJSSE = useJSSE2;
+		for (int i=0; i<h1.myMsg.length; i++)
+			h1.myMsg[i] = (byte) (h1.myMsg.length-2-i);
+
+		Thread t1 = new Thread(h1);
+		Thread t2 = new Thread(h2);
+		
+		t1.start();
+		t2.start();
+		t1.join();
+		t2.join();
+		
+		Assert.assertNotNull(h1.remoteMsg);
+		Assert.assertNotNull(h2.remoteMsg);
+		
+		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(h1.myMsg, h2.remoteMsg));
+		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(h2.myMsg, h1.remoteMsg));
 	}
 }
