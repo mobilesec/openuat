@@ -39,7 +39,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification {
 	private Thread interlockRunner = null;
 	
 	public MotionAuthenticationProtocol1(boolean useJSSE) {
-		super(TcpPort, false, useJSSE);
+		super(TcpPort, false, null, useJSSE);
 	}
 	
 	/** Called by the base class when the object is reset to idle state. */

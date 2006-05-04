@@ -179,6 +179,8 @@
 			    <pathelement location="${jarfile.core}"/>
 			    <pathelement location="${jarfile.channels}"/>
 			    <pathelement location="${jarfile.apps}"/>
+          <!-- to also use the log4.properties file -->
+          <pathelement location="${src}"/>
 		    </classpath>
 		    <batchtest todir="${reports.tests}">
 			    <fileset dir="${src}">

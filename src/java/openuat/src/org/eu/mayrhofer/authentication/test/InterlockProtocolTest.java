@@ -120,7 +120,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testParameterCheckConstructor1() {
 		// this should not work with incorrect parameters
 		try {
-			InterlockProtocol p = new InterlockProtocol(new byte[] {1}, 2, 128, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[] {1}, 2, 128, null, useJSSE);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
 			Assert.assertTrue(true);
@@ -130,7 +130,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testParameterCheckConstructor2() {
 		// this should not work with incorrect parameters
 		try {
-			InterlockProtocol p = new InterlockProtocol(null, 1, 128, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(null, 1, 128, null, useJSSE);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
 			Assert.assertTrue(true);
@@ -140,7 +140,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testParameterCheckConstructor3() {
 		// this should not work with incorrect parameters
 		try {
-			InterlockProtocol p = new InterlockProtocol(null, 129, 128, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(null, 129, 128, null, useJSSE);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
 			Assert.assertTrue(true);
@@ -150,7 +150,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testParameterCheckConstructor4() {
 		// this should not work with incorrect parameters
 		try {
-			InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 127, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 127, null, useJSSE);
 			Assert.fail();
 		} catch (InvalidParameterException e) {
 			Assert.assertTrue(true);
@@ -158,7 +158,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 	
 	public void testParameterCheckEncrypt1() {
-		InterlockProtocol p = new InterlockProtocol(null, 2, 128, useJSSE);
+		InterlockProtocol p = new InterlockProtocol(null, 2, 128, null, useJSSE);
 		try {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[16]);
@@ -169,7 +169,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckEncrypt2() throws InternalApplicationException {
-		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
+		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, null, useJSSE);
 		try {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[15]);
@@ -180,7 +180,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckEncrypt3() throws InternalApplicationException {
-		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
+		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, null, useJSSE);
 		try {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[17]);
@@ -191,7 +191,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckEncrypt4() throws InternalApplicationException {
-		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
+		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, null, useJSSE);
 		try {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[0]);
@@ -202,7 +202,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckDecrypt1() {
-		InterlockProtocol p = new InterlockProtocol(null, 2, 128, useJSSE);
+		InterlockProtocol p = new InterlockProtocol(null, 2, 128, null, useJSSE);
 		try {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[16]);
@@ -213,7 +213,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testParameterCheckDecrypt2() throws InternalApplicationException {
-		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, useJSSE);
+		InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 128, null, useJSSE);
 		try {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[15]);
@@ -227,8 +227,8 @@ public class InterlockProtocolTest extends TestCase {
 		byte[] sharedKey = new byte[32];
 		for (int i=0; i<sharedKey.length; i++)
 			sharedKey[i] = (byte) i;
-		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 128, useJSSE);
-		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 128, useJSSE2);
+		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 128, null, useJSSE);
+		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 128, null, useJSSE2);
 		byte[] plainText = new byte[16];
 		for (int i=0; i<plainText.length; i++)
 			plainText[i] = (byte) (plainText.length-1-i);
@@ -244,8 +244,8 @@ public class InterlockProtocolTest extends TestCase {
 		byte[] sharedKey = new byte[32];
 		for (int i=0; i<sharedKey.length; i++)
 			sharedKey[i] = (byte) i;
-		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 129, useJSSE);
-		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 129, useJSSE2);
+		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 129, null, useJSSE);
+		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 129, null, useJSSE2);
 		// 17 bytes is more than one block, so the protocol should switch from ECB to CBC mode
 		byte[] plainText = new byte[17];
 		for (int i=0; i<plainText.length; i++)
@@ -261,7 +261,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testSplitAndReassemble_Variant1_Case1() throws InternalApplicationException {
 		int messageBytes=16;
 		for (int rounds=2; rounds<=50; rounds++) {
-			InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8, null, useJSSE);
 			byte[] plainText = new byte[messageBytes];
 			for (int i=0; i<plainText.length; i++)
 				plainText[i] = (byte) (plainText.length-1-i);
@@ -277,8 +277,7 @@ public class InterlockProtocolTest extends TestCase {
 		for (int rounds=2; rounds<=50; rounds++) {
 			for (int messageBytes=17; messageBytes<=128; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
-				InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8-7, useJSSE);
-				System.out.println(p.getCipherTextBlocks()*16);
+				InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8-7, null, useJSSE);
 				byte[] plainText = new byte[p.getCipherTextBlocks()*16];
 				for (int i=0; i<plainText.length; i++)
 					plainText[i] = (byte) (plainText.length-1-i);
@@ -294,7 +293,7 @@ public class InterlockProtocolTest extends TestCase {
 	public void testSplitAndReassemble_Variant2_Case1() throws InternalApplicationException {
 		int messageBytes=16;
 		for (int rounds=2; rounds<=50; rounds++) {
-			InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8, useJSSE);
+			InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8, null, useJSSE);
 			byte[] plainText = new byte[messageBytes];
 			for (int i=0; i<plainText.length; i++)
 				plainText[i] = (byte) (plainText.length-1-i);
@@ -312,8 +311,7 @@ public class InterlockProtocolTest extends TestCase {
 		for (int rounds=2; rounds<=50; rounds++) {
 			for (int messageBytes=17; messageBytes<=128; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
-				InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8-7, useJSSE);
-				System.out.println(p.getCipherTextBlocks()*16);
+				InterlockProtocol p = new InterlockProtocol(new byte[32], rounds, messageBytes*8-7, null, useJSSE);
 				byte[] plainText = new byte[p.getCipherTextBlocks()*16];
 				for (int i=0; i<plainText.length; i++)
 					plainText[i] = (byte) (plainText.length-1-i);
@@ -332,8 +330,8 @@ public class InterlockProtocolTest extends TestCase {
 		byte[] sharedKey = new byte[32];
 		for (int i=0; i<sharedKey.length; i++)
 			sharedKey[i] = (byte) i;
-		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 129, useJSSE);
-		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 129, useJSSE2);
+		InterlockProtocol p1 = new InterlockProtocol(sharedKey, 2, 129, null, useJSSE);
+		InterlockProtocol p2 = new InterlockProtocol(sharedKey, 2, 129, null, useJSSE2);
 		// 17 bytes is more than one block, so the protocol should switch from ECB to CBC mode
 		byte[] plainText = new byte[17];
 		for (int i=0; i<plainText.length; i++)

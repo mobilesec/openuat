@@ -54,6 +54,9 @@ public class InterlockProtocol {
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	private boolean useJSSE;
 
+	/** This may be set to distinguish multiple instances running on the same machine. */
+	private String instanceId = null;
+	
 	/** The shared key used to encrypt and decrypt. */
 	private byte[] sharedKey;
 
@@ -106,30 +109,41 @@ public class InterlockProtocol {
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
+	 * @param instanceId This parameter may be used to distinguish differenc instances of
+	 *                   this class running on the same machine. It will be used in logging
+	 *                   and error messages. May be set to null.
 	 */
-	public InterlockProtocol(byte[] sharedKey, int rounds, int numMessageBits, boolean useJSSE) {
+	public InterlockProtocol(byte[] sharedKey, int rounds, int numMessageBits, String instanceId, 
+			boolean useJSSE) {
 		if (rounds < 2)
-			throw new InvalidParameterException("Need at least 2 rounds for the interlock protocol to be secure.");
+			throw new InvalidParameterException("Need at least 2 rounds for the interlock protocol to be secure." + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (rounds > numMessageBits)
-			throw new InvalidParameterException("Can not use more rounds than the number of message bits");
+			throw new InvalidParameterException("Can not use more rounds than the number of message bits" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
-			logger.warn("Initializing interlock protocol without shared key - encrypt and decrypt will not work");
+			logger.warn("Initializing interlock protocol without shared key - encrypt and decrypt will not work" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey != null && sharedKey.length != KeyByteLength)
 			throw new InvalidParameterException("Expecting shared key with a length of " + KeyByteLength + 
-					" bytes, but got " + sharedKey.length);
+					" bytes, but got " + sharedKey.length + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey != null && numMessageBits < BlockByteLength*8)
 			throw new InvalidParameterException("Can not use with a message size less than the cipher block size " +
-					"(got message size of " + numMessageBits + " bits)");
+					"(got message size of " + numMessageBits + " bits)" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
 		this.numMessageBits = numMessageBits;
 		this.useJSSE = useJSSE;
+		this.instanceId = instanceId;
 
 		// compute a few helper variables
 		if (sharedKey == null || numMessageBits == BlockByteLength*8) {
 			// simple - one block
-			logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes");
+			logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			numCipherTextBlocks = 1;
 		}
 		else {
@@ -138,14 +152,16 @@ public class InterlockProtocol {
 					numMessageBits/(BlockByteLength*8) : 
 					numMessageBits/(BlockByteLength*8) + 1) + 1;
 			logger.debug("Case 2: cipher takes " + numCipherTextBlocks + " blocks: " + 
-					(numCipherTextBlocks*BlockByteLength) + " bytes");
+					(numCipherTextBlocks*BlockByteLength) + " bytes" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		}
 		
 		cipherBitsPerRoundPerBlock = BlockByteLength*8 / rounds;
 		if (BlockByteLength*8 > cipherBitsPerRoundPerBlock * rounds)
 			cipherBitsPerRoundPerBlock++;
 		logger.info("Transmitting " + cipherBitsPerRoundPerBlock + " bits of message per block each round, " +
-				"total of " + cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits per message each round");
+				"total of " + cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits per message each round" + 
+				(instanceId != null ? " [instance " + instanceId : ""));
 	}
 	
 	/** Encrypt the plain text message with the shared key set in the constructor.
@@ -161,12 +177,15 @@ public class InterlockProtocol {
 	public byte[] encrypt(byte[] plainText) throws InternalApplicationException {
 		if (plainText.length*8 > numMessageBits+7 ||
 				plainText.length*8 < numMessageBits)
-			throw new InvalidParameterException("Message length does not match numMessageBits");
+			throw new InvalidParameterException("Message length does not match numMessageBits" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (plainText.length < BlockByteLength)
 			throw new InvalidParameterException("Message can currently not be shorter than the block size "
-					+ "(" + BlockByteLength + "), because padding is not used");
+					+ "(" + BlockByteLength + "), because padding is not used" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
-			throw new InternalApplicationException("Can not encrypt without shared key");
+			throw new InternalApplicationException("Can not encrypt without shared key" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		
 		byte[] cipherText;
 		Object cipher = useJSSE ? initCipher_JSSE(true) : initCipher_BCAPI(true);
@@ -191,7 +210,8 @@ public class InterlockProtocol {
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
 						BlockByteLength : plainText.length - i*BlockByteLength;
-				logger.debug("Encrypting block " + i + ": " + bytesInBlock + " bytes");
+				logger.debug("Encrypting block " + i + ": " + bytesInBlock + " bytes" + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 				System.arraycopy(plainText, i*BlockByteLength, plainBlock, 0, bytesInBlock);
 				// if not filled, the rest is padded with zeros (initialized by the JVM)
 				// then XOR with the last cipher text block
@@ -220,12 +240,15 @@ public class InterlockProtocol {
 	public byte[] decrypt(byte[] cipherText) throws InternalApplicationException {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
-			throw new InvalidParameterException("Can only decrypt multiples of the block cipher length");
+			throw new InvalidParameterException("Can only decrypt multiples of the block cipher length" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (cipherText.length != numCipherTextBlocks * BlockByteLength)
 			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
-					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length);
+					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
-			throw new InternalApplicationException("Can not encrypt without shared key");
+			throw new InternalApplicationException("Can not encrypt without shared key" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 
 		byte[] plainText;
 		Object cipher = useJSSE ? initCipher_JSSE(false) : initCipher_BCAPI(false);
@@ -252,7 +275,8 @@ public class InterlockProtocol {
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
 						BlockByteLength : plainText.length - i*BlockByteLength; 
-				logger.debug("Decrypting block " + i + ": " + bytesInBlock + " bytes");
+				logger.debug("Decrypting block " + i + ": " + bytesInBlock + " bytes" + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 				// and finally add to the output
 				System.arraycopy(plainBlock, 0, plainText, i*BlockByteLength, bytesInBlock);
 			}
@@ -287,29 +311,35 @@ public class InterlockProtocol {
 	public byte[][] split(byte[] cipherText) throws InternalApplicationException {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
-			throw new InvalidParameterException("Can only split multiples of the block cipher length");
+			throw new InvalidParameterException("Can only split multiples of the block cipher length" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		// second option is necessary for when we are called recursively
 		if (cipherText.length != numCipherTextBlocks * BlockByteLength && cipherText.length != BlockByteLength)
 			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
-					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length);
+					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 
 		// in any case, the number of parts is equal to the number of rounds
 		byte[][] parts = new byte[rounds][];
 		// need to explicitly check for the size length because of recursive calling
 		if (cipherText.length == BlockByteLength) {
-			logger.debug("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + rounds + " parts");
+			logger.debug("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + 
+					rounds + " parts" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			// simple case: the parts are just taken one after each other
 			for (int round=0; round<rounds; round++) {
 				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 				if (curBits > 0) {
 					parts[round] = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
-					logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes");
+					/*logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes" + 
+							(instanceId != null ? " [instance " + instanceId : ""));*/
 					extractPart(parts[round], cipherText, round*cipherBitsPerRoundPerBlock, curBits);
 				}
 				else {
 					// no more left
-					logger.debug("Part " + round + " is empty");
+					logger.debug("Part " + round + " is empty" + 
+							(instanceId != null ? " [instance " + instanceId : ""));
 					parts[round] = null;
 				}
 			}
@@ -317,7 +347,8 @@ public class InterlockProtocol {
 		else {
 			// the more complicated case is reduced to the simple case - each block split independently, then merged
 			logger.debug("Case 2: splitting cipher text of " + cipherText.length + " bytes with " 
-					+ numCipherTextBlocks + " blocks into " + rounds + " parts");
+					+ numCipherTextBlocks + " blocks into " + rounds + " parts" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			for (int block=0; block<numCipherTextBlocks; block++) {
 				byte[] cipherBlock = new byte[BlockByteLength];
 				System.arraycopy(cipherText, block*BlockByteLength, cipherBlock, 0, BlockByteLength);
@@ -337,12 +368,14 @@ public class InterlockProtocol {
 							parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
 						}
 						logger.debug("Adding " + curBits + " bits of block " + block + " to part " + 
-								round + " at offset " + (block*cipherBitsPerRoundPerBlock));
+								round + " at offset " + (block*cipherBitsPerRoundPerBlock) + 
+								(instanceId != null ? " [instance " + instanceId : ""));
 						addPart(parts[round], blockParts[round], block*curBits, curBits);
 					}
 					else {
 						// no more left
-						logger.debug("Part " + round + " is empty");
+						logger.debug("Part " + round + " is empty" + 
+								(instanceId != null ? " [instance " + instanceId : ""));
 						parts[round] = null;
 					}
 				}
@@ -361,17 +394,20 @@ public class InterlockProtocol {
 		// sanity check
 		if (messages.length != rounds)
 			throw new InvalidParameterException("Number of message parts does not match number of rounds, "
-					+ "excpected " + rounds + " but received " + messages.length);
+					+ "excpected " + rounds + " but received " + messages.length + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (assembledCipherText != null)
 			throw new InternalApplicationException("Can not use both reassemble variants at the same time. " 
-					+ "Complete reassambly method called while iterative is active");
+					+ "Complete reassambly method called while iterative is active" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		
 		// in any case, the reassembled cipher text will have the same length
 		byte[] cipherText = new byte[numCipherTextBlocks * BlockByteLength];
 		if (numCipherTextBlocks == 1) {
 			// simple case
 			logger.debug("Case 1: reassembling " + rounds + " parts to cipher text of " + 
-					cipherText.length + " bytes");
+					cipherText.length + " bytes" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			for (int round=0; round<rounds; round++) {
 				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
 						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
@@ -379,7 +415,8 @@ public class InterlockProtocol {
 					addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
 				else  {
 					if (messages[round] != null) {
-						logger.error("Expected null part, but got some content");
+						logger.error("Expected null part, but got some content" + 
+								(instanceId != null ? " [instance " + instanceId : ""));
 					}
 				}
 			}
@@ -387,7 +424,8 @@ public class InterlockProtocol {
 		else {
 			// more complex case, need to reassemble blocks
 			logger.debug("Case 2: reassembling " + rounds + " parts to cipher text of " + 
-					cipherText.length + " bytes with " + numCipherTextBlocks + " blocks");
+					cipherText.length + " bytes with " + numCipherTextBlocks + " blocks" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			for (int block=0; block<numCipherTextBlocks; block++) {
 				for (int round=0; round<rounds; round++) {
 					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
@@ -397,7 +435,8 @@ public class InterlockProtocol {
 					}
 					else { 
 						if (messages[round] != null) {
-							logger.error("Expected null part, but got some content");
+							logger.error("Expected null part, but got some content" + 
+									(instanceId != null ? " [instance " + instanceId : ""));
 						}
 					}
 				}
@@ -415,7 +454,8 @@ public class InterlockProtocol {
 			int round, int block, int numBits) throws InternalApplicationException {
 		byte[] partInBlock = new byte[numBits%8 == 0 ? numBits/8 : numBits/8+1];
 		extractPart(partInBlock, message, block*numBits, numBits);
-		logger.debug("Extracting " + numBits + " bits of block " + block + " from part " + round);
+		logger.debug("Extracting " + numBits + " bits of block " + block + " from part " + round + 
+				(instanceId != null ? " [instance " + instanceId : ""));
 		addPart(cipherText, partInBlock, 
 				block*BlockByteLength*8+round*cipherBitsPerRoundPerBlock, numBits);
 	}
@@ -433,7 +473,8 @@ public class InterlockProtocol {
     public byte[] reassemble() {
 		if (receivedRounds.nextClearBit(0) < rounds) {
 			logger.error("ERROR: Did not receive all required messages, first missing is round " + 
-					(receivedRounds.nextClearBit(0)+1) + ", received rounds are " + receivedRounds);
+					(receivedRounds.nextClearBit(0)+1) + ", received rounds are " + receivedRounds + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			return null;
 		}
 
@@ -457,22 +498,27 @@ public class InterlockProtocol {
 		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7)
 			throw new InvalidParameterException("Message length does not match expected length, " +
 					"got " + message.length + " bytes, but expected " + 
-					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits");
+					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (round >= rounds || round < 0)
 			throw new InvalidParameterException("Round " + round + " invalid, must be between 0 and " +
-					rounds);
+					rounds + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		// offset and numBits will be checked in addPart
 		
 		if (assembledCipherText == null) {
-			logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds");
+			logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			assembledCipherText = new byte[numCipherTextBlocks * BlockByteLength];
 			receivedRounds = new BitSet(rounds);
 		}
-		logger.debug("Adding cipher text message part " + round + ": " + numBits + " bits");
+		logger.debug("Adding cipher text message part " + round + ": " + numBits + " bits" + 
+				(instanceId != null ? " [instance " + instanceId : ""));
 
 		// check if we already got that round - only use the first packet so to ignore any ack-only packets
 		if (receivedRounds.get(round)) {
-			logger.warn("Ignoring message part " + round + ". Reason: already received this round.");
+			logger.warn("Ignoring message part " + round + ". Reason: already received this round." + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			return false;
 		}		
 		receivedRounds.set(round, true);
@@ -488,7 +534,8 @@ public class InterlockProtocol {
 				distributeBlockSlicesHelper(assembledCipherText, message, round, block, numBits);
 			}
 		}
-		logger.info("Added message part " + round + " (" + numBits + " bits at offset " + offset + ")");
+		logger.info("Added message part " + round + " (" + numBits + " bits at offset " + offset + ")" + 
+				(instanceId != null ? " [instance " + instanceId : ""));
 		return true;
 	}
 		
@@ -509,10 +556,12 @@ public class InterlockProtocol {
 		if (message != null && message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7)
 			throw new InvalidParameterException("Message length does not match expected length, " +
 					"got " + message.length + " bytes, but expected " + 
-					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits");
+					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		if (round >= rounds || round < 0)
 			throw new InvalidParameterException("Round " + round + " invalid, must be between 0 and " +
-					rounds);
+					rounds + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 
     	// if nearly all (or all) bits have already been transmitted, it might have less bits
 		int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
