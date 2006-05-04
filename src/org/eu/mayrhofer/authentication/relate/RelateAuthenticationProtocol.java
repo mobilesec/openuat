@@ -240,7 +240,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
 				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) 
 			throws ConfigurationErrorException, InternalApplicationException {
-		super(TcpPort, keepSocketConnected, useJSSE);
+		super(TcpPort, keepSocketConnected, serialPort, useJSSE);
 		
 		if (!simulation) {
 			// when simulating, we won't have these

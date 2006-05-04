@@ -371,10 +371,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
    		logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
    		logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
     		
-   		InterlockProtocol interlockRf = new InterlockProtocol(sharedKey, rounds, nonce.length*8, useJSSE);
+   		InterlockProtocol interlockRf = new InterlockProtocol(sharedKey, rounds, nonce.length*8, serialPort, useJSSE);
    		byte[] rfMessage = interlockRf.encrypt(nonce);
    		// this instance is only used for assembling the plain-text nonce received via US
-   		InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, useJSSE);
+   		InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, serialPort, useJSSE);
 		
 		if (rfMessage.length != NonceByteLength) {
 			logger.error("Encryption went wrong, got "

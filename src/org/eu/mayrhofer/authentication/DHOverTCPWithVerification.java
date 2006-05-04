@@ -132,6 +132,9 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 */
 	private HostServerSocket serverSocket = null;
 	
+	/** This may be set to distinguish multiple instances running on the same machine. */
+	private String instanceId = null;
+	
 	/** Construct the object by initializing basic variables.
 	 * 
 	 * @param tcpPort The TCP port to use for listening and for connecting to remote hosts.
@@ -146,11 +149,16 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 *            socket will be closed when this protocol is done with it. The socket
 	 *            will always be closed on authentication failures.
 	 *            If in doubt, set to false;
+	 * @param instanceId This parameter may be used to distinguish differenc instances of
+	 *                   this class running on the same machine. It will be used in logging
+	 *                   and error messages. May be set to null.
 	 */
-	protected DHOverTCPWithVerification(int tcpPort, boolean keepSocketConnected, boolean useJSSE) {
+	protected DHOverTCPWithVerification(int tcpPort, boolean keepSocketConnected,
+			String instanceId, boolean useJSSE) {
 		this.tcpPort = tcpPort;
 		this.keepSocketConnected = keepSocketConnected;
 		this.useJSSE = useJSSE;
+		this.instanceId = instanceId;
 	}
 
 	/** This method returns true if this object is idle or if it is currently running the authentication protocol
@@ -190,7 +198,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		if (! isIdle()) {
 			logger.warn("Tried to start authentication with host " + remoteHost + 
 					" while another authentication protocol run is still active. Not starting authentication and " +
-					" returning false.");
+					" returning false." + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			return false;
 		}
 		
@@ -234,7 +243,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 
 		// and finally reset the state
 		state = STATE_IDLE;
-		logger.debug("Reset object to idle set");
+		logger.debug("Reset object to idle set" + 
+				(instanceId != null ? " [instance " + instanceId : ""));
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
@@ -269,10 +279,12 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		try {
     		// this enables auto-flush
     		PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
-	    	logger.debug("Sending status to remote: '" + reportToRemote + "'");
+	    	logger.debug("Sending status to remote: '" + reportToRemote + "'" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
     		toRemote.println(reportToRemote);
     		toRemote.flush();
-    		logger.debug("Status sent, waiting for status from remote");
+    		logger.debug("Status sent, waiting for status from remote" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 			/* do not use a BufferedReader here because that would potentially mess up
 			 * the stream for other users of the socket (by consuming too many bytes)
 			 */
@@ -285,18 +297,23 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     				remoteStatus += (char) ch;
    				ch = fromRemote.read();
     		}
-	    	logger.debug("Received remote status: '" + remoteStatus + "'");
+	    	logger.debug("Received remote status: '" + remoteStatus + "'" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
     		if (remoteStatus == null) {
-    			logger.error("Could not get status message from remote host");
+    			logger.error("Could not get status message from remote host" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
     			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId,
-    					null, "Could not get status message from remote host");
+    					null, "Could not get status message from remote host" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
     		}
     		return remoteStatus;
         }
         catch (IOException e) {
-        	logger.error("Could not report success to remote host or get status message from remote host: " + e);
+        	logger.error("Could not report success to remote host or get status message from remote host: " + e + 
+					(instanceId != null ? " [instance " + instanceId : ""));
         	authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, 
-        			e, "Could not report success to remote host or get status message from remote host");
+        			e, "Could not report success to remote host or get status message from remote host" + 
+					(instanceId != null ? " [instance " + instanceId : ""));
         	// don't forget to close our side of the socket properly, even if communication failed already
         	closeSocket();
         	return null;
@@ -309,7 +326,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 			socketToRemote.close();
 		}
 		catch (IOException e) {
-			logger.error("Could not close socket to remote host properly, but ignoring it: " + e);
+			logger.error("Could not close socket to remote host properly, but ignoring it: " + e + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 		}
 	}
 
@@ -332,7 +350,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		
     	if (remoteStatus != null) {
     		if (remoteStatus.startsWith(Protocol_Success)) {
-    			logger.info("Received success status from remote host");
+    			logger.info("Received success status from remote host" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
 
 		        state = STATE_SUCCEEDED;
 		        /* for sending the success events, first figure out both aspects of the remote host
@@ -360,13 +379,16 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 					closeSocket();
     		}
     		else if (remoteStatus.startsWith(Protocol_Failure)) {
-    			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed");
-    			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, null, "Received authentication failure status from remote host");
+    			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
+    			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, null, "Received authentication failure status from remote host" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
     			// no need to keep the socket around in any case - close it properly
     			closeSocket();
         	}
     		else {
-    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')");
+    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
         	}
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
         reset();
@@ -392,12 +414,15 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
         
     	if (remoteStatus != null) {
     		if (remoteStatus.startsWith(Protocol_Success)) {
-    			logger.info("Received success status from remote host after reporting local failure");
+    			logger.info("Received success status from remote host after reporting local failure" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
     		} else if (remoteStatus.startsWith(Protocol_Failure)) { 
     			logger.info("Received failure status from remote host to match local failure."
-    					+ "Good that we agreed.");
+    					+ "Good that we agreed." + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
     		} else {
-    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')");
+    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
+    					(instanceId != null ? " [instance " + instanceId : ""));
     		}
 			// no need to keep the socket around in any case - close it properly
     		closeSocket();
@@ -418,7 +443,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     		serverSocket.startListening();
 		}
 		else
-			logger.error("Could not start authentication server because one is already running.");
+			logger.error("Could not start authentication server because one is already running." + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 	}
 	
 	/** This is a helper function to stop the "server" part of the authentication protocol.
@@ -434,7 +460,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 			serverSocket = null;
 		}
 		else
-			logger.error("Could not stop authentication server because none is running.");
+			logger.error("Could not stop authentication server because none is running." + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 	}
 	
 
@@ -448,24 +475,28 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
 	    {
 	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server.");
+	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
 	    		logger.error("Received host authentication success event with remote host " + remote + 
-	    				" while not expecting one! This event will be ignored.");
+	    				" while not expecting one! This event will be ignored." + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 	    		return;
 	    	}
 			
 	    	InetAddress remoteHost = (InetAddress) remote;
-	        logger.info("Received host authentication success event with " + remoteHost);
+	        logger.info("Received host authentication success event with " + remoteHost + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 	        Object[] res = (Object[]) result;
 	        // remember the secret key shared with the other device
 	        sharedKey = (byte[]) res[0];
 	        // and extract the shared authentication key for phase 2
 	        byte[] authKey = (byte[]) res[1];
 	        logger.debug("Shared session key is now '" + sharedKey + "' with length " + sharedKey.length + 
-	        		", shared authentication key is now '" + authKey + "' with length " + authKey.length);
+	        		", shared authentication key is now '" + authKey + "' with length " + authKey.length + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 	        // then extraxt the optional parameter
 	        String param = (String) res[2];
 	        /* TODO: this could need some error handling, but at the moment we depend on it being set
@@ -481,17 +512,20 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
 	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server.");
+	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	InetAddress remoteHost = (InetAddress) remote;
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
 	    		logger.error("Received host authentication failure event with remote host " + remoteHost + 
-	    				" while not expecting one! This event will be ignored.");
+	    				" while not expecting one! This event will be ignored." + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 	    		return;
 	    	}
 			
-	        logger.info("Received host authentication failure with " + remote);
+	        logger.info("Received host authentication failure with " + remote + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 	        if (e != null)
 	            logger.info("Exception: " + e);
 	        if (msg != null)
@@ -503,16 +537,19 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
 	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server.");
+	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
 	    		logger.error("Received host authentication progress event with remote host " + remote + 
-	    				" while not expecting one! This event will be ignored.");
+	    				" while not expecting one! This event will be ignored." + 
+						(instanceId != null ? " [instance " + instanceId : ""));
 	    		return;
 	    	}
 			
-	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
+					(instanceId != null ? " [instance " + instanceId : ""));
 	        // this is not optional because we don't know the number of rounds to use yet
 	        raiseAuthenticationProgressEvent(remote, cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages,
