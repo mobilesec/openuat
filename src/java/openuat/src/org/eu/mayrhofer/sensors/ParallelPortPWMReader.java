@@ -44,23 +44,39 @@ import org.jfree.data.xy.XYSeriesCollection;
 public class ParallelPortPWMReader {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(ParallelPortPWMReader.class);
+	
+	/** The maximum number of data lines to read from the port - obviously 8. */
+	private static final int MAX_LINES = 8;
 
 	/** This represent the file to read from and is opened in the constructor.
 	 * @see #ParallelPortPWMReader(String, int[], int)
 	 */
 	private InputStream port;
 	
-	/** The set of lines of the parallel port to read. Set by the constructor.
-	 * @see #ParallelPortPWMReader(String, int[], int)
-	 */
-	private int[] lines;
-	
 	/** The length of s sample period, i.e. the sample width, in µsec. */
 	private int sampleWidth;
 	
-	/** This holds all registered sinks, which must be arrays of time series. 
-	 * @see #addSink(TimeSeries[])
-	 * @see #removeSink(TimeSeries[])
+	/** Objects of this type are held in sinks. They represent listeners to 
+	 * be notified of samples.
+	 */
+	private class ListenerCombination {
+		int[] lines;
+		SamplesSink[] sinks;
+		public ListenerCombination(int[] lines, SamplesSink[] sinks) {
+			this.lines = lines;
+			this.sinks = sinks;
+		}
+		public boolean equals(Object o) {
+			return o instanceof ListenerCombination &&
+				((ListenerCombination) o).lines.equals(lines) &&
+				((ListenerCombination) o).sinks.equals(sinks);
+		}
+	}
+	
+	/** This holds all registered sinks in form of ListenerCombination
+	 * objects.
+	 * @see #addSink(int[], SamplesSink[])
+	 * @see #removeSink(int[], SamplesSink[])
 	 */
 	private LinkedList sinks;
 	
@@ -97,35 +113,21 @@ public class ParallelPortPWMReader {
 	 * @param filename The log to read from. This may either be a normal log file
 	 *                 when simulation is intended or it can be a FIFO/pipe to read
 	 *                 online data.
-	 * @param lines The set of lines on the parallel port to read. Must be an integer
-	 *              array with a minimum length of 1 and a maximum length of 8, containing
-	 *              the indices of the lines to read. These indices are counted from 0 to 7.
-	 *              for the parallel port data lines DATA0 to DATA7.
 	 * @param samplerate The sample rate in Hz.
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	public ParallelPortPWMReader(String filename, int[] lines, int samplerate) throws FileNotFoundException {
-		if (lines.length < 1 || lines.length > 8)
-			throw new IllegalArgumentException("Number of lines to read must be between 1 and 8");
-		String tmp = "";
-		for (int i=0; i<lines.length; i++) {
-			if (lines[i] < 0 || lines[i] > 7)
-				throw new IllegalArgumentException("Line index must be between 0 and 7");
-			tmp += lines[i] + " ";
-		}
-		
-		this.lines = lines;
+	public ParallelPortPWMReader(String filename, int samplerate) throws FileNotFoundException {
 		this.sampleWidth = 1000000 / samplerate;
-		this.curSample = new ArrayList[lines.length];
-		for (int i=0; i<lines.length; i++)
+		this.curSample = new ArrayList[MAX_LINES];
+		for (int i=0; i<MAX_LINES; i++)
 			curSample[i] = new ArrayList();
-		this.lastSampleValues = new double[lines.length];
+		this.lastSampleValues = new double[MAX_LINES];
 		
 		this.sinks = new LinkedList();
 		this.lastSampleAt = 0;
 		this.numSamples = 0;
 		
-		logger.info("Reading from " + filename + ", data lines: " + tmp + 
+		logger.info("Reading from " + filename +
 				" with sample rate " + samplerate + " Hz (sample width " + sampleWidth + " us)");
 		
 		port = new FileInputStream(new File(filename));
@@ -134,21 +136,40 @@ public class ParallelPortPWMReader {
 	/** Registers a sink, which will receive all new values as they are sampled.
 	 * @param sink The time series to fill. This array must have the same number of
 	 *             elements as the number of lines specified to the constructor.  
+	 * @param lines The set of lines on the parallel port to read. Must be an integer
+	 *              array with a minimum length of 1 and a maximum length of 8, containing
+	 *              the indices of the lines to read. These indices are counted from 0 to 7.
+	 *              for the parallel port data lines DATA0 to DATA7.
 	 */
-	public void addSink(SamplesSink[] sink) throws IllegalArgumentException {
+	public void addSink(int[] lines, SamplesSink[] sink) throws IllegalArgumentException {
+		if (lines.length < 1 || lines.length > MAX_LINES)
+			throw new IllegalArgumentException("Number of lines to read must be between 1 and " +
+					MAX_LINES);
+		String tmp = "";
+		for (int i=0; i<lines.length; i++) {
+			if (lines[i] < 0 || lines[i] > MAX_LINES-1)
+				throw new IllegalArgumentException("Line index must be between 0 and " +
+						(MAX_LINES-1));
+			tmp += lines[i] + " ";
+		}
 		if (sink.length != lines.length)
 			throw new IllegalArgumentException("Passed TimeSeries array has " + sink.length 
 					+ " elements, but sampling " + lines.length + " parallel port lines");
-		sinks.add(sink);
+		logger.debug("Registering new listener for lines " + tmp);
+		sinks.add(new ListenerCombination(lines, sink));
 	}
 	
 	/** Removes a previously registered sink.
 	 * 
 	 * @param sink The time series to stop filling.
+	 * @param lines The set of lines on the parallel port to read. Must be an integer
+	 *              array with a minimum length of 1 and a maximum length of 8, containing
+	 *              the indices of the lines to read. These indices are counted from 0 to 7.
+	 *              for the parallel port data lines DATA0 to DATA7.
 	 * @return true if removed, false if not (i.e. if they have not been added previously).
 	 */
-	public boolean removeSink(SamplesSink[] sink) {
-		return sinks.remove(sink);
+	public boolean removeSink(int[] lines, SamplesSink[] sink) {
+		return sinks.remove(new ListenerCombination(lines, sink));
 	}
 	
 	/** Starts a new background thread to read from the file and create sample
@@ -233,7 +254,7 @@ public class ParallelPortPWMReader {
 			// get the average over the last period's samples (if there are any, if not, just use the last period's samples)
 			if (curSample[0].size() > 0) {
 				logger.debug("Averaging over " + curSample[0].size() + " values for the last sample");
-				for (int i=0; i<lines.length; i++) {
+				for (int i=0; i<MAX_LINES; i++) {
 					lastSampleValues[i] = 0;
 					for (int j=0; j<curSample[i].size(); j++)
 						lastSampleValues[i] += ((Integer) curSample[i].get(j)).intValue();
@@ -245,16 +266,17 @@ public class ParallelPortPWMReader {
 			
 			while (timestamp > lastSampleAt + sampleWidth) {
 				lastSampleAt += sampleWidth;
-				for (int i=0; i<lines.length; i++) {
-					// and put into all sinks
-					logger.debug("Sample for timestamp " + lastSampleAt + ", number " + numSamples +  
-							", line " + lines[i] + " = " + lastSampleValues[i]);
-			    	if (sinks != null)
-			    		for (ListIterator j = sinks.listIterator(); j.hasNext(); ) {
-			    			SamplesSink[] s = (SamplesSink[]) j.next();
-			    			s[i].addSample(lastSampleValues[i], numSamples);
-			    		}
-				}
+				// and put into all sinks
+				if (logger.isDebugEnabled()) 
+					for (int i=0; i<MAX_LINES; i++)
+						logger.debug("Sample for timestamp " + lastSampleAt + ", number " + numSamples +  
+								", line " + i + " = " + lastSampleValues[i]);
+		    	if (sinks != null)
+		    		for (ListIterator j = sinks.listIterator(); j.hasNext(); ) {
+		    			ListenerCombination l = (ListenerCombination) j.next();
+		    			for (int i=0; i<l.lines.length; i++)
+		    				l.sinks[i].addSample(lastSampleValues[l.lines[i]], numSamples);
+		    		}
 				numSamples++;
 			}
 		}
@@ -273,9 +295,9 @@ public class ParallelPortPWMReader {
 			}
 			else {
 				// extract the lines we want and remember the values
-				for (int i=0; i<lines.length; i++) {
-					int val = allLines[lines[i]]; 
-					logger.debug("Read value " + val + " on line " + lines[i]);
+				for (int i=0; i<MAX_LINES; i++) {
+					int val = allLines[i]; 
+					logger.debug("Read value " + val + " on line " + i);
 					curSample[i].add(new Integer(val));
 				}
 			}
@@ -377,7 +399,7 @@ public class ParallelPortPWMReader {
 	
 	public static void main(String[] args) throws IOException {
 		/////// test 1: just plot all 8 time series
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2, 3, 4, 5, 6, 7}, 100);
+		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], 100);
 		TimeSeries[] t = new TimeSeries[8];
 		XYSink[] s = new XYSink[8];
 		for (int i=0; i<8; i++) {
@@ -389,7 +411,7 @@ public class ParallelPortPWMReader {
 			s[i] = new XYSink();
 			t[i].addNextStageSink(s[i]);
 		}
-		r.addSink(t);
+		r.addSink(new int[] {0, 1, 2, 3, 4, 5, 6, 7}, t);
 		r.simulateSampling();
 		
 		for (int i=0; i<8; i++) {
@@ -410,12 +432,11 @@ public class ParallelPortPWMReader {
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
 		double varthreshold = 350;
-		ParallelPortPWMReader r2_a = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2}, samplerate);
-		ParallelPortPWMReader r2_b = new ParallelPortPWMReader(args[0], new int[] {4, 5, 6}, samplerate);
+		ParallelPortPWMReader r2 = new ParallelPortPWMReader(args[0], samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		r2_a.addSink(aggr_a.getInitialSinks());
-		r2_b.addSink(aggr_b.getInitialSinks());
+		r2.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+		r2.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.addNextStageSink(new SegmentSink(0));
 		aggr_b.addNextStageSink(new SegmentSink(1));
 		aggr_a.setOffset(0);
@@ -426,8 +447,7 @@ public class ParallelPortPWMReader {
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
-		r2_a.simulateSampling();
-		r2_b.simulateSampling();
+		r2.simulateSampling();
 
 		XYSeries seg1 = new XYSeries("Segment 1", false);
 		for (int i=0; i<SegmentSink.segs[0].length; i++)
