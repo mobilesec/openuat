@@ -273,12 +273,11 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
 		double varthreshold = 350;
-		ParallelPortPWMReader r2_a = new ParallelPortPWMReader(args[0], new int[] {0, 1, 2}, samplerate);
-		ParallelPortPWMReader r2_b = new ParallelPortPWMReader(args[0], new int[] {4, 5, 6}, samplerate);
+		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		r2_a.addSink(aggr_a.getInitialSinks());
-		r2_b.addSink(aggr_b.getInitialSinks());
+		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(true); 
 		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(true); 
 		aggr_a.addNextStageSink(ma1);
@@ -293,7 +292,6 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
-		r2_a.simulateSampling();
-		r2_b.simulateSampling();
+		r.simulateSampling();
 	}
 }
