@@ -9,14 +9,11 @@
 package org.eu.mayrhofer.authentication.accelerometer;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.StringTokenizer;
 
-import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.DHOverTCPWithVerification;
 import org.eu.mayrhofer.authentication.InterlockProtocol;
@@ -34,31 +31,68 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol1.class);
 
+	/** The TCP port we use for this protocol. */
 	public static final int TcpPort = 54322;
 
+	/** This holds our local segment, as soon as we have received it from the
+	 * segment source. It is modified by addSegment and read by AsyncInterlockHelper#run
+	 * from two different threads. Synchronization happens via localSegmentLock.
+	 * @see #addSegment(double[], int)
+	 * @see AsyncInterlockHelper#run
+	 * @see #localSegmentLock
+	 */
 	private double[] localSegment = null;
+	/** This is only used as a synchronization lock for accessing localSegment from
+	 * different threads, and has no other use.
+	 */
 	private Object localSegmentLock = new Object();
 	
+	/** This holds the remote segment, as soon as it has been received via interlock
+	 * from the remote host.
+	 */
 	private double[] remoteSegment = null;
 	
+	/** The current threshold for the coherence. If it is higher, the two segments
+	 * are considered similar enough.
+	 */
+	// TODO: make me modifieable (if necessary)
 	private double coherenceThreshold = 0.25;
 	
+	/** This variable is only used for passing the socket from startVerification to the
+	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
+	 * @see #startVerification(byte[], InetAddress, String, Socket)
+	 * @see AsyncInterlockHelper#run
+	 */
 	private Socket socketToRemote = null;
 	
+	/** Holds the thread object that is used to run the interlock protocol asynchronously.
+	 * It is initialized and started by startVerification, and executes 
+	 * AsyncInterlockHelper#run.
+	 * @see #startVerification(byte[], InetAddress, String, Socket)
+	 * @see AsyncInterlockHelper
+	 */
 	private Thread interlockRunner = null;
 	
+	/** Initializes the object, only setting useJSSE at the moment.
+	 * 
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
+	 */
 	public MotionAuthenticationProtocol1(boolean useJSSE) {
 		super(TcpPort, false, null, useJSSE);
 	}
 	
-	/** Called by the base class when the object is reset to idle state. */
+	/** Called by the base class when the object is reset to idle state. Resets 
+	 * localSegment and remoteSegment to null. */
 	protected void resetHook() {
 		// idle again --> no segments to compare
 		localSegment = null;
 		remoteSegment = null;
 	}
 	
-	/** Called by the base class when the whole authentication protocol succeeded. */
+	/** Called by the base class when the whole authentication protocol succeeded. 
+	 * Does nothing. */
 	protected void protocolSucceededHook(InetAddress remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
 			byte[] sharedSessionKey) {
@@ -67,7 +101,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		System.out.println("SUCCESS");
 	}
 	
-	/** Called by the base class when the whole authentication protocol failed. */
+	/** Called by the base class when the whole authentication protocol failed. 
+	 * Does nothing. */
 	protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
@@ -75,7 +110,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		System.out.println("FAILURE");
 	}
 	
-	/** Called by the base class when the whole authentication protocol shows progress. */
+	/** Called by the base class when the whole authentication protocol shows progress. 
+	 * Does nothing. */
 	protected void protocolProgressHook(InetAddress remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
@@ -85,6 +121,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	/** Called by the base class when shared keys have been established and should be verified now.
 	 * In this implementation, verification is done listening for significant motion segments and
 	 * exchanging them via interlock. 
+	 * @see #interlockRunner
+	 * @see AsyncInterlockHelper
 	 */
 	protected void startVerification(byte[] sharedAuthenticationKey, 
 			InetAddress remote, String param, Socket socketToRemote) {
@@ -95,6 +133,13 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		interlockRunner.start();
 	}
 
+	/** This helper function calls Coherence.cohere on localSegment and remoteSegment,
+	 * but only on the first part of both with the minimum length. That is, it trims the
+	 * larger of the two to have the same length as the smaller. 
+	 * @return true if the mean of the coherence function is larger than the threshold,
+	 *         false otherwise.
+	 * @see #coherenceThreshold
+	 */
 	private boolean checkCoherence() {
 		if (localSegment == null || remoteSegment == null) {
 			throw new RuntimeException("Did not yet receive both segments, skipping comparing for now");
@@ -119,6 +164,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	/** The implementation of SegmentsSink.addSegment. It will be called whenever
 	 * a significant active segment has been sampled completely, i.e. when the
 	 * source has become quiescent again.
+	 * @see #localSegment
+	 * @see #localSegmentLock
 	 */
 	public void addSegment(double[] segment, int startIndex) {
 		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
@@ -128,11 +175,20 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		}
 	}
 	
+	/** This method only calls the base class startAuthentication method.
+	 * 
+	 * @param remoteHost The remote host with which to authentication
+	 * @throws UnknownHostException
+	 * @throws IOException
+	 */
 	public void startAuthentication(String remoteHost) throws UnknownHostException, IOException {
 		logger.info("Starting authentication with " + remoteHost);
 		startAuthentication(remoteHost, null);
 	}
 	
+	/** This is a helper class for executing the interlock protocol in the background.
+	 * It is started by startVerification.
+	 */
 	private class AsyncInterlockHelper implements Runnable {
 		private byte[] sharedAuthenticationKey;
 		
@@ -142,62 +198,62 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		
 		public void run() {
 			try {
-			//while (remoteSegment == null) {
+				// TODO: support continuous operation too instead of one-shot
+				//while (remoteSegment == null) {
 				// first wait for the local segment to be received to start the interlock protocol
-			logger.debug("Waiting for local segment");
-			synchronized(localSegmentLock) {
-				while (localSegment == null) {
-					try {
-						localSegmentLock.wait();
+				logger.debug("Waiting for local segment");
+				synchronized(localSegmentLock) {
+					while (localSegment == null) {
+						try {
+							localSegmentLock.wait();
+						}
+						catch (InterruptedException e) {}
 					}
-					catch (InterruptedException e) {}
 				}
-			}
-			logger.debug("Local segment sampled, starting interlock protocol");
+				logger.debug("Local segment sampled, starting interlock protocol");
 			
-			// TODO: make configurable??? mabye not necessary
-			int rounds = 2;
+				// TODO: make configurable??? mabye not necessary
+				int rounds = 2;
 
-			// TODO: optimize me for smaller arrays!
-			String tmp = "";
-			synchronized (localSegmentLock) {
-				for (int i=0; i<localSegment.length; i++) {
-					tmp += Double.toString(localSegment[i]);
-					if (i<localSegment.length-1)
-						tmp+=" ";
+				// TODO: optimize me for smaller arrays!
+				String tmp = "";
+				synchronized (localSegmentLock) {
+					for (int i=0; i<localSegment.length; i++) {
+						tmp += Double.toString(localSegment[i]);
+						if (i<localSegment.length-1)
+							tmp+=" ";
+					}
 				}
-			}
-			byte[] localPlainText = tmp.getBytes();
-			logger.debug("My segment is " + localPlainText.length + " bytes long");
+				byte[] localPlainText = tmp.getBytes();
+				logger.debug("My segment is " + localPlainText.length + " bytes long");
 			
-			byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
-					socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
-					sharedAuthenticationKey, rounds, false, 0, useJSSE);
-			if (remotePlainText == null) {
-				verificationFailure(null, null, null, null);
-				return;
-			}
+				byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
+						socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
+						sharedAuthenticationKey, rounds, false, 0, useJSSE);
+				if (remotePlainText == null) {
+					verificationFailure(null, null, null, null);
+					return;
+				}
 			
-			logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
-			StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
-			remoteSegment = new double[st.countTokens()];
-			int i=0;
-			while (st.hasMoreTokens()) {
-				remoteSegment[i++] = Float.parseFloat(st.nextToken());
-			}
-			logger.debug("remote segment is " + remoteSegment.length + " elements long");
+				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
+				StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
+				remoteSegment = new double[st.countTokens()];
+				int i=0;
+				while (st.hasMoreTokens()) {
+					remoteSegment[i++] = Float.parseFloat(st.nextToken());
+				}
+				logger.debug("remote segment is " + remoteSegment.length + " elements long");
 			
-			boolean coherence = checkCoherence();
-			System.out.println("COHERENCE MATCH: " + coherence);
+				boolean coherence = checkCoherence();
+				System.out.println("COHERENCE MATCH: " + coherence);
 			
-			if (coherence)
-				verificationSuccess(null, null);
-			else
-				verificationFailure(null, null, null, null);
+				if (coherence)
+					verificationSuccess(null, null);
+				else
+					verificationFailure(null, null, null, null);
 			
-			// HACK HACK HACK to make the application exit
-			stopServer();
-			
+				// HACK HACK HACK to make the application exit
+				stopServer();
 			//}
 			} catch (Exception e) {
 				e.printStackTrace();
