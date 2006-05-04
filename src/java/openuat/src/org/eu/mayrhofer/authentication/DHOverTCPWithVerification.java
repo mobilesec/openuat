@@ -15,6 +15,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.authentication.relate.DongleProtocolHandler;
@@ -494,8 +495,10 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	        sharedKey = (byte[]) res[0];
 	        // and extract the shared authentication key for phase 2
 	        byte[] authKey = (byte[]) res[1];
-	        logger.debug("Shared session key is now '" + sharedKey + "' with length " + sharedKey.length + 
-	        		", shared authentication key is now '" + authKey + "' with length " + authKey.length + 
+	        logger.debug("Shared session key is now '" + new String(Hex.encodeHex(sharedKey)) + 
+	        		"' with length " + sharedKey.length + 
+	        		", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
+	        		"' with length " + authKey.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 	        // then extraxt the optional parameter
 	        String param = (String) res[2];
