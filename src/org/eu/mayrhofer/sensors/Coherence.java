@@ -51,13 +51,19 @@ public class Coherence {
 			logger.error("Signals have different length");
 			return null;
 		}
-		
 		// default for windowsize
 		if (windowsize <= 0)
 			windowsize = s1.length >= 256 ? s1.length : 256;
 		// default for overlap
 		if (overlap <= 0)
 			overlap = windowsize / 2;
+
+		if (s1.length < 2*windowsize - overlap) {
+			logger.error("Signals are too short to compute coherence. Need at least 2 sliced: " +
+					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
+					" with overlap " + overlap + ", but got only " + s1.length);
+			return null;
+		}
 		
 		logger.info("Computing coherence between two signals of length " + s1.length + 
 				" with a window size/number of FFT coefficients of " + windowsize + " and " +
