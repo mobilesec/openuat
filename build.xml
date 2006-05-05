@@ -137,7 +137,7 @@
         <jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 	    <fileset dir="${bin}"
-             includes="org/eu/mayrhofer/authentication/**/*.class org/eu/mayrhofer/sensors/**/*.class" />
+             includes="org/eu/mayrhofer/authentication/**/*.class org/eu/mayrhofer/sensors/**/*.class org/eu/mayrhofer/util/**/*.class" />
             <fileset dir="${bin-BC-core}" />
 	    <fileset dir="${src}" includes="*.properties" />
         </jar>
