@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.security.InvalidParameterException;
 import java.security.SecureRandom;
 import java.util.BitSet;
 
@@ -132,20 +131,20 @@ public class InterlockProtocol {
 	public InterlockProtocol(byte[] sharedKey, int rounds, int numMessageBits, String instanceId, 
 			boolean useJSSE) {
 		if (rounds < 2)
-			throw new InvalidParameterException("Need at least 2 rounds for the interlock protocol to be secure." + 
+			throw new IllegalArgumentException("Need at least 2 rounds for the interlock protocol to be secure." + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (rounds > numMessageBits)
-			throw new InvalidParameterException("Can not use more rounds than the number of message bits" + 
+			throw new IllegalArgumentException("Can not use more rounds than the number of message bits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
 			logger.warn("Initializing interlock protocol without shared key - encrypt and decrypt will not work" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey != null && sharedKey.length != KeyByteLength)
-			throw new InvalidParameterException("Expecting shared key with a length of " + KeyByteLength + 
+			throw new IllegalArgumentException("Expecting shared key with a length of " + KeyByteLength + 
 					" bytes, but got " + sharedKey.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey != null && numMessageBits < BlockByteLength*8)
-			throw new InvalidParameterException("Can not use with a message size less than the cipher block size " +
+			throw new IllegalArgumentException("Can not use with a message size less than the cipher block size " +
 					"(got message size of " + numMessageBits + " bits)" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 
@@ -193,10 +192,10 @@ public class InterlockProtocol {
 	public byte[] encrypt(byte[] plainText) throws InternalApplicationException {
 		if (plainText.length*8 > numMessageBits+7 ||
 				plainText.length*8 < numMessageBits)
-			throw new InvalidParameterException("Message length does not match numMessageBits" + 
+			throw new IllegalArgumentException("Message length does not match numMessageBits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (plainText.length < BlockByteLength)
-			throw new InvalidParameterException("Message can currently not be shorter than the block size "
+			throw new IllegalArgumentException("Message can currently not be shorter than the block size "
 					+ "(" + BlockByteLength + "), because padding is not used" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
@@ -256,10 +255,10 @@ public class InterlockProtocol {
 	public byte[] decrypt(byte[] cipherText) throws InternalApplicationException {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
-			throw new InvalidParameterException("Can only decrypt multiples of the block cipher length" + 
+			throw new IllegalArgumentException("Can only decrypt multiples of the block cipher length" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (cipherText.length != numCipherTextBlocks * BlockByteLength)
-			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
+			throw new IllegalArgumentException("Cipher text length differs from expected length: wanted " +
 					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
@@ -327,11 +326,11 @@ public class InterlockProtocol {
 	public byte[][] split(byte[] cipherText) throws InternalApplicationException {
 		// sanity check
 		if (cipherText.length % BlockByteLength != 0)
-			throw new InvalidParameterException("Can only split multiples of the block cipher length" + 
+			throw new IllegalArgumentException("Can only split multiples of the block cipher length" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		// second option is necessary for when we are called recursively
 		if (cipherText.length != numCipherTextBlocks * BlockByteLength && cipherText.length != BlockByteLength)
-			throw new InvalidParameterException("Cipher text length differs from expected length: wanted " +
+			throw new IllegalArgumentException("Cipher text length differs from expected length: wanted " +
 					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 
@@ -409,7 +408,7 @@ public class InterlockProtocol {
 	public byte[] reassemble(byte[][] messages) throws InternalApplicationException {
 		// sanity check
 		if (messages.length != rounds)
-			throw new InvalidParameterException("Number of message parts does not match number of rounds, "
+			throw new IllegalArgumentException("Number of message parts does not match number of rounds, "
 					+ "excpected " + rounds + " but received " + messages.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (assembledCipherText != null)
@@ -512,12 +511,12 @@ public class InterlockProtocol {
 	public boolean addMessage(byte[] message, int offset, int numBits, int round)
 			throws InternalApplicationException {
 		if (message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7)
-			throw new InvalidParameterException("Message length does not match expected length, " +
+			throw new IllegalArgumentException("Message length does not match expected length, " +
 					"got " + message.length + " bytes, but expected " + 
 					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (round >= rounds || round < 0)
-			throw new InvalidParameterException("Round " + round + " invalid, must be between 0 and " +
+			throw new IllegalArgumentException("Round " + round + " invalid, must be between 0 and " +
 					rounds + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		// offset and numBits will be checked in addPart
@@ -620,9 +619,9 @@ public class InterlockProtocol {
 			byte[] sharedKey, int rounds, boolean retransmit, int timeoutMs, boolean useJSSE) 
 			throws IOException, InternalApplicationException {
 		if (fromRemote == null || toRemote == null)
-			throw new InvalidParameterException("Both input and output stream must be set");
+			throw new IllegalArgumentException("Both input and output stream must be set");
 		if (retransmit)
-			throw new InvalidParameterException("Retransmit is currently not implemented");
+			throw new IllegalArgumentException("Retransmit is currently not implemented");
 
 		logger.info("Running interlock exchange with " + rounds + " rounds. My message is " + 
 				message.length + " bytes long");
@@ -697,12 +696,12 @@ public class InterlockProtocol {
     public boolean addMessage(byte[] message, int round)
     		throws InternalApplicationException {
 		if (message != null && message.length*8 > cipherBitsPerRoundPerBlock*numCipherTextBlocks+7)
-			throw new InvalidParameterException("Message length does not match expected length, " +
+			throw new IllegalArgumentException("Message length does not match expected length, " +
 					"got " + message.length + " bytes, but expected " + 
 					cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (round >= rounds || round < 0)
-			throw new InvalidParameterException("Round " + round + " invalid, must be between 0 and " +
+			throw new IllegalArgumentException("Round " + round + " invalid, must be between 0 and " +
 					rounds + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 

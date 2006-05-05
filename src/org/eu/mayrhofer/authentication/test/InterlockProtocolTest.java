@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.security.InvalidParameterException;
 
 import org.eu.mayrhofer.authentication.InterlockProtocol;
 import org.eu.mayrhofer.authentication.exceptions.*;
@@ -127,7 +126,7 @@ public class InterlockProtocolTest extends TestCase {
 		try {
 			InterlockProtocol p = new InterlockProtocol(new byte[] {1}, 2, 128, null, useJSSE);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -137,7 +136,7 @@ public class InterlockProtocolTest extends TestCase {
 		try {
 			InterlockProtocol p = new InterlockProtocol(null, 1, 128, null, useJSSE);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -147,7 +146,7 @@ public class InterlockProtocolTest extends TestCase {
 		try {
 			InterlockProtocol p = new InterlockProtocol(null, 129, 128, null, useJSSE);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -157,7 +156,7 @@ public class InterlockProtocolTest extends TestCase {
 		try {
 			InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 127, null, useJSSE);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -179,7 +178,7 @@ public class InterlockProtocolTest extends TestCase {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[15]);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -190,7 +189,7 @@ public class InterlockProtocolTest extends TestCase {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[17]);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -201,7 +200,7 @@ public class InterlockProtocolTest extends TestCase {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[0]);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
@@ -223,7 +222,7 @@ public class InterlockProtocolTest extends TestCase {
 			// this should not work with incorrect parameters
 			p.encrypt(new byte[15]);
 			Assert.fail();
-		} catch (InvalidParameterException e) {
+		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
 		}
 	}
