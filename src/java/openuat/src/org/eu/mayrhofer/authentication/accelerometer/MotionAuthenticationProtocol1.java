@@ -56,7 +56,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * are considered similar enough.
 	 */
 	// TODO: make me modifieable (if necessary)
-	private double coherenceThreshold = 0.25;
+	private double coherenceThreshold = 0.55;
 	
 	/** This variable is only used for passing the socket from startVerification to the
 	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
@@ -154,6 +154,10 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			s2[i] = remoteSegment[i];
 		}
 		double[] coherence = Coherence.cohere(s1, s2, 128, 0);
+		if (coherence == null) {
+			logger.warn("Coherence not computed, no match");
+			return false;
+		}
 		
 		double coherenceMean = Coherence.mean(coherence);
 		System.out.println("Coherence mean: " + coherenceMean);
@@ -199,7 +203,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		public void run() {
 			try {
 				// TODO: support continuous operation too instead of one-shot
-				//while (remoteSegment == null) {
+				while (true) {
 				// first wait for the local segment to be received to start the interlock protocol
 				logger.debug("Waiting for local segment");
 				synchronized(localSegmentLock) {
@@ -231,8 +235,9 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 						socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
 						sharedAuthenticationKey, rounds, false, 0, useJSSE);
 				if (remotePlainText == null) {
-					verificationFailure(null, null, null, null);
-					return;
+//					verificationFailure(null, null, null, null);
+//					return;
+					continue;
 				}
 			
 				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
@@ -247,14 +252,15 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 				boolean coherence = checkCoherence();
 				System.out.println("COHERENCE MATCH: " + coherence);
 			
-				if (coherence)
+				/*if (coherence)
 					verificationSuccess(null, null);
 				else
-					verificationFailure(null, null, null, null);
-			
+					verificationFailure(null, null, null, null);*/
+
+				localSegment = remoteSegment = null;
+			}
 				// HACK HACK HACK to make the application exit
-				stopServer();
-			//}
+				//stopServer();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
