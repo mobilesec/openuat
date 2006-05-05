@@ -56,7 +56,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * are considered similar enough.
 	 */
 	// TODO: make me modifieable (if necessary)
-	private double coherenceThreshold = 0.55;
+	private double coherenceThreshold = 0.45;
 	
 	/** This variable is only used for passing the socket from startVerification to the
 	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
