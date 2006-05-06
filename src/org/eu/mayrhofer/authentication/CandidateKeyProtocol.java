@@ -243,6 +243,8 @@ public class CandidateKeyProtocol {
 			// first add to the history
 			CandidateKeyPart p = new CandidateKeyPart(candidateKeys[i], lastRound, (byte) i, entropy, useJSSE);
 			recentKeyParts[recentKeyPartsIndex++] = p;
+			if (recentKeyPartsIndex == recentKeyParts.length)
+				recentKeyPartsIndex = 0;
 			// and generate the candidate identifier to send to the remote host
 			ret[i] = p.extractPublicIdentifier();
 			logger.debug("Generating local candidate identifier number " + p.candidateNumber);
@@ -288,8 +290,8 @@ public class CandidateKeyProtocol {
 						if (recentKeyParts[j].hash[k] != candidateIdentifiers[i].hash[k])
 							match = false;
 					logger.debug("Incoming candidate of round " + candidateIdentifiers[i].round +
-							" with number " + candidateIdentifiers[i].candidateNumber + 
-							(match ? "matches" : "does not match") + "  local candidate of round " + 
+							" with number " + candidateIdentifiers[i].candidateNumber + " " + 
+							(match ? "matches" : "does not match") + " local candidate of round " + 
 							recentKeyParts[j].round + " with number " + recentKeyParts[j].candidateNumber);
 					
 					/* when it matches, add this local candidate to the matches list and report
@@ -345,6 +347,8 @@ public class CandidateKeyProtocol {
 			matchingKeyParts[matchingKeyPartsIndex++] = recentKeyParts[candidateIndex];
 			logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
 					" with number " + recentKeyParts[candidateIndex].candidateNumber + " to matching status");
+			if (matchingKeyPartsIndex == matchingKeyParts.length)
+				matchingKeyPartsIndex = 0;
 		}
 		else 
 			logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
