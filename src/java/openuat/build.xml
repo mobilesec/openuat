@@ -9,11 +9,12 @@
      (at your option) any later version.
 -->
 
-<project name="spatial-authentication" default="junit" basedir=".">
+<project name="openuat" default="junit" basedir=".">
     <property name="src" location="src"/>
     <property name="build" location="build"/>
     <property name="bin" location="${build}/bin"/>
     <property name="lib" location="lib"/>
+    <property name="lib-include_in_bundle" value="log4j-1.2.jar kxml2-2.2.2.jar"/>
     <property name="relate-lib" location="../relate/lib"/>
     <property name="nativelib" location="nativelib"/>
     <property name="dist" location="dist"/>
@@ -53,9 +54,9 @@
 	 dependencies -->
     <property name="jarfile.distbundle" location="${dist}/${ant.project.name}-distbundle.jar"/>
     <!-- the javadoc tree -->
-    <property name="zipfile.javadoc" location="${dist}/spatial-authentication-doc.zip" />
+    <property name="zipfile.javadoc" location="${dist}/${ant.project.name}-doc.zip" />
     <!-- the source tree, excluding files which can't be redistributed because of their license -->
-    <property name="zipfile.source" location="${dist}/spatial-authentication-src.zip" />
+    <property name="zipfile.source" location="${dist}/${ant.project.name}-src.zip" />
     
     <!-- for MIDP builds -->
     <property name="preverified" location="bin-preverified"/>
@@ -65,6 +66,10 @@
     <!-- this can be used in a refid for filesets -->
     <fileset id="lib.alljars" dir="${lib}">
         <include name="**/*.jar"/>
+    </fileset>
+    <!-- the list of jar files to include in the distbundle -->
+    <fileset id="lib.bundleinclude-jars" dir="${lib}">
+        <include name="${lib-include_in_bundle}"/>
     </fileset>
 
     <!-- these can be used in a refid for classpaths -->
@@ -156,17 +161,17 @@
 		<fileset dir="${bin-BC-openssl}" />
 	</jar>
     
-	<!--<jar jarfile="${jarfile.distbundle}" basedir="${bin}" manifest="${src}/Manifest"
+	<jar jarfile="${jarfile.distbundle}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 		<fileset dir="${bin}" />
  		<fileset dir="${bin-BC-core}" />
 		<fileset dir="${bin-BC-x509}" />
 		<fileset dir="${bin-BC-openssl}" />
-		<fileset dir="${src}" includes="*.properties" />-->
+		<fileset dir="${src}" includes="*.properties" />
 		<!-- Merge library jars into final jar file -->
-<!--		<zipgroupfileset refid="lib.alljars" />
+		<zipgroupfileset refid="lib.bundleinclude-jars" />
 		<fileset dir="${lib}" includes="*-copyright" />
-	</jar>-->
+	</jar>
     </target>
 
     <target name="junit" depends="jar" description="Run unit tests">
