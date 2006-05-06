@@ -23,7 +23,7 @@ public class UDPMulticastSocket {
 
 	public final static String[] Interface_Names_Blacklist = new String[] { "vmnet", "lo" };
 
-	public UDPMulticastSocket() throws SocketException {
+	public UDPMulticastSocket(int port, boolean simulate) throws SocketException {
 		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
 		LinkedList allAddrs = new LinkedList();
 		while (ifaces.hasMoreElements()) {
