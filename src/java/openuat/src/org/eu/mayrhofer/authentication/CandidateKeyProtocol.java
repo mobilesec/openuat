@@ -9,6 +9,8 @@
 package org.eu.mayrhofer.authentication;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
@@ -224,12 +226,20 @@ public class CandidateKeyProtocol {
 		logger.debug("Adding " + candidateKeys.length + " candidates to local history, assigning round " +
 				++lastRound + 
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		
+
+		int candidateKeyPartsLength = -1;
 		for (int i=0; i<candidateKeys.length; i++) {
 			if (candidateKeys[i] == null) {
 				logger.warn("Candidate with index " + i + " is null, ignoring");
 				continue;
 			}
+			
+			// sanity check - all candidate key parts from the same set must have the same length
+			if (candidateKeyPartsLength != -1 && candidateKeyPartsLength != candidateKeys[i].length) 
+				throw new IllegalArgumentException("Candidate with index " + i + " has different length from first valid " +
+						"candidate, is " + candidateKeys[i].length + " but expected " + candidateKeyPartsLength);
+			candidateKeyPartsLength = candidateKeys[i].length;
+			
 			// first add to the history
 			CandidateKeyPart p = new CandidateKeyPart(candidateKeys[i], lastRound, (byte) i, entropy, useJSSE);
 			recentKeyParts[recentKeyPartsIndex++] = p;
@@ -368,56 +378,11 @@ public class CandidateKeyProtocol {
 	 * @throws InternalApplicationException 
 	 */
 	public CandidateKey generateKey() throws InternalApplicationException {
-		/* TODO: this is not optimal, maybe use a second list with the remote-reported
-		   rounds and candidate numbers to get rid of possible double insertions */
-		CandidateKeyPart[] tmp = new CandidateKeyPart[matchingKeyParts.length];
-		/* copy all rounds to the temporary array to sort them, but make sure
-		   that each round is represented by one candidate */
-		int numCopied=0, keyPartsLength=0;
-		for (int i=0; i<matchingKeyParts.length; i++) {
-			if (matchingKeyParts[i] != null) {
-				boolean alreadyCopied = false;
-				for (int j=0; j<numCopied; j++) {
-					if (matchingKeyParts[i].round == tmp[j].round) {
-						alreadyCopied = true;
-						logger.warn("Round " + tmp[j].round + " has two matching candidates: " +
-								matchingKeyParts[i].candidateNumber + " and " + tmp[j].candidateNumber +
-								", skipping latter");
-					}
-				}
-				if (!alreadyCopied) {
-					tmp[numCopied++] = matchingKeyParts[i];
-					keyPartsLength += matchingKeyParts[i].keyPart.length;
-				}
-			}
-		}
-		logger.info("Generating candidate key from " + numCopied + " matching key parts");
-		Arrays.sort(tmp, 0, numCopied);
-		// this is the concatenated "plain text", which does not have key-quality attributes
-		byte[] keyParts = new byte[keyPartsLength];
-		int offset=0;
-		for (int i=0; i<numCopied; i++) {
-			System.arraycopy(tmp[i].keyPart, 0, keyParts, offset, tmp[i].keyPart.length);
-			offset += tmp[i].keyPart.length;
-		}
-		/* and do two hashes over it, one for comparing, the other for generating the
-		 * actual shared key for subsequent secure channel setup
-		 */ 
-		CandidateKey ret = new CandidateKey();
-		/* only hash the simpler one so that it is quicker (this operation is done more often, also
-		 * from searchKey)
-		 */
-		ret.hash = Hash.doubleSHA256(keyParts, useJSSE);
-		// the real shared key is <the key parts> concatenated with the MAGIC_COOKIE
-		byte[] cookie = MAGIC_COOKIE.getBytes();
-		byte[] keyPartsModified = new byte[keyParts.length + cookie.length];
-		System.arraycopy(keyParts, 0, keyPartsModified, 0, keyParts.length);
-		System.arraycopy(cookie, 0, keyPartsModified, keyParts.length,
-				cookie.length);
-		ret.key = Hash.doubleSHA256(keyPartsModified, useJSSE);
-		ret.numParts = numCopied;
-		
-		return ret;
+		// assemble the key for all available parts
+		Object[] keyRet = assembleKeyFromMatches(0, -1, false);
+		byte[] keyParts = ((byte[][]) keyRet[0])[0];
+		int numCopied = ((Integer) keyRet[1]).intValue();
+		return generateKey(keyParts, numCopied);
 	}
 	
 	/** Tries to generate a key that produces the same hash from the
@@ -433,8 +398,9 @@ public class CandidateKeyProtocol {
 	 *                 It is used for better performance in searching for a matching
 	 *                 key.
 	 * @return The key matching the hash, or null when same hash could not be
-	 *         generated a combination of parts in matchingKeyParts */
-	public CandidateKey searchKey(byte[] hash, int numParts) {
+	 *         generated a combination of parts in matchingKeyParts 
+	 * @throws InternalApplicationException */
+	public CandidateKey searchKey(byte[] hash, int numParts) throws InternalApplicationException {
 		if (hash == null)
 			throw new IllegalArgumentException("hash must be set");
 		if (numParts > matchingKeyParts.length) {
@@ -444,6 +410,227 @@ public class CandidateKeyProtocol {
 			return null;
 		}
 		
+		// TODO: the candidate searching would not be necessary if we could be sure that there would be only
+		// one match for each round. that could make it faster
+
+		for (int offset=0; offset < matchingKeyParts.length-numParts; offset++) {
+			Object[] keyRet = assembleKeyFromMatches(offset, numParts, true);
+			if (keyRet == null) {
+				/* if not enough key parts could be found for this offset, it will not be possible
+				   for larger ones */
+				logger.debug("Could not generate key candidates with " + numParts + " parts");
+				return null;
+			}
+			
+			// generate all candidates for this offset
+			byte[][] keyParts = (byte[][]) keyRet[0];
+			int numCopied = ((Integer) keyRet[1]).intValue();
+			// sanity check
+			if (numCopied != numParts) 
+				throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen");
+			
+			// and compare the target hash with hashes over all candidate keys
+			for (int i=0; i<keyParts.length; i++) {
+				byte[] candidateHash = Hash.doubleSHA256(keyParts[i], useJSSE);
+				boolean match = true;
+				for (int j=0; j<candidateHash.length && j<hash.length && match; j++)
+					if (candidateHash[j] != hash[j])
+						match = false;
+				if (match) {
+					logger.info("Could generate key with same hash");
+					return generateKey(keyParts[i], numParts);
+				}
+			}
+		}
+		
+		logger.info("Could not generate key with same hash");
 		return null;
+	}
+	
+	/** This is a helper function used by generateKey and searchKey to assemble
+	 * key parts from the matching list. If numParts is -1, it is ignored. Otherwise,
+	 * this method will try to collect that many unique rounds and return null if not
+	 * successful. On success, it returns an array of assembled plain text keys (only
+	 * one element if extractAllCombinations is set to false), and an Integer specifying how
+	 * many parts have been copied (guaranteed to be equal to numParts if not -1).
+	 */
+	private Object[] assembleKeyFromMatches(int offset, int numParts, boolean extractAllCombinations) {
+		/* TODO: this is not optimal, maybe use a second list with the remote-reported
+		   rounds and candidate numbers to get rid of possible double insertions */
+		CandidateKeyPart[] initialCombination = new CandidateKeyPart[matchingKeyParts.length];
+		/* if all combinations should be generated, this holds the indices of all
+		   candidates in matchingKeyParts that have _not_ been copied into tmp for each round */
+		HashMap duplicateRounds = null;
+		if (extractAllCombinations)
+			duplicateRounds = new HashMap();
+		/* copy all rounds to the temporary array to sort them, but make sure
+		   that each round is represented by one candidate */
+		int numCopied=0, keyPartsLength=0;
+		for (int i=offset; i<matchingKeyParts.length && (numParts == -1 || numCopied<numParts); i++) {
+			if (matchingKeyParts[i] != null) {
+				boolean alreadyCopied = false;
+				for (int j=0; j<numCopied; j++) {
+					if (matchingKeyParts[i].round == initialCombination[j].round) {
+						alreadyCopied = true;
+						if (!extractAllCombinations) {
+							logger.warn("Round " + initialCombination[j].round + " has two matching candidates: " +
+									initialCombination[j].candidateNumber + " and " + 
+									matchingKeyParts[i].candidateNumber + ", skipping latter");
+						} 
+						else {
+							// instructed to copy all combinations, so remember duplicates
+							Integer round = new Integer(initialCombination[j].round);
+							LinkedList alternatives = null;
+							if (!duplicateRounds.containsKey(round)) {
+								alternatives = new LinkedList();
+								duplicateRounds.put(round, alternatives);
+							}
+							else {
+								// already detected another duplicate, so just amend the list
+								alternatives = (LinkedList) duplicateRounds.get(round);
+							}
+							logger.debug("Adding candidate number " + matchingKeyParts[i].candidateNumber + 
+									" as duplicate to round " + round);
+							// only remember the index in matchingKeyParts, that's all we need
+							alternatives.add(new Integer(i));
+						}
+					}
+				}
+				if (!alreadyCopied) {
+					initialCombination[numCopied++] = matchingKeyParts[i];
+					keyPartsLength += matchingKeyParts[i].keyPart.length;
+				}
+			}
+		}
+		if (numParts > numCopied) {
+			logger.error("Could not assemble " + numParts + " key parts, only got " + numCopied);
+			return null;
+		}
+		
+		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts");
+		Arrays.sort(initialCombination, 0, numCopied);
+		
+		CandidateKeyPart[][] allCombinations = null;
+		// and now (on the sorted array because it can be faster), explode combinations
+		if (extractAllCombinations) {
+			int numCombinations = 1;
+			Object[] roundsWithDuplicates = duplicateRounds.keySet().toArray();
+			logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates");
+			for (int i=0; i<roundsWithDuplicates.length; i++) {
+				LinkedList alternatives = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
+				logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternatives.size() + 
+						" candidates");
+				numCombinations *= alternatives.size();
+			}
+			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds");
+			
+			allCombinations = new CandidateKeyPart[numCombinations][];
+			// seed with initial candidate
+			allCombinations[0] = initialCombination;
+			for (int j=1; j<numCombinations; j++) {
+				allCombinations[j] = new CandidateKeyPart[numCopied];
+			}
+			// and copy, changing the candidates
+			int spacing=1;
+			for (int i=0; i<numCopied; i++) {
+				Integer round = new Integer(allCombinations[0][i].round);
+				if (! duplicateRounds.containsKey(round)) {
+					// simple, just copy
+					logger.debug("Round " + round + " does not have multiple candidates");
+					for (int j=1; j<numCombinations; j++)
+						allCombinations[j][i] = allCombinations[0][i];
+				}
+				else {
+					LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(round);
+					// first collect all the candidate key parts for this round, including the initial alternative
+					CandidateKeyPart[] alternatives = new CandidateKeyPart[alternativeIndices.size()+1];
+					alternatives[0] = allCombinations[0][i];
+					for (int k=1; k<alternatives.length; k++)
+						alternatives[k] = matchingKeyParts[((Integer) alternativeIndices.get(k)).intValue()];
+					logger.debug("Round " + round + " has " + alternatives.length + " candidates");
+					/** This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
+					 * 5 different rounds a, b, c, d, and e are 1, 2, 1, 3, and 2, respectively, it will
+					 * produce the following pattern:
+					 * Round        0  1  2  3  4
+					 * Candidate    a  b1 c  d1 e1
+					 *              a  b2 c  d1 e1
+					 *              a  b1 c  d2 e1
+					 *              a  b2 c  d2 e1
+					 *              a  b1 c  d3 e1
+					 *              a  b2 c  d3 e1
+					 *              a  b1 c  d1 e2
+					 *              a  b2 c  d1 e2
+					 *              a  b1 c  d2 e2
+					 *              a  b2 c  d2 e2
+					 *              a  b1 c  d3 e2
+					 *              a  b2 c  d3 e2
+					 */ 
+					for (int j=0; j<numCombinations; j+=alternatives.length*spacing) {
+						for (int k=0; k<alternatives.length; k++) {
+							for (int l=1; l<=spacing; l++) {
+								allCombinations[j+k+l][i] = alternatives[k];
+							}
+						}
+					}
+					// next column will have larger spacing
+					spacing *= alternatives.length;
+				}
+			}
+			
+			// only for debugging purposes
+			if (logger.isDebugEnabled()) {
+				logger.debug("Following candidate keys have been assmebled (candidate numbers for each round:");
+				for (int j=0; j<numCombinations; j++) {
+					String candidateNumbers = "";
+					for (int i=0; i<numCopied; i++)
+						candidateNumbers += allCombinations[j][i].candidateNumber + " ";
+					logger.debug("    " + candidateNumbers);
+				}
+			}
+		}
+		else {
+			// just use the first possible candidate in each round, i.e. the one already collected
+			allCombinations = new CandidateKeyPart[1][];
+			allCombinations[0] = initialCombination;
+		}
+		
+		// this is the concatenated "plain text", which does not have key-quality attributes
+		byte[][] keyParts = new byte[allCombinations.length][];
+		for (int i=0; i<allCombinations.length; i++) {
+			// all keys must have the same length, because the different combinations stem from the same set
+			logger.debug("Assembling combination " + i + " (length " + keyPartsLength + " bytes)");
+			keyParts[i] = new byte[keyPartsLength];
+			int outPos=0;
+			for (int j=0; j<numCopied; i++) {
+				System.arraycopy(allCombinations[i][j].keyPart, 0, keyParts[i], outPos, 
+						allCombinations[i][j].keyPart.length);
+				outPos += allCombinations[i][j].keyPart.length;
+			}
+		}
+		// I hate Java
+		return new Object[] {keyParts, new Integer(numCopied) };
+	}
+	
+	/** Another small helper function that creates a proper CandidateKey object
+	 * by calculating the two hashes.
+	 */
+	private CandidateKey generateKey(byte[] keyParts, int numParts) throws InternalApplicationException {
+		/* do two hashes over it, one for comparing, the other for generating the
+		 * actual shared key for subsequent secure channel setup
+		 */ 
+		CandidateKey ret = new CandidateKey();
+		/* only hash the simpler one so that it is quicker (this operation is done more often, also
+		 * from searchKey)
+		 */
+		ret.hash = Hash.doubleSHA256(keyParts, useJSSE);
+		// the real shared key is <the key parts> concatenated with the MAGIC_COOKIE
+		byte[] cookie = MAGIC_COOKIE.getBytes();
+		byte[] keyPartsModified = new byte[keyParts.length + cookie.length];
+		System.arraycopy(keyParts, 0, keyPartsModified, 0, keyParts.length);
+		System.arraycopy(cookie, 0, keyPartsModified, keyParts.length,
+				cookie.length);
+		ret.key = Hash.doubleSHA256(keyPartsModified, useJSSE);
+		ret.numParts = numParts;
+		return ret;
 	}
 }
