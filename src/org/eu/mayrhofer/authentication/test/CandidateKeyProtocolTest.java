@@ -83,7 +83,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals("Match did not return correct index", 2, ind2_1);
 		Assert.assertEquals("Match did not return correct index", -1, ind2_2);
 
-		Assert.assertEquals(3, p2.getNumTotalMatches());
+		// only 1 match now, because second round candidates not yet generated in p2
+		Assert.assertEquals(1, p2.getNumTotalMatches());
 		
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2, 0);
 		int ind1_1 = p1.matchCandidates(i2_1);
@@ -96,6 +97,7 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals("Match did not return correct index", 1, ind1_1);
 		Assert.assertEquals("Match did not return correct index", 1, ind1_2);
 
+		// now it must be 3 matches
 		Assert.assertEquals(3, p2.getNumTotalMatches());
 	}
 	
@@ -118,16 +120,16 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
 	}
 
-	public void testMatchingAndKeyGeneration_2Rounds() throws InternalApplicationException {
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
-		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round2_side1, 0);
-		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round1_side2, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2, 0);
 
-		p1.matchCandidates(i2_1);
-		p2.matchCandidates(i1_1);
-		p1.matchCandidates(i2_2);
-		p2.matchCandidates(i1_2);
+		Assert.assertEquals(1, p1.matchCandidates(i2_1));
+		Assert.assertEquals(2, p2.matchCandidates(i1_1));
+		Assert.assertEquals(1, p1.matchCandidates(i2_2));
+		Assert.assertEquals(2, p2.matchCandidates(i1_2));
 
 		Assert.assertEquals(3, p1.getNumTotalMatches());
 		Assert.assertEquals(3, p2.getNumTotalMatches());
@@ -137,9 +139,17 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNotNull(k1);
 		Assert.assertNotNull(k2);
 		
-		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
-		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
-	}
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		
+		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(k2.hash, k2.numParts);
+		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(k1.hash, k1.numParts);
+
+		Assert.assertNotNull("Should have been able to generate an equal key", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
+		Assert.assertFalse("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.hash, sk2.hash));
+		Assert.assertFalse("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.key, sk2.key));
+}
 	
 	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_1Round() throws InternalApplicationException {
 		p1.generateCandidates(keyParts_round1_side1, 0);
@@ -172,7 +182,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		p2.acknowledgeMatches(i2_2[0].round, ind1_2);
 
 		Assert.assertEquals(3, p1.getNumTotalMatches());
-		Assert.assertEquals(3, p2.getNumTotalMatches());
+		// only two matches here because only acknowledge matches, but p2 didn't match itself 
+		Assert.assertEquals(2, p2.getNumTotalMatches());
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey();
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey();
