@@ -32,27 +32,37 @@ import org.eu.mayrhofer.util.Hash;
  * will be assembled into a key when both hosts (or all hosts for group 
  * authentication) agree on them. As a means of key exchange, a hash value of 
  * each candidate key part is broadcast, and other hosts wishing to authenticate 
- * with this one can then flag that candidate out of the current list of candidates
+ * with this one may then flag that candidate out of the current list of candidates
  * in this iteration that they also have. A key part can thus go through three phases:
- * 1. Features extracted form sensor data form a candidate key part and get
- *    broadcasts.
- * 2. After received a candidate, it is checked against all local candidates.
- *    When there is a match, this candidate becomes a matching key part and
- *    the candidate's number is signalled to the host that generated it.
- * 3. All matching key parts are then assembled into a sliding candidate
- *    key, which also gets broadcast. When other hosts hold the same key,
- *    they acknowledge it and it can be used for secure communication.
+ * 1.  Features extracted form sensor data form a candidate key part and get
+ *     broadcasts.
+ * 2a. After received a candidate, it is checked against all local candidates.
+ *     When there is a match, this candidate becomes a matching key part and
+ *     the candidate's number is signalled to the host that generated it.
+ * 2b. The second alternative for advancing a key part from candidate to
+ *     matching status is to explicitly acknowledge a match. One one host send
+ *     messages to the sender of the candidate key parts in step 1, indicating
+ *     which of these parts matched, then the original sender can advance these
+ *     candidates to match status. 
+ *     <b>Note:</b>Options 2a and 2b are not exclusive. but can be combined. 
+ *     However, they will typically be used in different settings: option 2a for
+ *     symmetrical settings where each hosts generates and sends candidate key 
+ *     parts, while option 2b can be used for asymmetrical settings where one host
+ *     sends candidate key parts and the other acknowledges matches.
+ * 3.  All matching key parts are then assembled into a sliding candidate
+ *     key, which also gets broadcast. When other hosts hold the same key,
+ *     they acknowledge it and it can be used for secure communication.
  * 
  * In short, the whole authentication protocol should be used as follows:
- * 
  * 1. Construct the object.
  * 2. For each set of feature vector that belong together, generate a set
  *    of candidate key parts with generateCandidates. These will be kept
  *    in an internal history.
  * 3. Send the candidate key parts to the remote host.
- * 4. Test all received candidate key parts with matchCandidates and send 
- *    a message signalling the matching one to the remote host. A list of
- *    matching key parts will also be kept internally. 
+ * 4. Test all received candidate key parts with matchCandidates and possibly
+ *    (depending on the setting, see above for details) send a message signalling 
+ *    the matching one to the remote host. A list of matching key parts will also 
+ *    be kept internally. 
  * 5. Use getNumTotalMatches and/or getSumMatchEntropy to decide when enough
  *    matching key material has been generated and create a candidate key with
  *    generateKey. The hash of this candidate key should be sent to the remote
