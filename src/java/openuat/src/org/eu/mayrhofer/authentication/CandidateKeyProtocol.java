@@ -211,7 +211,7 @@ public class CandidateKeyProtocol {
 		logger.info("Candidate key part protocol with " + recentKeyParts.length + 
 				" key parts in history and a window of " + matchingKeyParts.length +
 				" matching key parts created" + 
-				(remoteIdentifier != null ? "[" + remoteIdentifier + "]" : ""));
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
 	/** Generate a list of candidate key parts out of key parts. This also stores the
@@ -226,11 +226,14 @@ public class CandidateKeyProtocol {
 	 */
 	public CandidateKeyPartIdentifier[] generateCandidates(byte[][] candidateKeys, float entropy) throws InternalApplicationException {
 		if (candidateKeys == null)
-			throw new IllegalArgumentException("candidateKeys can not be null");
+			throw new IllegalArgumentException("candidateKeys can not be null" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (candidateKeys.length > recentKeyParts.length)
-			throw new IllegalArgumentException("Length of new key set is larger than the history size");
+			throw new IllegalArgumentException("Length of new key set is larger than the history size" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (candidateKeys.length > 127)
-			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round");
+			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		CandidateKeyPartIdentifier[] ret = new CandidateKeyPartIdentifier[candidateKeys.length];
 		logger.debug("Adding " + candidateKeys.length + " candidates to local history, assigning round " +
@@ -240,14 +243,16 @@ public class CandidateKeyProtocol {
 		int candidateKeyPartsLength = -1;
 		for (int i=0; i<candidateKeys.length; i++) {
 			if (candidateKeys[i] == null) {
-				logger.warn("Candidate with index " + i + " is null, ignoring");
+				logger.warn("Candidate with index " + i + " is null, ignoring" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				continue;
 			}
 			
 			// sanity check - all candidate key parts from the same set must have the same length
 			if (candidateKeyPartsLength != -1 && candidateKeyPartsLength != candidateKeys[i].length) 
 				throw new IllegalArgumentException("Candidate with index " + i + " has different length from first valid " +
-						"candidate, is " + candidateKeys[i].length + " but expected " + candidateKeyPartsLength);
+						"candidate, is " + candidateKeys[i].length + " but expected " + candidateKeyPartsLength +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			candidateKeyPartsLength = candidateKeys[i].length;
 			
 			// first add to the history
@@ -257,7 +262,8 @@ public class CandidateKeyProtocol {
 				recentKeyPartsIndex = 0;
 			// and generate the candidate identifier to send to the remote host
 			ret[i] = p.extractPublicIdentifier();
-			logger.debug("Generating local candidate identifier number " + p.candidateNumber);
+			logger.debug("Generating local candidate identifier number " + p.candidateNumber +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		
 		return ret;
@@ -274,15 +280,19 @@ public class CandidateKeyProtocol {
 	 */
 	public int matchCandidates(CandidateKeyPartIdentifier[] candidateIdentifiers) {
 		if (candidateIdentifiers == null)
-			throw new IllegalArgumentException("candidateIdentifiers can not be null");
+			throw new IllegalArgumentException("candidateIdentifiers can not be null" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (candidateIdentifiers.length > recentKeyParts.length)
-			logger.warn("Length of incoming candidate list is larger than the history size");
+			logger.warn("Length of incoming candidate list is larger than the history size" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (candidateIdentifiers.length > 127)
-			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round");
+			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		for (int i=0; i<candidateIdentifiers.length; i++) {
 			if (candidateIdentifiers[i] == null) {
-				logger.warn("Candidate with index " + i + " is null, ignoring");
+				logger.warn("Candidate with index " + i + " is null, ignoring" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				continue;
 			}
 			// check against the whole history
@@ -293,7 +303,8 @@ public class CandidateKeyProtocol {
 						compareBytes = recentKeyParts[j].hash.length < candidateIdentifiers[i].hash.length ?
 								recentKeyParts[j].hash.length : candidateIdentifiers[i].hash.length;
 						logger.warn("Length of candidate " + i + " does not match expected length, " +
-								"comparing only " + compareBytes + " bytes");
+								"comparing only " + compareBytes + " bytes" +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					}
 					boolean match = true;
 					for (int k=0; k<compareBytes && match; k++)
@@ -302,7 +313,8 @@ public class CandidateKeyProtocol {
 					logger.debug("Incoming candidate of round " + candidateIdentifiers[i].round +
 							" with number " + candidateIdentifiers[i].candidateNumber + " " + 
 							(match ? "matches" : "does not match") + " local candidate of round " + 
-							recentKeyParts[j].round + " with number " + recentKeyParts[j].candidateNumber);
+							recentKeyParts[j].round + " with number " + recentKeyParts[j].candidateNumber +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					
 					/* when it matches, add this local candidate to the matches list and report
 					 * the remote candidate back to the other host
@@ -335,7 +347,8 @@ public class CandidateKeyProtocol {
 			}
 		if (!found)
 			logger.warn("Local candidate number of round " + round + " with number " + candidateNumber + 
-					" could not be found in recent parts list, probably outdated");
+					" could not be found in recent parts list, probably outdated" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
 	/** This is only a small helper function to copy a CandidateKeyPart from
@@ -356,14 +369,16 @@ public class CandidateKeyProtocol {
 		if (!found) {
 			matchingKeyParts[matchingKeyPartsIndex++] = recentKeyParts[candidateIndex];
 			logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
-					" with number " + recentKeyParts[candidateIndex].candidateNumber + " to matching status");
+					" with number " + recentKeyParts[candidateIndex].candidateNumber + " to matching status" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			if (matchingKeyPartsIndex == matchingKeyParts.length)
 				matchingKeyPartsIndex = 0;
 		}
 		else 
 			logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
 					" with number " + recentKeyParts[candidateIndex].candidateNumber + 
-					" already marked as match, skipping to add it");
+					" already marked as match, skipping to add it" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
 	/** Returns the number of entries in the matches list. */
@@ -371,7 +386,7 @@ public class CandidateKeyProtocol {
 		int numMatches = 0;
 		while (numMatches < matchingKeyParts.length && matchingKeyParts[numMatches] != null)
 			numMatches++;
-		return numMatches+1;
+		return numMatches;
 	}
 	
 	/** Returns the sum of all entropy values for matching key parts. */
@@ -420,7 +435,8 @@ public class CandidateKeyProtocol {
 		if (numParts > matchingKeyParts.length) {
 			logger.error("Received candidate key has been created of more key parts than " + 
 					"there are in the local list of matching key parts. Can not possibly find " +
-					"a matching key. Giving up.");
+					"a matching key. Giving up." +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 		
@@ -432,7 +448,8 @@ public class CandidateKeyProtocol {
 			if (keyRet == null) {
 				/* if not enough key parts could be found for this offset, it will not be possible
 				   for larger ones */
-				logger.debug("Could not generate key candidates with " + numParts + " parts");
+				logger.debug("Could not generate key candidates with " + numParts + " parts" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
 			}
 			
@@ -451,13 +468,15 @@ public class CandidateKeyProtocol {
 					if (candidateHash[j] != hash[j])
 						match = false;
 				if (match) {
-					logger.info("Could generate key with same hash");
+					logger.info("Could generate key with same hash" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					return generateKey(keyParts[i], numParts);
 				}
 			}
 		}
 		
-		logger.info("Could not generate key with same hash");
+		logger.info("Could not generate key with same hash" +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		return null;
 	}
 	
@@ -489,7 +508,8 @@ public class CandidateKeyProtocol {
 						if (!extractAllCombinations) {
 							logger.warn("Round " + initialCombination[j].round + " has two matching candidates: " +
 									initialCombination[j].candidateNumber + " and " + 
-									matchingKeyParts[i].candidateNumber + ", skipping latter");
+									matchingKeyParts[i].candidateNumber + ", skipping latter" +
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						} 
 						else {
 							// instructed to copy all combinations, so remember duplicates
@@ -504,7 +524,8 @@ public class CandidateKeyProtocol {
 								alternatives = (LinkedList) duplicateRounds.get(round);
 							}
 							logger.debug("Adding candidate number " + matchingKeyParts[i].candidateNumber + 
-									" as duplicate to round " + round);
+									" as duplicate to round " + round +
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							// only remember the index in matchingKeyParts, that's all we need
 							alternatives.add(new Integer(i));
 						}
@@ -517,11 +538,13 @@ public class CandidateKeyProtocol {
 			}
 		}
 		if (numParts > numCopied) {
-			logger.error("Could not assemble " + numParts + " key parts, only got " + numCopied);
+			logger.error("Could not assemble " + numParts + " key parts, only got " + numCopied +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 		
-		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts");
+		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts" +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		Arrays.sort(initialCombination, 0, numCopied);
 		
 		CandidateKeyPart[][] allCombinations = null;
@@ -529,14 +552,16 @@ public class CandidateKeyProtocol {
 		if (extractAllCombinations) {
 			int numCombinations = 1;
 			Object[] roundsWithDuplicates = duplicateRounds.keySet().toArray();
-			logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates");
+			logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			for (int i=0; i<roundsWithDuplicates.length; i++) {
 				LinkedList alternatives = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
 				logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternatives.size() + 
 						" candidates");
 				numCombinations *= alternatives.size();
 			}
-			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds");
+			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			
 			allCombinations = new CandidateKeyPart[numCombinations][];
 			// seed with initial candidate
@@ -550,7 +575,8 @@ public class CandidateKeyProtocol {
 				Integer round = new Integer(allCombinations[0][i].round);
 				if (! duplicateRounds.containsKey(round)) {
 					// simple, just copy
-					logger.debug("Round " + round + " does not have multiple candidates");
+					logger.debug("Round " + round + " does not have multiple candidates" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					for (int j=1; j<numCombinations; j++)
 						allCombinations[j][i] = allCombinations[0][i];
 				}
@@ -561,7 +587,8 @@ public class CandidateKeyProtocol {
 					alternatives[0] = allCombinations[0][i];
 					for (int k=1; k<alternatives.length; k++)
 						alternatives[k] = matchingKeyParts[((Integer) alternativeIndices.get(k)).intValue()];
-					logger.debug("Round " + round + " has " + alternatives.length + " candidates");
+					logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					/** This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
 					 * 5 different rounds a, b, c, d, and e are 1, 2, 1, 3, and 2, respectively, it will
 					 * produce the following pattern:
@@ -593,12 +620,14 @@ public class CandidateKeyProtocol {
 			
 			// only for debugging purposes
 			if (logger.isDebugEnabled()) {
-				logger.debug("Following candidate keys have been assmebled (candidate numbers for each round:");
+				logger.debug("Following candidate keys have been assmebled (candidate numbers for each round:" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				for (int j=0; j<numCombinations; j++) {
 					String candidateNumbers = "";
 					for (int i=0; i<numCopied; i++)
 						candidateNumbers += allCombinations[j][i].candidateNumber + " ";
-					logger.debug("    " + candidateNumbers);
+					logger.debug("    " + candidateNumbers +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				}
 			}
 		}

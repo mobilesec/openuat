@@ -68,6 +68,9 @@ public class CandidateKeyProtocolTest extends TestCase {
 		int ind2 = p2.matchCandidates(i1);
 		Assert.assertEquals("Match did not return correct index", 1, ind1);
 		Assert.assertEquals("Match did not return correct index", 2, ind2);
+
+		Assert.assertEquals(1, p1.getNumTotalMatches());
+		Assert.assertEquals(1, p2.getNumTotalMatches());
 	}
 
 	public void testMatching_2Rounds() throws InternalApplicationException {
@@ -80,15 +83,20 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals("Match did not return correct index", 2, ind2_1);
 		Assert.assertEquals("Match did not return correct index", -1, ind2_2);
 
+		Assert.assertEquals(3, p2.getNumTotalMatches());
+		
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2, 0);
 		int ind1_1 = p1.matchCandidates(i2_1);
 		int ind1_2 = p1.matchCandidates(i2_2);
 		ind2_1 = p2.matchCandidates(i1_1);
 		ind2_2 = p2.matchCandidates(i1_2);
+
 		Assert.assertEquals("Match did not return correct index", 2, ind2_1);
 		Assert.assertEquals("Match did not return correct index", 2, ind2_2);
 		Assert.assertEquals("Match did not return correct index", 1, ind1_1);
 		Assert.assertEquals("Match did not return correct index", 1, ind1_2);
+
+		Assert.assertEquals(3, p2.getNumTotalMatches());
 	}
 	
 	public void testMatchingAndKeyGeneration_1Round() throws InternalApplicationException {
@@ -97,6 +105,9 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		p1.matchCandidates(i2);
 		p2.matchCandidates(i1);
+		
+		Assert.assertEquals(1, p1.getNumTotalMatches());
+		Assert.assertEquals(1, p2.getNumTotalMatches());
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey();
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey();
@@ -117,6 +128,9 @@ public class CandidateKeyProtocolTest extends TestCase {
 		p2.matchCandidates(i1_1);
 		p1.matchCandidates(i2_2);
 		p2.matchCandidates(i1_2);
+
+		Assert.assertEquals(3, p1.getNumTotalMatches());
+		Assert.assertEquals(3, p2.getNumTotalMatches());
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey();
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey();
@@ -134,6 +148,9 @@ public class CandidateKeyProtocolTest extends TestCase {
 		int ind1 = p1.matchCandidates(i2);
 		p2.acknowledgeMatches(i2[0].round, ind1);
 
+		Assert.assertEquals(1, p1.getNumTotalMatches());
+		Assert.assertEquals(1, p2.getNumTotalMatches());
+		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey();
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey();
 		Assert.assertNotNull(k1);
@@ -154,6 +171,9 @@ public class CandidateKeyProtocolTest extends TestCase {
 		int ind1_2 = p1.matchCandidates(i2_2);
 		p2.acknowledgeMatches(i2_2[0].round, ind1_2);
 
+		Assert.assertEquals(3, p1.getNumTotalMatches());
+		Assert.assertEquals(3, p2.getNumTotalMatches());
+		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey();
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey();
 		Assert.assertNotNull(k1);
