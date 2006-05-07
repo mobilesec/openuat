@@ -289,6 +289,7 @@ public class CandidateKeyProtocol {
 			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
+		int firstMatch = -1;
 		for (int i=0; i<candidateIdentifiers.length; i++) {
 			if (candidateIdentifiers[i] == null) {
 				logger.warn("Candidate with index " + i + " is null, ignoring" +
@@ -321,14 +322,17 @@ public class CandidateKeyProtocol {
 					 */
 					if (match) {
 						advanceCandidateToMatch(j);
-						return i;
+						if (firstMatch == -1) {
+							firstMatch = i;
+							logger.debug("This is the first match, will report candidate number " + firstMatch);
+						}
 					}
 				}
 			}
 		}
 
 		logger.info("No match found, not reporting to remote host");
-		return -1;
+		return firstMatch;
 	}
 	
 	/** This function just adds the local candidate key part to the match list
@@ -448,7 +452,7 @@ public class CandidateKeyProtocol {
 			if (keyRet == null) {
 				/* if not enough key parts could be found for this offset, it will not be possible
 				   for larger ones */
-				logger.debug("Could not generate key candidates with " + numParts + " parts" +
+				logger.debug("Could not generate key candidates with " + numParts + " parts at offset " + offset +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
 			}
@@ -499,7 +503,7 @@ public class CandidateKeyProtocol {
 		/* copy all rounds to the temporary array to sort them, but make sure
 		   that each round is represented by one candidate */
 		int numCopied=0, keyPartsLength=0;
-		for (int i=offset; i<matchingKeyParts.length && (numParts == -1 || numCopied<numParts); i++) {
+		for (int i=offset; i<matchingKeyParts.length; i++) {
 			if (matchingKeyParts[i] != null) {
 				boolean alreadyCopied = false;
 				for (int j=0; j<numCopied; j++) {
@@ -542,6 +546,9 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
+		// but if we copied more, only use as many as requested
+		if (numParts != -1 && numCopied > numParts)
+			numCopied = numParts;
 		
 		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts" +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -558,7 +565,7 @@ public class CandidateKeyProtocol {
 				LinkedList alternatives = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
 				logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternatives.size() + 
 						" candidates");
-				numCombinations *= alternatives.size();
+				numCombinations *= (alternatives.size()+1);
 			}
 			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -586,7 +593,7 @@ public class CandidateKeyProtocol {
 					CandidateKeyPart[] alternatives = new CandidateKeyPart[alternativeIndices.size()+1];
 					alternatives[0] = allCombinations[0][i];
 					for (int k=1; k<alternatives.length; k++)
-						alternatives[k] = matchingKeyParts[((Integer) alternativeIndices.get(k)).intValue()];
+						alternatives[k] = matchingKeyParts[((Integer) alternativeIndices.get(k-1)).intValue()];
 					logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					/** This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
@@ -608,7 +615,7 @@ public class CandidateKeyProtocol {
 					 */ 
 					for (int j=0; j<numCombinations; j+=alternatives.length*spacing) {
 						for (int k=0; k<alternatives.length; k++) {
-							for (int l=1; l<=spacing; l++) {
+							for (int l=0; l<spacing; l++) {
 								allCombinations[j+k+l][i] = alternatives[k];
 							}
 						}
