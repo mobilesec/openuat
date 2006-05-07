@@ -602,10 +602,11 @@ public class CandidateKeyProtocol {
 		byte[][] keyParts = new byte[allCombinations.length][];
 		for (int i=0; i<allCombinations.length; i++) {
 			// all keys must have the same length, because the different combinations stem from the same set
-			logger.debug("Assembling combination " + i + " (length " + keyPartsLength + " bytes)");
+			//logger.debug("  Assembling combination " + i + " (length " + keyPartsLength + " bytes)");
 			keyParts[i] = new byte[keyPartsLength];
 			int outPos=0;
-			for (int j=0; j<numCopied; i++) {
+			for (int j=0; j<numCopied; j++) {
+				//logger.debug("   Part " + i + ": copying " + allCombinations[i][j].keyPart.length + " bytes to offset " + outPos);
 				System.arraycopy(allCombinations[i][j].keyPart, 0, keyParts[i], outPos, 
 						allCombinations[i][j].keyPart.length);
 				outPos += allCombinations[i][j].keyPart.length;
