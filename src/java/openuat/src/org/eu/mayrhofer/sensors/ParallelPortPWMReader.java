@@ -49,7 +49,7 @@ public class ParallelPortPWMReader {
 	private static final int MAX_LINES = 8;
 
 	/** This represent the file to read from and is opened in the constructor.
-	 * @see #ParallelPortPWMReader(String, int[], int)
+	 * @see #ParallelPortPWMReader(String, int)
 	 */
 	private InputStream port;
 	
@@ -449,79 +449,83 @@ public class ParallelPortPWMReader {
 		aggr_b.setActiveVarianceThreshold(varthreshold);
 		r2.simulateSampling();
 
-		XYSeries seg1 = new XYSeries("Segment 1", false);
-		for (int i=0; i<SegmentSink.segs[0].length; i++)
-			seg1.add(i, SegmentSink.segs[0][i]);
-		XYDataset dat1 = new XYSeriesCollection(seg1);
-		JFreeChart chart1 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-			"Sample", dat1, PlotOrientation.VERTICAL, true, true, false);
-		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrA.jpg"), chart1, 500, 300);
+		if (SegmentSink.segs[0] != null && SegmentSink.segs[1] != null) {
+			XYSeries seg1 = new XYSeries("Segment 1", false);
+			for (int i=0; i<SegmentSink.segs[0].length; i++)
+				seg1.add(i, SegmentSink.segs[0][i]);
+			XYDataset dat1 = new XYSeriesCollection(seg1);
+			JFreeChart chart1 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+					"Sample", dat1, PlotOrientation.VERTICAL, true, true, false);
+			ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrA.jpg"), chart1, 500, 300);
 
-		XYSeries seg2 = new XYSeries("Segment 2", false);
-		for (int i=0; i<SegmentSink.segs[1].length; i++)
-			seg2.add(i, SegmentSink.segs[1][i]);
-		XYDataset dat2 = new XYSeriesCollection(seg2);
-		JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-			"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
-		ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
+			XYSeries seg2 = new XYSeries("Segment 2", false);
+			for (int i=0; i<SegmentSink.segs[1].length; i++)
+				seg2.add(i, SegmentSink.segs[1][i]);
+			XYDataset dat2 = new XYSeriesCollection(seg2);
+			JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+					"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
+			ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
 
-		/////// test 3: calculate and plot the coherence between the segments from test 2
-		// make sure they have similar length
-		int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
-		System.out.println("Using " + len + " samples for coherence computation");
-		double[] s1 = new double[len];
-		double[] s2 = new double[len];
-		for (int i=0; i<len; i++) {
-			s1[i] = SegmentSink.segs[0][i];
-			s2[i] = SegmentSink.segs[1][i];
-		}
-		double[] coherence = Coherence.cohere(s1, s2, 128, 0);
-		XYSeries c = new XYSeries("Coefficients", false);
-		for (int i=0; i<coherence.length; i++)
-			c.add(i, coherence[i]);
-		XYDataset c1 = new XYSeriesCollection(c);
-		JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-			"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-		ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+			/////// test 3: calculate and plot the coherence between the segments from test 2
+			// make sure they have similar length
+			int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
+			System.out.println("Using " + len + " samples for coherence computation");
+			double[] s1 = new double[len];
+			double[] s2 = new double[len];
+			for (int i=0; i<len; i++) {
+				s1[i] = SegmentSink.segs[0][i];
+				s2[i] = SegmentSink.segs[1][i];
+			}
+			double[] coherence = Coherence.cohere(s1, s2, 128, 0);
+			XYSeries c = new XYSeries("Coefficients", false);
+			for (int i=0; i<coherence.length; i++)
+				c.add(i, coherence[i]);
+			XYDataset c1 = new XYSeriesCollection(c);
+			JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+					"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+			ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
 		
-		double coherenceMean = Coherence.mean(coherence);
-		System.out.println("Coherence mean: " + coherenceMean);
+			double coherenceMean = Coherence.mean(coherence);
+			System.out.println("Coherence mean: " + coherenceMean);
 
-		/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
-		int fftpoints = samplerate;
-		int numQuantLevels = 8;
-		int numCandidates = 6;
-		int cutOffFrequency = 15; // Hz
-		int windowOverlap = fftpoints/2;
-		// only compare until the cutoff frequency
-		int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
-		System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
-		int numMatches = 0, numWindows = 0;
-		for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-			double[] fftCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
-			double[] fftCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
-			// HACK HACK HACK: set DC components to 0
-			fftCoeff1[0] = 0;
-			fftCoeff2[0] = 0;
-			int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
-			int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
-			boolean match = false;
-			for (int i=0; i<cand1.length && !match; i++) {
-				for (int j=0; j<cand2.length && !match; j++) {
-					boolean equal = true;
-					for (int k=0; k<max_ind && equal; k++) {
-						if (cand1[i][k] != cand2[j][k])
-							equal = false;
-					}
-					if (equal) {
-						System.out.println("Match at i=" + i + ", j=" + j);
-						match = true;
-						numMatches++;
+			/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
+			int fftpoints = samplerate;
+			int numQuantLevels = 8;
+			int numCandidates = 6;
+			int cutOffFrequency = 15; // Hz
+			int windowOverlap = fftpoints/2;
+			// only compare until the cutoff frequency
+			int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
+			System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+			int numMatches = 0, numWindows = 0;
+			for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+				double[] fftCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
+				double[] fftCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+				// HACK HACK HACK: set DC components to 0
+				fftCoeff1[0] = 0;
+				fftCoeff2[0] = 0;
+				int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
+				int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
+				boolean match = false;
+				for (int i=0; i<cand1.length && !match; i++) {
+					for (int j=0; j<cand2.length && !match; j++) {
+						boolean equal = true;
+						for (int k=0; k<max_ind && equal; k++) {
+							if (cand1[i][k] != cand2[j][k])
+								equal = false;
+						}
+						if (equal) {
+							System.out.println("Match at i=" + i + ", j=" + j);
+							match = true;
+							numMatches++;
+						}
 					}
 				}
+				numWindows++;
 			}
-			numWindows++;
+			System.out.println("match: " + (float) numMatches / numWindows + " (" + numMatches + " out of " + numWindows + ")");
 		}
-		System.out.println("match: " + (float) numMatches / numWindows + " (" + numMatches + " out of " + numWindows + ")");
+		else 
+			System.err.println("Did not get 2 significant active segments");
 	}
 }
