@@ -16,6 +16,7 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketTimeoutException;
+import java.util.BitSet;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -53,6 +54,19 @@ public class UDPMulticastSocket {
      */
 	private MulticastSocket[] multicastSockets;
 	
+	/** This bit set marks those elements in multicastSockets where the underlying address
+	 * (to which the socket is bound) is an IP alias. The first address that is reported
+	 * for each interface (this default address is system dependent) is not marked as an alias,
+	 * so that every interface will have exactly one multicastSocket that is not marked in this
+	 * bit set. Sending multicast packets will only use those sockets and thus send only one
+	 * multicast packet on each interface, even when some have multiple IP addresses.
+	 * 
+	 * It should really be possible to bind a socket to an interface, and not an address... 
+	 * 
+	 * @see #multicastSockets
+	 */
+	private BitSet addressIsAlias = new BitSet();
+	
 	/** This single socket is used to send unicast packets, using the system routing table.
 	 * @see #sendTo(byte[], InetAddress) 
 	 */
@@ -81,7 +95,12 @@ public class UDPMulticastSocket {
      */
     private boolean shouldExit = false;
     
-	public UDPMulticastSocket(int port, String multicastGroup, boolean loopBackToLocalhost) throws IOException {
+    /** Creates an UDPMulticastSocket object.
+     * 
+     * @param port The UDP port to use for communication.
+     * @param multicastGroup The multicast group to use.
+     */
+	public UDPMulticastSocket(int port, String multicastGroup) throws IOException {
 		this.port = port;
 		
 		unicastSocket = new DatagramSocket();
@@ -93,6 +112,7 @@ public class UDPMulticastSocket {
 		// create one multicast socket for each address
 		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
 		LinkedList allAddrs = new LinkedList();
+		int addressIndex = 0;
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
 			logger.debug("Found local interface " + iface.getName());
@@ -106,6 +126,7 @@ public class UDPMulticastSocket {
 				
 			if (!blacklisted) {
 				Enumeration addrs = iface.getInetAddresses();
+				boolean alreadyAddedAddr = false;
 				while (addrs.hasMoreElements()) {
 					InetAddress addr = (InetAddress) addrs.nextElement();
 					if (addr instanceof Inet6Address) {
@@ -113,6 +134,11 @@ public class UDPMulticastSocket {
 					} else {
 						logger.debug("Found address " + addr);
 						allAddrs.add(addr);
+						// if this is not the first address on the interface, mark it as alias
+						if (alreadyAddedAddr)
+							addressIsAlias.set(addressIndex);
+						addressIndex++;
+						alreadyAddedAddr = true;
 					}
 				}
 			} else {
@@ -127,24 +153,35 @@ public class UDPMulticastSocket {
 			multicastSockets[i] = new MulticastSocket(port);
 			multicastSockets[i].joinGroup(groupAddress);
 	        multicastSockets[i].setSoTimeout(TIMEOUT_RECEIVE);
-	        if (loopBackToLocalhost) {
+	        // loopback is not needed, multicast packets seem to be received anyway
+	        /*if (loopBackToLocalhost) {
 	        	multicastSockets[i].setLoopbackMode(loopBackToLocalhost);
 	        	if (!multicastSockets[i].getLoopbackMode())
 	        		logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
-	        }
+	        }*/
 		}
 	}
 	
-	/** Sends a multicast message to the group. This will send at least one packet 
-	 * on each interface, and may send multiple for interfaces with multiple addresses.
+	/** Sends a multicast message to the group. This will send at exactly one packet 
+	 * on each interface.
 	 * @param message The message to send.
+	 * @see #addressIsAlias
 	 */
 	public void sendMulticast(byte[] message) throws IOException {
         DatagramPacket packet = new DatagramPacket(message, 0, message.length);
 		packet.setAddress(groupAddress);
 		packet.setPort(port);
 		for (int i=0; i<multicastSockets.length; i++) {
-			multicastSockets[i].send(packet);
+			if (! addressIsAlias.get(i)) {
+				logger.debug("Sending packet with " + message.length + " bytes to multicast group " + 
+						groupAddress + " on multicast socket bound to address " + 
+						multicastSockets[i].getLocalAddress());
+				multicastSockets[i].send(packet);
+			}
+			else {
+				logger.debug("Not using multicast socket bound to alias address " + 
+						multicastSockets[i].getLocalAddress());
+			}
 		}
 	}
 	
@@ -157,6 +194,8 @@ public class UDPMulticastSocket {
         DatagramPacket packet = new DatagramPacket(message, 0, message.length);
 		packet.setAddress(target);
 		packet.setPort(port);
+		logger.debug("Sending packet with " + message.length + " bytes to address " + 
+				target);
 		unicastSocket.send(packet);
 	}
 
@@ -223,17 +262,18 @@ public class UDPMulticastSocket {
 			byte[] buffer = new byte[65535];
 			while (! shouldExit) {
 	            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-	            logger.debug("Received packet of length " + packet.getLength() + " from " + 
-	            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress());
 	            
 				try {
 					multicastSockets[myIndex].receive(packet);
+		            logger.debug("Received packet of length " + packet.getLength() + " from " + 
+		            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress());
 					
 			    	if (messageHandlers != null) {
 			    		for (ListIterator i = messageHandlers.listIterator(); i.hasNext(); ) {
 			    			MessageListener l = (MessageListener) i.next(); 
 			    			try {
-			    				l.handleMessage(packet.getData(), packet.getAddress());
+			    				l.handleMessage(packet.getData(), packet.getOffset(), 
+			    						packet.getLength(), packet.getAddress());
 			    			}
 			    			catch (Exception e) {
 			    				logger.error("Incoming message handler '" + l + 
