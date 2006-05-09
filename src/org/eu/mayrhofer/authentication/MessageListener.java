@@ -22,8 +22,11 @@ public interface MessageListener {
 	 * @param message The message itself. Depending on the protocol,
 	 *                it might be out-of-order and packet delivery might
 	 *                not be guaranteed at all.
+	 * @param offset The offset at which the message starts in the message array.
+	 * @param length The number of bytes in message that belong to the
+	 *               message itself.
 	 * @param sender The sender of the message, e.g. an InetAddress or
 	 *               Inet6Address object for UDP packets.
 	 */
-	public void handleMessage(byte[] message, Object sender);
+	public void handleMessage(byte[] message, int offset, int length, Object sender);
 }
