@@ -44,7 +44,7 @@ public class UDPMulticastSocket {
 	/** Let each receive() call time out after 500ms to allow graceful shutdown of the
 	 * receiving threads.
 	 */
-	private final static int TIMEOUT_RECEIVE = 500;
+	private final static int Timeout_Receive = 500;
 
     /** Holds one socket for each network address in the system. With these sockets, 
      * both unicast and multicast packets are received, and multicast packets are sent
@@ -105,7 +105,7 @@ public class UDPMulticastSocket {
 		
 		unicastSocket = new DatagramSocket();
 		// receive should actually never be called on this socket, but set it so that it won't be infinite in any case
-		unicastSocket.setSoTimeout(TIMEOUT_RECEIVE);
+		unicastSocket.setSoTimeout(Timeout_Receive);
 		
 		groupAddress = InetAddress.getByName(multicastGroup);
 
@@ -152,7 +152,7 @@ public class UDPMulticastSocket {
 		for (int i=0; i<multicastSockets.length; i++) {
 			multicastSockets[i] = new MulticastSocket(port);
 			multicastSockets[i].joinGroup(groupAddress);
-	        multicastSockets[i].setSoTimeout(TIMEOUT_RECEIVE);
+	        multicastSockets[i].setSoTimeout(Timeout_Receive);
 	        // loopback is not needed, multicast packets seem to be received anyway
 	        /*if (loopBackToLocalhost) {
 	        	multicastSockets[i].setLoopbackMode(loopBackToLocalhost);
@@ -212,7 +212,16 @@ public class UDPMulticastSocket {
     
 	/** Leaves the multicast group on all sockets. */
 	public void dispose() {
+		stopListening();
 		for (int i=0; i<multicastSockets.length; i++) {
+			try {
+				multicastSockets[i].leaveGroup(groupAddress);
+			}
+			catch (IOException e) {
+				logger.warn("Could not properly leave multicast group " + groupAddress + 
+						" on socket bound to " + multicastSockets[i].getLocalSocketAddress() + ": "
+						+ e);
+			}
 		}
 	}
 	
