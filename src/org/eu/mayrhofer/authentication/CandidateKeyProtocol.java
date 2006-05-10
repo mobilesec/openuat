@@ -10,6 +10,7 @@ package org.eu.mayrhofer.authentication;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.apache.log4j.Logger;
@@ -27,6 +28,11 @@ import org.eu.mayrhofer.util.Hash;
  * those that they also generated locally. It should therefore be well suited
  * for resource limited devices and implicit authentication without any specifc
  * trigger.
+ * 
+ * An additional feature is that it will work with multiple hosts instead of
+ * just with one other peer. So multiple instances of the candidate key protocol
+ * can be executed concurrently with different hosts with just one instance of
+ * this class.
  * 
  * In each round, the candidate key protocol collects candidate key parts which 
  * will be assembled into a key when both hosts (or all hosts for group 
@@ -88,8 +94,6 @@ public class CandidateKeyProtocol {
 	 * part candidate. It should be sent to the remote host(s) after being generated
 	 * by generateCandidates. The combination of round and candidateNumber identifies
 	 * a candidate key part uniquely within the window of recent key parts.
-	 * @author rene
-	 *
 	 */
 	public static class CandidateKeyPartIdentifier {
 		/** A counter that is used to refer to this round. It is assumed to
@@ -107,7 +111,7 @@ public class CandidateKeyProtocol {
 	/** This is only a helper class for keeping the internal candidates history and
 	 * the list of matching key parts.
 	 */
-	private static class CandidateKeyPart implements Comparable {
+	private class CandidateKeyPart implements Comparable {
 		/** A counter that is used to refer to this round. It is assumed to
 		 * overflow, but not within the history window that each hosts keeps.
 		 */
@@ -123,8 +127,7 @@ public class CandidateKeyProtocol {
 		/** If availably, this gives an estimate of the entropy of the key part. */
 		float entropy;
 		
-		CandidateKeyPart(byte[] keyPart, int round, byte candidateNumber, float entropy, 
-				boolean useJSSE) throws InternalApplicationException {
+		CandidateKeyPart(byte[] keyPart, int round, byte candidateNumber, float entropy) throws InternalApplicationException {
 			this.keyPart = keyPart;
 			this.candidateNumber = candidateNumber;
 			this.entropy = entropy;
@@ -166,6 +169,22 @@ public class CandidateKeyProtocol {
 		 */
 		public byte[] hash;
 	}
+	
+	/** This helper class defines a list of matching key parts, and should be
+	 * specific for each remote host (or group).
+	 */
+	private class MatchingKeyParts {
+		/** The parts that matched with this remote host. */
+		CandidateKeyPart[] parts = new CandidateKeyPart[matchHistorySize];
+		/** The index where to insert the next matching key part into matchingKeyParts.
+		 * @see #matchingKeyParts
+		 */
+		int index = 0;
+		/** The time when this list of matching key parts was updated last. Used for
+		 * pruning of aged entries to keep memory consumption finite.
+		 */
+		long lastUpdate = System.currentTimeMillis();
+	}
 
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	private boolean useJSSE;
@@ -186,31 +205,65 @@ public class CandidateKeyProtocol {
 	private int recentKeyPartsIndex;
 	
 	/** This holds all key parts that have been signalled to match by the remote hosts.
-	 * It is also a circular buffer, so that a candidate key is always computed over a
+	 * Keys are just general objects to identify the remote host (or group) with which
+	 * the protocol is run. Values are of type MatchingKeyParts and are also a circular 
+	 * buffers, so that a candidate key is always computed over a
 	 * sliding window of candidate key parts. */
-	private CandidateKeyPart[] matchingKeyParts;
-	/** The index where to insert the next matching key part into matchingKeyParts.
-	 * @see #matchingKeyParts
+	private HashMap matchingKeyParts;
+	
+	/** This is used to remember how many entries to keep in the history of matching key
+	 * parts, as passed to the constructor. It's used when creating new histories for 
+	 * newly seen hosts in matchCandidates.
+	 * @see #matchCandidates
 	 */
-	private int matchingKeyPartsIndex;
+	private int matchHistorySize;
+	
+	/** The maximum age for which to keep a list of matching key parts for a remote host,
+	 * in milliseconds since "the epoch".
+	 */
+	private int maxRemoteMatchListAge;
 
 	/** Our system-wide counter. Use to generate counter values for the
 	 * candidate key parts.
 	 */
 	private static int lastRound = 0;
 	
+	/** Initializes the candidate key protocol, setting a few parameters and
+	 * creating the local candidate key parts history.
+	 * 
+	 * @param candidateHistorySize The number of locally generated candidate key parts
+	 *                             to keep in the history. This list will be used to match
+	 *                             incoming identifiers and thus serves as a time-window for
+	 *                             past matches.
+	 * @param matchHistorySize The number of matching key parts to keep for each remote host.
+	 *                         Out of this matching list, candidate keys will be generated, so
+	 *                         the larger this buffer, the more key parts will go into the keys.
+	 * @param maxRemoteMatchListAge The maximum age for which to keep a list of matching key 
+	 *                              parts for a remote host, in milliseconds since "the epoch".
+	 *                              This is used to keep the number of match histories finite,
+	 *                              by pruning lists that have not been updated since this time.
+	 * @param instanceId This parameter may be used to distinguish different instances of
+	 *                   this class running on the same machine. It will be used in logging
+	 *                   and error messages. May be set to null.
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
+	 */
 	public CandidateKeyProtocol(int candidateHistorySize, int matchHistorySize, 
-			String remoteIdentifier, boolean useJSSE) {
-		this.remoteIdentifier = remoteIdentifier;
+			int maxRemoteMatchListAge, String instanceId, boolean useJSSE) {
+		this.remoteIdentifier = instanceId;
+		this.matchHistorySize = matchHistorySize;
+		this.maxRemoteMatchListAge = maxRemoteMatchListAge;
 		this.useJSSE = useJSSE;
 		
 		this.recentKeyParts = new CandidateKeyPart[candidateHistorySize];
 		this.recentKeyPartsIndex = 0;
-		this.matchingKeyParts = new CandidateKeyPart[matchHistorySize];
-		this.matchingKeyPartsIndex = 0;
+		this.matchHistorySize = matchHistorySize;
+		this.matchingKeyParts = new HashMap();
 		logger.info("Candidate key part protocol with " + recentKeyParts.length + 
-				" key parts in history and a window of " + matchingKeyParts.length +
-				" matching key parts created" + 
+				" key parts in history and a window of " + this.matchHistorySize +
+				" matching key parts and maximum match list age of " + 
+				this.maxRemoteMatchListAge + " ms created" + 
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
@@ -256,7 +309,7 @@ public class CandidateKeyProtocol {
 			candidateKeyPartsLength = candidateKeys[i].length;
 			
 			// first add to the history
-			CandidateKeyPart p = new CandidateKeyPart(candidateKeys[i], lastRound, (byte) i, entropy, useJSSE);
+			CandidateKeyPart p = new CandidateKeyPart(candidateKeys[i], lastRound, (byte) i, entropy);
 			recentKeyParts[recentKeyPartsIndex++] = p;
 			if (recentKeyPartsIndex == recentKeyParts.length)
 				recentKeyPartsIndex = 0;
@@ -271,6 +324,12 @@ public class CandidateKeyProtocol {
 	
 	/** Match an incoming list of candidate key part identifiers with the internal
 	 * history and report and remember the candidate the matches.
+	 * @param remoteHost An identifier for the remote host that sent the candidate
+	 *                   key part identifierts. The same identifier (i.e. equal in the sense
+	 *                   of Object.equal) must be passed to subsequent calls to this
+	 *                   and other methods when dealing with the same remote host. It 
+	 *                   can e.g. be an InetAddress object, or an Integer object, 
+	 *                   defining the remote host ID. 
 	 * @param candidateIdentifiers The incoming identifiers to match against the own
 	 *                             history.
 	 * @return The index in candidateIdentifiers that points to the matching identifier,
@@ -278,7 +337,7 @@ public class CandidateKeyProtocol {
 	 *         contained in the matching candidate identifier may be sent to the remote
 	 *         host (or group), but does not have to. This depends on the application.
 	 */
-	public int matchCandidates(CandidateKeyPartIdentifier[] candidateIdentifiers) {
+	public int matchCandidates(Object remoteHost, CandidateKeyPartIdentifier[] candidateIdentifiers) {
 		if (candidateIdentifiers == null)
 			throw new IllegalArgumentException("candidateIdentifiers can not be null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -321,7 +380,7 @@ public class CandidateKeyProtocol {
 					 * the remote candidate back to the other host
 					 */
 					if (match) {
-						advanceCandidateToMatch(j);
+						advanceCandidateToMatch(remoteHost, j);
 						if (firstMatch == -1) {
 							firstMatch = i;
 							logger.debug("This is the first match, will report candidate number " + firstMatch);
@@ -337,18 +396,20 @@ public class CandidateKeyProtocol {
 	
 	/** This function just adds the local candidate key part to the match list
 	 * that has been reported as match by the remote host.
+	 * @param remoteHost An identifier for the remote host that sent the match
+	 *                   message. Refer to @see #matchCandidates for more details.
 	 * @param round The local round number in which this match occured, as received from
 	 *              the remote host.
 	 * @param candidateNumber The local counter identifiying the matching key parts, as
 	 *                        received from the remote host.
 	 */
-	public void acknowledgeMatches(int round, int candidateNumber) {
+	public void acknowledgeMatches(Object remoteHost, int round, int candidateNumber) {
 		// need to find the local index in the recent history with that round and number
 		boolean found=false;
 		for (int i=0; i<recentKeyParts.length && !found; i++)
 			if (recentKeyParts[i] != null && recentKeyParts[i].round == round && 
 					recentKeyParts[i].candidateNumber == candidateNumber) {
-				advanceCandidateToMatch(i);
+				advanceCandidateToMatch(remoteHost, i);
 				found = true;
 			}
 		if (!found)
@@ -358,27 +419,58 @@ public class CandidateKeyProtocol {
 	}
 	
 	/** This is only a small helper function to copy a CandidateKeyPart from
-	 * the recent candidate history to the matching key parts list. It makes
-	 * sure that no single candidate (identified by round and number) is added twice.
+	 * the recent candidate history to the matching key parts list. If no such
+	 * list exists for the specified remote host, it will be created beforehand. 
+	 * Before inserting new matches into the remote-specific match list, aged lists
+	 * are pruned.
+	 * This helper also makes sure that no single candidate (identified by round
+	 * and number) is added twice. 
+	 * @param remoteHost An identifier for the remote host that sent the match
+	 *                   message. Refer to @see #matchCandidates for more details.
 	 * @param candidateIndex The index of the candidate in recentKeyParts.
 	 */
-	private void advanceCandidateToMatch(int candidateIndex) {
+	private void advanceCandidateToMatch(Object remoteHost, int candidateIndex) {
+		MatchingKeyParts matchList = null;
+		if (matchingKeyParts.containsKey(remoteHost))
+			matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+		else {
+			logger.debug("Creating new match list for remote host " + remoteHost);
+			matchList = new MatchingKeyParts();
+			matchingKeyParts.put(remoteHost, matchList);
+		}
+		long curTime = System.currentTimeMillis();
+		matchList.lastUpdate = curTime;
+
+		// before inserting something new, prune matching lists that are too old
+		for (Iterator allRemoteHosts = matchingKeyParts.keySet().iterator();
+				allRemoteHosts.hasNext(); ) {
+			Object checkHost = allRemoteHosts.next();
+			long lastUpdate = ((MatchingKeyParts) matchingKeyParts.get(checkHost)).lastUpdate; 
+			if (lastUpdate + maxRemoteMatchListAge < curTime) {
+				logger.debug("Pruning match list for remote host " + checkHost + 
+						", its last update was " + lastUpdate);
+				if (matchingKeyParts.remove(checkHost) == null) 
+					logger.error("Could not purge match list for remote host " + checkHost + 
+							". This should not happen.");
+			}
+		}
+		
 		// check if it has already been inserted
 		boolean found = false;
-		for (int i=0; i<matchingKeyParts.length && !found; i++) {
-			if (matchingKeyParts[i] != null && 
-					matchingKeyParts[i].round == recentKeyParts[candidateIndex].round &&
-					matchingKeyParts[i].candidateNumber == recentKeyParts[candidateIndex].candidateNumber)
+		for (int i=0; i<matchList.parts.length && !found; i++) {
+			if (matchList.parts[i] != null && 
+					matchList.parts[i].round == recentKeyParts[candidateIndex].round &&
+					matchList.parts[i].candidateNumber == recentKeyParts[candidateIndex].candidateNumber)
 				found = true;
 		}
 		
 		if (!found) {
-			matchingKeyParts[matchingKeyPartsIndex++] = recentKeyParts[candidateIndex];
+			matchList.parts[matchList.index++] = recentKeyParts[candidateIndex];
 			logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
 					" with number " + recentKeyParts[candidateIndex].candidateNumber + " to matching status" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			if (matchingKeyPartsIndex == matchingKeyParts.length)
-				matchingKeyPartsIndex = 0;
+			if (matchList.index == matchList.parts.length)
+				matchList.index = 0;
 		}
 		else 
 			logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
@@ -387,20 +479,42 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
-	/** Returns the number of entries in the matches list. */
-	public int getNumTotalMatches() {
+	/** Returns the number of entries in the matches list. 
+	 * @param remoteHost An identifier for the remote host that sent the match
+	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @return The number of matching key parts currently available in the matching
+	 *         list for the specified remote host.
+	 */
+	public int getNumTotalMatches(Object remoteHost) {
+		if (! matchingKeyParts.containsKey(remoteHost)) {
+			logger.warn("getNumTotalMatches called for a remote host where no match list has yet been created or it has already been pruned, returning 0");
+			return 0;
+		}
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+		
 		int numMatches = 0;
-		while (numMatches < matchingKeyParts.length && matchingKeyParts[numMatches] != null)
+		while (numMatches < matchList.parts.length && matchList.parts[numMatches] != null)
 			numMatches++;
 		return numMatches;
 	}
 	
-	/** Returns the sum of all entropy values for matching key parts. */
-	public float getSumMatchEntropy() {
+	/** Returns the sum of all entropy values for matching key parts. 
+	 * @param remoteHost An identifier for the remote host that sent the match
+	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @return The entropy of all matching key parts currently available in the matching
+	 *         list for the specified remote host.
+	 */
+	public float getSumMatchEntropy(Object remoteHost) {
+		if (! matchingKeyParts.containsKey(remoteHost)) {
+			logger.warn("getSumMatchEntropy called for a remote host where no match list has yet been created or it has already been pruned, returning 0");
+			return 0;
+		}
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+
 		float sum = 0;
-		for (int i=0; i<matchingKeyParts.length; i++)
-			if (matchingKeyParts[i] != null)
-				sum += matchingKeyParts[i].entropy;
+		for (int i=0; i<matchList.parts.length; i++)
+			if (matchList.parts[i] != null)
+				sum += matchList.parts[i].entropy;
 		return sum;
 	}
 	
@@ -409,12 +523,22 @@ public class CandidateKeyProtocol {
 	 * list for the same round number, only the first one is taken for this round. 
 	 * This should only happen in a symmetric setting where both hosts report 
 	 * matches, which can lead to double insertion due to differences in timing.
+	 * @param remoteHost An identifier for the remote host that sent the match
+	 *                   message. Refer to @see #matchCandidates for more details.
 	 * @return The candidate for which the hash and numParts should be broadcast.
+	 *         Returns null if no match list has yet been created for the specified
+	 *         remoteHost, either because not matches have yet been received with 
+	 *         this host or because it has been pruned due to aging.
 	 * @throws InternalApplicationException 
 	 */
-	public CandidateKey generateKey() throws InternalApplicationException {
+	public CandidateKey generateKey(Object remoteHost) throws InternalApplicationException {
+		if (! matchingKeyParts.containsKey(remoteHost)) {
+			logger.warn("generateKey called for a remote host where no match list has yet been created or it has already been pruned, returning null");
+			return null;
+		}
+
 		// assemble the key for all available parts
-		Object[] keyRet = assembleKeyFromMatches(0, -1, false);
+		Object[] keyRet = assembleKeyFromMatches(remoteHost, 0, -1, false);
 		byte[] keyParts = ((byte[][]) keyRet[0])[0];
 		int numCopied = ((Integer) keyRet[1]).intValue();
 		return generateKey(keyParts, numCopied);
@@ -425,6 +549,8 @@ public class CandidateKeyProtocol {
 	 * a sliding window of numParts over the local list of matching key parts
 	 * and, if multiple candidates match for the same round, tries all possible
 	 * combinations of these candidates. This can be an expensive operation.
+	 * @param remoteHost An identifier for the remote host that sent the match
+	 *                   message. Refer to @see #matchCandidates for more details.
 	 * @param hash The hash received from the remote host.
 	 * @param numParts The number of key parts that the key is composed of, as
 	 *                 reported by the remote host. <b>Note:</b> This parameter is
@@ -434,23 +560,32 @@ public class CandidateKeyProtocol {
 	 *                 key.
 	 * @return The key matching the hash, or null when same hash could not be
 	 *         generated a combination of parts in matchingKeyParts 
+	 *         Returns null if no match list has yet been created for the specified
+	 *         remoteHost, either because not matches have yet been received with 
+	 *         this host or because it has been pruned due to aging.
 	 * @throws InternalApplicationException */
-	public CandidateKey searchKey(byte[] hash, int numParts) throws InternalApplicationException {
+	public CandidateKey searchKey(Object remoteHost, byte[] hash, int numParts) throws InternalApplicationException {
 		if (hash == null)
 			throw new IllegalArgumentException("hash must be set");
-		if (numParts > matchingKeyParts.length) {
+		if (! matchingKeyParts.containsKey(remoteHost)) {
+			logger.warn("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null");
+			return null;
+		}
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+		if (numParts > matchList.parts.length) {
 			logger.error("Received candidate key has been created of more key parts than " + 
 					"there are in the local list of matching key parts. Can not possibly find " +
 					"a matching key. Giving up." +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
+
 		
 		// TODO: the candidate searching would not be necessary if we could be sure that there would be only
 		// one match for each round. that could make it faster
 
-		for (int offset=0; offset < matchingKeyParts.length-numParts; offset++) {
-			Object[] keyRet = assembleKeyFromMatches(offset, numParts, true);
+		for (int offset=0; offset < matchList.parts.length-numParts; offset++) {
+			Object[] keyRet = assembleKeyFromMatches(remoteHost, offset, numParts, true);
 			if (keyRet == null) {
 				/* if not enough key parts could be found for this offset, it will not be possible
 				   for larger ones */
@@ -493,10 +628,14 @@ public class CandidateKeyProtocol {
 	 * one element if extractAllCombinations is set to false), and an Integer specifying how
 	 * many parts have been copied (guaranteed to be equal to numParts if not -1).
 	 */
-	private Object[] assembleKeyFromMatches(int offset, int numParts, boolean extractAllCombinations) {
+	private Object[] assembleKeyFromMatches(Object remoteHost, int offset, int numParts, boolean extractAllCombinations) {
+		if (! matchingKeyParts.containsKey(remoteHost))
+			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!");
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+
 		/* TODO: this is not optimal, maybe use a second list with the remote-reported
 		   rounds and candidate numbers to get rid of possible double insertions */
-		CandidateKeyPart[] initialCombination = new CandidateKeyPart[matchingKeyParts.length];
+		CandidateKeyPart[] initialCombination = new CandidateKeyPart[matchList.parts.length];
 		/* if all combinations should be generated, this holds the indices of all
 		   candidates in matchingKeyParts that have _not_ been copied into tmp for each round */
 		HashMap duplicateRounds = null;
@@ -505,16 +644,16 @@ public class CandidateKeyProtocol {
 		/* copy all rounds to the temporary array to sort them, but make sure
 		   that each round is represented by one candidate */
 		int numCopied=0, keyPartsLength=0;
-		for (int i=offset; i<matchingKeyParts.length; i++) {
-			if (matchingKeyParts[i] != null) {
+		for (int i=offset; i<matchList.parts.length; i++) {
+			if (matchList.parts[i] != null) {
 				boolean alreadyCopied = false;
 				for (int j=0; j<numCopied; j++) {
-					if (matchingKeyParts[i].round == initialCombination[j].round) {
+					if (matchList.parts[i].round == initialCombination[j].round) {
 						alreadyCopied = true;
 						if (!extractAllCombinations) {
 							logger.warn("Round " + initialCombination[j].round + " has two matching candidates: " +
 									initialCombination[j].candidateNumber + " and " + 
-									matchingKeyParts[i].candidateNumber + ", skipping latter" +
+									matchList.parts[i].candidateNumber + ", skipping latter" +
 									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						} 
 						else {
@@ -529,7 +668,7 @@ public class CandidateKeyProtocol {
 								// already detected another duplicate, so just amend the list
 								alternatives = (LinkedList) duplicateRounds.get(round);
 							}
-							logger.debug("Adding candidate number " + matchingKeyParts[i].candidateNumber + 
+							logger.debug("Adding candidate number " + matchList.parts[i].candidateNumber + 
 									" as duplicate to round " + round +
 									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							// only remember the index in matchingKeyParts, that's all we need
@@ -538,8 +677,8 @@ public class CandidateKeyProtocol {
 					}
 				}
 				if (!alreadyCopied) {
-					initialCombination[numCopied++] = matchingKeyParts[i];
-					keyPartsLength += matchingKeyParts[i].keyPart.length;
+					initialCombination[numCopied++] = matchList.parts[i];
+					keyPartsLength += matchList.parts[i].keyPart.length;
 				}
 			}
 		}
@@ -595,7 +734,7 @@ public class CandidateKeyProtocol {
 					CandidateKeyPart[] alternatives = new CandidateKeyPart[alternativeIndices.size()+1];
 					alternatives[0] = allCombinations[0][i];
 					for (int k=1; k<alternatives.length; k++)
-						alternatives[k] = matchingKeyParts[((Integer) alternativeIndices.get(k-1)).intValue()];
+						alternatives[k] = matchList.parts[((Integer) alternativeIndices.get(k-1)).intValue()];
 					logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					/** This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
