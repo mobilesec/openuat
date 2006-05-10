@@ -9,8 +9,10 @@
 package org.eu.mayrhofer.authentication.accelerometer;
 
 import java.io.IOException;
+import java.net.InetAddress;
 
 import org.apache.log4j.Logger;
+import org.eu.mayrhofer.authentication.CKPoverUDP;
 import org.eu.mayrhofer.authentication.CandidateKeyProtocol;
 import org.eu.mayrhofer.authentication.MessageListener;
 import org.eu.mayrhofer.authentication.UDPMulticastSocket;
@@ -34,12 +36,15 @@ public class MotionAuthenticationProtocol2 extends CKPoverUDP implements Segment
 
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
+	 * @param minMatchingParts
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 * @throws IOException 
 	 */
-	public MotionAuthenticationProtocol2(boolean useJSSE) throws IOException {
+	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE) throws IOException {
+		// TODO: set minimum entropy
+		super(UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
 	}
 
 	/** The implementation of SegmentsSink.addSegment. It will be called whenever
@@ -51,5 +56,21 @@ public class MotionAuthenticationProtocol2 extends CKPoverUDP implements Segment
 	 */
 	public void addSegment(double[] segment, int startIndex) {
 		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
+	}
+
+	protected void protocolSucceededHook(InetAddress remote, 
+			Object optionalRemoteId, String optionalParameterFromRemote, 
+			byte[] sharedSessionKey) {
+		
+	}
+
+	protected void protocolFailedHook(InetAddress remote, 
+			Object optionalRemoteId, Exception e, String message) {
+		
+	}
+
+	protected void protocolProgressHook(InetAddress remote, 
+			Object optionalRemoteId, int cur, int max, String message) {
+		
 	}
 }
