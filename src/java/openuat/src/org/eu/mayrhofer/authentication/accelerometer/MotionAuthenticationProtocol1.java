@@ -22,7 +22,12 @@ import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.SegmentsSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 
-/** This is the first variant of the motion authentication protocol.
+/** This is the first variant of the motion authentication protocol. It
+ * uses Diffie-Hellman key agreement with verification that the shared keys
+ * are equal on both hosts by sending the full time series segment through
+ * interlock, encrypted with the shared key. THen both hosts compute the
+ * coherence between the received time series segment and their own and continue
+ * when it exceeds a threshold. 
  * 
  * @author Rene Mayrhofer
  * @version 1.0
