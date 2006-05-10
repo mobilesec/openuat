@@ -181,7 +181,7 @@ public class CandidateKeyProtocol {
 	 */
 	private CandidateKeyPart[] recentKeyParts;
 	/** The index where to insert the next candidate key part into recentKeyParts.
-	 * @see #recentKeyParts.
+	 * @see #recentKeyParts
 	 */
 	private int recentKeyPartsIndex;
 	
@@ -190,7 +190,7 @@ public class CandidateKeyProtocol {
 	 * sliding window of candidate key parts. */
 	private CandidateKeyPart[] matchingKeyParts;
 	/** The index where to insert the next matching key part into matchingKeyParts.
-	 * @see #matchingKeyParts.
+	 * @see #matchingKeyParts
 	 */
 	private int matchingKeyPartsIndex;
 
@@ -222,7 +222,7 @@ public class CandidateKeyProtocol {
 	 *         (or group). It will have the same number of elements as the input
 	 *         list of key parts. 
 	 * @throws InternalApplicationException 
-	 * @see #recentKeyParts;
+	 * @see #recentKeyParts
 	 */
 	public CandidateKeyPartIdentifier[] generateCandidates(byte[][] candidateKeys, float entropy) throws InternalApplicationException {
 		if (candidateKeys == null)
@@ -337,8 +337,10 @@ public class CandidateKeyProtocol {
 	
 	/** This function just adds the local candidate key part to the match list
 	 * that has been reported as match by the remote host.
-	 * @param matches The local counter identifiying the matching key parts, as
-	 *                received from the remote host.
+	 * @param round The local round number in which this match occured, as received from
+	 *              the remote host.
+	 * @param candidateNumber The local counter identifiying the matching key parts, as
+	 *                        received from the remote host.
 	 */
 	public void acknowledgeMatches(int round, int candidateNumber) {
 		// need to find the local index in the recent history with that round and number

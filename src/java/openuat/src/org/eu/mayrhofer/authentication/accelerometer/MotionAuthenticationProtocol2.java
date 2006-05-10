@@ -23,7 +23,7 @@ import org.eu.mayrhofer.sensors.SegmentsSink;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol2 implements SegmentsSink, MessageListener  {
+public class MotionAuthenticationProtocol2 extends CKPoverUDP implements SegmentsSink  {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol2.class);
 
@@ -32,10 +32,6 @@ public class MotionAuthenticationProtocol2 implements SegmentsSink, MessageListe
 	
 	public static final String MulticastGroup = "228.10.10.1";
 
-	private UDPMulticastSocket channel;
-	
-	private CandidateKeyProtocol ckp;
-	
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
@@ -44,8 +40,6 @@ public class MotionAuthenticationProtocol2 implements SegmentsSink, MessageListe
 	 * @throws IOException 
 	 */
 	public MotionAuthenticationProtocol2(boolean useJSSE) throws IOException {
-		channel = new UDPMulticastSocket(UdpPort, MulticastGroup);
-		ckp = new CandidateKeyProtocol(64, 32, null, useJSSE);
 	}
 
 	/** The implementation of SegmentsSink.addSegment. It will be called whenever
@@ -57,9 +51,5 @@ public class MotionAuthenticationProtocol2 implements SegmentsSink, MessageListe
 	 */
 	public void addSegment(double[] segment, int startIndex) {
 		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
-	}
-
-	public void handleMessage(byte[] message, int offset, int length, Object sender) {
-		
 	}
 }
