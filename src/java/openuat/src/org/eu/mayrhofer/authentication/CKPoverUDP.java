@@ -10,9 +10,12 @@ package org.eu.mayrhofer.authentication;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.StringTokenizer;
 
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.eu.mayrhofer.authentication.CandidateKeyProtocol.CandidateKey;
 import org.eu.mayrhofer.authentication.CandidateKeyProtocol.CandidateKeyPartIdentifier;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 
@@ -243,18 +246,54 @@ public abstract class CKPoverUDP extends AuthenticationEventSender {
 			String pack = new String(packet);
 			logger.debug("Received UDP packet with  " + pack.length() + " bytes from " + sender);
 			try {
+				// this handles the different packet types
 				if (pack.startsWith(Protocol_CandidateKeyPart)) {
+					// for a candidate key part package, try to match all of the candidates and
+					// optionally send back the matching number
 					int off = pack.indexOf(' ', Protocol_CandidateKeyPart.length());
 					int round = Integer.parseInt(pack.substring(Protocol_CandidateKeyPart.length(), off));
-					logger.debug("Received packet with candidate key parts for round " + round);
+					StringTokenizer st = new StringTokenizer(pack.substring(off));
+					CandidateKeyPartIdentifier[] keyParts = new CandidateKeyPartIdentifier[st.countTokens()]; 
+					logger.debug("Received packet with " + keyParts.length + " candidate key parts for round " + round);
+					for (int i=0; i<keyParts.length; i++) {
+						keyParts[i] = new CandidateKeyPartIdentifier();
+						keyParts[i].hash = Hex.decodeHex(st.nextToken().toCharArray());
+						keyParts[i].round = round;
+					}
+					int match = ckp.matchCandidates(sender, keyParts);
+					if (match > -1) {
+						// yes, we have a match, optionally flag that
+						logger.debug("Number " + match + " of these candidate key parts matches");
+						if (sendAcknowledgments) {
+							String ackPacket = Protocol_CandidateMatch + round + " " + match;
+							channel.sendTo(ackPacket.getBytes(), (InetAddress) sender);
+						}
+						
+						/* Since a new match was now added the the local match list, check 
+						 * if there are enough to create a candidate key.
+						 */ 
+						checkForKeyGeneration((InetAddress) sender);
+					}
 				}
 				else if (pack.startsWith(Protocol_CandidateMatch)) {
+					// for an incoming match, just add them
 					int off = pack.indexOf(' ', Protocol_CandidateMatch.length());
 					int round = Integer.parseInt(pack.substring(Protocol_CandidateMatch.length(), off));
-					logger.debug("Received packet with matching indices for round " + round);
+					int match = Integer.parseInt(pack.substring(off));
+					logger.debug("Received packet with matching index " + match + " for round " + round);
+					ckp.acknowledgeMatches(sender, round, match);
+
+					/* Since a new match was now added the the local match list, check 
+					 * if there are enough to create a candidate key.
+					 */ 
+					checkForKeyGeneration((InetAddress) sender);
 				}
 				else if (pack.startsWith(Protocol_CandidateKey)) {
-					logger.debug("Received candidate key");
+					int off = pack.indexOf(' ', Protocol_CandidateKey.length());
+					int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
+					logger.debug("Received candidate key composed of " + numParts + " parts");
+					byte[] candKeyHash = Hex.decodeHex(pack.substring(off).toCharArray());
+					CandidateKey key = ckp.searchKey(sender, candKeyHash, numParts);
 				}
 				else if (pack.startsWith(Protocol_KeyAcknowledge)) {
 					logger.debug("Received key acknowledge");
@@ -268,6 +307,34 @@ public abstract class CKPoverUDP extends AuthenticationEventSender {
 			}
 			catch (NumberFormatException e) {
 				logger.error("Can not decode number, ignoring whole packet");
+			} catch (DecoderException e) {
+				logger.error("Can not decode hash, ignoring whole packet");
+			} catch (IOException e) {
+				logger.error("Can not send packet");
+			} catch (InternalApplicationException e) {
+				logger.error("Could not search for matching key");
+			}
+		}
+		
+		/** This helper function checks if a key can already be generated and sends it
+		 * to the remote host, if yes.
+		 */
+		private void checkForKeyGeneration(InetAddress remoteHost) {
+			if (ckp.getNumTotalMatches(remoteHost) >= minMatchingParts &&
+					ckp.getSumMatchEntropy(remoteHost) >= minMatchingEntropy) {
+				logger.info("Received enough matches to generate candidate keys");
+				try {
+					CandidateKey candKey = ckp.generateKey(remoteHost);
+					
+					String candKeyPacket = Protocol_CandidateKey + candKey.numParts +
+						new String(Hex.encodeHex(candKey.hash));
+					channel.sendTo(candKeyPacket.getBytes(), remoteHost);
+				}
+				catch (InternalApplicationException e) {
+					logger.error("Could not generate key: " + e);
+				} catch (IOException e) {
+					logger.debug("Can not send candidate key packet: " + e);
+				}
 			}
 		}
 	}
