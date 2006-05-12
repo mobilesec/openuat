@@ -14,7 +14,6 @@
     <property name="build" location="build"/>
     <property name="bin" location="${build}/bin"/>
     <property name="lib" location="lib"/>
-    <property name="lib-include_in_bundle" value="log4j-1.2.jar kxml2-2.2.2.jar"/>
     <property name="relate-lib" location="../relate/lib"/>
     <property name="nativelib" location="nativelib"/>
     <property name="dist" location="dist"/>
@@ -69,9 +68,10 @@
     </fileset>
     <!-- the list of jar files to include in the distbundle -->
     <fileset id="lib.bundleinclude-jars" dir="${lib}">
-        <include name="${lib-include_in_bundle}"/>
+	    <include name="log4j-1.2.jar"/>
+	    <include name="kxml2-2.2.2.jar"/>
     </fileset>
-
+    
     <!-- these can be used in a refid for classpaths -->
     <path id="lib.path.jars">
         <fileset refid="lib.alljars"/>
