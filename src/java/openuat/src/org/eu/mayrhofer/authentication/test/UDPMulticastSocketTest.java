@@ -34,7 +34,7 @@ public class UDPMulticastSocketTest extends TestCase {
 	private UDPMulticastSocket s;
 	
 	public void setUp() throws IOException {
-		s = new UDPMulticastSocket(Port, "230.0.0.1");
+		s = new UDPMulticastSocket(Port, Port, "230.0.0.1");
 	}
 	
 	public void tearDown() {
@@ -98,12 +98,12 @@ public class UDPMulticastSocketTest extends TestCase {
 		
 		s.sendMulticast(msg1);
 		Thread.sleep(100);
-		Assert.assertEquals(2, r.numReceived);
+		Assert.assertEquals(1, r.numReceived);
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(msg1, r.lastMessage));
 
 		s.sendMulticast(msg2);
 		Thread.sleep(100);
-		Assert.assertEquals(4, r.numReceived);
+		Assert.assertEquals(2, r.numReceived);
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(msg2, r.lastMessage));
 		
 		s.stopListening();

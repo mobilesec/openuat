@@ -44,7 +44,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	 */
 	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE) throws IOException {
 		// TODO: set minimum entropy
-		super(UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
+		super(UdpPort, UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
 	}
 
 	/** The implementation of SegmentsSink.addSegment. It will be called whenever
