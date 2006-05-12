@@ -200,7 +200,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 			logger.warn("Tried to start authentication with host " + remoteHost + 
 					" while another authentication protocol run is still active. Not starting authentication and " +
 					" returning false." + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
 		}
 		
@@ -245,7 +245,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		// and finally reset the state
 		state = STATE_IDLE;
 		logger.debug("Reset object to idle set" + 
-				(instanceId != null ? " [instance " + instanceId : ""));
+				(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
@@ -268,6 +268,9 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		// also allow derived classes to do special failure handling
 		protocolFailedHook(remote, optionalRemoteId, e, message);
 		
+		// no need to keep the socket around in any case - close it properly
+		closeSocket();
+		
 		reset();
 	}
 
@@ -281,11 +284,11 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     		// this enables auto-flush
     		PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
 	    	logger.debug("Sending status to remote: '" + reportToRemote + "'" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		toRemote.println(reportToRemote);
     		toRemote.flush();
     		logger.debug("Status sent, waiting for status from remote" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			/* do not use a BufferedReader here because that would potentially mess up
 			 * the stream for other users of the socket (by consuming too many bytes)
 			 */
@@ -298,25 +301,26 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     				remoteStatus += (char) ch;
    				ch = fromRemote.read();
     		}
-	    	logger.debug("Received remote status: '" + remoteStatus + "'" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
-    		if (remoteStatus == null) {
+	    	logger.debug("Received remote status: '" + remoteStatus + "', exited with " + 
+	    			(ch == -1 ? "end of stream" : "new line") +
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+    		if (remoteStatus.length() == 0) {
     			logger.error("Could not get status message from remote host" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId,
     					null, "Could not get status message from remote host" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+    			return null;
     		}
-    		return remoteStatus;
+    		else
+    			return remoteStatus;
         }
         catch (IOException e) {
         	logger.error("Could not report success to remote host or get status message from remote host: " + e + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, 
         			e, "Could not report success to remote host or get status message from remote host" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
-        	// don't forget to close our side of the socket properly, even if communication failed already
-        	closeSocket();
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	return null;
         }
 	}
@@ -324,11 +328,15 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	/** Just a small helper to ignore an IOException when closing the socket (we are finished anyway). */
 	private void closeSocket() {
 		try {
-			socketToRemote.close();
+			if (socketToRemote != null)
+				socketToRemote.close();
+			else
+				logger.error("socketToRemote is null, but shouldn't be" + 
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		}
 		catch (IOException e) {
 			logger.error("Could not close socket to remote host properly, but ignoring it: " + e + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		}
 	}
 
@@ -349,10 +357,10 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     			(optionalParameterToRemote != null ? optionalParameterToRemote : ""), 
     			optionalRemoteId);
 		
-    	if (remoteStatus != null) {
+    	if (remoteStatus != null && remoteStatus.length() > 0) {
     		if (remoteStatus.startsWith(Protocol_Success)) {
     			logger.info("Received success status from remote host" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
 		        state = STATE_SUCCEEDED;
 		        /* for sending the success events, first figure out both aspects of the remote host
@@ -378,21 +386,23 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 				// if the socket is not going to be re-used, don't forget to close it properly
 				if (!keepSocketConnected)
 					closeSocket();
+
+				// and finally reset (in failure cases, the authenticationFailed helper will call reset)
+		        reset();
     		}
     		else if (remoteStatus.startsWith(Protocol_Failure)) {
     			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, null, "Received authentication failure status from remote host" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
-    			// no need to keep the socket around in any case - close it properly
-    			closeSocket();
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else {
     			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+    			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, null, "Unkown status from remote host (was '" + remoteStatus + "')" + 
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
-        reset();
 	}
 	
 	/** This method should be called by derived classes after key verification has
@@ -416,17 +426,15 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     	if (remoteStatus != null) {
     		if (remoteStatus.startsWith(Protocol_Success)) {
     			logger.info("Received success status from remote host after reporting local failure" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		} else if (remoteStatus.startsWith(Protocol_Failure)) { 
     			logger.info("Received failure status from remote host to match local failure."
     					+ "Good that we agreed." + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		} else {
     			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
-    					(instanceId != null ? " [instance " + instanceId : ""));
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		}
-			// no need to keep the socket around in any case - close it properly
-    		closeSocket();
 
     		authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, e, msg);
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
@@ -445,7 +453,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		}
 		else
 			logger.error("Could not start authentication server because one is already running." + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
 	
 	/** This is a helper function to stop the "server" part of the authentication protocol.
@@ -462,7 +470,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		}
 		else
 			logger.error("Could not stop authentication server because none is running." + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
 	
 
@@ -477,19 +485,19 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    {
 	    	if (isIdle()) {
 	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
-						(instanceId != null ? " [instance " + instanceId : ""));
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
 	    		logger.error("Received host authentication success event with remote host " + remote + 
 	    				" while not expecting one! This event will be ignored." + 
-						(instanceId != null ? " [instance " + instanceId : ""));
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return;
 	    	}
 			
 	    	InetAddress remoteHost = (InetAddress) remote;
 	        logger.info("Received host authentication success event with " + remoteHost + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        Object[] res = (Object[]) result;
 	        // remember the secret key shared with the other device
 	        sharedKey = (byte[]) res[0];
@@ -499,7 +507,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	        		"' with length " + sharedKey.length + 
 	        		", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
 	        		"' with length " + authKey.length + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // then extraxt the optional parameter
 	        String param = (String) res[2];
 	        /* TODO: this could need some error handling, but at the moment we depend on it being set
@@ -516,19 +524,19 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    {
 	    	if (isIdle()) {
 	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
-						(instanceId != null ? " [instance " + instanceId : ""));
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	InetAddress remoteHost = (InetAddress) remote;
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
 	    		logger.error("Received host authentication failure event with remote host " + remoteHost + 
 	    				" while not expecting one! This event will be ignored." + 
-						(instanceId != null ? " [instance " + instanceId : ""));
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return;
 	    	}
 			
 	        logger.info("Received host authentication failure with " + remote + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        if (e != null)
 	            logger.info("Exception: " + e);
 	        if (msg != null)
@@ -541,18 +549,18 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    {
 	    	if (isIdle()) {
 	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
-						(instanceId != null ? " [instance " + instanceId : ""));
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
 	    		logger.error("Received host authentication progress event with remote host " + remote + 
 	    				" while not expecting one! This event will be ignored." + 
-						(instanceId != null ? " [instance " + instanceId : ""));
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return;
 	    	}
 			
 	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
-					(instanceId != null ? " [instance " + instanceId : ""));
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this is not optional because we don't know the number of rounds to use yet
 	        raiseAuthenticationProgressEvent(remote, cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages,
