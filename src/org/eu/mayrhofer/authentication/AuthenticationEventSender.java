@@ -48,8 +48,13 @@ public abstract class AuthenticationEventSender {
     				h.AuthenticationSuccess(this, remote, result);
     			}
     			catch (Exception e) {
+    				String stackTrace = "";
+    				if (logger.isDebugEnabled()) {
+    					for (int j=0; j<e.getStackTrace().length; j++)
+    						stackTrace += e.getStackTrace()[j].toString() + "\n";
+    				}
     				logger.error("Authentication success handler '" + h + 
-    						"' caused exception '" + e + "', ignoring it here");
+    						"' caused exception '" + e + "\n" + stackTrace + "', ignoring it here");
     			}
     		}
     }
@@ -63,8 +68,13 @@ public abstract class AuthenticationEventSender {
     				h.AuthenticationFailure(this, remote, e, msg);
     			}
     			catch (Exception ee) {
+    				String stackTrace = "";
+    				if (logger.isDebugEnabled()) {
+    					for (int j=0; j<ee.getStackTrace().length; j++)
+    						stackTrace += ee.getStackTrace()[j].toString() + "\n";
+    				}
     				logger.error("Authentication failure handler '" + h + 
-    						"' caused exception '" + ee + "', ignoring it here");
+    						"' caused exception '" + ee + "\n" + stackTrace + "', ignoring it here");
     			}
     		}
     }
@@ -78,8 +88,13 @@ public abstract class AuthenticationEventSender {
     				h.AuthenticationProgress(this, remote, cur, max, msg);
     			}
     			catch (Exception e) {
+    				String stackTrace = "";
+    				if (logger.isDebugEnabled()) {
+    					for (int j=0; j<e.getStackTrace().length; j++)
+    						stackTrace += e.getStackTrace()[j].toString() + "\n";
+    				}
     				logger.error("Authentication progress handler '" + h + 
-    						"' caused exception '" + e + "', ignoring it here");
+    						"' caused exception '" + e + "\n" + stackTrace + "', ignoring it here");
     			}
     		}
     }
