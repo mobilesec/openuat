@@ -181,7 +181,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	
 	/** Construct the object by initializing basic variables.
 	 * 
-	 * @param udpPort The UDP port to use for listening and for connecting to remote hosts.
+	 * @param udpReceivePort The UDP port to use for listening to packets.
+	 * @param udpSendPort The UDP target port to send packets to. Will usually be the same as the
+	 *                    udpReceivePort.
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
@@ -210,7 +212,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 *                           before a key will be generated.
 	 * @throws IOException 
 	 */
-	protected CKPOverUDP(int udpPort, String multicastGroup, String instanceId, 
+	protected CKPOverUDP(int udpReceivePort, int udpSendPort, String multicastGroup, String instanceId, 
 			boolean broadcastCandidates, boolean sendMatches, 
 			int minMatchingParts, int minMatchingEntropy, boolean useJSSE) throws IOException {
 		this.useJSSE = useJSSE;
@@ -220,7 +222,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		this.minMatchingParts = minMatchingParts;
 		this.minMatchingEntropy = minMatchingEntropy;
 
-		channel = new UDPMulticastSocket(udpPort, multicastGroup);
+		channel = new UDPMulticastSocket(udpReceivePort, udpSendPort, multicastGroup);
 		channel.addIncomingMessageListener(new UDPMessageHandler());
 		// channel.dispose() takes care of calling stopListening();
 		channel.startListening();
@@ -241,12 +243,14 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 * candidate key parts
 		 */
 		if (broadcastCandidates) {
+			logger.debug("Broadcasting " + candidateKeyParts.length + " candidate key parts" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			byte[] buffer = new byte[Maximum_Udp_Data_Size];
 			int outIndex = 0;
 			for (int i=0; i<candidateKeyParts.length; i++) {
-				if (buffer == null || outIndex+candidateKeyParts[i].hash.length*2+1 >= Maximum_Udp_Data_Size) {
+				if (outIndex == 0 || outIndex+candidateKeyParts[i].hash.length*2+1 >= Maximum_Udp_Data_Size) {
 					// send the old packet and construct a new one
-					if (buffer != null) {
+					if (outIndex > 0) {
 						logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						byte[] packet = new byte[outIndex];
@@ -267,7 +271,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				System.arraycopy(cand.getBytes(), 0, buffer, outIndex, cand.length());
 				outIndex += cand.length();
 			}
-			if (buffer != null) {
+			if (outIndex > 0) {
 				logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				byte[] packet = new byte[outIndex];
@@ -370,7 +374,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int off = pack.indexOf(' ', Protocol_CandidateKey.length());
 						int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
 						logger.debug("Received candidate key composed of " + numParts + " parts");
-						byte[] candKeyHash = Hex.decodeHex(pack.substring(off).toCharArray());
+						byte[] candKeyHash = Hex.decodeHex(pack.substring(off, pack.length()).toCharArray());
 						CandidateKey candKey = ckp.searchKey(sender, candKeyHash, numParts);
 					
 						if (candKey != null) {
@@ -392,7 +396,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						}
 					}
 					else if (pack.startsWith(Protocol_KeyAcknowledge)) {
-						byte[] ackHash = Hex.decodeHex(pack.substring(Protocol_KeyAcknowledge.length()).toCharArray());
+						byte[] ackHash = Hex.decodeHex(pack.substring(Protocol_KeyAcknowledge.length()-1).toCharArray());
 						logger.debug("Received key acknowledge with hash " + new String(Hex.encodeHex(ackHash)) + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						authenticationSucceededStage2((InetAddress) sender, ackHash);
@@ -405,7 +409,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								"Received termination message from remote host");
 					}
 					else {
-						logger.error("Received unknown packet type, ignoring it" + 
+						logger.error("Received unknown packet type '" + pack + "', ignoring it" + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
 				}
@@ -614,8 +618,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						generatedKeys.put(remoteHost, genList);
 					}
 					genList.list[genList.index++] = candKey;
+					if (genList.index == genList.list.length)
+						genList.index = 0;
 					
-					String candKeyPacket = Protocol_CandidateKey + candKey.numParts +
+					String candKeyPacket = Protocol_CandidateKey + candKey.numParts + " " +
 						new String(Hex.encodeHex(candKey.hash));
 					channel.sendTo(candKeyPacket.getBytes(), remoteHost);
 				}

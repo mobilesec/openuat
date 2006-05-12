@@ -390,7 +390,8 @@ public class CandidateKeyProtocol {
 			}
 		}
 
-		logger.info("No match found, not reporting to remote host");
+		if (firstMatch == -1)
+			logger.info("No match found, not reporting to remote host");
 		return firstMatch;
 	}
 	
