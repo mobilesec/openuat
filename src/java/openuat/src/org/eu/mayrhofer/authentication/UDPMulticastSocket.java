@@ -13,11 +13,13 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketTimeoutException;
 import java.util.BitSet;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -47,12 +49,17 @@ public class UDPMulticastSocket {
 	private final static int Timeout_Receive = 500;
 
     /** Holds one socket for each network address in the system. With these sockets, 
-     * both unicast and multicast packets are received, and multicast packets are sent
-     * for the respective interfaces that the sockets are bound to. 
+     * multicast packets are sent for the respective interfaces that the sockets are bound to. 
+     * These sockets are bound to a specific address, but to some random port.
      * @see #sendMulticast(byte[])
-     * @see RunHelper#run()
      */
-	private MulticastSocket[] multicastSockets;
+	private MulticastSocket[] multicastSendSockets;
+	
+	/** With this socker, both unicast and multicast packets are received.
+	 * This socket is bound to the receive port.
+     * @see RunHelper#run()
+	 */ 
+	private MulticastSocket multicastReceiveSocket;
 	
 	/** This bit set marks those elements in multicastSockets where the underlying address
 	 * (to which the socket is bound) is an IP alias. The first address that is reported
@@ -68,12 +75,16 @@ public class UDPMulticastSocket {
 	private BitSet addressIsAlias = new BitSet();
 	
 	/** This single socket is used to send unicast packets, using the system routing table.
+	 * This socket is not bound at all.
 	 * @see #sendTo(byte[], InetAddress) 
 	 */
-	private DatagramSocket unicastSocket;
+	private DatagramSocket unicastSendSocket;
 	
-	/** The port number used for all packets. It's the one passed to the constructor. */
-	private int port;
+	/** The port number used for sending packets. It's the one passed to the constructor. */
+	private int sendPort;
+
+	/** The port number used for receiving packets. It's the one passed to the constructor. */
+	private int receivePort;
 	
 	/** The multicast group address to send to when sending multicast packets. */
 	private InetAddress groupAddress;
@@ -81,16 +92,15 @@ public class UDPMulticastSocket {
 	/** The list of listeners that are notified of incoming messages. */
     private LinkedList messageHandlers = new LinkedList();
 
-    /** One thread for each MulticastSocket to receive packets. Each thread will
-     * continuously call receive() on the socket and forward all packets to all
-     * registered listeners.
+    /** The thread to receive packets. It will continuously call receive() on the socket 
+     * and forward all packets to all registered listeners.
      * @see #startListening()
      * @see #stopListening()
      * @see #shouldExit 
      */
-    private Thread[] listenerThreads = null;
+    private Thread listenerThread = null;
     
-    /** Set to true to signal the listener threads to exit. 
+    /** Set to true to signal the listener thread to exit. 
      * @see #stopListening() 
      */
     private boolean shouldExit = false;
@@ -100,15 +110,20 @@ public class UDPMulticastSocket {
      * @param port The UDP port to use for communication.
      * @param multicastGroup The multicast group to use.
      */
-	public UDPMulticastSocket(int port, String multicastGroup) throws IOException {
-		this.port = port;
+	public UDPMulticastSocket(int receivePort, int sendPort, String multicastGroup) throws IOException {
+		this.receivePort = receivePort;
+		this.sendPort = sendPort;
 		
-		unicastSocket = new DatagramSocket();
+		unicastSendSocket = new DatagramSocket();
 		// receive should actually never be called on this socket, but set it so that it won't be infinite in any case
-		unicastSocket.setSoTimeout(Timeout_Receive);
-		
+		unicastSendSocket.setSoTimeout(Timeout_Receive);
+
 		groupAddress = InetAddress.getByName(multicastGroup);
 
+		multicastReceiveSocket = new MulticastSocket(this.receivePort) ;
+		multicastReceiveSocket.joinGroup(groupAddress);
+		multicastReceiveSocket.setSoTimeout(Timeout_Receive);
+		
 		// create one multicast socket for each address
 		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
 		LinkedList allAddrs = new LinkedList();
@@ -146,19 +161,22 @@ public class UDPMulticastSocket {
 			}
 		}
 		// start the responders
-		logger.debug("Using " + allAddrs.size() + " addresses, starting one multicast socket for each");
+		logger.debug("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
 		
-		multicastSockets = new MulticastSocket[allAddrs.size()];
-		for (int i=0; i<multicastSockets.length; i++) {
-			multicastSockets[i] = new MulticastSocket(port);
-			multicastSockets[i].joinGroup(groupAddress);
-	        multicastSockets[i].setSoTimeout(Timeout_Receive);
-	        // loopback is not needed, multicast packets seem to be received anyway
-	        /*if (loopBackToLocalhost) {
-	        	multicastSockets[i].setLoopbackMode(loopBackToLocalhost);
-	        	if (!multicastSockets[i].getLoopbackMode())
-	        		logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
-	        }*/
+		multicastSendSockets = new MulticastSocket[allAddrs.size()];
+		Iterator iter = allAddrs.iterator();
+		for (int i=0; i<multicastSendSockets.length; i++) {
+			InetAddress addr = (InetAddress) iter.next();
+			// bind to a specific address, but to some random port
+			multicastSendSockets[i] = new MulticastSocket(new InetSocketAddress(addr, 0));
+			multicastSendSockets[i].setSoTimeout(Timeout_Receive);
+
+			// loopback is not needed, multicast packets seem to be received anyway
+			/*if (loopBackToLocalhost) {
+			 multicastSockets[i].setLoopbackMode(loopBackToLocalhost);
+			 if (!multicastSockets[i].getLoopbackMode())
+			 	logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
+			 }*/
 		}
 	}
 	
@@ -170,17 +188,17 @@ public class UDPMulticastSocket {
 	public void sendMulticast(byte[] message) throws IOException {
         DatagramPacket packet = new DatagramPacket(message, 0, message.length);
 		packet.setAddress(groupAddress);
-		packet.setPort(port);
-		for (int i=0; i<multicastSockets.length; i++) {
+		packet.setPort(sendPort);
+		for (int i=0; i<multicastSendSockets.length; i++) {
 			if (! addressIsAlias.get(i)) {
 				logger.debug("Sending packet with " + message.length + " bytes to multicast group " + 
 						groupAddress + " on multicast socket bound to address " + 
-						multicastSockets[i].getLocalAddress());
-				multicastSockets[i].send(packet);
+						multicastSendSockets[i].getLocalAddress());
+				multicastSendSockets[i].send(packet);
 			}
 			else {
 				logger.debug("Not using multicast socket bound to alias address " + 
-						multicastSockets[i].getLocalAddress());
+						multicastSendSockets[i].getLocalAddress());
 			}
 		}
 	}
@@ -193,10 +211,10 @@ public class UDPMulticastSocket {
 	public void sendTo(byte[] message, InetAddress target) throws IOException {
         DatagramPacket packet = new DatagramPacket(message, 0, message.length);
 		packet.setAddress(target);
-		packet.setPort(port);
+		packet.setPort(sendPort);
 		logger.debug("Sending packet with " + message.length + " bytes to address " + 
 				target);
-		unicastSocket.send(packet);
+		unicastSendSocket.send(packet);
 	}
 
     /** Register a listener for receiving messages. */
@@ -213,15 +231,11 @@ public class UDPMulticastSocket {
 	/** Leaves the multicast group on all sockets. */
 	public void dispose() {
 		stopListening();
-		for (int i=0; i<multicastSockets.length; i++) {
-			try {
-				multicastSockets[i].leaveGroup(groupAddress);
-			}
-			catch (IOException e) {
-				logger.warn("Could not properly leave multicast group " + groupAddress + 
-						" on socket bound to " + multicastSockets[i].getLocalSocketAddress() + ": "
-						+ e);
-			}
+		try {
+			multicastReceiveSocket.leaveGroup(groupAddress);
+		}
+		catch (IOException e) {
+			logger.warn("Could not properly leave multicast group " + groupAddress + ": " + e);
 		}
 	}
 	
@@ -231,12 +245,9 @@ public class UDPMulticastSocket {
 	 * @see #listenerThreads
 	 */
 	public void startListening() {
-		if (listenerThreads == null) {
-			listenerThreads = new Thread[multicastSockets.length];
-			for (int i=0; i<multicastSockets.length; i++) {
-				listenerThreads[i] = new Thread(new RunHelper(i));
-				listenerThreads[i].start();
-			}
+		if (listenerThread == null) {
+			listenerThread = new Thread(new RunHelper());
+			listenerThread.start();
 		}
 	}
 	
@@ -245,35 +256,27 @@ public class UDPMulticastSocket {
 	 * @see #listenerThreads
 	 */
 	public void stopListening() {
-		if (listenerThreads != null) {
+		if (listenerThread != null) {
 			shouldExit = true;
-			for (int i=0; i<listenerThreads.length; i++) {
-				try {
-					listenerThreads[i].join();
-				}
-				catch (InterruptedException e) {
-					// just ignore
-				}
+			try {
+				listenerThread.join();
+			}
+			catch (InterruptedException e) {
+				// just ignore
 			}
 		}
 	}
 	
 	private class RunHelper implements Runnable {
-		private int myIndex;
-		
-		RunHelper(int myIndex) {
-			this.myIndex = myIndex;
-		}
-		
 		public void run() {
-			logger.debug("Listener thread number " + myIndex + " starting");
+			logger.debug("Listener thread starting");
 			// to allow up to the maximum UDP packet size
 			byte[] buffer = new byte[65535];
 			while (! shouldExit) {
 	            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 	            
 				try {
-					multicastSockets[myIndex].receive(packet);
+					multicastReceiveSocket.receive(packet);
 		            logger.debug("Received packet of length " + packet.getLength() + " from " + 
 		            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress());
 					
@@ -285,8 +288,13 @@ public class UDPMulticastSocket {
 			    						packet.getLength(), packet.getAddress());
 			    			}
 			    			catch (Exception e) {
+			    				String stackTrace = "";
+			    				if (logger.isDebugEnabled()) {
+			    					for (int j=0; j<e.getStackTrace().length; j++)
+			    						stackTrace += e.getStackTrace()[j].toString() + "\n";
+			    				}
 			    				logger.error("Incoming message handler '" + l + 
-			    						"' caused exception '" + e + "', ignoring it here");
+			    						"' caused exception '" + e + "\n" + stackTrace + "', ignoring it here");
 			    			}
 			    		}
 			    	}
@@ -297,7 +305,7 @@ public class UDPMulticastSocket {
 					logger.error("Could not receive from UDP socket: " + e);
 				}
 			}
-			logger.debug("Listener thread number " + myIndex + " stopping");
+			logger.debug("Listener thread stopping");
 		}
 	}
 }
