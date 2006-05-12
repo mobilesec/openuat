@@ -41,7 +41,7 @@ import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
  *    when constructing the object, its hash will be sent to the remote host and,
  *    upon receiving acknowledgement, the protocolSucceededHook will be called.
  * TODO: Also emit protocol failed events based on criteria!
- * TODO: Also emit protocol progress event (but what is max??)
+ * TODO: Also emit protocol progress events (but what is max??)
  * Generally, events will be emitted by this class to all registered listeners.
  * 
  * @author Rene Mayrhofer
@@ -114,15 +114,65 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 */
 		private int index;
 
+		/** This variable is used to remember the candidate key which has been generated 
+		 * locally to match the hash of a received candidate key message, and which has
+		 * then subsequently been acknowledged. It is necessary to remember that key that
+		 * has been acknowledged, and not only use the key received in the acknowledgement
+		 * message itself, because of the following possible scenario:
+		 * 
+		 * 1a. Host A generates a candidate key X and sends the hash to host B. The key is
+		 *     put into @see #list upon generating it.
+		 * 1b. Host B generates a different candidate key Y and sends the hash to host A.
+		 *     The key is put into @see #list upon generating it.
+		 * <b>Note:</b> The keys X and Y can be different even when the matching key parts
+		 * list of A and B contain the same key parts (when no candidate key part messages
+		 * have been lost in transit). This can happen when the order in which the key parts 
+		 * matches are computed is different, because then ckp.generateKey will generate
+		 * different keys from the same set of key parts. 
+		 * 2.  The two candidate key messages overlap during transmission.
+		 * 3a. Host A receives the candidate key hash, and is able to generate a key from 
+		 *     its key parts that matches this hash (and thus also has key Y now). This key
+		 *     is put into this variable.
+		 *     Then host A acknowledges the generation of matching key Y by sending a key
+		 *     acknowledge message with the hash of Y to host B. It could then start using 
+		 *     Y as the shared key (authentication success).
+		 * 3b. Host B receives the candidate key hash, and is able to generate a key from
+		 *     its key parts that matches this hash (and thus also has key X now). This key
+		 *     is also put into this variable.
+		 *     Then host B acknowledges the generation of matching key X by sending a key
+		 *     acknowledge message with the hash of X to host A. It could then start using 
+		 *     X as the shared key (authentication success).
+		 * <b>Note:</b> Obviously, the hosts A and B would now be unable to communicate because
+		 * the have different keys X and Y.
+		 * 4a. Host A receives the acknowledgement that host B was able to generate A's 
+		 *     originally suggested key X and switches to it as a shared key (authentication 
+		 *     success again).
+		 * 4b. Host B receives the acknowledgement that host A was able to generate B's
+		 *     originally suggested key Y and switches to it as a shared key (authentication 
+		 *     success again).
+		 * <b>Note:</b> By making an effort to adapt to the shared key as used by the remote
+		 * host, A and B have now effectively swapped their keys and still use different ones.
+		 * 
+		 * To deal with that scenario, the authentication success "process" is split into two
+		 * stages, and only after receiving the key acknowledgement message, a host starts using
+		 * a shared key. Phase 1 is basically step 3, while phase 2 is step 4 in the above
+		 * scenario. But the hosts will wait for receiving key acknowledgement messages to decide
+		 * what shared key to use. When the acknowledged hash matches the hash of the key that 
+		 * the host found in stage 1, it will just use this key, and it will be guaranteed that
+		 * both hosts hold the same key (because then both key acknowledge messages must have 
+		 * carried the same hash, and overlapping of messages is irrelevant). When it does not
+		 * match, the host will use the XOR of the key for which an own key acknowledge message
+		 * was sent in stage 1 (and which is therefore stored in this variable) and the key
+		 * which has been acknowledged by the other host. This also guarantees that both hosts
+		 * will hold the same key, because XOR is commutative.
+		 */
 		private byte[] foundMatchingKey;
-		private byte[] ackedMatchingKey;
-
+		
 		GeneratedKeyCandidates() {
 			// and keep a history of the last 5 generated keys
 			list = new CandidateKey[5];
 			index = 0;
 			foundMatchingKey = null;
-			ackedMatchingKey = null;
 		}
 	}
 	/** Keep one list for each remote host we have contact to. Keys are remote object identifiers
@@ -330,10 +380,11 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 									throw new InternalApplicationException("Search for matching key returned "+
 										"different hash from what we searched for. This should not happen!" + 
 										(instanceId != null ? " [" + instanceId + "]" : ""));
-							logger.info("Generated local key that matches received candidate key identifier" + 
+							logger.info("Generated local key that matches received candidate key identifier:" +
+									new String(Hex.encodeHex(candKey.key)) + 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
 							// this sends a key acknowledge message to the remote host
-							authenticationSucceeded((InetAddress) sender, candKey.hash, candKey.key, 1);
+							authenticationSucceededStage1((InetAddress) sender, candKey.hash, candKey.key);
 						}
 						else {
 							logger.debug("Could not generate local key that matches received candidate key identifier" + 
@@ -344,7 +395,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						byte[] ackHash = Hex.decodeHex(pack.substring(Protocol_KeyAcknowledge.length()).toCharArray());
 						logger.debug("Received key acknowledge with hash " + new String(Hex.encodeHex(ackHash)) + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
-						authenticationSucceeded((InetAddress) sender, ackHash, null, 2);
+						authenticationSucceededStage2((InetAddress) sender, ackHash);
 					}
 					else if (pack.startsWith(Protocol_Terminate)) {
 						logger.debug("Received protocol termination request, wiping local state" + 
@@ -392,9 +443,6 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				if (cand.foundMatchingKey != null)
 					for (int j=0; j<cand.foundMatchingKey.length; j++)
 						cand.foundMatchingKey[j] = 0;
-				if (cand.ackedMatchingKey != null)
-					for (int j=0; j<cand.ackedMatchingKey.length; j++)
-						cand.ackedMatchingKey[j] = 0;
 			}
 		}
 		
@@ -431,122 +479,119 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			protocolFailedHook(remoteHost, e, msg);
 		}
 		
-		/** Small helper function to deal with authentication success. It raised an
-		 * authentication success event and wipes all state for the specified remote host when
-		 * finished. For details about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
+		/** Small helper function to deal with authentication success in stage 1. For details 
+		 * about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
 		 */
-		private void authenticationSucceeded(InetAddress remoteHost, 
-				byte[] sharedKeyHash, byte[] sharedKey, 
-				int stage) throws InternalApplicationException, IOException {
+		private void authenticationSucceededStage1(InetAddress remoteHost,
+				byte[] foundKeyHash, byte[] foundKey) throws InternalApplicationException, IOException {
 			if (! generatedKeys.containsKey(remoteHost))
-				throw new InternalApplicationException("Got authentication success message for remote host " + 
+				throw new InternalApplicationException("Got candidate key message from remote host " + 
 						remoteHost + " with no generated key candidates. This should not happen!" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 
-			logger.debug("Authentication with remote host " + remoteHost + 
-					" succeeded in stage " + stage + ", shared key is " + new String(Hex.encodeHex(sharedKey)) + 
-					(instanceId != null ? " [" + instanceId + "]" : ""));
-			
-			if (stage == 1) {
-				GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
-				if (cand.foundMatchingKey != null) {
-					logger.warn("Not ovverwriting the found matching key for remote host " + remoteHost +
-							", because stage 2 not entered yet." + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-				else {
-					cand.foundMatchingKey = sharedKey;
-
-					String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(sharedKeyHash));
-					logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(sharedKeyHash))
-							+ " to remote host " + remoteHost + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-					channel.sendTo(ackPacket.getBytes(), remoteHost);
-				}
+			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
+			if (cand.foundMatchingKey != null) {
+				logger.warn("Not ovverwriting the found matching key for remote host " + remoteHost +
+						", because stage 2 not entered yet." + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
-			else if (stage == 2) {
-				GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
-				if (cand.foundMatchingKey == null) {
-					logger.warn("Received an acknowledge for a locally found matching key " +
-							"but nothing known about this key. This might indicate an ongoing attack! " +
-							"Wiping state for remote host " + remoteHost + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-					authenticationFailed(remoteHost, true, null, 
-							"Message received that shouldn't. Remote host is bad");
-					return;
-				}
-				if (cand.ackedMatchingKey != null) {
-					logger.warn("Overwriting the acknowledged matching key for remote host " + remoteHost +
-							". This should not happen!" + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-				// need to look through the recent list to find a key with that hash
-				for (int i=0; i<cand.list.length && cand.ackedMatchingKey == null; i++) {
-					if (cand.list[i] != null) {
-						boolean match=true;
-						for (int j=0; j<sharedKeyHash.length && match; j++)
-							if (cand.list[i].hash[j] != sharedKeyHash[j])
-								match = false;
-						if (match) {
-							logger.debug("Found recently generated key matching the acknowledged hash" + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-							cand.ackedMatchingKey = cand.list[i].key;
-						}
+			else {
+				cand.foundMatchingKey = foundKey;
+
+				String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
+				logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
+						+ " to remote host " + remoteHost + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				channel.sendTo(ackPacket.getBytes(), remoteHost);
+			}
+		}
+
+		/** Small helper function to deal with authentication success in stage 2. It raises an
+		 * authentication success event and wipes all state for the specified remote host when
+		 * finished. For details about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
+		 */
+		private void authenticationSucceededStage2(InetAddress remoteHost,
+				byte[] ackedKeyHash) throws InternalApplicationException, IOException {
+			if (! generatedKeys.containsKey(remoteHost))
+				throw new InternalApplicationException("Got candidate key message from remote host " + 
+						remoteHost + " with no generated key candidates. This should not happen!" + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+
+			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
+			if (cand.foundMatchingKey == null) {
+				logger.warn("Received an acknowledge for a locally found matching key " +
+						"but nothing known about this key. This might indicate an ongoing attack! " +
+						"Wiping state for remote host " + remoteHost + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				authenticationFailed(remoteHost, true, null, 
+						"Message received that shouldn't. Remote host is bad");
+				return;
+			}
+
+			byte[] ackedMatchingKey = null;
+			// need to look through the recent list to find a key with that hash
+			for (int i=0; i<cand.list.length && ackedMatchingKey == null; i++) {
+				if (cand.list[i] != null) {
+					boolean match=true;
+					for (int j=0; j<ackedKeyHash.length && match; j++)
+						if (cand.list[i].hash[j] != ackedKeyHash[j])
+							match = false;
+					if (match) {
+						logger.debug("Found recently generated key matching the acknowledged hash" + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+						ackedMatchingKey = cand.list[i].key;
 					}
 				}
-				// sanity check
-				if (cand.ackedMatchingKey == null) {
-					logger.warn("Could not find a recently generated key matching the acknowledged hash. " +
-							"This might indicate an ongoing attack! " +
-							"Wiping state for remote host " + remoteHost + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-					authenticationFailed(remoteHost, true, null, 
-						"Message received that shouldn't. Remote host is bad");
-					return;
-				}
-				// another sanity check
-				if (cand.ackedMatchingKey.length != cand.foundMatchingKey.length)
-					throw new InternalApplicationException("Found matching key has different length than " +
-							"acknowledged key" + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-
-				byte[] realSharedKey = null;
-				/* And now check if the same key has been acknowledged that we ourselves
-				 * acknowledged (because a key with the same hash could be generated locally).
-				 */
-				boolean receivedAckMatchesOwnAck = true;
-				for (int i=0; i<cand.foundMatchingKey.length && receivedAckMatchesOwnAck; i++)
-					if (cand.ackedMatchingKey[i] != cand.foundMatchingKey[i])
-						receivedAckMatchesOwnAck = false;
-				if (!receivedAckMatchesOwnAck) {
-					// just XOR them together to use just one key, independent of their order 
-					// (which might be different on both sides)
-					realSharedKey = new byte[cand.foundMatchingKey.length];
-					for (int i=0; i<cand.foundMatchingKey.length; i++)
-						realSharedKey[i] = (byte) (cand.foundMatchingKey[i] ^ cand.ackedMatchingKey[i]);
-					logger.info("Overlapping candidate key match and acknowledgment messages detected, using " + 
-							"both keys: " + new String(Hex.encodeHex(realSharedKey)) + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-				else {
-					realSharedKey = cand.foundMatchingKey;
-					logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
-							"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-
-				// now that we finally have the (real) shared key, can wipe the state
-				wipe(remoteHost);
-				ckp.wipe(remoteHost);
-				
-				// raise the event to notify others
-				raiseAuthenticationSuccessEvent(remoteHost, realSharedKey);
-				
-				// also allow derived classes to do special success handling
-				protocolSucceededHook(remoteHost, realSharedKey);
 			}
-			else
-				throw new InternalApplicationException("Unknown stage");
+			// sanity check
+			if (ackedMatchingKey == null) {
+				logger.warn("Could not find a recently generated key matching the acknowledged hash. " +
+						"This might indicate an ongoing attack! " +
+						"Wiping state for remote host " + remoteHost + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				authenticationFailed(remoteHost, true, null, 
+					"Message received that shouldn't. Remote host is bad");
+				return;
+			}
+			// another sanity check
+			if (ackedMatchingKey.length != cand.foundMatchingKey.length)
+				throw new InternalApplicationException("Found matching key has different length than " +
+						"acknowledged key" + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				byte[] realSharedKey = null;
+			/* And now check if the same key has been acknowledged that we ourselves
+			 * acknowledged (because a key with the same hash could be generated locally).
+			 */
+			boolean receivedAckMatchesOwnAck = true;
+			for (int i=0; i<cand.foundMatchingKey.length && receivedAckMatchesOwnAck; i++)
+				if (ackedMatchingKey[i] != cand.foundMatchingKey[i])
+					receivedAckMatchesOwnAck = false;
+			if (!receivedAckMatchesOwnAck) {
+				// just XOR them together to use just one key, independent of their order 
+				// (which might be different on both sides)
+				realSharedKey = new byte[cand.foundMatchingKey.length];
+				for (int i=0; i<cand.foundMatchingKey.length; i++)
+					realSharedKey[i] = (byte) (cand.foundMatchingKey[i] ^ ackedMatchingKey[i]);
+				logger.info("Overlapping candidate key match and acknowledgment messages detected, using " + 
+						"both keys: " + new String(Hex.encodeHex(realSharedKey)) + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+			else {
+				realSharedKey = cand.foundMatchingKey;
+				logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
+						"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+
+			// now that we finally have the (real) shared key, can wipe the state
+			wipe(remoteHost);
+			ckp.wipe(remoteHost);
+			
+			// raise the event to notify others
+			raiseAuthenticationSuccessEvent(remoteHost, realSharedKey);
+				
+			// also allow derived classes to do special success handling
+			protocolSucceededHook(remoteHost, realSharedKey);
 		}
 		
 		/** This helper function checks if a key can already be generated and sends it
