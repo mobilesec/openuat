@@ -425,8 +425,8 @@ public class CandidateKeyProtocol {
 	 * are pruned.
 	 * This helper also makes sure that no single candidate (identified by round
 	 * and number) is added twice. 
-	 * @param remoteHost An identifier for the remote host that sent the match
-	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
 	 * @param candidateIndex The index of the candidate in recentKeyParts.
 	 */
 	private void advanceCandidateToMatch(Object remoteHost, int candidateIndex) {
@@ -480,8 +480,8 @@ public class CandidateKeyProtocol {
 	}
 	
 	/** Returns the number of entries in the matches list. 
-	 * @param remoteHost An identifier for the remote host that sent the match
-	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
 	 * @return The number of matching key parts currently available in the matching
 	 *         list for the specified remote host.
 	 */
@@ -499,8 +499,8 @@ public class CandidateKeyProtocol {
 	}
 	
 	/** Returns the sum of all entropy values for matching key parts. 
-	 * @param remoteHost An identifier for the remote host that sent the match
-	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
 	 * @return The entropy of all matching key parts currently available in the matching
 	 *         list for the specified remote host.
 	 */
@@ -523,8 +523,8 @@ public class CandidateKeyProtocol {
 	 * list for the same round number, only the first one is taken for this round. 
 	 * This should only happen in a symmetric setting where both hosts report 
 	 * matches, which can lead to double insertion due to differences in timing.
-	 * @param remoteHost An identifier for the remote host that sent the match
-	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
 	 * @return The candidate for which the hash and numParts should be broadcast.
 	 *         Returns null if no match list has yet been created for the specified
 	 *         remoteHost, either because not matches have yet been received with 
@@ -549,8 +549,8 @@ public class CandidateKeyProtocol {
 	 * a sliding window of numParts over the local list of matching key parts
 	 * and, if multiple candidates match for the same round, tries all possible
 	 * combinations of these candidates. This can be an expensive operation.
-	 * @param remoteHost An identifier for the remote host that sent the match
-	 *                   message. Refer to @see #matchCandidates for more details.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
 	 * @param hash The hash received from the remote host.
 	 * @param numParts The number of key parts that the key is composed of, as
 	 *                 reported by the remote host. <b>Note:</b> This parameter is
@@ -619,6 +619,33 @@ public class CandidateKeyProtocol {
 		logger.info("Could not generate key with same hash" +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		return null;
+	}
+
+	/** Wipes all state that is held with respect to a remote host. This method should
+	 * be called when the whole authentication fails as well as when it suceeds. By
+	 * overwriting key material before freeing the memory, it makes sure that key material
+	 * will not be kept in memory when it is no longer necessary.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
+	 * @return true if state was kept for this remote host, false if there was not state
+	 *         to wipe.
+	 */
+	public boolean wipe(Object remoteHost) {
+		if (matchingKeyParts.containsKey(remoteHost)) {
+			logger.debug("Wiping key material for remote host " + remoteHost);
+			MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.remove(remoteHost);
+			// not only remove from list but really wipe
+			for (int i=0; i<matchList.parts.length; i++)
+				if (matchList.parts[i] != null) {
+					for (int j=0; j<matchList.parts[i].keyPart.length; j++)
+						matchList.parts[i].keyPart[j] = 0;
+					for (int j=0; j<matchList.parts[i].hash.length; j++)
+						matchList.parts[i].hash[j] = 0;
+				}
+			return true;
+		}
+		else
+			return false;
 	}
 	
 	/** This is a helper function used by generateKey and searchKey to assemble

@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 
 import org.apache.log4j.Logger;
-import org.eu.mayrhofer.authentication.CKPoverUDP;
+import org.eu.mayrhofer.authentication.CKPOverUDP;
 import org.eu.mayrhofer.authentication.CandidateKeyProtocol;
 import org.eu.mayrhofer.authentication.MessageListener;
 import org.eu.mayrhofer.authentication.UDPMulticastSocket;
@@ -25,7 +25,7 @@ import org.eu.mayrhofer.sensors.SegmentsSink;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol2 extends CKPoverUDP implements SegmentsSink  {
+public class MotionAuthenticationProtocol2 extends CKPOverUDP implements SegmentsSink  {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol2.class);
 
@@ -58,19 +58,15 @@ public class MotionAuthenticationProtocol2 extends CKPoverUDP implements Segment
 		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
 	}
 
-	protected void protocolSucceededHook(InetAddress remote, 
-			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey) {
+	protected void protocolSucceededHook(InetAddress remote, byte[] sharedSessionKey) {
 		
 	}
 
-	protected void protocolFailedHook(InetAddress remote, 
-			Object optionalRemoteId, Exception e, String message) {
+	protected void protocolFailedHook(InetAddress remote, Exception e, String message) {
 		
 	}
 
-	protected void protocolProgressHook(InetAddress remote, 
-			Object optionalRemoteId, int cur, int max, String message) {
+	protected void protocolProgressHook(InetAddress remote, int cur, int max, String message) {
 		
 	}
 }
