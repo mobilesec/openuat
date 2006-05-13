@@ -331,7 +331,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						// optionally send back the matching number
 						int off = pack.indexOf(' ', Protocol_CandidateKeyPart.length());
 						int round = Integer.parseInt(pack.substring(Protocol_CandidateKeyPart.length(), off));
-						StringTokenizer st = new StringTokenizer(pack.substring(off));
+						StringTokenizer st = new StringTokenizer(pack.substring(off+1));
 						CandidateKeyPartIdentifier[] keyParts = new CandidateKeyPartIdentifier[st.countTokens()]; 
 						logger.debug("Received packet with " + keyParts.length + " candidate key parts for round " + round + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -360,7 +360,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						// for an incoming match, just add them
 						int off = pack.indexOf(' ', Protocol_CandidateMatch.length());
 						int round = Integer.parseInt(pack.substring(Protocol_CandidateMatch.length(), off));
-						int match = Integer.parseInt(pack.substring(off));
+						int match = Integer.parseInt(pack.substring(off+1));
 						logger.debug("Received packet with matching index " + match + " for round " + round + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						ckp.acknowledgeMatches(sender, round, match);
@@ -374,7 +374,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int off = pack.indexOf(' ', Protocol_CandidateKey.length());
 						int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
 						logger.debug("Received candidate key composed of " + numParts + " parts");
-						byte[] candKeyHash = Hex.decodeHex(pack.substring(off, pack.length()).toCharArray());
+						byte[] candKeyHash = Hex.decodeHex(pack.substring(off+1).toCharArray());
 						CandidateKey candKey = ckp.searchKey(sender, candKeyHash, numParts);
 					
 						if (candKey != null) {

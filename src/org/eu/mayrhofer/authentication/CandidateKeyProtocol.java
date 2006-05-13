@@ -569,7 +569,8 @@ public class CandidateKeyProtocol {
 		if (hash == null)
 			throw new IllegalArgumentException("hash must be set");
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null");
+			logger.warn("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" + 
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
@@ -600,7 +601,8 @@ public class CandidateKeyProtocol {
 			int numCopied = ((Integer) keyRet[1]).intValue();
 			// sanity check
 			if (numCopied != numParts) 
-				throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen");
+				throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			
 			// and compare the target hash with hashes over all candidate keys
 			for (int i=0; i<keyParts.length; i++) {
@@ -633,7 +635,8 @@ public class CandidateKeyProtocol {
 	 */
 	public boolean wipe(Object remoteHost) {
 		if (matchingKeyParts.containsKey(remoteHost)) {
-			logger.debug("Wiping key material for remote host " + remoteHost);
+			logger.debug("Wiping key material for remote host " + remoteHost + 
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.remove(remoteHost);
 			// not only remove from list but really wipe
 			for (int i=0; i<matchList.parts.length; i++)
@@ -658,7 +661,8 @@ public class CandidateKeyProtocol {
 	 */
 	private Object[] assembleKeyFromMatches(Object remoteHost, int offset, int numParts, boolean extractAllCombinations) {
 		if (! matchingKeyParts.containsKey(remoteHost))
-			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!");
+			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!" + 
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 
 		/* TODO: this is not optimal, maybe use a second list with the remote-reported
