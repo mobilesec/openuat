@@ -398,34 +398,41 @@ public class ParallelPortPWMReader {
 
 	
 	public static void main(String[] args) throws IOException {
-		/////// test 1: just plot all 8 time series
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], 100);
-		TimeSeries[] t = new TimeSeries[8];
-		XYSink[] s = new XYSink[8];
-		for (int i=0; i<8; i++) {
-			t[i] = new TimeSeries(50);
-			t[i].setOffset(0);
-			t[i].setMultiplicator(1/128f);
-			t[i].setSubtractTotalMean(true);
-			t[i].setActiveVarianceThreshold(350);
-			s[i] = new XYSink();
-			t[i].addNextStageSink(s[i]);
-		}
-		r.addSink(new int[] {0, 1, 2, 3, 4, 5, 6, 7}, t);
-		r.simulateSampling();
+		String filename = args[0];
 		
-		for (int i=0; i<8; i++) {
-			XYDataset data = new XYSeriesCollection(s[i].series);
-			JFreeChart chart = ChartFactory.createXYLineChart("Line " + i, "Number [100Hz]", 
-					"Sample", data, PlotOrientation.VERTICAL, true, true, false);
-			ChartUtilities.saveChartAsJPEG(new File("/tmp/line" + i + ".jpg"), chart, 500, 300);
+		boolean graph = false;
+		if (args.length > 1 && args[1].equals("dographs"))
+			graph = true;
+		
+		/////// test 1: just plot all 8 time series
+		if (graph) {
+			ParallelPortPWMReader r = new ParallelPortPWMReader(filename, 100);
+			TimeSeries[] t = new TimeSeries[8];
+			XYSink[] s = new XYSink[8];
+			for (int i=0; i<8; i++) {
+				t[i] = new TimeSeries(50);
+				t[i].setOffset(0);
+				t[i].setMultiplicator(1/128f);
+				t[i].setSubtractTotalMean(true);
+				t[i].setActiveVarianceThreshold(350);
+				s[i] = new XYSink();
+				t[i].addNextStageSink(s[i]);
+			}
+			r.addSink(new int[] {0, 1, 2, 3, 4, 5, 6, 7}, t);
+			r.simulateSampling();
+		
+			for (int i=0; i<8; i++) {
+				XYDataset data = new XYSeriesCollection(s[i].series);
+				JFreeChart chart = ChartFactory.createXYLineChart("Line " + i, "Number [100Hz]", 
+						"Sample", data, PlotOrientation.VERTICAL, true, true, false);
+				ChartUtilities.saveChartAsJPEG(new File("/tmp/line" + i + ".jpg"), chart, 500, 300);
 
-			XYDataset segData = new XYSeriesCollection(s[i].firstActiveSegment);
-			JFreeChart segChart = ChartFactory.createXYLineChart("Segment at line " + i, "Number [100Hz]", 
-					"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
-			ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
+				XYDataset segData = new XYSeriesCollection(s[i].firstActiveSegment);
+				JFreeChart segChart = ChartFactory.createXYLineChart("Segment at line " + i, "Number [100Hz]", 
+						"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
+				ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
+			}
 		}
-
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device 
 		int samplerate = 128; // Hz
@@ -450,21 +457,23 @@ public class ParallelPortPWMReader {
 		r2.simulateSampling();
 
 		if (SegmentSink.segs[0] != null && SegmentSink.segs[1] != null) {
-			XYSeries seg1 = new XYSeries("Segment 1", false);
-			for (int i=0; i<SegmentSink.segs[0].length; i++)
-				seg1.add(i, SegmentSink.segs[0][i]);
-			XYDataset dat1 = new XYSeriesCollection(seg1);
-			JFreeChart chart1 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-					"Sample", dat1, PlotOrientation.VERTICAL, true, true, false);
-			ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrA.jpg"), chart1, 500, 300);
+			if (graph) {
+				XYSeries seg1 = new XYSeries("Segment 1", false);
+				for (int i=0; i<SegmentSink.segs[0].length; i++)
+					seg1.add(i, SegmentSink.segs[0][i]);
+				XYDataset dat1 = new XYSeriesCollection(seg1);
+				JFreeChart chart1 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+						"Sample", dat1, PlotOrientation.VERTICAL, true, true, false);
+				ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrA.jpg"), chart1, 500, 300);
 
-			XYSeries seg2 = new XYSeries("Segment 2", false);
-			for (int i=0; i<SegmentSink.segs[1].length; i++)
-				seg2.add(i, SegmentSink.segs[1][i]);
-			XYDataset dat2 = new XYSeriesCollection(seg2);
-			JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-					"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
-			ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
+				XYSeries seg2 = new XYSeries("Segment 2", false);
+				for (int i=0; i<SegmentSink.segs[1].length; i++)
+					seg2.add(i, SegmentSink.segs[1][i]);
+				XYDataset dat2 = new XYSeriesCollection(seg2);
+				JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
+						"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
+				ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
+			}
 
 			/////// test 3: calculate and plot the coherence between the segments from test 2
 			// make sure they have similar length
@@ -477,13 +486,15 @@ public class ParallelPortPWMReader {
 				s2[i] = SegmentSink.segs[1][i];
 			}
 			double[] coherence = Coherence.cohere(s1, s2, 128, 0);
-			XYSeries c = new XYSeries("Coefficients", false);
-			for (int i=0; i<coherence.length; i++)
-				c.add(i, coherence[i]);
-			XYDataset c1 = new XYSeriesCollection(c);
-			JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-					"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-			ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+			if (graph) {
+				XYSeries c = new XYSeries("Coefficients", false);
+				for (int i=0; i<coherence.length; i++)
+					c.add(i, coherence[i]);
+				XYDataset c1 = new XYSeriesCollection(c);
+				JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+						"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+				ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+			}
 		
 			double coherenceMean = Coherence.mean(coherence);
 			System.out.println("Coherence mean: " + coherenceMean);

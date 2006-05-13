@@ -284,12 +284,6 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
-		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(true); 
-		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(true); 
-		aggr_a.addNextStageSink(ma1);
-		aggr_b.addNextStageSink(ma2);
-		ma1.startServer();
-		ma2.startAuthentication("localhost");
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
@@ -298,6 +292,14 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
+		
+		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(true); 
+		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(true); 
+		aggr_a.addNextStageSink(ma1);
+		aggr_b.addNextStageSink(ma2);
+		ma1.startServer();
+		ma2.startAuthentication("localhost");
+		
 		r.simulateSampling();
 	}
 }
