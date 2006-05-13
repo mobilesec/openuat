@@ -18,6 +18,11 @@ import junit.framework.TestCase;
 
 import org.eu.mayrhofer.authentication.DHOverTCPWithVerification;
 
+/** There are no _BCAPI and _Mixed variants because DHOverTCPWithVerification only uses the crypto embedded into
+ * SimpleKeyAgreement and InterlockProtocol, and those are tested with _BCAPI and _Mixed.
+ * @author rene
+ *
+ */
 public class DHOverTCPWithVerificationTest extends TestCase {
 	private class TestHelper extends DHOverTCPWithVerification {
 		protected TestHelper(int tcpPort, boolean keepSocketConnected, String instanceId, boolean useJSSE, boolean succeed) {
