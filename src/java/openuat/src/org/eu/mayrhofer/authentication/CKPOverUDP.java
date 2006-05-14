@@ -396,7 +396,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						}
 					}
 					else if (pack.startsWith(Protocol_KeyAcknowledge)) {
-						byte[] ackHash = Hex.decodeHex(pack.substring(Protocol_KeyAcknowledge.length()-1).toCharArray());
+						byte[] ackHash = Hex.decodeHex(pack.substring(Protocol_KeyAcknowledge.length()).toCharArray());
 						logger.debug("Received key acknowledge with hash " + new String(Hex.encodeHex(ackHash)) + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						authenticationSucceededStage2((InetAddress) sender, ackHash);
