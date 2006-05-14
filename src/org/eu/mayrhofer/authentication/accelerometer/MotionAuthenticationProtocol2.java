@@ -13,6 +13,7 @@ import java.net.InetAddress;
 
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.CKPOverUDP;
+import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.sensors.FFT;
 import org.eu.mayrhofer.sensors.Quantizer;
 import org.eu.mayrhofer.sensors.SegmentsSink;
@@ -58,22 +59,39 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	 * 
 	 * This implementation immediately computes the sliding FFT windows, quantizes
 	 * the coefficients, and sends out candidate key parts. 
+	 * @throws IOException 
+	 * @throws InternalApplicationException 
 	 */
 	public void addSegment(double[] segment, int startIndex) {
 		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
 
+		// TODO: this is actually the other way around....
+		int sampleRate = fftPoints;
+		
 		// only compare until the cutoff frequency
-		int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / samplerate) + 1;
+		int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / sampleRate) + 1;
 		System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
 		int numMatches = 0, numWindows = 0;
-		for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-			double[] fftCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
-			double[] fftCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+		for (int offset=0; offset<segment.length-fftPoints+1; offset+=fftPoints-fftPoints/windowOverlapFactor) {
+			double[] fftCoeff1 = FFT.fftPowerSpectrum(segment, offset, fftPoints);
 			// HACK HACK HACK: set DC components to 0
 			fftCoeff1[0] = 0;
-			fftCoeff2[0] = 0;
-			int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
-			int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
+			int[][] cand = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
+			// and transform to byte array - we certainly use less than 256 quantization stages, so just byte-cast
+			byte[][] candBytes = new byte[numCandidates][];
+			for (int i=0; i<numCandidates; i++) {
+				candBytes[i] = new byte[cand[i].length];
+				for (int j=0; j<cand[i].length; j++)
+					candBytes[i][j] = (byte) cand[i][j];
+			}
+			// TODO: estimate entropy
+			try {
+				addCandidates(candBytes, 0);
+			} catch (InternalApplicationException e) {
+				logger.error("Could not add candidates: " + e);
+			} catch (IOException e) {
+				logger.error("Could not add candidates: " + e);
+			}
 		}
 	}
 
