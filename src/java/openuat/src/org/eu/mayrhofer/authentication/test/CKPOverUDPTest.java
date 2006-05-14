@@ -119,7 +119,7 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
 	}
 	
-	public void testCompleteRun_SymmetricNoSendMatches_Sequenced() throws IOException, InternalApplicationException, InterruptedException {
+	public void testCompleteRun_SymmetricNoSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2);
@@ -145,8 +145,62 @@ public class CKPOverUDPTest extends TestCase {
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
 	}
+
+	public void testCompleteRun_SymmetricNoSendMatches_Sequenced2() throws IOException, InternalApplicationException, InterruptedException {
+		// this simulates with localhost communication
+		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);
+		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2);
+		
+		helper2.addCandidates(keyParts_round1_side2);
+		helper2.addCandidates(keyParts_round2_side2);
+		helper1.addCandidates(keyParts_round1_side1);
+		helper1.addCandidates(keyParts_round2_side1);
+		
+		int tries=0;
+		while (((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
+				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) && 
+				tries < 300) {
+			Thread.sleep(100);
+			tries++;
+		}
+		Assert.assertTrue("Protocol did not complete", tries<300);
+		
+		Assert.assertEquals(1, helper1.numSucceededHookCalled);
+		Assert.assertEquals(1, helper2.numSucceededHookCalled);
+		Assert.assertEquals(0, helper1.numFailedHookCalled);
+		Assert.assertEquals(0, helper2.numFailedHookCalled);
+
+		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+	}
+
+	public void testCompleteRun_AsymmetricOneSideSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
+		// this simulates with localhost communication
+		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1); // broadcast candidates
+		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2); // send matches
+		
+		helper1.addCandidates(keyParts_round1_side1);
+		helper2.addCandidates(keyParts_round1_side2);
+		helper1.addCandidates(keyParts_round2_side1);
+		helper2.addCandidates(keyParts_round2_side2);
+		
+		int tries=0;
+		while (((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
+				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) && 
+				tries < 300) {
+			Thread.sleep(100);
+			tries++;
+		}
+		Assert.assertTrue("Protocol did not complete", tries<300);
+		
+		Assert.assertEquals(1, helper1.numSucceededHookCalled);
+		Assert.assertEquals(1, helper2.numSucceededHookCalled);
+		Assert.assertEquals(0, helper1.numFailedHookCalled);
+		Assert.assertEquals(0, helper2.numFailedHookCalled);
+
+		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+	}
 	
-	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced() throws IOException, InternalApplicationException, InterruptedException {
+	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1); // broadcast candidates
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2); // send matches
@@ -155,6 +209,33 @@ public class CKPOverUDPTest extends TestCase {
 		helper1.addCandidates(keyParts_round2_side1);
 		helper2.addCandidates(keyParts_round1_side2);
 		helper2.addCandidates(keyParts_round2_side2);
+		
+		int tries=0;
+		while (((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
+				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) && 
+				tries < 300) {
+			Thread.sleep(100);
+			tries++;
+		}
+		Assert.assertTrue("Protocol did not complete", tries<300);
+		
+		Assert.assertEquals(1, helper1.numSucceededHookCalled);
+		Assert.assertEquals(1, helper2.numSucceededHookCalled);
+		Assert.assertEquals(0, helper1.numFailedHookCalled);
+		Assert.assertEquals(0, helper2.numFailedHookCalled);
+
+		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+	}
+
+	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced2() throws IOException, InternalApplicationException, InterruptedException {
+		// this simulates with localhost communication
+		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1); // broadcast candidates
+		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2); // send matches
+		
+		helper2.addCandidates(keyParts_round1_side2);
+		helper2.addCandidates(keyParts_round2_side2);
+		helper1.addCandidates(keyParts_round1_side1);
+		helper1.addCandidates(keyParts_round2_side1);
 		
 		int tries=0;
 		while (((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
