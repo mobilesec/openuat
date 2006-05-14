@@ -13,9 +13,8 @@ import java.net.InetAddress;
 
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.CKPOverUDP;
-import org.eu.mayrhofer.authentication.CandidateKeyProtocol;
-import org.eu.mayrhofer.authentication.MessageListener;
-import org.eu.mayrhofer.authentication.UDPMulticastSocket;
+import org.eu.mayrhofer.sensors.FFT;
+import org.eu.mayrhofer.sensors.Quantizer;
 import org.eu.mayrhofer.sensors.SegmentsSink;
 
 /** This is the first variant of the motion authentication protocol. It 
@@ -33,6 +32,12 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	public static final int UdpPort = 54322;
 	
 	public static final String MulticastGroup = "228.10.10.1";
+	
+	private int fftPoints = 128;
+	private int numQuantLevels = 8;
+	private int numCandidates = 6;
+	private int cutOffFrequency = 15; // Hz
+	private int windowOverlapFactor = 2; // fftpoints/windowOverlapFactor 
 
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
@@ -42,7 +47,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	 *                Lightweight API classes will be used.
 	 * @throws IOException 
 	 */
-	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE) throws IOException {
+	public MotionAuthenticationProtocol2(int sampleRate, int minMatchingParts, boolean useJSSE) throws IOException {
 		// TODO: set minimum entropy
 		super(UdpPort, UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
 	}
@@ -56,6 +61,20 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	 */
 	public void addSegment(double[] segment, int startIndex) {
 		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
+
+		// only compare until the cutoff frequency
+		int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / samplerate) + 1;
+		System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+		int numMatches = 0, numWindows = 0;
+		for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+			double[] fftCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
+			double[] fftCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+			// HACK HACK HACK: set DC components to 0
+			fftCoeff1[0] = 0;
+			fftCoeff2[0] = 0;
+			int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
+			int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
+		}
 	}
 
 	protected void protocolSucceededHook(InetAddress remote, byte[] sharedSessionKey) {
