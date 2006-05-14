@@ -111,6 +111,8 @@ public class UDPMulticastSocket {
      * @param multicastGroup The multicast group to use.
      */
 	public UDPMulticastSocket(int receivePort, int sendPort, String multicastGroup) throws IOException {
+		logger.debug("Constructing UDPMulticastSocket with receive port " + receivePort + 
+				", send port " + sendPort + ", multicast group " + multicastGroup);
 		this.receivePort = receivePort;
 		this.sendPort = sendPort;
 		
@@ -121,8 +123,13 @@ public class UDPMulticastSocket {
 		groupAddress = InetAddress.getByName(multicastGroup);
 
 		multicastReceiveSocket = new MulticastSocket(this.receivePort) ;
-		multicastReceiveSocket.joinGroup(groupAddress);
 		multicastReceiveSocket.setSoTimeout(Timeout_Receive);
+		if (groupAddress.isMulticastAddress()) {
+			multicastReceiveSocket.joinGroup(groupAddress);
+		}
+		else {
+			logger.warn("Address " + multicastGroup + " is not a multicast address, not joining group");
+		}
 		
 		// create one multicast socket for each address
 		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
@@ -172,10 +179,10 @@ public class UDPMulticastSocket {
 			multicastSendSockets[i].setSoTimeout(Timeout_Receive);
 
 			// loopback is not needed, multicast packets seem to be received anyway
-			/*if (loopBackToLocalhost) {
-			 multicastSockets[i].setLoopbackMode(loopBackToLocalhost);
-			 if (!multicastSockets[i].getLoopbackMode())
-			 	logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
+			/*if (loopbackToLocalhost) {
+				multicastSendSockets[i].setLoopbackMode(true);
+				if (!multicastSendSockets[i].getLoopbackMode())
+					logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
 			 }*/
 		}
 	}
@@ -192,7 +199,7 @@ public class UDPMulticastSocket {
 		for (int i=0; i<multicastSendSockets.length; i++) {
 			if (! addressIsAlias.get(i)) {
 				logger.debug("Sending packet with " + message.length + " bytes to multicast group " + 
-						groupAddress + " on multicast socket bound to address " + 
+						groupAddress + ", port " + sendPort + " on multicast socket bound to address " + 
 						multicastSendSockets[i].getLocalAddress());
 				multicastSendSockets[i].send(packet);
 			}
@@ -213,7 +220,7 @@ public class UDPMulticastSocket {
 		packet.setAddress(target);
 		packet.setPort(sendPort);
 		logger.debug("Sending packet with " + message.length + " bytes to address " + 
-				target);
+				target + ", port " + sendPort);
 		unicastSendSocket.send(packet);
 	}
 
@@ -232,7 +239,9 @@ public class UDPMulticastSocket {
 	public void dispose() {
 		stopListening();
 		try {
-			multicastReceiveSocket.leaveGroup(groupAddress);
+			if (groupAddress.isMulticastAddress()) {
+				multicastReceiveSocket.leaveGroup(groupAddress);
+			}
 		}
 		catch (IOException e) {
 			logger.warn("Could not properly leave multicast group " + groupAddress + ": " + e);
@@ -278,7 +287,8 @@ public class UDPMulticastSocket {
 				try {
 					multicastReceiveSocket.receive(packet);
 		            logger.debug("Received packet of length " + packet.getLength() + " from " + 
-		            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress());
+		            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress() +
+		            		", port " + receivePort);
 					
 			    	if (messageHandlers != null) {
 			    		for (ListIterator i = messageHandlers.listIterator(); i.hasNext(); ) {
