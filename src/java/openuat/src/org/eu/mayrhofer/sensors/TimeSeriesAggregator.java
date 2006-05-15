@@ -18,6 +18,11 @@ import org.apache.log4j.Logger;
  * it calculates the magnitude of the multi-dimensional vector for each sample and uses
  * this magnitude as the new (single-dimensional) sample value.
  * 
+ * Forwarding this single-dimensional time series to the next step can be done either as
+ * single samples during active periods or as complete segments from the start of an 
+ * active period to its end. For the former, this class can send to SamplesSink objects,
+ * for the latter, it can send to SegmentsSink objects.
+ * 
  * It keeps the time series of the first step, i.e. the pre-processing that does a linear
  * transformation to [-1;1] and detects active/quiescent segments, internally. Using the
  * getSinks() method, these internally managed TimeSeries objects can be registered with
@@ -65,7 +70,19 @@ public class TimeSeriesAggregator {
 					magnitude += curSample[i] * curSample[i];
 					curSampleReceived[i] = false;
 				}
-				aggregatedSeries.add(new Double(Math.sqrt(magnitude)));
+				magnitude = Math.sqrt(magnitude);
+				aggregatedSeries.add(new Double(magnitude));
+
+				/* this is inside an active segment, so also forward the samples 
+				 * immediately to all registered listeners
+				 */
+				if (samplesSinks != null) {
+					logger.debug("Forwarding single sample to " + samplesSinks.size() + " registered sinks");
+					for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
+						SamplesSink s = (SamplesSink) j.next();
+						s.addSample(magnitude, numSample);
+					}			
+				}
 			}
 		}
 		
@@ -81,6 +98,15 @@ public class TimeSeriesAggregator {
 				 * --> start of active segment, start aggregating
 				 */
 				aggregatedSeries = new ArrayList();
+
+				// also forward this event to the sample listeners
+				if (samplesSinks != null) {
+					logger.debug("Forwarding segment start event to " + samplesSinks.size() + " registered sinks");
+					for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
+						SamplesSink s = (SamplesSink) j.next();
+						s.segmentStart(numSample);
+					}			
+				}
 			}
 		}
 		
@@ -105,9 +131,9 @@ public class TimeSeriesAggregator {
 					double[] segment = new double[aggregatedSeries.size()-windowSize];
 					for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
 						segment[i] = ((Double) aggregatedSeries.get(i)).doubleValue();
-					if (sinks != null) {
-						logger.debug("Forwarding to " + sinks.size() + " registered sinks");
-						for (ListIterator j = sinks.listIterator(); j.hasNext(); ) {
+					if (segmentsSinks != null) {
+						logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
+						for (ListIterator j = segmentsSinks.listIterator(); j.hasNext(); ) {
 							SegmentsSink s = (SegmentsSink) j.next();
 							s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
 						}				
@@ -118,6 +144,15 @@ public class TimeSeriesAggregator {
 				
 				logger.debug("Finished forwarding segment to sinks");
 				aggregatedSeries = null;
+
+				// also forward this event to the sample listeners
+				if (samplesSinks != null) {
+					logger.debug("Forwarding segment end event to " + samplesSinks.size() + " registered sinks");
+					for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
+						SamplesSink s = (SamplesSink) j.next();
+						s.segmentEnd(numSample);
+					}			
+				}
 			}
 		}
 	}
@@ -163,9 +198,15 @@ public class TimeSeriesAggregator {
 	 */
 	private int minSegmentSize;
 	
-	/** Holds all registered sinks that should received active, aggregated, completed segments.
+	/** Holds all registered sinks that should receive active, aggregated, completed segments.
+	 * Elements in this list are of type SegmentsSink.
 	 */
-	private LinkedList sinks;
+	private LinkedList segmentsSinks;
+	
+	/** Holds all registered sinks that should receive active, aggregated samples.
+	 * Elements in this list are of type SamplesSink. 
+	 */
+	private LinkedList samplesSinks;
 	
 	/** Constructs all internal buffers and the time series.
 	 * 
@@ -202,7 +243,8 @@ public class TimeSeriesAggregator {
 			firstStageSeries[i].addNextStageSink(firstStageHandlers[i]);
 			firstStagesActive[i] = false;
 		}
-		sinks = new LinkedList();
+		segmentsSinks = new LinkedList();
+		samplesSinks = new LinkedList();
 	}
 	
 	/** A helper function to check if the whole, multi-dimensional segment is active.
@@ -277,12 +319,12 @@ public class TimeSeriesAggregator {
 			firstStageSeries[i].setActiveVarianceThreshold(activeVarianceThreshold);
 	}
 
-	/** Registers a sink, which will receive all active segments when they are complete.
+	/** Registers a sink which will receive all active segments when they are complete.
 	 * 
 	 * @param sink The sink to push new aggregated segments to.
 	 */
-	public void addNextStageSink(SegmentsSink sink) {
-		sinks.add(sink);
+	public void addNextStageSegmentsSink(SegmentsSink sink) {
+		segmentsSinks.add(sink);
 	}
 
 	/** Removes a previously registered sink.
@@ -290,7 +332,25 @@ public class TimeSeriesAggregator {
 	 * @param sink The sink to stop pushing segments to.
 	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
-	public boolean removeSink(SegmentsSink sink) {
-		return sinks.remove(sink);
+	public boolean removeNextStageSegmentsSink(SegmentsSink sink) {
+		return segmentsSinks.remove(sink);
+	}
+
+	/** Registers a sink which will receive all samples within active segments
+	 * immediately after they have been aggregated into one dimension.
+	 * 
+	 * @param sink The sink to push new aggregated segments to.
+	 */
+	public void addNextStageSamplesSink(SegmentsSink sink) {
+		segmentsSinks.add(sink);
+	}
+
+	/** Removes a previously registered sink.
+	 * 
+	 * @param sink The sink to stop pushing segments to.
+	 * @return true if removed, false if not (i.e. if it has not been added previously).
+	 */
+	public boolean removeNextStageSamplesSink(SegmentsSink sink) {
+		return segmentsSinks.remove(sink);
 	}
 }
