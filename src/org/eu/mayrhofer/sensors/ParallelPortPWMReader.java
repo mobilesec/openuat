@@ -444,8 +444,8 @@ public class ParallelPortPWMReader {
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		r2.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r2.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
-		aggr_a.addNextStageSink(new SegmentSink(0));
-		aggr_b.addNextStageSink(new SegmentSink(1));
+		aggr_a.addNextStageSegmentsSink(new SegmentSink(0));
+		aggr_b.addNextStageSegmentsSink(new SegmentSink(1));
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
