@@ -9,14 +9,15 @@
 package org.eu.mayrhofer.authentication.accelerometer;
 
 import java.io.IOException;
-import java.net.InetAddress;
+import java.util.Iterator;
+import java.util.LinkedList;
 
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.CKPOverUDP;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.sensors.FFT;
 import org.eu.mayrhofer.sensors.Quantizer;
-import org.eu.mayrhofer.sensors.SegmentsSink;
+import org.eu.mayrhofer.sensors.SamplesSink;
 
 /** This is the first variant of the motion authentication protocol. It 
  * broadcasts candidate keys over UDP and creates shared keys with the
@@ -25,7 +26,7 @@ import org.eu.mayrhofer.sensors.SegmentsSink;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol2 extends CKPOverUDP implements SegmentsSink  {
+public class MotionAuthenticationProtocol2 extends CKPOverUDP implements SamplesSink  {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol2.class);
 
@@ -38,7 +39,9 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	private int numQuantLevels = 8;
 	private int numCandidates = 6;
 	private int cutOffFrequency = 15; // Hz
-	private int windowOverlapFactor = 2; // fftpoints/windowOverlapFactor 
+	private int windowOverlap = fftPoints/2; 
+	
+	private LinkedList curSegment = null;
 
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
@@ -62,18 +65,30 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 	 * @throws IOException 
 	 * @throws InternalApplicationException 
 	 */
-	public void addSegment(double[] segment, int startIndex) {
-		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
-
-		// TODO: this is actually the other way around....
-		int sampleRate = fftPoints;
+	public void addSample(double sample, int numSample) {
+		if (curSegment == null) {
+			logger.warn("Received sample while not in active state, ignoring it");
+			return;
+		}
 		
-		// only compare until the cutoff frequency
-		int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / sampleRate) + 1;
-		System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
-		int numMatches = 0, numWindows = 0;
-		for (int offset=0; offset<segment.length-fftPoints+1; offset+=fftPoints-fftPoints/windowOverlapFactor) {
-			double[] fftCoeff1 = FFT.fftPowerSpectrum(segment, offset, fftPoints);
+		curSegment.add(new Double(sample));
+		
+		if (curSegment.size() == fftPoints) {
+			// ok, got a full segment to work on
+			
+			// convert to array
+			double[] segment = new double[fftPoints];
+			Iterator iter = curSegment.iterator();
+			for (int i=0; i<fftPoints; i++)
+				segment[i] = ((Double) iter.next()).doubleValue();
+			
+			// TODO: this is actually the other way around....
+			int sampleRate = fftPoints;
+			// only compare until the cutoff frequency
+			int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / sampleRate) + 1;
+			System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+			
+			double[] fftCoeff1 = FFT.fftPowerSpectrum(segment, 0, fftPoints);
 			// HACK HACK HACK: set DC components to 0
 			fftCoeff1[0] = 0;
 			int[][] cand = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
@@ -92,7 +107,30 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 			} catch (IOException e) {
 				logger.error("Could not add candidates: " + e);
 			}
+			
+			// and remove the overlap from the front
+			for (int i=0; i<windowOverlap; i++)
+				curSegment.removeFirst();
 		}
+	}
+	
+	public void segmentStart(int numSample) {
+		if (curSegment != null) {
+			logger.warn("Received segment start event while still in active phase, ignoring");
+			return;
+		}
+		
+		curSegment = new LinkedList();
+	}
+	
+	public void segmentEnd(int numSample) {
+		if (curSegment == null) {
+			logger.warn("Received segment end event while no in active phase, ignoring");
+			return;
+		}
+		
+		// TODO: don't discard, do something with it?
+		curSegment = null;
 	}
 
 	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
