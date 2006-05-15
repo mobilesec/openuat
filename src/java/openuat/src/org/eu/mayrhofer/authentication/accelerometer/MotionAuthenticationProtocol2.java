@@ -95,15 +95,15 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Segment
 		}
 	}
 
-	protected void protocolSucceededHook(InetAddress remote, byte[] sharedSessionKey) {
+	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
 		
 	}
 
-	protected void protocolFailedHook(InetAddress remote, Exception e, String message) {
+	protected void protocolFailedHook(String remote, Exception e, String message) {
 		
 	}
 
-	protected void protocolProgressHook(InetAddress remote, int cur, int max, String message) {
+	protected void protocolProgressHook(String remote, int cur, int max, String message) {
 		
 	}
 }
