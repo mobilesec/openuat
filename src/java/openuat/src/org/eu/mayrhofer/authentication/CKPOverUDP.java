@@ -177,7 +177,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	}
 	/** Keep one list for each remote host we have contact to. Keys are remote object identifiers
 	 * (in this case InetAddress objects), values are GeneratedKeyCandidates. */
-	HashMap generatedKeys = new HashMap();
+	HashMap generatedKeys = null;
 	
 	/** Construct the object by initializing basic variables.
 	 * 
@@ -281,35 +281,45 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		}
 	}
 	
+	/** Takes care to close the UDPMulticastSocket resources properly and to wipe
+	 * key material from the CandidateKeyProtocol instance.
+	 */
+	public void dispose() {
+		ckp.wipeAll();
+		channel.dispose();
+		ckp = null;
+		channel = null;
+	}
+	
 	/** This hook will be called when the final verdict is that the whole 
 	 * authentication protocol succeeded, i.e. both hosts signalled success on
 	 * key verification.
-	 * @param remote The remote host with which the key exchange succeeded.
+	 * @param remote The remote host address with which the key exchange succeeded.
 	 * @param sharedSessionKey The shared session key (which is different from the
 	 *                         shared authentication key used for verification) that
 	 *                         can now be used for subsequent secure communication.
 	 */
-	protected abstract void protocolSucceededHook(InetAddress remote, 
+	protected abstract void protocolSucceededHook(String remote, 
 			byte[] sharedSessionKey);
 	
 	/** This hook will be called when the whole authentication protocol has
 	 * failed. Derived classes should implement it to react to this failure.
-	 * @param remote The remote host with which the key exchange succeeded.
+	 * @param remote The remote host address with which the key exchange failed.
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */
-	protected abstract void protocolFailedHook(InetAddress remote, 
+	protected abstract void protocolFailedHook(String remote, 
 			Exception e, String message);
 
 	/** This hook will be called when the whole authentication protocol has
 	 * made some progress. Derived classes should implement it to react to 
 	 * this progress.
-	 * @param remote The remote host with which the key exchange succeeded.
+	 * @param remote The remote host address with which the key exchange progressed.
 	 * @param cur @see AuthenticationProgressHandler#AuthenticationProgress
 	 * @param max @see AuthenticationProgressHandler#AuthenticationProgress
 	 * @param message @see AuthenticationProgressHandler#AuthenticationProgress
 	 */
-	protected abstract void protocolProgressHook(InetAddress remote, 
+	protected abstract void protocolProgressHook(String remote, 
 			int cur, int max, String message);
 	
 	/** This is a helper class for handling incoming UDP packets. It is the
@@ -319,11 +329,14 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		public void handleMessage(byte[] message, int offset, int length, Object sender) {
 			// should be synchronized so that we process packets in their order of arrival
 			synchronized (this) {
+				// only use the IP address part, but not the host (which will be dynamic for sending packets)
+				String remoteHostAddress = ((InetAddress) sender).getHostAddress();
+				
 				// this is inefficient, but Java is anyway, so don't care at the moment...
 				byte[] packet = new byte[length];
 				System.arraycopy(message, offset, packet, 0, length);
 				String pack = new String(packet);
-				logger.debug("Received UDP packet with  " + pack.length() + " bytes from " + sender);
+				logger.debug("Received UDP packet with  " + pack.length() + " bytes from " + remoteHostAddress);
 				try {
 					// this handles the different packet types
 					if (pack.startsWith(Protocol_CandidateKeyPart)) {
@@ -340,7 +353,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 							keyParts[i].hash = Hex.decodeHex(st.nextToken().toCharArray());
 							keyParts[i].round = round;
 						}
-						int match = ckp.matchCandidates(sender, keyParts);
+						int match = ckp.matchCandidates(remoteHostAddress, keyParts);
 						if (match > -1) {
 							// yes, we have a match, optionally flag that
 							logger.debug("Number " + match + " of these candidate key parts matches" + 
@@ -363,7 +376,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int match = Integer.parseInt(pack.substring(off+1));
 						logger.debug("Received packet with matching index " + match + " for round " + round + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
-						ckp.acknowledgeMatches(sender, round, match);
+						ckp.acknowledgeMatches(remoteHostAddress, round, match);
 
 						/* Since a new match was now added the the local match list, check 
 						 * if there are enough to create a candidate key.
@@ -375,7 +388,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
 						logger.debug("Received candidate key composed of " + numParts + " parts");
 						byte[] candKeyHash = Hex.decodeHex(pack.substring(off+1).toCharArray());
-						CandidateKey candKey = ckp.searchKey(sender, candKeyHash, numParts);
+						CandidateKey candKey = ckp.searchKey(remoteHostAddress, candKeyHash, numParts);
 					
 						if (candKey != null) {
 							// this is just a sanity check
@@ -434,8 +447,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		}
 		
 		/** Small helper function to wipe the generated candidate keys for a remote host. */
-		private void wipe(InetAddress remoteHost) {
-			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.remove(remoteHost);
+		private void wipe(String remoteHostAddress) {
+			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.remove(remoteHostAddress);
 			if (cand != null) {
 				for (int i=0; i<cand.list.length; i++)
 					if (cand.list[i] != null) {
@@ -456,11 +469,13 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 */
 		private void authenticationFailed(InetAddress remoteHost, boolean sendTerminateMsg,
 				Exception e, String msg) {
-			logger.debug("Authentication with remote host " + remoteHost + " failed" +
+			String remoteHostAddress = remoteHost.getHostAddress();
+
+			logger.debug("Authentication with remote host " + remoteHostAddress + " failed" +
 					(e != null ? " with exception '" + e + "'" : "") +
 					(msg != null ? " with message '" + msg + "'" : "") + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
-			if (ckp.wipe(remoteHost) && sendTerminateMsg) {
+			if (ckp.wipe(remoteHostAddress) && sendTerminateMsg) {
 				// ok, there was some state, also send a termination message
 				String termPacket = Protocol_Terminate;
 				logger.debug("Sending termination message to remote host" + 
@@ -474,13 +489,13 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				}
 			}
 			// also wipe the state local to this class
-			wipe(remoteHost);
+			wipe(remoteHostAddress);
 			
 			// raise the event to notify others
-			raiseAuthenticationFailureEvent(remoteHost, e, msg);
+			raiseAuthenticationFailureEvent(remoteHostAddress, e, msg);
 			
 			// also allow derived classes to do special failure handling
-			protocolFailedHook(remoteHost, e, msg);
+			protocolFailedHook(remoteHostAddress, e, msg);
 		}
 		
 		/** Small helper function to deal with authentication success in stage 1. For details 
@@ -488,12 +503,14 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 */
 		private void authenticationSucceededStage1(InetAddress remoteHost,
 				byte[] foundKeyHash, byte[] foundKey) throws InternalApplicationException, IOException {
-			if (! generatedKeys.containsKey(remoteHost))
+			String remoteHostAddress = remoteHost.getHostAddress();
+
+			if (! generatedKeys.containsKey(remoteHostAddress))
 				throw new InternalApplicationException("Got candidate key message from remote host " + 
 						remoteHost + " with no generated key candidates. This should not happen!" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 
-			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
+			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 			if (cand.foundMatchingKey != null) {
 				logger.warn("Not ovverwriting the found matching key for remote host " + remoteHost +
 						", because stage 2 not entered yet." + 
@@ -504,7 +521,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 
 				String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
 				logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
-						+ " to remote host " + remoteHost + 
+						+ " to remote host " + remoteHostAddress + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				channel.sendTo(ackPacket.getBytes(), remoteHost);
 			}
@@ -516,16 +533,18 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 */
 		private void authenticationSucceededStage2(InetAddress remoteHost,
 				byte[] ackedKeyHash) throws InternalApplicationException, IOException {
-			if (! generatedKeys.containsKey(remoteHost))
+			String remoteHostAddress = remoteHost.getHostAddress();
+
+			if (! generatedKeys.containsKey(remoteHostAddress))
 				throw new InternalApplicationException("Got candidate key message from remote host " + 
-						remoteHost + " with no generated key candidates. This should not happen!" + 
+						remoteHostAddress + " with no generated key candidates. This should not happen!" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 
-			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
+			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 			if (cand.foundMatchingKey == null) {
 				logger.warn("Received an acknowledge for a locally found matching key " +
 						"but nothing known about this key. This might indicate an ongoing attack! " +
-						"Wiping state for remote host " + remoteHost + 
+						"Wiping state for remote host " + remoteHostAddress + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				authenticationFailed(remoteHost, true, null, 
 						"Message received that shouldn't. Remote host is bad");
@@ -551,7 +570,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			if (ackedMatchingKey == null) {
 				logger.warn("Could not find a recently generated key matching the acknowledged hash. " +
 						"This might indicate an ongoing attack! " +
-						"Wiping state for remote host " + remoteHost + 
+						"Wiping state for remote host " + remoteHostAddress + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				authenticationFailed(remoteHost, true, null, 
 					"Message received that shouldn't. Remote host is bad");
@@ -588,34 +607,36 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			}
 
 			// now that we finally have the (real) shared key, can wipe the state
-			wipe(remoteHost);
-			ckp.wipe(remoteHost);
+			wipe(remoteHostAddress);
+			ckp.wipe(remoteHostAddress);
 			
 			// raise the event to notify others
-			raiseAuthenticationSuccessEvent(remoteHost, realSharedKey);
+			raiseAuthenticationSuccessEvent(remoteHostAddress, realSharedKey);
 				
 			// also allow derived classes to do special success handling
-			protocolSucceededHook(remoteHost, realSharedKey);
+			protocolSucceededHook(remoteHostAddress, realSharedKey);
 		}
 		
 		/** This helper function checks if a key can already be generated and sends it
 		 * to the remote host, if yes.
 		 */
 		private void checkForKeyGeneration(InetAddress remoteHost) {
-			if (ckp.getNumTotalMatches(remoteHost) >= minMatchingParts &&
-					ckp.getSumMatchEntropy(remoteHost) >= minMatchingEntropy) {
+			String remoteHostAddress = remoteHost.getHostAddress();
+
+			if (ckp.getNumTotalMatches(remoteHostAddress) >= minMatchingParts &&
+					ckp.getSumMatchEntropy(remoteHostAddress) >= minMatchingEntropy) {
 				logger.info("Received enough matches to generate candidate keys" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				try {
-					CandidateKey candKey = ckp.generateKey(remoteHost);
+					CandidateKey candKey = ckp.generateKey(remoteHostAddress);
 					// and remember this key for later matching with the acknowledge
 					GeneratedKeyCandidates genList = null;
-					if (generatedKeys.containsKey(remoteHost)) {
-						genList = (GeneratedKeyCandidates) generatedKeys.get(remoteHost);
+					if (generatedKeys.containsKey(remoteHostAddress)) {
+						genList = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 					}
 					else {
 						genList = new GeneratedKeyCandidates();
-						generatedKeys.put(remoteHost, genList);
+						generatedKeys.put(remoteHostAddress, genList);
 					}
 					genList.list[genList.index++] = candKey;
 					if (genList.index == genList.list.length)
