@@ -9,7 +9,6 @@
 package org.eu.mayrhofer.authentication.test;
 
 import java.io.IOException;
-import java.net.InetAddress;
 
 import org.eu.mayrhofer.authentication.CKPOverUDP;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
@@ -34,17 +33,17 @@ public class CKPOverUDPTest extends TestCase {
 			numResetHookCalled++;
 		}
 
-		protected void protocolSucceededHook(InetAddress remote, byte[] sharedSessionKey) {
+		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
 			numSucceededHookCalled++;
 			this.sharedSessKey = sharedSessionKey;
 		}
 
-		protected void protocolFailedHook(InetAddress remote, Exception e, String message) {
+		protected void protocolFailedHook(String remote, Exception e, String message) {
 			numFailedHookCalled++;
 			
 		}
 
-		protected void protocolProgressHook(InetAddress remote, int cur, int max, String message) {
+		protected void protocolProgressHook(String remote, int cur, int max, String message) {
 			numProgressHookCalled++;
 		}
 		
@@ -117,6 +116,12 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertEquals(0, helper2.numFailedHookCalled);
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+
+		helper1.dispose();
+		helper1 = null;
+		helper2.dispose();
+		helper2 = null;
+		System.gc();
 	}
 	
 	public void testCompleteRun_SymmetricNoSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
@@ -144,6 +149,12 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertEquals(0, helper2.numFailedHookCalled);
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+
+		helper1.dispose();
+		helper1 = null;
+		helper2.dispose();
+		helper2 = null;
+		System.gc();
 	}
 
 	public void testCompleteRun_SymmetricNoSendMatches_Sequenced2() throws IOException, InternalApplicationException, InterruptedException {
@@ -171,6 +182,12 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertEquals(0, helper2.numFailedHookCalled);
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+
+		helper1.dispose();
+		helper1 = null;
+		helper2.dispose();
+		helper2 = null;
+		System.gc();
 	}
 
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
@@ -198,6 +215,12 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertEquals(0, helper2.numFailedHookCalled);
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+
+		helper1.dispose();
+		helper1 = null;
+		helper2.dispose();
+		helper2 = null;
+		System.gc();
 	}
 	
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
@@ -225,6 +248,12 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertEquals(0, helper2.numFailedHookCalled);
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+
+		helper1.dispose();
+		helper1 = null;
+		helper2.dispose();
+		helper2 = null;
+		System.gc();
 	}
 
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced2() throws IOException, InternalApplicationException, InterruptedException {
@@ -252,5 +281,11 @@ public class CKPOverUDPTest extends TestCase {
 		Assert.assertEquals(0, helper2.numFailedHookCalled);
 
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(helper1.sharedSessKey, helper2.sharedSessKey));
+
+		helper1.dispose();
+		helper1 = null;
+		helper2.dispose();
+		helper2 = null;
+		System.gc();
 	}
 }
