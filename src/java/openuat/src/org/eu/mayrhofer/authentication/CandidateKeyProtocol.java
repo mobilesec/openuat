@@ -652,6 +652,17 @@ public class CandidateKeyProtocol {
 			return false;
 	}
 	
+	/** Wipes all entries from the set of matching keys, i.e. calls wipe for
+	 * all remote hosts where there have been some matches.
+	 * @see #matchingKeyParts
+	 * @see #wipe 
+	 */
+	public void wipeAll() {
+		Iterator iter = matchingKeyParts.values().iterator();
+		while (iter.hasNext())
+			wipe(iter.next());
+	}
+	
 	/** This is a helper function used by generateKey and searchKey to assemble
 	 * key parts from the matching list. If numParts is -1, it is ignored. Otherwise,
 	 * this method will try to collect that many unique rounds and return null if not
