@@ -373,7 +373,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		// in addition to the "standard" event sent by the super class, send the specialized Relate event too
 		if (relateEventHandler != null)
 			relateEventHandler.success(serialPort, remote.getHostAddress(), 
-					remoteRelateId, (byte) rounds, sharedSessionKey);
+					localSide.getRemoteRelateId(), (byte) rounds, sharedSessionKey);
 
 		// and log to the statistics logger!
 		if (!simulation) {
@@ -400,7 +400,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 				" with " + remote + "%" + remoteRelateId + ": " + e + " / " + message);
 		if (relateEventHandler != null)
 			relateEventHandler.failure(serialPort, remote.toString(),
-					remoteRelateId,	e, message);
+					optionalRemoteId instanceof DongleProtocolHandler ? 
+							((DongleProtocolHandler) optionalRemoteId).getRemoteRelateId() : -1, 
+					e, message);
 
 		// also log that failure to the statistics logger
 		if (!simulation)
@@ -419,7 +421,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			Object optionalRemoteId, int cur, int max, String message) {
 		if (relateEventHandler != null)
 			relateEventHandler.progress(serialPort, remote.toString(),
-				remoteRelateId,	cur, max, message);
+					optionalRemoteId instanceof DongleProtocolHandler ? 
+							((DongleProtocolHandler) optionalRemoteId).getRemoteRelateId() : -1, 
+				cur, max, message);
 	}
 	
 	/** Called by the base class when shared keys have been established and should be verified now.

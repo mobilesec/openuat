@@ -538,4 +538,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
     public int getDongleInterlockTime() {
     		return (int) (completedTime - commandSentTime);
     }
+    
+    /** Returns the ID of the remote relate dongle with which this authentication
+     * protocol is run.
+     * 
+     * @return The remote relate ID used as the authentication peer.
+     */
+    public byte getRemoteRelateId() {
+    	return remoteRelateId;
+    }
 }
