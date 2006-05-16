@@ -16,8 +16,10 @@ import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.CKPOverUDP;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.sensors.FFT;
+import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.Quantizer;
 import org.eu.mayrhofer.sensors.SamplesSink;
+import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 
 /** This is the first variant of the motion authentication protocol. It 
  * broadcasts candidate keys over UDP and creates shared keys with the
@@ -143,5 +145,36 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
 		
+	}
+
+
+	/////////////////// testing code begins here ///////////////
+	public static void main(String[] args) throws IOException {
+		int minmatchingparts = 8;
+		
+		int samplerate = 128; // Hz
+		int windowsize = samplerate/2; // 1/2 second
+		int minsegmentsize = windowsize; // 1/2 second
+		double varthreshold = 350;
+		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+		aggr_a.setOffset(0);
+		aggr_a.setMultiplicator(1/128f);
+		aggr_a.setSubtractTotalMean(true);
+		aggr_a.setActiveVarianceThreshold(varthreshold);
+		aggr_b.setOffset(0);
+		aggr_b.setMultiplicator(1/128f);
+		aggr_b.setSubtractTotalMean(true);
+		aggr_b.setActiveVarianceThreshold(varthreshold);
+		
+		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(samplerate, minmatchingparts, true); 
+		MotionAuthenticationProtocol2 ma2 = new MotionAuthenticationProtocol2(samplerate, minmatchingparts, true); 
+		aggr_a.addNextStageSamplesSink(ma1);
+		aggr_b.addNextStageSamplesSink(ma2);
+		
+		r.simulateSampling();
 	}
 }

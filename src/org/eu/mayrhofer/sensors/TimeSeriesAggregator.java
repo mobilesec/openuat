@@ -341,7 +341,7 @@ public class TimeSeriesAggregator {
 	 * 
 	 * @param sink The sink to push new aggregated segments to.
 	 */
-	public void addNextStageSamplesSink(SegmentsSink sink) {
+	public void addNextStageSamplesSink(SamplesSink sink) {
 		segmentsSinks.add(sink);
 	}
 
@@ -350,7 +350,7 @@ public class TimeSeriesAggregator {
 	 * @param sink The sink to stop pushing segments to.
 	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
-	public boolean removeNextStageSamplesSink(SegmentsSink sink) {
+	public boolean removeNextStageSamplesSink(SamplesSink sink) {
 		return segmentsSinks.remove(sink);
 	}
 }

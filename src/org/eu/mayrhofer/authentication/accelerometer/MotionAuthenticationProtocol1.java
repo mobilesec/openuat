@@ -295,8 +295,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		
 		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(true); 
 		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(true); 
-		aggr_a.addNextStageSink(ma1);
-		aggr_b.addNextStageSink(ma2);
+		aggr_a.addNextStageSegmentsSink(ma1);
+		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startServer();
 		ma2.startAuthentication("localhost");
 		
