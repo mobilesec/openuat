@@ -387,14 +387,14 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	}
 	
 	/** Called by the base class when the whole authentication protocol failed. 
-	 * <b>Note:</b> The optionalRemoteId object is (ab)used not to pass an Integer 
+	 * <b>Note:</b> The optionalRemoteId object may be (ab)used not to pass an Integer 
 	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
-	 * that the protocol execution times can be queried. 
+	 * that the protocol execution times can be queried.  But since this method can also
+	 * be called when HostAuthenticationProtocol fails, we don't know if optionalRemoteId
+	 * is going to be set - can't use it here at all.
 	 */
 	protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 			Exception e, String message) {
-		// the optionalRemoteId is set to the DongleProtocolHandler object
-		DongleProtocolHandler localSide = (DongleProtocolHandler) optionalRemoteId;
 
 		logger.error("Authentication protocol failed at port " + serialPort + 
 				" with " + remote + "%" + remoteRelateId + ": " + e + " / " + message);
@@ -405,14 +405,15 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		// also log that failure to the statistics logger
 		if (!simulation)
 			statisticsLogger.error("- " + rounds + " " + referenceMeasurement + 
-					" Authentication failed: '" + e + "' / '" + message + "' (local times: " +
-					localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() + ")");
+					" Authentication failed: '" + e + "' / '" + message);
 	}
 
 	/** Called by the base class when the whole authentication protocol shows progress. 
-	 * <b>Note:</b> The optionalRemoteId object is (ab)used not to pass an Integer 
+	 * <b>Note:</b> The optionalRemoteId object may be (ab)used not to pass an Integer 
 	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
-	 * that the protocol execution times can be queried. 
+	 * that the protocol execution times can be queried.  But since this method can also
+	 * be called when HostAuthenticationProtocol fails, we don't know if optionalRemoteId
+	 * is going to be set - can't use it here at all.
 	 */
 	protected void protocolProgressHook(InetAddress remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
