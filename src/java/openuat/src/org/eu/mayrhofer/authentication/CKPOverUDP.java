@@ -92,13 +92,13 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	
 	/** The minimum number of matching parts before a key will be created. This is set by the
 	 * constructor.
-	 * @see #CKPOverUDP(int, String, String, boolean, boolean, int, int, boolean)
+	 * @see #CKPOverUDP(int, int, String, String, boolean, boolean, int, int, boolean)
 	 */
 	private int minMatchingParts;
 	
 	/** The minimum entropy of the matching parts before a key will be created. This is set by the
 	 * constructor.
-	 * @see #CKPOverUDP(int, String, String, boolean, boolean, int, int, boolean)
+	 * @see #CKPOverUDP(int, int, String, String, boolean, boolean, int, int, boolean)
 	 */
 	private int minMatchingEntropy;
 	
