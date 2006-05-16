@@ -359,7 +359,11 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		rounds = -1;
 	}
 	
-	/** Called by the base class when the whole authentication protocol succeeded. */
+	/** Called by the base class when the whole authentication protocol succeeded. 
+	 * <b>Note:</b> The optionalRemoteId object is (ab)used not to pass an Integer 
+	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
+	 * that the protocol execution times can be queried. 
+	 */
 	protected void protocolSucceededHook(InetAddress remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
 			byte[] sharedSessionKey) {
@@ -382,28 +386,38 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		}
 	}
 	
-	/** Called by the base class when the whole authentication protocol failed. */
+	/** Called by the base class when the whole authentication protocol failed. 
+	 * <b>Note:</b> The optionalRemoteId object is (ab)used not to pass an Integer 
+	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
+	 * that the protocol execution times can be queried. 
+	 */
 	protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 			Exception e, String message) {
+		// the optionalRemoteId is set to the DongleProtocolHandler object
+		DongleProtocolHandler localSide = (DongleProtocolHandler) optionalRemoteId;
+
 		logger.error("Authentication protocol failed at port " + serialPort + 
-				" with " + remote + "%" + optionalRemoteId + ": " + e + " / " + message);
+				" with " + remote + "%" + remoteRelateId + ": " + e + " / " + message);
 		if (relateEventHandler != null)
 			relateEventHandler.failure(serialPort, remote.toString(),
-					optionalRemoteId != null ? ((Integer) optionalRemoteId).intValue() : -1,
-					e, message);
+					remoteRelateId,	e, message);
 
 		// also log that failure to the statistics logger
 		statisticsLogger.error("- " + rounds + " " + referenceMeasurement + 
-				" Authentication failed: '" + e + "' / '" + message + "'");
+				" Authentication failed: '" + e + "' / '" + message + "' (local times: " +
+				localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() + ")");
 	}
 
-	/** Called by the base class when the whole authentication protocol shows progress. */
+	/** Called by the base class when the whole authentication protocol shows progress. 
+	 * <b>Note:</b> The optionalRemoteId object is (ab)used not to pass an Integer 
+	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
+	 * that the protocol execution times can be queried. 
+	 */
 	protected void protocolProgressHook(InetAddress remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
 		if (relateEventHandler != null)
 			relateEventHandler.progress(serialPort, remote.toString(),
-				optionalRemoteId != null ? ((Integer) optionalRemoteId).intValue() : -1,
-				cur, max, message);
+				remoteRelateId,	cur, max, message);
 	}
 	
 	/** Called by the base class when shared keys have been established and should be verified now.
