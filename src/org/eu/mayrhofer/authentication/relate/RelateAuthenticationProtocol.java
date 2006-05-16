@@ -403,9 +403,10 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 					remoteRelateId,	e, message);
 
 		// also log that failure to the statistics logger
-		statisticsLogger.error("- " + rounds + " " + referenceMeasurement + 
-				" Authentication failed: '" + e + "' / '" + message + "' (local times: " +
-				localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() + ")");
+		if (!simulation)
+			statisticsLogger.error("- " + rounds + " " + referenceMeasurement + 
+					" Authentication failed: '" + e + "' / '" + message + "' (local times: " +
+					localSide.getSendCommandTime() + " " + localSide.getDongleInterlockTime() + ")");
 	}
 
 	/** Called by the base class when the whole authentication protocol shows progress. 
@@ -537,7 +538,11 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	        	localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
 	        }
 	        
-	        verificationFailure(remote, localTimes, e, msg);
+	    	DongleProtocolHandler h = null;
+	    	if (!simulation) {
+	    		h = (DongleProtocolHandler) sender;
+	    	}
+	        verificationFailure(h, localTimes, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
