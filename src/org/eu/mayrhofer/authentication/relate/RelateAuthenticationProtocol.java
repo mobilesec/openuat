@@ -238,8 +238,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * @param relateEventHandler If set to an object != null, it will get notified of all events.
 	 */
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
-				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) 
-			throws ConfigurationErrorException, InternalApplicationException {
+				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) {
 		super(TcpPort, keepSocketConnected, serialPort, useJSSE);
 		
 		if (!simulation) {
