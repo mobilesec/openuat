@@ -158,7 +158,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		SerialConnector serialConn;
 		try {
-			serialConn = SerialConnector.getSerialConnector(serialPort);
+			// TODO: maybe stop hard-coding the device type for the "old" dongle
+			serialConn = SerialConnector.getSerialConnector(serialPort, 1);
 		}
 		catch (Exception e) {
 			throw new InternalApplicationException("Could not get serial connector object.", e);
