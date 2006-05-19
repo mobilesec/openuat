@@ -24,6 +24,7 @@ import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.core.EventDispatcher;
 import uk.ac.lancs.relate.core.MeasurementManager;
 import uk.ac.lancs.relate.core.SerialConnector;
+import uk.ac.lancs.relate.events.MeasurementEvent;
 
 /** This class implements the basic functionality of the IPSec connector applications.
  * It is common to both the client end and the admin end and can not be instantiated
@@ -102,6 +103,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
             MeasurementManager man = new MeasurementManager(conf);
+            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man);
 		}
 		else {
 			logger.warn("Initializing in simulation mode without dongles");

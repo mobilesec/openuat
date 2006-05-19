@@ -31,6 +31,7 @@ import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.core.Measurement;
 import uk.ac.lancs.relate.core.MeasurementManager;
 import uk.ac.lancs.relate.core.EventDispatcher;
+import uk.ac.lancs.relate.events.MeasurementEvent;
 import uk.ac.lancs.relate.auth.ProgressEventHandler;
 //import uk.ac.lancs.relate.events.RelateEvent;
 //import uk.ac.lancs.relate.core.MessageQueue;
@@ -718,6 +719,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
             MeasurementManager man = new MeasurementManager(conf);
+            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man);
 
             // this initializes the object with the passed arguments, but doesn't do much else 
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEServer, false, null);
@@ -741,6 +743,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
             MeasurementManager man = new MeasurementManager(conf);
+            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man);
+            
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
         	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
         	r.addAuthenticationProgressHandler(t);
@@ -803,7 +807,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	logger.info("Connected to my two dongles: ID " + localId1 + " on " + serialPort1 + ", and ID " + localId2 + " on " + serialPort2);
 
             MeasurementManager man1 = new MeasurementManager(conf1);
+            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man1);
             MeasurementManager man2 = new MeasurementManager(conf2);
+            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man2);
         		
         	// server side
         	TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
