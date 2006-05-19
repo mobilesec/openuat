@@ -19,9 +19,11 @@ import org.eu.mayrhofer.authentication.exceptions.ConfigurationErrorException;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.authentication.relate.RelateAuthenticationProtocol;
 
+import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.DongleException;
 import uk.ac.lancs.relate.core.EventDispatcher;
 import uk.ac.lancs.relate.core.MeasurementManager;
+import uk.ac.lancs.relate.core.SerialConnector;
 
 /** This class implements the basic functionality of the IPSec connector applications.
  * It is common to both the client end and the admin end and can not be instantiated
@@ -95,8 +97,11 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		
 		if (serialPort != null) {
 			logger.info("Initializing with serial port " + serialPort);
-	        EventDispatcher.getDispatcher(new String[] {serialPort});
-	        manager = new MeasurementManager(serialPort);
+        	Configuration conf = new Configuration(serialPort);
+        	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
+        	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
+            // this will start the SerialConnector thread and start listening for incoming measurements
+            MeasurementManager man = new MeasurementManager(conf);
 		}
 		else {
 			logger.warn("Initializing in simulation mode without dongles");

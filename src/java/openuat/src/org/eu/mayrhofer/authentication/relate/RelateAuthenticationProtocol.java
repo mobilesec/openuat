@@ -24,6 +24,7 @@ import java.util.Iterator;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
+import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.MeasurementQueue;
 import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.DongleException;
@@ -317,8 +318,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			// this code block only gets our local relate id so that it can be transmitted to the other host
 			SerialConnector serialConn;
 			try {
-				// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-				serialConn = SerialConnector.getSerialConnector(serialPort);
+				// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework.
+				// TODO: maybe stop hard-coding the device type for the "old" USB dongle
+				serialConn = SerialConnector.getSerialConnector(serialPort, 1);
 				logger.info("-------- connected successfully to dongle at port " + serialPort + ", including first handshake. My ID is " + serialConn.getLocalRelateId());
 			}
 			catch (DongleException e) {
@@ -583,7 +585,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	// helper function to better facilitate the experiments, just interrupt both dongles
 	private static void resetBothDongles() {
 		try {
-			SerialConnector.getSerialConnector("/dev/ttyUSB0").switchDiagnosticMode(false);
+			SerialConnector.getSerialConnector("/dev/ttyUSB0", 1).switchDiagnosticMode(false);
 		}
 		catch (DongleException e) { 
 			logger.error("Could not reset dongle");
@@ -592,7 +594,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {}
 		try {
-			SerialConnector.getSerialConnector("/dev/ttyUSB1").switchDiagnosticMode(false);
+			SerialConnector.getSerialConnector("/dev/ttyUSB1", 1).switchDiagnosticMode(false);
 		}
 		catch (DongleException e) { 
 			logger.error("Could not reset dongle");
@@ -710,11 +712,12 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		
             // no longer need this
             //int referenceMeasurement1 = helper_getReferenceMeasurement(serialPort, (byte) Integer.parseInt(args[2]));
-
-            // set the serial port to prevent EventDispatcher from asking in its init
-            EventDispatcher.getDispatcher(new String[] {serialPort});
+        	
+        	Configuration conf = new Configuration(serialPort);
+        	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
+        	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
-            MeasurementManager man = new MeasurementManager(serialPort);
+            MeasurementManager man = new MeasurementManager(conf);
 
             // this initializes the object with the passed arguments, but doesn't do much else 
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEServer, false, null);
@@ -733,8 +736,11 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	System.out.println("starting client mode: port=" + args[1] + ", server=" + args[2] + ", remoteid=" + args[3] + ", rounds=" + args[4]);
         	String serialPort = args[1];
         	logger.info("Starting client mode");
-            EventDispatcher.getDispatcher(new String[] {serialPort});
-            MeasurementManager man = new MeasurementManager(serialPort);
+        	Configuration conf = new Configuration(serialPort);
+        	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
+        	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
+            // this will start the SerialConnector thread and start listening for incoming measurements
+            MeasurementManager man = new MeasurementManager(conf);
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
         	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
         	r.addAuthenticationProgressHandler(t);
@@ -772,13 +778,19 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	int localId1 = -1, localId2 = -1;
         	String serialPort1 = "/dev/ttyUSB0", serialPort2 = "/dev/ttyUSB1";
 
+        	Configuration conf1 = new Configuration(serialPort1);
+        	Configuration conf2 = new Configuration(serialPort2);
         	// first need to get my local ids
         	try {
-        		SerialConnector s1 = SerialConnector.getSerialConnector(serialPort1);
-        		localId1 = s1.getLocalRelateId();
+            	SerialConnector connector1 = SerialConnector.getSerialConnector(conf1.getDevicePortName(), conf1.getDeviceType());
+        		localId1 = connector1.getLocalRelateId();
+            	connector1.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
+
         		Thread.sleep(3000);
-        		SerialConnector s2 = SerialConnector.getSerialConnector(serialPort2);
-        		localId2 = s2.getLocalRelateId();
+
+            	SerialConnector connector2 = SerialConnector.getSerialConnector(conf2.getDevicePortName(), conf2.getDeviceType());
+        		localId1 = connector1.getLocalRelateId();
+            	connector2.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
         	}
         	catch (DongleException e) {
         		logger.error("-------- failed to connect to dongle, didn't get my ID.");
@@ -790,9 +802,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 
         	logger.info("Connected to my two dongles: ID " + localId1 + " on " + serialPort1 + ", and ID " + localId2 + " on " + serialPort2);
 
-            EventDispatcher.getDispatcher(new String[] {serialPort1, serialPort2});
-            MeasurementManager man1 = new MeasurementManager(serialPort1);
-            MeasurementManager man2 = new MeasurementManager(serialPort2);
+            MeasurementManager man1 = new MeasurementManager(conf1);
+            MeasurementManager man2 = new MeasurementManager(conf2);
         		
         	// server side
         	TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
