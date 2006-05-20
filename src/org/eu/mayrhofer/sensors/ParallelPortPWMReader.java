@@ -439,20 +439,20 @@ public class ParallelPortPWMReader {
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device
 		int[] samplerates = new int[] {64, 128, 256, 512}; // different sample rates
-		double[] windowsizeFactors = new double[] {1, 1/2f, 1/3f};  // 1 second, 1/2 second or 1/3 second for active detection
-		double varthresholdMin = 50;
-		double varthresholdMax = 500;
-		double varthresholdStep = 10;
-		int numQuantLevelsMin = 2;
-		int numQuantLevelsMax = 30;
+		double[] windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection
+		double varthresholdMin = 50; // 50
+		double varthresholdMax = 1000; // 1000
+		double varthresholdStep = 50; // 10
+		int numQuantLevelsMin = 8; // 2
+		int numQuantLevelsMax = 8; // 32
 		int numQuantLevelsStep = 1;
-		int numCandidatesMin = 2;
-		int numCandidatesMax = 10;
+		int numCandidatesMin = 6; // 1
+		int numCandidatesMax = 6; // 16
 		int numCandidatesStep = 1;
-		int cutOffFrequencyMin = 5;
-		int cutOffFrequencyMax = 50;
-		int cutOffFrequencyStep = 1;
-		double[] windowOverlapFactors = new double[] {0, 1/8f, 1/4f, 1/3f, 1/2f, 1, 3/2f}; 
+		int cutOffFrequencyMin = 15; // 5
+		int cutOffFrequencyMax = 15; // 50
+		int cutOffFrequencyStep = 5;
+		double[] windowOverlapFactors = new double[] {/*0, 1/8f, 1/4f, 1/3f,*/ 1/2f/*, 1, 3/2f*/}; 
 		
 		// this is ugly.....
 		for (int i1=0; i1<samplerates.length; i1++) {
@@ -532,21 +532,23 @@ public class ParallelPortPWMReader {
 							s1[i] = SegmentSink.segs[0][i];
 							s2[i] = SegmentSink.segs[1][i];
 						}
-						double[] coherence = Coherence.cohere(s1, s2, 128, 0);
-						if (graph) {
-							XYSeries c = new XYSeries("Coefficients", false);
-							for (int i=0; i<coherence.length; i++)
-								c.add(i, coherence[i]);
-							XYDataset c1 = new XYSeriesCollection(c);
-							JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-									"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-							ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
-						}
+						double[] coherence = Coherence.cohere(s1, s2, windowsize, 0);
+						if (coherence != null) {
+							if (graph) {
+								XYSeries c = new XYSeries("Coefficients", false);
+								for (int i=0; i<coherence.length; i++)
+									c.add(i, coherence[i]);
+								XYDataset c1 = new XYSeriesCollection(c);
+								JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+										"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+								ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+							}
 		
-						double coherenceMean = Coherence.mean(coherence);
-						System.out.println("Coherence mean: " + coherenceMean + 
-								" samplerate=" + samplerate + ", windowsize=" + windowsize + 
-								", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
+							double coherenceMean = Coherence.mean(coherence);
+							System.out.println("Coherence mean: " + coherenceMean + 
+									" samplerate=" + samplerate + ", windowsize=" + windowsize + 
+									", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
+						}
 
 						/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
 						for (int i3=0; i3<windowOverlapFactors.length; i3++) {
