@@ -56,7 +56,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			numResetHookCalled++;
 		}
 
-		protected void protocolSucceededHook(InetAddress remote, Object optionalRemoteId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
+		protected void protocolSucceededHook(InetAddress remote, Object optionalRemoteId, String optionalParameterFromRemote, byte[] sharedSessionKey, Socket toRemote) {
 			System.out.println("-----------------------------------------------------------------------------------------");
 			numSucceededHookCalled++;
 			this.optRemoteIdOut = optionalRemoteId;
