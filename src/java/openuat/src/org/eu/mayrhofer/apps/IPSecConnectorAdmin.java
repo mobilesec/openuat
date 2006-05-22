@@ -31,7 +31,9 @@ import org.eu.mayrhofer.authentication.exceptions.ConfigurationErrorException;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.channel.X509CertificateGenerator;
 
+import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.apps.SimpleShowDemo;
 
 /** @author Rene Mayrhofer
  * @version 1.0
@@ -40,7 +42,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnectorAdmin.class);
 
-	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="4,11"
+	private Shell adminShell = null;  //  @jve:decl-index=0:visual-constraint="4,11"
 	private ProgressBar certificateProgress = null;
 	private Label label = null;
 	private Label label1 = null;
@@ -87,7 +89,52 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 */
 	private IPSecConfigHandler config;
 	
-	private String remoteHost = null;
+	/** The shared key as agreed by the spatial authentication protocol. Is is set
+	 * in the authentication success events and used in issueCertificate.
+	 */
+	private byte[] sharedKey = null;
+	
+	/** Remembers the TCP socket to the remote host, as passed in the authentication
+	 * success message.
+	 */
+	private Socket toRemote = null;
+	
+	private class AuthenticationEventsHandler extends SimpleShowDemo {
+		public AuthenticationEventsHandler(Shell shell,  Configuration config) {
+			// do not start an authentication server for the admin
+			// but keep socket connected for reuse
+			super(shell, config, false, true);
+		}
+
+		protected void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) {
+			super.authenticationStarted(serialPort, remoteHost, remoteRelateId, numRounds);
+			// authentication started, so switch to new window
+			shell.close();
+			shell.dispose();
+			
+			adminShell.open();
+		}		
+
+		public void success(String serialPort, String remoteHost, int remoteRelateId, byte numRounds, byte[] sharedSecret,
+				Socket socketToRemote) {
+			super.success(serialPort, remoteHost, remoteRelateId, numRounds, sharedSecret, socketToRemote);
+			// remember the shared key and the socket
+			sharedKey = sharedSecret;
+			toRemote = socketToRemote;
+
+			// authenticated, so now enable the start button
+			startButton.setEnabled(true);
+		}
+
+		public void progress(String serialPort, String remoteHost, int remoteRelateId, int cur, int max, String msg) {
+			// forward to update the progess bar
+			AuthenticationProgress(serialPort, remoteHost + "/" + remoteRelateId, cur, max, msg);
+		}
+		
+		boolean isDisposed() {
+			return shell.isDisposed();
+		}
+	}
 
 	/**
 	 * @param args
@@ -103,23 +150,58 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		 * For example, on Windows the Eclipse SWT 3.1 plugin jar is:
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
+
 		// TODO: hard-coding is not nice...
-		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(null, //"/dev/ttyUSB0", 
-				"ca.p12", "test password", "Test CA", "ipsec-conf.xml");
-		thisClass.display = Display.getDefault();
-		thisClass.sShell.open();
+		String serialPort = null, caFile = null, confFile = null;
+		if (System.getProperty("os.name").startsWith("Windows CE")) {
+			serialPort = "COM8:";
+			caFile = "\\relate\\ca-ipsec.p12";
+			confFile = "\\relate\\ipsec-conf.xml";
+		}
+		else {
+			serialPort = "/dev/ttyUSB0";
+			caFile = "ca.p12";
+			confFile = "ipsec-conf.xml";
+		}
 		
-		// test code
+		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(serialPort, 
+				caFile, "test password", "Test CA", confFile);
+		
+		// test code, only simulating
+		thisClass.display = Display.getDefault();
+		AuthenticationEventsHandler selectionGui = null;
 		if (args.length > 0) {
-			thisClass.remoteHost = args[0];
-			thisClass.startButton.setEnabled(true);
+			logger.debug("Simulating authentication with host " + args[0]);
+			thisClass.adminShell.open();
+			try {
+				// simulation, so just start the authentication
+				thisClass.auth.startAuthentication(args[0], (byte) 0, 2);
+			}
+			catch (UnknownHostException ee) {
+				// TODO: display error message
+				logger.error("Could not start authentication: " + ee);
+			} catch (IOException ee) {
+				// TODO: display error message
+				logger.error("Could not start authentication: " + ee);
+			}
+		}
+		else {
+			logger.debug("Starting selection GUI normally");
+			// when not testing, use the SimpleShowDemo instead
+		    Configuration config = new Configuration(serialPort);
+			config.setSide("back");
+			Shell shell = new Shell(new Display());
+			// this opens the window, and the authentication is started by right-click
+			selectionGui = thisClass.new AuthenticationEventsHandler(shell, config);
 		}
 
-		while (!thisClass.sShell.isDisposed()) {
+		while (!thisClass.adminShell.isDisposed() && (selectionGui == null || selectionGui.isDisposed())) {
 			if (!thisClass.display.readAndDispatch())
 				thisClass.display.sleep();
 		}
 		thisClass.display.dispose();
+		
+		System.exit(0);
 	}
 	
 	public IPSecConnectorAdmin(String serialPort, String caFile, String caPassword, String caAlias, 
@@ -158,78 +240,68 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	}
 
 	/**
-	 * This method initializes sShell
+	 * This method initializes adminShell
 	 */
 	private void createSShell() {
-		sShell = new Shell();
-		sShell.setText("IPSec Connector Admin");
-		sShell.setSize(new org.eclipse.swt.graphics.Point(249,360));
-		certificateProgress = new ProgressBar(sShell, SWT.NONE);
+		adminShell = new Shell();
+		adminShell.setText("IPSec Connector Admin");
+		adminShell.setSize(new org.eclipse.swt.graphics.Point(249,360));
+		certificateProgress = new ProgressBar(adminShell, SWT.NONE);
 		certificateProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(5,238,217,30));
-		label = new Label(sShell, SWT.NONE);
+		label = new Label(adminShell, SWT.NONE);
 		label.setBounds(new org.eclipse.swt.graphics.Rectangle(4,215,198,18));
 		label.setText("Creating X.509 certificate");
-		label1 = new Label(sShell, SWT.NONE);
+		label1 = new Label(adminShell, SWT.NONE);
 		label1.setBounds(new org.eclipse.swt.graphics.Rectangle(8,8,108,18));
 		label1.setText("IPSec gateway");
-		gatewayLabel = new Label(sShell, SWT.NONE);
+		gatewayLabel = new Label(adminShell, SWT.NONE);
 		gatewayLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(123,8,113,20));
 		gatewayLabel.setText(config.getGateway());
-		label4 = new Label(sShell, SWT.NONE);
+		label4 = new Label(adminShell, SWT.NONE);
 		label4.setBounds(new org.eclipse.swt.graphics.Rectangle(9,113,171,19));
 		label4.setText("Common name for certificate");
-		commonNameInput = new Text(sShell, SWT.BORDER);
+		commonNameInput = new Text(adminShell, SWT.BORDER);
 		commonNameInput.setBounds(new org.eclipse.swt.graphics.Rectangle(7,138,223,24));
-		label5 = new Label(sShell, SWT.NONE);
+		label5 = new Label(adminShell, SWT.NONE);
 		label5.setBounds(new org.eclipse.swt.graphics.Rectangle(6,277,201,17));
 		label5.setText("Authenticating client");
-		authenticationProgress = new ProgressBar(sShell, SWT.NONE);
+		authenticationProgress = new ProgressBar(adminShell, SWT.NONE);
 		authenticationProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(6,297,219,31));
-		startButton = new Button(sShell, SWT.NONE);
+		startButton = new Button(adminShell, SWT.NONE);
 		startButton.setBounds(new org.eclipse.swt.graphics.Rectangle(6,169,69,28));
-		startButton.setText("Start");
+		startButton.setText("Issue certificate");
 		startButton.setEnabled(false);
 		startButton.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
 			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-				// TODO: other two parameters...
-				try {
-					auth.startAuthentication(remoteHost, (byte) 0, 2);
-				}
-				catch (UnknownHostException ee) {
-					// TODO: display error message
-					logger.error("Could not start authentication: " + ee);
-				} catch (IOException ee) {
-					// TODO: display error message
-					logger.error("Could not start authentication: " + ee);
-				}
+				issueCertificate();
 			}
 		});
-		label2 = new Label(sShell, SWT.NONE);
+		label2 = new Label(adminShell, SWT.NONE);
 		label2.setBounds(new org.eclipse.swt.graphics.Rectangle(7,52,228,17));
 		label2.setText("Certificate authority");
-		caDnLabel = new Label(sShell, SWT.NONE);
+		caDnLabel = new Label(adminShell, SWT.NONE);
 		caDnLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(8,68,225,17));
 		caDnLabel.setText(config.getCaDistinguishedName());
-		label6 = new Label(sShell, SWT.NONE);
+		label6 = new Label(adminShell, SWT.NONE);
 		label6.setBounds(new org.eclipse.swt.graphics.Rectangle(8,31,107,17));
 		label6.setText("Remote network");
-		remoteNetworkLabel = new Label(sShell, SWT.NONE);
+		remoteNetworkLabel = new Label(adminShell, SWT.NONE);
 		remoteNetworkLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(121,32,116,16));
 		remoteNetworkLabel.setText(config.getRemoteNetwork() + "/" + config.getRemoteNetmask());
-		label3 = new Label(sShell, SWT.NONE);
+		label3 = new Label(adminShell, SWT.NONE);
 		label3.setBounds(new org.eclipse.swt.graphics.Rectangle(8,90,105,17));
 		label3.setText("Validity in days");
-		validityInput = new Spinner(sShell, SWT.NONE);
+		validityInput = new Spinner(adminShell, SWT.NONE);
 		validityInput.setMaximum(365);
 		validityInput.setSelection(30);
 		validityInput.setBounds(new org.eclipse.swt.graphics.Rectangle(121,89,53,20));
-		cancelButton = new Button(sShell, SWT.NONE);
+		cancelButton = new Button(adminShell, SWT.NONE);
 		cancelButton.setBounds(new org.eclipse.swt.graphics.Rectangle(163,170,62,30));
 		cancelButton.setText("Cancel");
 		cancelButton
 				.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
 					public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-						sShell.close();
+						adminShell.close();
 					}
 				});
 	}
@@ -318,9 +390,14 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		System.out.println("SUCCESS");
 		
 		// since we use RelateAuthenticationProtocol with keepSocketConnected=true, ...
-		final byte[] sharedKey = (byte[]) ((Object[] ) result)[0];
-		Socket toRemote = (Socket) ((Object[] ) result)[1];
-		
+		sharedKey = (byte[]) ((Object[] ) result)[0];
+		toRemote = (Socket) ((Object[] ) result)[1];
+
+		// authenticated, so now enable the start button
+		startButton.setEnabled(true);
+	}
+	
+	public void issueCertificate() {
 		// ok, got the shared password - use it to create the certificate (in the background)
 		// (and need to get the text fields in the SWT UI thread) 
 		display.syncExec(new Runnable() { public void run() { 
