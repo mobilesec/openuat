@@ -102,8 +102,8 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
         	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
-            MeasurementManager man = new MeasurementManager(conf);
-            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man);
+            manager = new MeasurementManager(conf);
+            EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, manager);
 		}
 		else {
 			logger.warn("Initializing in simulation mode without dongles");
