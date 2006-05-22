@@ -367,21 +367,26 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		           (i.e. the IP address and the optional remote ID) */
 		        InetAddress remoteAddrPart = socketToRemote.getInetAddress();
 		        Object[] remoteParam = new Object[] {remoteAddrPart, optionalRemoteId};
-		        if (!keepSocketConnected)
-			        /* our result object is here the secret key that is shared (host authentication) 
+
+		        // this string can be null if no optional parameter has been received from the remote host
+		        String optionalParameterFromRemote = remoteStatus.substring(Protocol_Success.length());
+		        
+		        if (!keepSocketConnected) {
+			        /* our result object i here the secret key that is shared (host authentication) 
 			           and now spatially authenticated (dongle authentication) */
 		        	raiseAuthenticationSuccessEvent(remoteParam, sharedKey);
-		        else
+			        // and also call the hook to allow the derived classes to react too
+			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, null);
+		        }
+		        else {
 		        	/* It has been requested that the socket be kept open, so pass it over
 		        	 * in addition to the shared secret key.
 		        	 * As we need to pass two parameters in this case, again use an array...
 		        	 */
 		        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, socketToRemote});
-
-		        // this string can be null if no optional parameter has been received from the remote host
-		        String optionalParameterFromRemote = remoteStatus.substring(Protocol_Success.length());
-		        // and also call the hook to allow the derived classes to react too
-		        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey);
+			        // and also call the hook to allow the derived classes to react too
+			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, socketToRemote);
+		        }
 		        		
 				// if the socket is not going to be re-used, don't forget to close it properly
 				if (!keepSocketConnected)
@@ -612,10 +617,13 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 * @param sharedSessionKey The shared session key (which is different from the
 	 *                         shared authentication key used for verification) that
 	 *                         can now be used for subsequent secure communication.
+	 * @param toRemote If it has been requested that the socket to the remote host
+	 *                 should stay connected, it will be passed in this parameter.
+	 *                 May be null.
 	 */
 	protected abstract void protocolSucceededHook(InetAddress remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey);
+			byte[] sharedSessionKey, Socket toRemote);
 	
 	/** This hook will be called when the whole authentication protocol has
 	 * failed. Derived classes should implement it to react to this failure.

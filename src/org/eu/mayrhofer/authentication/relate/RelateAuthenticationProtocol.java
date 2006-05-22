@@ -369,14 +369,14 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	protected void protocolSucceededHook(InetAddress remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey) {
+			byte[] sharedSessionKey, Socket toRemote) {
 		// the optionalRemoteId is set to the DongleProtocolHandler object
 		DongleProtocolHandler localSide = (DongleProtocolHandler) optionalRemoteId;
 		
 		// in addition to the "standard" event sent by the super class, send the specialized Relate event too
 		if (relateEventHandler != null)
 			relateEventHandler.success(serialPort, remote.getHostAddress(), 
-					localSide.getRemoteRelateId(), (byte) rounds, sharedSessionKey);
+					localSide.getRemoteRelateId(), (byte) rounds, sharedSessionKey, toRemote);
 
 		// and log to the statistics logger!
 		if (!simulation) {
