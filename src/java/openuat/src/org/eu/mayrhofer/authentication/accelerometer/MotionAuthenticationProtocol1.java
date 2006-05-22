@@ -100,7 +100,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * Does nothing. */
 	protected void protocolSucceededHook(InetAddress remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey) {
+			byte[] sharedSessionKey, Socket toRemote) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolSucceededHook called");
 		System.out.println("SUCCESS");
