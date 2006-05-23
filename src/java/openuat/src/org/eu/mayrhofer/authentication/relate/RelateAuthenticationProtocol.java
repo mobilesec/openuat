@@ -12,7 +12,6 @@ import org.eu.mayrhofer.authentication.AuthenticationEventSender;
 import org.eu.mayrhofer.authentication.AuthenticationProgressHandler;
 import org.eu.mayrhofer.authentication.DHOverTCPWithVerification;
 import org.eu.mayrhofer.authentication.HostProtocolHandler;
-import org.eu.mayrhofer.authentication.exceptions.*;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -97,7 +96,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * relate id is taken from the optionalParameter of the HostAuthenticationSuccess event. When
 	 * not -1, this indicates "client" mode and this id will be taken.
 	 * @see #startAuthentication
-	 * @see HostAuthenticationEventHandler
+	 * @see #startVerification(byte[], InetAddress, String, Socket)
 	 */
 	private int remoteRelateId = -1;
 
@@ -125,7 +124,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * being initialized).
 	 * 
 	 * @see #startAuthentication for the "outgoing" authentication
-	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object, Object) for the "incoming" authentication
+	 * @see #startVerification(byte[], InetAddress, String, Socket) for the "incoming" authentication
 	 * @see #fetchReferenceMeasurement is the helper method used for both incoming and outgoing
 	 */
 	private int referenceMeasurement = -1;
@@ -153,9 +152,6 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		int localRelateId = serialConn.getLocalRelateId();
 		if (localRelateId == -1)
 			throw new InternalApplicationException("Dongle at port " + serialPort + " reports id -1, which is an error case.");
-		
-		// start the backgroud thread for getting messages from the dongle
-		serialConn.start();
 		
 		// This message queue is used to receive events from the dongle, in this case the reference measurements.
 		MessageQueue eventQueue = new MessageQueue();
@@ -258,7 +254,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * @return The reference measurement.
 	 * 
 	 * @see #startAuthentication for the "outgoing" authentication
-	 * @see HostAuthenticationEventHandler#AuthenticationSuccess(Object, Object, Object) for the "incoming" authentication
+	 * @see #startVerification(byte[], InetAddress, String, Socket) for the "incoming" authentication
 	 */
 	private int fetchReferenceMeasurement(byte remoteRelateId) {
 		int ref = -1;
@@ -440,7 +436,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		if (remoteRelateId != -1)
 			logger.error("Internal inconsistency! Object is idle in server mode, but remoteRelateId is set");
 		
-		logger.info("Starting key verification at port " + serialPort);
+		logger.info("Starting key verification at port " + serialPort + " after successful host authentication with " +
+				remote + ", socketToRemote is " + socketToRemote);
 
         /* extract the optional parameters (in the case of the RelateAuthenticationProtocol: the remote
         relate id to authenticate with and the number of rounds - we assume them to be set) as well as the 

@@ -101,18 +101,30 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	
 	private class AuthenticationEventsHandler extends SimpleShowDemo {
 		public AuthenticationEventsHandler(Shell shell,  Configuration config) {
-			// do not start an authentication server for the admin
-			// but keep socket connected for reuse
+			// force the GUI to display the authentication menu entry even if it does not locally use it
 			super(shell, config, false, true);
 		}
 
 		protected void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) {
+			// this just emits a log line right now
 			super.authenticationStarted(serialPort, remoteHost, remoteRelateId, numRounds);
-			// authentication started, so switch to new window
-			shell.close();
-			shell.dispose();
 			
-			adminShell.open();
+			// but start our authentication here
+			try {
+				auth.startAuthentication(remoteHost, (byte) remoteRelateId, numRounds);
+
+				// authentication started, so switch to new window
+				shell.close();
+				shell.dispose();
+				
+				adminShell.open();
+			} catch (UnknownHostException e) {
+				logger.error("Unable to start spatial authentication: " + e);
+				e.printStackTrace();
+			} catch (IOException e) {
+				logger.error("Unable to start spatial authentication: " + e);
+				e.printStackTrace();
+			}
 		}		
 
 		public void success(String serialPort, String remoteHost, int remoteRelateId, byte numRounds, byte[] sharedSecret,
@@ -193,6 +205,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			Shell shell = new Shell(new Display());
 			// this opens the window, and the authentication is started by right-click
 			selectionGui = thisClass.new AuthenticationEventsHandler(shell, config);
+			selectionGui.open();
 		}
 
 		while (!thisClass.adminShell.isDisposed() && (selectionGui == null || selectionGui.isDisposed())) {
