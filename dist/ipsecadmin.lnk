@@ -1,1 +1,1 @@
-255#\wsdd\bin\j9.exe -Xdebug -jcl:foun -cp \;\wsdd\lib\jclPPro\ppro-ui-win.zip;\relate\log4jMini.jar;\relate\openuat-distbundle.jar;\relate\relate-dist.jar;\relate\swt.jar org.eu.mayrhofer.apps.IPSecConnectorAdmin
+255#\wsdd\bin\j9.exe -Xdebug -jcl:foun -cp \;\wsdd\lib\jclPPro\ppro-ui-win.zip;\relate\log4jMini.jar;\relate\RXTXcomm.jar;\relate\openuat-distbundle.jar;\relate\relate-dist.jar;\relate\swt.jar org.eu.mayrhofer.apps.IPSecConnectorAdmin
