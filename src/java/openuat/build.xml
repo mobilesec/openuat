@@ -68,6 +68,7 @@
     </fileset>
     <!-- the list of jar files to include in the distbundle -->
     <fileset id="lib.bundleinclude-jars" dir="${lib}">
+<!--	    <include name="log4jMini-1.2alpha.jar"/>-->
 	    <include name="log4j-1.2.jar"/>
 	    <include name="kxml2-2.2.2.jar"/>
     </fileset>
@@ -105,20 +106,20 @@
 	
 	<!-- Compile the BC core dependencies -->
 	<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
-	       classpathref="lib.path.jars" debug="${compile.debug}" target="1.1" source="1.2" />
+	       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
 	
 	<!-- Compile the BC X.509 dependencies -->
 	<javac srcdir="${thirdparty-BC-x509}" destdir="${bin-BC-x509}" includeAntRuntime="no"
-	       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="1.1" source="1.2" />
+	       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="1.2" source="1.2" />
 	
 	<!-- Compile the BC openssl interoperability dependencies -->
 	<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
-	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.1" source="1.2" />
+	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.2" source="1.2" />
 	
 	<!-- Compile our own classes... -->
-        <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+    <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
-	</javac>
+     </javac>
     </target>
 
     <target name="compile-midp" description="Compile special classes for MIDP2.0">
@@ -323,7 +324,7 @@
     </target>-->
 
     <target name="clean" description="Remove build and dist directories">
-        <delete dir="${bin}"/>
+        <delete dir="${build}"/>
 	<!-- <delete dir="${reports}"/> -->
         <delete>
         	<fileset dir="${dist}" includes="*.jar,*.zip"/>
