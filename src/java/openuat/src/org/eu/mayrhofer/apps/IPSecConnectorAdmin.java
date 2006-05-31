@@ -33,6 +33,13 @@ import org.eu.mayrhofer.channel.X509CertificateGenerator;
 
 import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.core.MeasurementManager;
+import uk.ac.lancs.relate.filter.FilterInvalid;
+import uk.ac.lancs.relate.filter.FilterList;
+import uk.ac.lancs.relate.filter.FilterTransducerNo;
+import uk.ac.lancs.relate.filter.KalmanFilter;
+import uk.ac.lancs.relate.model.Model;
+import uk.ac.lancs.relate.apps.SetupHelper;
 import uk.ac.lancs.relate.apps.SimpleShowDemo;
 
 /** @author Rene Mayrhofer
@@ -100,9 +107,10 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	private Socket toRemote = null;
 	
 	private class AuthenticationEventsHandler extends SimpleShowDemo {
-		public AuthenticationEventsHandler(Shell shell,  Configuration config) {
+		public AuthenticationEventsHandler(Shell shell,  Configuration config, 
+				MeasurementManager manager, Model model) {
 			// force the GUI to display the authentication menu entry even if it does not locally use it
-			super(shell, config, false, true);
+			super(shell, config, manager, model, false, true);
 		}
 
 		protected void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) {
@@ -175,7 +183,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			caFile = "ca.p12";
 			confFile = "ipsec-conf.xml";
 		}
-		
+
 		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(serialPort, 
 				caFile, "test password", "Test CA", confFile);
 		
@@ -202,9 +210,22 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			// when not testing, use the SimpleShowDemo instead
 		    Configuration config = new Configuration(serialPort);
 			config.setSide("back");
+
+	        SetupHelper helper = new SetupHelper(config);
+	        helper.getSerialConnector().setHostInfo(config.getHostInfo());
+			//create filter list and add filters to the measurement manager
+	        FilterList filters = new FilterList();
+	        filters.addFilter(new FilterInvalid());
+	        filters.addFilter(new FilterTransducerNo(2));
+	        //filters.addFilter(new FilterOutlierDistance());
+	        filters.addFilter(new KalmanFilter());
+	        filters.addFilter(new FilterInvalid());
+	        helper.getMeasurementManager().setFilterList(filters);
+			
 			Shell shell = new Shell(new Display());
 			// this opens the window, and the authentication is started by right-click
-			selectionGui = thisClass.new AuthenticationEventsHandler(shell, config);
+			selectionGui = thisClass.new AuthenticationEventsHandler(shell, config, 
+					helper.getMeasurementManager(), helper.getModel());
 			selectionGui.open();
 		}
 
