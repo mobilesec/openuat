@@ -285,16 +285,16 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		adminShell.setText("IPSec Connector Admin");
 		adminShell.setSize(new org.eclipse.swt.graphics.Point(249,360));
 		label1 = new Label(adminShell, SWT.NONE);
-		label1.setBounds(new org.eclipse.swt.graphics.Rectangle(4,4,108,17));
+		label1.setBounds(new org.eclipse.swt.graphics.Rectangle(4,4,107,17));
 		label1.setText("IPSec gateway");
 		gatewayLabel = new Label(adminShell, SWT.NONE);
-		gatewayLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(123,4,113,18));
+		gatewayLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(120,4,113,18));
 		gatewayLabel.setText(config.getGateway());
 		label6 = new Label(adminShell, SWT.NONE);
 		label6.setBounds(new org.eclipse.swt.graphics.Rectangle(4,24,107,17));
 		label6.setText("Remote network");
 		remoteNetworkLabel = new Label(adminShell, SWT.NONE);
-		remoteNetworkLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(121,24,116,17));
+		remoteNetworkLabel.setBounds(new org.eclipse.swt.graphics.Rectangle(120,24,116,17));
 		remoteNetworkLabel.setText(config.getRemoteNetwork() + "/" + config.getRemoteNetmask());
 		label2 = new Label(adminShell, SWT.NONE);
 		label2.setBounds(new org.eclipse.swt.graphics.Rectangle(4,44,228,17));
@@ -309,12 +309,12 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		validityInput = new Spinner(adminShell, SWT.NONE);
 		validityInput.setMaximum(365);
 		validityInput.setSelection(30);
-		validityInput.setBounds(new org.eclipse.swt.graphics.Rectangle(121,80,53,20));
+		validityInput.setBounds(new org.eclipse.swt.graphics.Rectangle(120,80,40,20));
 		label4 = new Label(adminShell, SWT.NONE);
 		label4.setText("Common name for certificate");
 		label4.setBounds(new org.eclipse.swt.graphics.Rectangle(4,102,171,17));
 		commonNameInput = new Text(adminShell, SWT.BORDER);
-		commonNameInput.setBounds(new org.eclipse.swt.graphics.Rectangle(4,120,223,20));
+		commonNameInput.setBounds(new org.eclipse.swt.graphics.Rectangle(4,120,226,20));
 
 		startButton = new Button(adminShell, SWT.NONE);
 		startButton.setBounds(new org.eclipse.swt.graphics.Rectangle(4,145,130,28));
@@ -326,7 +326,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			}
 		});
 		cancelButton = new Button(adminShell, SWT.NONE);
-		cancelButton.setBounds(new org.eclipse.swt.graphics.Rectangle(163,145,62,28));
+		cancelButton.setBounds(new org.eclipse.swt.graphics.Rectangle(165,145,65,28));
 		cancelButton.setText("Cancel");
 		cancelButton
 				.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
@@ -339,12 +339,12 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		label5.setBounds(new org.eclipse.swt.graphics.Rectangle(4,176,201,17));
 		label5.setText("Authenticating client");
 		authenticationProgress = new ProgressBar(adminShell, SWT.NONE);
-		authenticationProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(6,195,219,20));
+		authenticationProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(4,195,226,20));
 		label = new Label(adminShell, SWT.NONE);
 		label.setBounds(new org.eclipse.swt.graphics.Rectangle(4,217,198,17));
 		label.setText("Creating X.509 certificate");
 		certificateProgress = new ProgressBar(adminShell, SWT.NONE);
-		certificateProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(4,236,217,20));
+		certificateProgress.setBounds(new org.eclipse.swt.graphics.Rectangle(4,236,226,20));
 	}
 	
 	/** This method encapsulates the creation of a X.509 certificate in a background
