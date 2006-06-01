@@ -438,21 +438,21 @@ public class ParallelPortPWMReader {
 		}
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device
-		int[] samplerates = new int[] {64, 128, 256, 512}; // different sample rates
-		double[] windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection
-		double varthresholdMin = 50; // 50
-		double varthresholdMax = 1000; // 1000
-		double varthresholdStep = 50; // 10
-		int numQuantLevelsMin = 8; // 2
-		int numQuantLevelsMax = 8; // 32
+		int[] samplerates = new int[] {128}; // {64, 128, 256, 512}; // different sample rates
+		double[] windowsizeFactors = new double[] {1}; // {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection
+		double varthresholdMin = 350; // 50;
+		double varthresholdMax = 350; // 1000;
+		double varthresholdStep = 50; // 10;
+		int numQuantLevelsMin = 2;
+		int numQuantLevelsMax = 32;
 		int numQuantLevelsStep = 1;
-		int numCandidatesMin = 6; // 1
-		int numCandidatesMax = 6; // 16
+		int numCandidatesMin = 2;
+		int numCandidatesMax = 16;
 		int numCandidatesStep = 1;
-		int cutOffFrequencyMin = 15; // 5
-		int cutOffFrequencyMax = 15; // 50
+		int cutOffFrequencyMin = 5;
+		int cutOffFrequencyMax = 50;
 		int cutOffFrequencyStep = 5;
-		double[] windowOverlapFactors = new double[] {/*0, 1/8f, 1/4f, 1/3f,*/ 1/2f/*, 1, 3/2f*/}; 
+		double[] windowOverlapFactors = new double[] {0, 1/8f, 1/4f, 1/3f, 1/2f, 2/3f, 7/8f}; // or just 1/2? 
 		
 		// this is ugly.....
 		for (int i1=0; i1<samplerates.length; i1++) {
