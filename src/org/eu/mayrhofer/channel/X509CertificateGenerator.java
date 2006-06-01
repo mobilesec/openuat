@@ -44,6 +44,7 @@ import java.util.Vector;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -100,21 +101,7 @@ import org.bouncycastle.x509.extension.SubjectKeyIdentifierStructure;
  */
 public class X509CertificateGenerator {
 	/** Our log4j logger. */
-	//private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
-	
-	private static class logger {
-		static void debug(String msg) {
-			System.out.println(msg);
-		}
-		
-		static void info(String msg) {
-			System.out.println(msg);
-		}
-
-		static void error(String msg) {
-			System.out.println(msg);
-		}
-	}
+	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
 	
 	/** This method is used for signing the certificate. */
 	public static final String CertificateSignatureAlgorithm = "SHA1WithRSAEncryption";
@@ -291,7 +278,7 @@ public class X509CertificateGenerator {
 	 * @param validityDays How long the new certificate should be valid, in days.
 	 * @param exportFile The PKCS12 encoded file to which the certificate should be exported to. It will contain the
 	 *               self-signed certificate and the matching private key.
-	 * @param export Password The password used to encode the PKCS12 file.
+	 * @param exportPassword The password used to encode the PKCS12 file.
 	 * @return true if the certificate could be created, signed, and exported successfully, false otherwise.
 	 */
 	public boolean createCertificate(String commonName, int validityDays, String exportFile, String exportPassword) throws 
@@ -630,6 +617,11 @@ public class X509CertificateGenerator {
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception {
+		if (System.getProperty("os.name").startsWith("Windows CE")) {
+			System.out.println("Configuring log4j");
+			PropertyConfigurator.configure("log4j.properties");
+		}
+
 		if (args.length > 0 && args[0].equals("newca"))
 		System.out.println(X509CertificateGenerator.createNewCa("My Test CA", 365, "ca.p12", "test password", "Test CA", true));
 		
