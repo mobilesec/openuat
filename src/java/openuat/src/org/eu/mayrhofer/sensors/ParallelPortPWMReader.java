@@ -443,16 +443,14 @@ public class ParallelPortPWMReader {
 		double varthresholdMin = 350; // 50;
 		double varthresholdMax = 350; // 1000;
 		double varthresholdStep = 50; // 10;
-		int numQuantLevelsMin = 2;
-		int numQuantLevelsMax = 32;
-		int numQuantLevelsStep = 1;
+		int[] quantLevels = new int[] {2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20};
 		int numCandidatesMin = 2;
-		int numCandidatesMax = 16;
-		int numCandidatesStep = 1;
+		int numCandidatesMax = 8;
+		int numCandidatesStep = 2;
 		int cutOffFrequencyMin = 5;
 		int cutOffFrequencyMax = 50;
 		int cutOffFrequencyStep = 5;
-		double[] windowOverlapFactors = new double[] {0, 1/8f, 1/4f, 1/3f, 1/2f, 2/3f, 7/8f}; // or just 1/2? 
+		double[] windowOverlapFactors = new double[] {0, 1/8f, 1/4f, 1/3f, 1/2f, 2/3f, 3/4f, 7/8f}; // or just 1/2? 
 		
 		// this is ugly.....
 		for (int i1=0; i1<samplerates.length; i1++) {
@@ -560,8 +558,11 @@ public class ParallelPortPWMReader {
 								i3=windowOverlapFactors.length;
 							}
 
-							for (int numQuantLevels=numQuantLevelsMin; numQuantLevels<=numQuantLevelsMax; 
-									numQuantLevels+=(paramSearch ? numQuantLevelsStep : numQuantLevelsMax)) {
+							for (int i4=0; i4<quantLevels.length; i4++) {
+//							for (int numQuantLevels=numQuantLevelsMin; numQuantLevels<=numQuantLevelsMax; 
+// //									numQuantLevels=(paramSearch ? numQuantLevels*numQuantLevelsStepMultiplicator : numQuantLevelsMax)) {
+//									numQuantLevels+=(paramSearch ? numQuantLevelsStep : numQuantLevelsMax)) {
+								int numQuantLevels = quantLevels[i4];
 								// these are the defaults when not searching for parameters
 								if (!paramSearch) {
 									numQuantLevels = 8;
@@ -594,7 +595,7 @@ public class ParallelPortPWMReader {
 											int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
 											// only compare until the cutoff frequency
 											int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
-											System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+											//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
 					
 											boolean match = false;
 											for (int i=0; i<cand1.length && !match; i++) {
@@ -605,7 +606,7 @@ public class ParallelPortPWMReader {
 															equal = false;
 													}
 													if (equal) {
-														System.out.println("Match at i=" + i + ", j=" + j);
+														//System.out.println("Match at i=" + i + ", j=" + j);
 														match = true;
 														numMatches++;
 													}
