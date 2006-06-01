@@ -3,9 +3,9 @@ package org.eu.mayrhofer.apps;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
-public class Log4jTester {
+public class Log4jDummyPrinterApp {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(Log4jTester.class);
+	private static Logger logger = Logger.getLogger(Log4jDummyPrinterApp.class);
 
 	/**
 	 * @param args
