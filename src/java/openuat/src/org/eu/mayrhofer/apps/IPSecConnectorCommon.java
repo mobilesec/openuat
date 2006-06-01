@@ -93,9 +93,10 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		this.serialPort = serialPort;
 
 		if (System.getProperty("os.name").startsWith("Windows CE")) {
+			System.out.println("Configuring log4j");
 			PropertyConfigurator.configure("log4j.properties");
 		}
-		
+
 		if (serialPort != null) {
 			logger.info("Initializing with serial port " + serialPort);
         	Configuration conf = new Configuration(serialPort);
@@ -106,7 +107,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
             EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, manager);
 		}
 		else {
-			logger.warn("Initializing in simulation mode without dongles");
+			logger.info("No serial port specified, using simulation mode");
 			manager = null;
 			RelateAuthenticationProtocol.setSimulationMode(true);
 		}
