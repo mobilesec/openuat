@@ -674,6 +674,10 @@ public class CandidateKeyProtocol {
 		if (! matchingKeyParts.containsKey(remoteHost))
 			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		logger.debug("assembleKeyFromMatches called for remote host " + remoteHost + ", offset " + offset + 
+				" for " + numParts + " parts, extractAllCombinations=" + extractAllCombinations + " in thread " + Thread.currentThread() +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 
 		/* TODO: this is not optimal, maybe use a second list with the remote-reported
@@ -727,7 +731,7 @@ public class CandidateKeyProtocol {
 		}
 		if (numParts > numCopied) {
 			logger.error("Could not assemble " + numParts + " key parts, only got " + numCopied +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			return null;
 		}
 		// but if we copied more, only use as many as requested
@@ -735,7 +739,7 @@ public class CandidateKeyProtocol {
 			numCopied = numParts;
 		
 		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts" +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread + " + Thread.currentThread());
 		Arrays.sort(initialCombination, 0, numCopied);
 		
 		CandidateKeyPart[][] allCombinations = null;
