@@ -68,7 +68,6 @@
     </fileset>
     <!-- the list of jar files to include in the distbundle -->
     <fileset id="lib.bundleinclude-jars" dir="${lib}">
-<!--	    <include name="log4jMini-1.2alpha.jar"/>-->
 	    <include name="log4j-1.2.jar"/>
 	    <include name="kxml2-2.2.2.jar"/>
     </fileset>
