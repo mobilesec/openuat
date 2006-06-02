@@ -94,7 +94,7 @@ public class CKPOverUDPTest extends TestCase {
 	public void testCompleteRun_SymmetricNoSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
 		// this simulates with localhost communication - since sometimes we loose packets, try it 3 times
 		int wholeProtTries = 0;
-		while (wholeProtTries < 2) {
+		while (wholeProtTries < 3) {
 			helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);
 			helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2);
 		

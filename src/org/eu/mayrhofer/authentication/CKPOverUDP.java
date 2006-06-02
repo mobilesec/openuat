@@ -102,6 +102,22 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 */
 	private int minMatchingEntropy;
 	
+	/** This is used as a circular buffer for incoming candidate key part message where no
+	 * match has been found. When new local candidates are added, we then try to match with
+	 * the parts in this buffer, because a message might be received before the local parts
+	 * have been added).
+	 * The elements of this array are Object array where the first element is an InetAddress
+	 * holding the remote host address and and the second element is an array of
+	 * CandidateKeyPartIdenfiers.
+	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
+	 * @see #addCandidates(byte[][], float)
+	 */
+	private Object[][] keyPartsBuffer;
+	/** The index where to insert the next incoming candidate key part into keyPartsBuffer.
+	 * @see #keyPartsBuffer
+	 */
+	private int keyPartsBufferIndex;
+	
 	/** Just a small helper class to keep a list of generated keys for each host. */
 	private class GeneratedKeyCandidates {
 		/** A circular buffer of the last candidate keys that have been generated. It is used for
@@ -169,7 +185,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		private byte[] foundMatchingKey;
 		
 		GeneratedKeyCandidates() {
-			// and keep a history of the last 5 generated keys
+			// and keep a history of the last 5 generated keys (this is for each host)
 			list = new CandidateKey[5];
 			index = 0;
 			foundMatchingKey = null;
@@ -221,6 +237,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		this.sendMatches = sendMatches;
 		this.minMatchingParts = minMatchingParts;
 		this.minMatchingEntropy = minMatchingEntropy;
+		
+		// remember the last 5 incoming messages for matching with new local key parts
+		this.keyPartsBuffer= new Object[5][];
+		this.keyPartsBufferIndex = 0;
 
 		channel = new UDPMulticastSocket(udpReceivePort, udpSendPort, multicastGroup);
 		channel.addIncomingMessageListener(new UDPMessageHandler());
@@ -279,6 +299,20 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				channel.sendMulticast(packet);
 			}
 		}
+		
+		// and also go through the list of archived yet unmatched incomcing messages
+		for (int i=0; i<keyPartsBuffer.length; i++)
+			if (keyPartsBuffer[i] != null) {
+				InetAddress sender = (InetAddress) keyPartsBuffer[i][0];
+				CandidateKeyPartIdentifier[] incomingKeyParts = (CandidateKeyPartIdentifier[]) keyPartsBuffer[i][1];
+				int match = ckp.matchCandidates(sender.getHostAddress(), incomingKeyParts);
+				if (match > -1) {
+					// yes, we have a match, handle it
+					handleMatchingCandidateKeyPart(incomingKeyParts[match].round, match, sender);
+					// and remove from the list to not match one incoming message twice
+					keyPartsBuffer[i] = null;
+				}
+			}
 	}
 	
 	/** Takes care to close the UDPMulticastSocket resources properly and to wipe
@@ -322,6 +356,70 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	protected abstract void protocolProgressHook(String remote, 
 			int cur, int max, String message);
 	
+	/** This is just a small helper function to send match messages and try to
+	 * generate candidate Keys.
+	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
+	 * @see #addCandidates(byte[][], float)
+	 */
+	private void handleMatchingCandidateKeyPart(int round, int match, InetAddress remote) throws IOException {
+		logger.debug("Number " + match + " of the incoming candidate key parts from host " + remote + " matches" + 
+				(instanceId != null ? " [" + instanceId + "]" : ""));
+		// optionally flag
+		if (sendMatches) {
+			String ackPacket = Protocol_CandidateMatch + round + " " + match;
+			channel.sendTo(ackPacket.getBytes(), remote);
+		}
+	
+		/* Since a new match was now added the the local match list, check 
+		 * if there are enough to create a candidate key.
+		 */ 
+		checkForKeyGeneration(remote);
+	}
+
+	/** This helper function checks if a key can already be generated and sends it
+	 * to the remote host, if yes.
+	 */
+	private void checkForKeyGeneration(InetAddress remoteHost) {
+		String remoteHostAddress = remoteHost.getHostAddress();
+
+		if (ckp.getNumTotalMatches(remoteHostAddress) >= minMatchingParts &&
+				ckp.getSumMatchEntropy(remoteHostAddress) >= minMatchingEntropy) {
+			logger.info("Received enough matches to generate candidate key" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			try {
+				CandidateKey candKey = ckp.generateKey(remoteHostAddress);
+				// and remember this key for later matching with the acknowledge
+				GeneratedKeyCandidates genList = null;
+				if (generatedKeys.containsKey(remoteHostAddress)) {
+					genList = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
+				}
+				else {
+					genList = new GeneratedKeyCandidates();
+					generatedKeys.put(remoteHostAddress, genList);
+				}
+				logger.debug("Inserting candidate key for host " + remoteHostAddress + " at list position " + genList.index +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				genList.list[genList.index++] = candKey;
+				if (genList.index == genList.list.length)
+					genList.index = 0;
+				
+				logger.debug("Sending candidate key of " + candKey.numParts + " parts with hash " + 
+						new String(Hex.encodeHex(candKey.hash)) +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				String candKeyPacket = Protocol_CandidateKey + candKey.numParts + " " +
+					new String(Hex.encodeHex(candKey.hash));
+				channel.sendTo(candKeyPacket.getBytes(), remoteHost);
+			}
+			catch (InternalApplicationException e) {
+				logger.error("Could not generate key: " + e + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			} catch (IOException e) {
+				logger.debug("Can not send candidate key packet: " + e + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+		}
+	}
+	
 	/** This is a helper class for handling incoming UDP packets. It is the
 	 * heart of CKoverUDP and does most of the work.
 	 */
@@ -336,7 +434,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				byte[] packet = new byte[length];
 				System.arraycopy(message, offset, packet, 0, length);
 				String pack = new String(packet);
-				logger.debug("Received UDP packet with  " + pack.length() + " bytes from " + remoteHostAddress);
+				logger.debug("Received UDP packet with  " + pack.length() + " bytes from " + remoteHostAddress + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
 				try {
 					// this handles the different packet types
 					if (pack.startsWith(Protocol_CandidateKeyPart)) {
@@ -346,28 +445,37 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int round = Integer.parseInt(pack.substring(Protocol_CandidateKeyPart.length(), off));
 						StringTokenizer st = new StringTokenizer(pack.substring(off+1));
 						CandidateKeyPartIdentifier[] keyParts = new CandidateKeyPartIdentifier[st.countTokens()]; 
-						logger.debug("Received packet with " + keyParts.length + " candidate key parts for round " + round + 
-								(instanceId != null ? " [" + instanceId + "]" : ""));
-						for (int i=0; i<keyParts.length; i++) {
-							keyParts[i] = new CandidateKeyPartIdentifier();
-							keyParts[i].hash = Hex.decodeHex(st.nextToken().toCharArray());
-							keyParts[i].round = round;
-						}
-						int match = ckp.matchCandidates(remoteHostAddress, keyParts);
-						if (match > -1) {
-							// yes, we have a match, optionally flag that
-							logger.debug("Number " + match + " of these candidate key parts matches" + 
+						if (keyParts.length > 0) {
+							logger.debug("Received packet with " + keyParts.length + " candidate key parts for round " + round + 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
-							if (sendMatches) {
-								String ackPacket = Protocol_CandidateMatch + round + " " + match;
-								channel.sendTo(ackPacket.getBytes(), (InetAddress) sender);
+							for (int i=0; i<keyParts.length; i++) {
+								keyParts[i] = new CandidateKeyPartIdentifier();
+								keyParts[i].hash = Hex.decodeHex(st.nextToken().toCharArray());
+								keyParts[i].round = round;
 							}
-						
-							/* Since a new match was now added the the local match list, check 
-							 * if there are enough to create a candidate key.
-							 */ 
-							checkForKeyGeneration((InetAddress) sender);
+							int match = ckp.matchCandidates(remoteHostAddress, keyParts);
+							if (match > -1) {
+								// yes, we have a match, handle it
+								handleMatchingCandidateKeyPart(round, match, (InetAddress) sender);
+							}
+							else {
+								/* No match, but remember the received key parts in case the match local 
+								 * candidates are about to be added. 
+								 */
+								logger.debug("None of the incoming candidate key parts matches, storing it in " +
+										"buffer for future reference"+ 
+										(instanceId != null ? " [" + instanceId + "]" : ""));
+								Object[] tmp = new Object[2];
+								tmp[0] = sender;
+								tmp[1] = keyParts;
+								keyPartsBuffer[keyPartsBufferIndex++] = tmp;
+								if (keyPartsBufferIndex == keyPartsBuffer.length)
+									keyPartsBufferIndex = 0;
+							}
 						}
+						else
+							logger.warn("Received candidate key parts oacket without any key parts, ignoring it" +
+									(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
 					else if (pack.startsWith(Protocol_CandidateMatch)) {
 						// for an incoming match, just add them
@@ -512,7 +620,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 
 			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 			if (cand.foundMatchingKey != null) {
-				logger.warn("Not ovverwriting the found matching key for remote host " + remoteHost +
+				logger.warn("Not overwriting the found matching key for remote host " + remoteHost +
 						", because stage 2 not entered yet." + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
@@ -541,16 +649,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 
 			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
-			if (cand.foundMatchingKey == null) {
-				logger.warn("Received an acknowledge for a locally found matching key " +
-						"but nothing known about this key. This might indicate an ongoing attack! " +
-						"Wiping state for remote host " + remoteHostAddress + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				authenticationFailed(remoteHost, true, null, 
-						"Message received that shouldn't. Remote host is bad");
-				return;
-			}
 
+			/* We need to look for the locally generated candidate key that has just been acknowledged
+			 * in any case.
+			 */
 			byte[] ackedMatchingKey = null;
 			// need to look through the recent list to find a key with that hash
 			for (int i=0; i<cand.list.length && ackedMatchingKey == null; i++) {
@@ -576,34 +678,58 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					"Message received that shouldn't. Remote host is bad");
 				return;
 			}
-			// another sanity check
-			if (ackedMatchingKey.length != cand.foundMatchingKey.length)
-				throw new InternalApplicationException("Found matching key has different length than " +
-						"acknowledged key" + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				byte[] realSharedKey = null;
-			/* And now check if the same key has been acknowledged that we ourselves
-			 * acknowledged (because a key with the same hash could be generated locally).
+			
+			/* Ok, found the locally generated key to the incoming acknowledge, but there are now two possibilities:
+			 * - We have already received a key candidate from the remote host and found a key that
+			 *   matched it. In this case, it will be stored in cand.foundMatchingKey.
+			 * - We have not yet received a key candidate from the remote host, but the remote host
+			 *   has acknowledges our key candidate. In this case, cand.foundMatchingKey will not
+			 *   be set.
 			 */
-			boolean receivedAckMatchesOwnAck = true;
-			for (int i=0; i<cand.foundMatchingKey.length && receivedAckMatchesOwnAck; i++)
-				if (ackedMatchingKey[i] != cand.foundMatchingKey[i])
-					receivedAckMatchesOwnAck = false;
-			if (!receivedAckMatchesOwnAck) {
-				// just XOR them together to use just one key, independent of their order 
-				// (which might be different on both sides)
-				realSharedKey = new byte[cand.foundMatchingKey.length];
-				for (int i=0; i<cand.foundMatchingKey.length; i++)
-					realSharedKey[i] = (byte) (cand.foundMatchingKey[i] ^ ackedMatchingKey[i]);
-				logger.info("Overlapping candidate key match and acknowledgment messages detected, using " + 
-						"both keys: " + new String(Hex.encodeHex(realSharedKey)) + 
+			byte[] realSharedKey = null;
+			if (cand.foundMatchingKey != null) {
+				logger.info("Received an acknowledge for a locally generated key, and already " +
+						"found and acknowledged a key matching a remote candidate key." + 
+						"Thus using the combination of both." +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
+
+				// another sanity check
+				if (ackedMatchingKey.length != cand.foundMatchingKey.length)
+					throw new InternalApplicationException("Found matching key has different length than " +
+							"acknowledged key" + 
+							(instanceId != null ? " [" + instanceId + "]" : ""));
+				/* And now check if the same key has been acknowledged that we ourselves
+				 * acknowledged (because a key with the same hash could be generated locally).
+				 */
+				boolean receivedAckMatchesOwnAck = true;
+				for (int i=0; i<cand.foundMatchingKey.length && receivedAckMatchesOwnAck; i++)
+					if (ackedMatchingKey[i] != cand.foundMatchingKey[i])
+						receivedAckMatchesOwnAck = false;
+				if (!receivedAckMatchesOwnAck) {
+					// just XOR them together to use just one key, independent of their order 
+					// (which might be different on both sides)
+					realSharedKey = new byte[cand.foundMatchingKey.length];
+					for (int i=0; i<cand.foundMatchingKey.length; i++)
+						realSharedKey[i] = (byte) (cand.foundMatchingKey[i] ^ ackedMatchingKey[i]);
+					logger.info("Overlapping candidate key match and acknowledgment messages detected, using " + 
+							"both keys: " + new String(Hex.encodeHex(realSharedKey)) + 
+							(instanceId != null ? " [" + instanceId + "]" : ""));
+				}
+				else {
+					// When they match, do <b>NOT</b> XOR them together.
+					// [A^A = 0....]
+					realSharedKey = cand.foundMatchingKey;
+					logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
+							"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
+							(instanceId != null ? " [" + instanceId + "]" : ""));
+				}
 			}
 			else {
-				realSharedKey = cand.foundMatchingKey;
-				logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
-						"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
+				logger.info("Received an acknowledge for a locally generated key, and did " +
+						"not yet receive a candidate key from the remote host that we acknowledged. " +
+						"Thus using the locally generated key that has now been acknowledged." +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
+				realSharedKey = ackedMatchingKey;
 			}
 
 			// now that we finally have the (real) shared key, can wipe the state
@@ -615,45 +741,6 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				
 			// also allow derived classes to do special success handling
 			protocolSucceededHook(remoteHostAddress, realSharedKey);
-		}
-		
-		/** This helper function checks if a key can already be generated and sends it
-		 * to the remote host, if yes.
-		 */
-		private void checkForKeyGeneration(InetAddress remoteHost) {
-			String remoteHostAddress = remoteHost.getHostAddress();
-
-			if (ckp.getNumTotalMatches(remoteHostAddress) >= minMatchingParts &&
-					ckp.getSumMatchEntropy(remoteHostAddress) >= minMatchingEntropy) {
-				logger.info("Received enough matches to generate candidate keys" + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				try {
-					CandidateKey candKey = ckp.generateKey(remoteHostAddress);
-					// and remember this key for later matching with the acknowledge
-					GeneratedKeyCandidates genList = null;
-					if (generatedKeys.containsKey(remoteHostAddress)) {
-						genList = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
-					}
-					else {
-						genList = new GeneratedKeyCandidates();
-						generatedKeys.put(remoteHostAddress, genList);
-					}
-					genList.list[genList.index++] = candKey;
-					if (genList.index == genList.list.length)
-						genList.index = 0;
-					
-					String candKeyPacket = Protocol_CandidateKey + candKey.numParts + " " +
-						new String(Hex.encodeHex(candKey.hash));
-					channel.sendTo(candKeyPacket.getBytes(), remoteHost);
-				}
-				catch (InternalApplicationException e) {
-					logger.error("Could not generate key: " + e + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				} catch (IOException e) {
-					logger.debug("Can not send candidate key packet: " + e + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-			}
 		}
 	}
 }
