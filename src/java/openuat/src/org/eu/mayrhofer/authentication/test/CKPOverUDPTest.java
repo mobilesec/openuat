@@ -124,8 +124,6 @@ public class CKPOverUDPTest extends TestCase {
 	}
 	
 	public void testCompleteRun_SymmetricNoSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
-		if (1+1==2)
-			return;
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2);
@@ -159,8 +157,6 @@ public class CKPOverUDPTest extends TestCase {
 	}
 
 	public void testCompleteRun_SymmetricNoSendMatches_Sequenced2() throws IOException, InternalApplicationException, InterruptedException {
-		if (1+1==2)
-			return;
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2);
@@ -194,8 +190,6 @@ public class CKPOverUDPTest extends TestCase {
 	}
 
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
-		if (1+1==2)
-			return;
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1); // broadcast candidates
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2); // send matches
@@ -229,8 +223,6 @@ public class CKPOverUDPTest extends TestCase {
 	}
 	
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
-		if (1+1==2)
-			return;
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1); // broadcast candidates
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2); // send matches
@@ -264,8 +256,6 @@ public class CKPOverUDPTest extends TestCase {
 	}
 
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced2() throws IOException, InternalApplicationException, InterruptedException {
-		if (1+1==2)
-			return;
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1); // broadcast candidates
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2); // send matches
