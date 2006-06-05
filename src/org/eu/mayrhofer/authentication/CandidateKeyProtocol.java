@@ -277,7 +277,7 @@ public class CandidateKeyProtocol {
 	 * @throws InternalApplicationException 
 	 * @see #recentKeyParts
 	 */
-	public CandidateKeyPartIdentifier[] generateCandidates(byte[][] candidateKeys, float entropy) throws InternalApplicationException {
+	public synchronized CandidateKeyPartIdentifier[] generateCandidates(byte[][] candidateKeys, float entropy) throws InternalApplicationException {
 		if (candidateKeys == null)
 			throw new IllegalArgumentException("candidateKeys can not be null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -337,7 +337,7 @@ public class CandidateKeyProtocol {
 	 *         contained in the matching candidate identifier may be sent to the remote
 	 *         host (or group), but does not have to. This depends on the application.
 	 */
-	public int matchCandidates(Object remoteHost, CandidateKeyPartIdentifier[] candidateIdentifiers) {
+	public synchronized int matchCandidates(Object remoteHost, CandidateKeyPartIdentifier[] candidateIdentifiers) {
 		if (candidateIdentifiers == null)
 			throw new IllegalArgumentException("candidateIdentifiers can not be null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -404,7 +404,7 @@ public class CandidateKeyProtocol {
 	 * @param candidateNumber The local counter identifiying the matching key parts, as
 	 *                        received from the remote host.
 	 */
-	public void acknowledgeMatches(Object remoteHost, int round, int candidateNumber) {
+	public synchronized void acknowledgeMatches(Object remoteHost, int round, int candidateNumber) {
 		// need to find the local index in the recent history with that round and number
 		boolean found=false;
 		for (int i=0; i<recentKeyParts.length && !found; i++)
@@ -486,7 +486,7 @@ public class CandidateKeyProtocol {
 	 * @return The number of matching key parts currently available in the matching
 	 *         list for the specified remote host.
 	 */
-	public int getNumTotalMatches(Object remoteHost) {
+	public synchronized int getNumTotalMatches(Object remoteHost) {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
 			logger.warn("getNumTotalMatches called for a remote host where no match list has yet been created or it has already been pruned, returning 0");
 			return 0;
@@ -505,7 +505,7 @@ public class CandidateKeyProtocol {
 	 * @return The entropy of all matching key parts currently available in the matching
 	 *         list for the specified remote host.
 	 */
-	public float getSumMatchEntropy(Object remoteHost) {
+	public synchronized float getSumMatchEntropy(Object remoteHost) {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
 			logger.warn("getSumMatchEntropy called for a remote host where no match list has yet been created or it has already been pruned, returning 0");
 			return 0;
@@ -532,7 +532,7 @@ public class CandidateKeyProtocol {
 	 *         this host or because it has been pruned due to aging.
 	 * @throws InternalApplicationException 
 	 */
-	public CandidateKey generateKey(Object remoteHost) throws InternalApplicationException {
+	public synchronized CandidateKey generateKey(Object remoteHost) throws InternalApplicationException {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
 			logger.warn("generateKey called for a remote host where no match list has yet been created or it has already been pruned, returning null");
 			return null;
@@ -565,7 +565,7 @@ public class CandidateKeyProtocol {
 	 *         remoteHost, either because not matches have yet been received with 
 	 *         this host or because it has been pruned due to aging.
 	 * @throws InternalApplicationException */
-	public CandidateKey searchKey(Object remoteHost, byte[] hash, int numParts) throws InternalApplicationException {
+	public synchronized CandidateKey searchKey(Object remoteHost, byte[] hash, int numParts) throws InternalApplicationException {
 		if (hash == null)
 			throw new IllegalArgumentException("hash must be set");
 		if (! matchingKeyParts.containsKey(remoteHost)) {
@@ -633,7 +633,7 @@ public class CandidateKeyProtocol {
 	 * @return true if state was kept for this remote host, false if there was not state
 	 *         to wipe.
 	 */
-	public boolean wipe(Object remoteHost) {
+	public synchronized boolean wipe(Object remoteHost) {
 		if (matchingKeyParts.containsKey(remoteHost)) {
 			logger.debug("Wiping key material for remote host " + remoteHost + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -657,7 +657,7 @@ public class CandidateKeyProtocol {
 	 * @see #matchingKeyParts
 	 * @see #wipe 
 	 */
-	public void wipeAll() {
+	public synchronized void wipeAll() {
 		Iterator iter = matchingKeyParts.values().iterator();
 		while (iter.hasNext())
 			wipe(iter.next());

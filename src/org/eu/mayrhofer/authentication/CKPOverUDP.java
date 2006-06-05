@@ -102,21 +102,47 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 */
 	private int minMatchingEntropy;
 	
-	/** This is used as a circular buffer for incoming candidate key part message where no
+	/** This is used as a circular buffer for incoming candidate key part messages where no
 	 * match has been found. When new local candidates are added, we then try to match with
 	 * the parts in this buffer, because a message might be received before the local parts
-	 * have been added).
+	 * have been added.
 	 * The elements of this array are Object array where the first element is an InetAddress
 	 * holding the remote host address and and the second element is an array of
 	 * CandidateKeyPartIdenfiers.
 	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
 	 * @see #addCandidates(byte[][], float)
 	 */
-	private Object[][] keyPartsBuffer;
-	/** The index where to insert the next incoming candidate key part into keyPartsBuffer.
-	 * @see #keyPartsBuffer
+	private Object[][] incomingKeyPartsBuffer;
+	/** The index where to insert the next incoming candidate key part into incomingKeyPartsBuffer.
+	 * @see #incomingKeyPartsBuffer
 	 */
-	private int keyPartsBufferIndex;
+	private int incomingKeyPartsBufferIndex;
+
+	/** This is used as a circular buffer for incoming candidate key messages where no
+	 * match has been found. When new candidate key parts are matched, we then try to match with
+	 * the candidate keys in this buffer, because a message might be received before the local parts
+	 * have been added.
+	 * The elements of this array are Object array where the first element is an InetAddress
+	 * holding the remote host address, the second element is an Integer indicating the number
+	 * of key parts that the candidate key is composed of, and and the third element is a byte array 
+	 * containing the candidate key hash
+	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
+	 * @see #handleMatchingCandidateKeyPart(int, int, InetAddress)
+	 */
+	private Object[][] incomingCandKeyBuffer;
+	/** The index where to insert the next incoming candidate key part into incomingCandKeyBuffer.
+	 * @see #incomingCandKeyBuffer
+	 */
+	private int incomingCandKeyBufferIndex;
+	
+	/** This object is only used for synchronizing multi-threaded access. Specifically, it is
+	 * used to make the handleMessage implementation uninterruptible by other messages and also
+	 * protect handleMessage, addCandidates, and handleMatchingCandidateKeyPart from each other.
+	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
+	 * @see #addCandidates(byte[][], float)
+	 * @see #handleMatchingCandidateKeyPart(int, int, InetAddress)
+	 */  
+	private Object globalLock = new Object();
 	
 	/** Just a small helper class to keep a list of generated keys for each host. */
 	private class GeneratedKeyCandidates {
@@ -239,8 +265,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		this.minMatchingEntropy = minMatchingEntropy;
 		
 		// remember the last 5 incoming messages for matching with new local key parts
-		this.keyPartsBuffer= new Object[5][];
-		this.keyPartsBufferIndex = 0;
+		this.incomingKeyPartsBuffer= new Object[5][];
+		this.incomingKeyPartsBufferIndex = 0;
+		this.incomingCandKeyBuffer= new Object[5][];
+		this.incomingCandKeyBufferIndex = 0;
 
 		channel = new UDPMulticastSocket(udpReceivePort, udpSendPort, multicastGroup);
 		channel.addIncomingMessageListener(new UDPMessageHandler());
@@ -258,61 +286,64 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @see #broadcastCandidates
 	 */
 	protected void addCandidates(byte[][] keyParts, float entropy) throws InternalApplicationException, IOException {
-		CandidateKeyPartIdentifier[] candidateKeyParts = ckp.generateCandidates(keyParts, entropy);
-		/* send out as many UDP multicast packets as necessary to transmit all the generated 
-		 * candidate key parts
-		 */
-		if (broadcastCandidates) {
-			logger.debug("Broadcasting " + candidateKeyParts.length + " candidate key parts" + 
-					(instanceId != null ? " [" + instanceId + "]" : ""));
-			byte[] buffer = new byte[Maximum_Udp_Data_Size];
-			int outIndex = 0;
-			for (int i=0; i<candidateKeyParts.length; i++) {
-				if (outIndex == 0 || outIndex+candidateKeyParts[i].hash.length*2+1 >= Maximum_Udp_Data_Size) {
-					// send the old packet and construct a new one
-					if (outIndex > 0) {
-						logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
-								(instanceId != null ? " [" + instanceId + "]" : ""));
-						byte[] packet = new byte[outIndex];
-						System.arraycopy(buffer, 0, packet, 0, outIndex);
-						channel.sendMulticast(packet);
-					}
-						
-					String packetStart = Protocol_CandidateKeyPart + candidateKeyParts[i].round + " ";
-					// default ASCII coding
-					System.arraycopy(packetStart.getBytes(), 0, buffer, 0, packetStart.length());
-					outIndex = packetStart.length();
-
-					logger.debug("Started new UDP packet with round " + candidateKeyParts[i].round + 
-							" for candidate number " + i + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-				String cand = new String(Hex.encodeHex(candidateKeyParts[i].hash)) + " ";
-				System.arraycopy(cand.getBytes(), 0, buffer, outIndex, cand.length());
-				outIndex += cand.length();
-			}
-			if (outIndex > 0) {
-				logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
+		// this is synchronized so that handleMessage will not try to match while we 
+		synchronized (globalLock) {
+			CandidateKeyPartIdentifier[] candidateKeyParts = ckp.generateCandidates(keyParts, entropy);
+			/* send out as many UDP multicast packets as necessary to transmit all the generated 
+			 * candidate key parts
+			 */
+			if (broadcastCandidates) {
+				logger.debug("Broadcasting " + candidateKeyParts.length + " candidate key parts" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
-				byte[] packet = new byte[outIndex];
-				System.arraycopy(buffer, 0, packet, 0, outIndex);
-				channel.sendMulticast(packet);
-			}
-		}
-		
-		// and also go through the list of archived yet unmatched incomcing messages
-		for (int i=0; i<keyPartsBuffer.length; i++)
-			if (keyPartsBuffer[i] != null) {
-				InetAddress sender = (InetAddress) keyPartsBuffer[i][0];
-				CandidateKeyPartIdentifier[] incomingKeyParts = (CandidateKeyPartIdentifier[]) keyPartsBuffer[i][1];
-				int match = ckp.matchCandidates(sender.getHostAddress(), incomingKeyParts);
-				if (match > -1) {
-					// yes, we have a match, handle it
-					handleMatchingCandidateKeyPart(incomingKeyParts[match].round, match, sender);
-					// and remove from the list to not match one incoming message twice
-					keyPartsBuffer[i] = null;
+				byte[] buffer = new byte[Maximum_Udp_Data_Size];
+				int outIndex = 0;
+				for (int i=0; i<candidateKeyParts.length; i++) {
+					if (outIndex == 0 || outIndex+candidateKeyParts[i].hash.length*2+1 >= Maximum_Udp_Data_Size) {
+						// send the old packet and construct a new one
+						if (outIndex > 0) {
+							logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
+									(instanceId != null ? " [" + instanceId + "]" : ""));
+							byte[] packet = new byte[outIndex];
+							System.arraycopy(buffer, 0, packet, 0, outIndex);
+							channel.sendMulticast(packet);
+						}
+						
+						String packetStart = Protocol_CandidateKeyPart + candidateKeyParts[i].round + " ";
+						// default ASCII coding
+						System.arraycopy(packetStart.getBytes(), 0, buffer, 0, packetStart.length());
+						outIndex = packetStart.length();
+
+						logger.debug("Started new UDP packet with round " + candidateKeyParts[i].round + 
+								" for candidate number " + i + 
+								(instanceId != null ? " [" + instanceId + "]" : ""));
+					}
+					String cand = new String(Hex.encodeHex(candidateKeyParts[i].hash)) + " ";
+					System.arraycopy(cand.getBytes(), 0, buffer, outIndex, cand.length());
+					outIndex += cand.length();
+				}
+				if (outIndex > 0) {
+					logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
+							(instanceId != null ? " [" + instanceId + "]" : ""));
+					byte[] packet = new byte[outIndex];
+					System.arraycopy(buffer, 0, packet, 0, outIndex);
+					channel.sendMulticast(packet);
 				}
 			}
+		
+			// and also go through the list of archived yet unmatched incoming messages
+			for (int i=0; i<incomingKeyPartsBuffer.length; i++)
+				if (incomingKeyPartsBuffer[i] != null) {
+					InetAddress sender = (InetAddress) incomingKeyPartsBuffer[i][0];
+					CandidateKeyPartIdentifier[] incomingKeyParts = (CandidateKeyPartIdentifier[]) incomingKeyPartsBuffer[i][1];
+					int match = ckp.matchCandidates(sender.getHostAddress(), incomingKeyParts);
+					if (match > -1) {
+						// yes, we have a match, handle it
+						handleMatchingCandidateKeyPart(incomingKeyParts[match].round, match, sender);
+						// and remove from the list to not match one incoming message twice
+						incomingKeyPartsBuffer[i] = null;
+					}
+				}
+		}
 	}
 	
 	/** Takes care to close the UDPMulticastSocket resources properly and to wipe
@@ -356,12 +387,14 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	protected abstract void protocolProgressHook(String remote, 
 			int cur, int max, String message);
 	
-	/** This is just a small helper function to send match messages and try to
-	 * generate candidate Keys.
+	/** This is just a small helper function to send match messages, try to
+	 * generate candidate keys, and check for matches with previously received
+	 * candidate keys. 
+	 * @throws InternalApplicationException 
 	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
 	 * @see #addCandidates(byte[][], float)
 	 */
-	private void handleMatchingCandidateKeyPart(int round, int match, InetAddress remote) throws IOException {
+	private void handleMatchingCandidateKeyPart(int round, int match, InetAddress remote) throws IOException, InternalApplicationException {
 		logger.debug("Number " + match + " of the incoming candidate key parts from host " + remote + " matches" + 
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 		// optionally flag
@@ -370,10 +403,38 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			channel.sendTo(ackPacket.getBytes(), remote);
 		}
 	
-		/* Since a new match was now added the the local match list, check 
-		 * if there are enough to create a candidate key.
-		 */ 
-		checkForKeyGeneration(remote);
+		/* Make sure that this is not interrupted, or else the following could (and did)
+		 * happen:
+		 * 1. checkforKeyGeneration generates a key, sends a KEY message to the remote.
+		 * 2. The remote finds a matching key, sends an ACK message to us.
+		 * 3. handleMessage processes the ACK messages and wipes the local state before
+		 *    the old (buffered) incoming candidate key messages have been processed.
+		 * 4. The loop below is executed, but no matching key can be generated since we
+		 *    already wiped state.
+		 * Solution: make sure that the block below is not interrupted by handleMessage
+		 * by making it atomic with regards to the same synchronization object used in
+		 * handleMessage.
+		 */
+		// this should actually not be necessary here, because addMessage is also synchronized
+		// as whole, but leave it here since it doesn't hurt and is the secure way...
+		synchronized (globalLock) {
+			/* Since a new match was now added the the local match list, check 
+			 * if there are enough to create a candidate key.
+			 */ 
+			checkForKeyGeneration(remote);
+
+			// and also go through the list of archived yet unmatched incoming messages
+			for (int i=0; i<incomingCandKeyBuffer.length; i++)
+				if (incomingCandKeyBuffer[i] != null) {
+					InetAddress sender = (InetAddress) incomingCandKeyBuffer[i][0];
+					int numParts = ((Integer) incomingCandKeyBuffer[i][1]).intValue();
+					byte[] candKeyHash = (byte[]) incomingCandKeyBuffer[i][2];
+					// the call to checkForKeyMatch already handles to send the message if successful
+					if (checkForKeyMatch(sender, numParts, candKeyHash))
+						// and remove from the list to not match one incoming message twice
+						incomingCandKeyBuffer[i] = null;
+				}
+		}
 	}
 
 	/** This helper function checks if a key can already be generated and sends it
@@ -420,13 +481,238 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		}
 	}
 	
+	/** This helper function checks if a key with the same hash as an incoming candidate
+	 * key can be created locally and calls authenticationSucceededStage1 if yes.
+	 * @return true if the key could be generated, false otherwise. 
+	 * @throws InternalApplicationException 
+	 * @throws IOException 
+	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
+	 * @see #addCandidates(byte[][], float)
+	 */
+	private boolean checkForKeyMatch(InetAddress remoteHost, int numParts, byte[] candKeyHash) throws InternalApplicationException, IOException {
+		CandidateKey candKey = ckp.searchKey(remoteHost.getHostAddress(), candKeyHash, numParts);
+		
+		if (candKey != null) {
+			// this is just a sanity check
+			for (int i=0; i<candKeyHash.length; i++)
+				if (candKey.hash[i] != candKeyHash[i])
+					throw new InternalApplicationException("Search for matching key returned "+
+						"different hash from what we searched for. This should not happen!" + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			logger.info("Generated local key that matches received candidate key identifier:" +
+					new String(Hex.encodeHex(candKey.key)) + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			// this sends a key acknowledge message to the remote host
+			authenticationSucceededStage1(remoteHost, candKey.hash, candKey.key);
+			return true;
+		}
+		else {
+			logger.debug("Could not generate local key that matches received candidate key identifier" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			return false;
+		}
+		
+	}
+
+	/** Small helper function to raise an authentication failure event and wipe all state
+	 * for the specified remote host. If some state was kept about this remote host,
+	 * a protocol termination message is also sent to it.
+	 */
+	private void authenticationFailed(InetAddress remoteHost, boolean sendTerminateMsg,
+			Exception e, String msg) {
+		String remoteHostAddress = remoteHost.getHostAddress();
+
+		logger.debug("Authentication with remote host " + remoteHostAddress + " failed" +
+				(e != null ? " with exception '" + e + "'" : "") +
+				(msg != null ? " with message '" + msg + "'" : "") + 
+				(instanceId != null ? " [" + instanceId + "]" : ""));
+		if (ckp.wipe(remoteHostAddress) && sendTerminateMsg) {
+			// ok, there was some state, also send a termination message
+			String termPacket = Protocol_Terminate;
+			logger.debug("Sending termination message to remote host" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			try {
+				channel.sendTo(termPacket.getBytes(), remoteHost);
+			}
+			catch (IOException f) {
+				logger.error("Could not send protocol termination message to remote host: " + f + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+		}
+		// also wipe the state local to this class
+		wipe(remoteHostAddress);
+		
+		// raise the event to notify others
+		raiseAuthenticationFailureEvent(remoteHostAddress, e, msg);
+		
+		// also allow derived classes to do special failure handling
+		protocolFailedHook(remoteHostAddress, e, msg);
+	}
+	
+	/** Small helper function to deal with authentication success in stage 1. For details 
+	 * about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
+	 */
+	private void authenticationSucceededStage1(InetAddress remoteHost,
+			byte[] foundKeyHash, byte[] foundKey) throws InternalApplicationException, IOException {
+		String remoteHostAddress = remoteHost.getHostAddress();
+
+		if (! generatedKeys.containsKey(remoteHostAddress))
+			throw new InternalApplicationException("Got candidate key message from remote host " + 
+					remoteHost + " with no generated key candidates. This should not happen!" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+
+		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
+		if (cand.foundMatchingKey != null) {
+			logger.warn("Not overwriting the found matching key for remote host " + remoteHost +
+					", because stage 2 not entered yet." + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+		}
+		else {
+			cand.foundMatchingKey = foundKey;
+
+			String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
+			logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
+					+ " to remote host " + remoteHostAddress + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			channel.sendTo(ackPacket.getBytes(), remoteHost);
+		}
+	}
+
+	/** Small helper function to deal with authentication success in stage 2. It raises an
+	 * authentication success event and wipes all state for the specified remote host when
+	 * finished. For details about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
+	 */
+	private void authenticationSucceededStage2(InetAddress remoteHost,
+			byte[] ackedKeyHash) throws InternalApplicationException, IOException {
+		String remoteHostAddress = remoteHost.getHostAddress();
+
+		if (! generatedKeys.containsKey(remoteHostAddress))
+			throw new InternalApplicationException("Got candidate key message from remote host " + 
+					remoteHostAddress + " with no generated key candidates. This should not happen!" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+
+		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
+
+		/* We need to look for the locally generated candidate key that has just been acknowledged
+		 * in any case.
+		 */
+		byte[] ackedMatchingKey = null;
+		// need to look through the recent list to find a key with that hash
+		for (int i=0; i<cand.list.length && ackedMatchingKey == null; i++) {
+			if (cand.list[i] != null) {
+				boolean match=true;
+				for (int j=0; j<ackedKeyHash.length && match; j++)
+					if (cand.list[i].hash[j] != ackedKeyHash[j])
+						match = false;
+				if (match) {
+					logger.debug("Found recently generated key matching the acknowledged hash" + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+					ackedMatchingKey = cand.list[i].key;
+				}
+			}
+		}
+		// sanity check
+		if (ackedMatchingKey == null) {
+			logger.warn("Could not find a recently generated key matching the acknowledged hash. " +
+					"This might indicate an ongoing attack! " +
+					"Wiping state for remote host " + remoteHostAddress + 
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			authenticationFailed(remoteHost, true, null, 
+				"Message received that shouldn't. Remote host is bad");
+			return;
+		}
+		
+		/* Ok, found the locally generated key to the incoming acknowledge, but there are now two possibilities:
+		 * - We have already received a key candidate from the remote host and found a key that
+		 *   matched it. In this case, it will be stored in cand.foundMatchingKey.
+		 * - We have not yet received a key candidate from the remote host, but the remote host
+		 *   has acknowledges our key candidate. In this case, cand.foundMatchingKey will not
+		 *   be set.
+		 */
+		byte[] realSharedKey = null;
+		if (cand.foundMatchingKey != null) {
+			logger.info("Received an acknowledge for a locally generated key, and already " +
+					"found and acknowledged a key matching a remote candidate key." + 
+					"Thus using the combination of both." +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+
+			// another sanity check
+			if (ackedMatchingKey.length != cand.foundMatchingKey.length)
+				throw new InternalApplicationException("Found matching key has different length than " +
+						"acknowledged key" + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			/* And now check if the same key has been acknowledged that we ourselves
+			 * acknowledged (because a key with the same hash could be generated locally).
+			 */
+			boolean receivedAckMatchesOwnAck = true;
+			for (int i=0; i<cand.foundMatchingKey.length && receivedAckMatchesOwnAck; i++)
+				if (ackedMatchingKey[i] != cand.foundMatchingKey[i])
+					receivedAckMatchesOwnAck = false;
+			if (!receivedAckMatchesOwnAck) {
+				// just XOR them together to use just one key, independent of their order 
+				// (which might be different on both sides)
+				realSharedKey = new byte[cand.foundMatchingKey.length];
+				for (int i=0; i<cand.foundMatchingKey.length; i++)
+					realSharedKey[i] = (byte) (cand.foundMatchingKey[i] ^ ackedMatchingKey[i]);
+				logger.info("Overlapping candidate key match and acknowledgment messages detected, using " + 
+						"both keys: " + new String(Hex.encodeHex(realSharedKey)) + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+			else {
+				// When they match, do <b>NOT</b> XOR them together.
+				// [A^A = 0....]
+				realSharedKey = cand.foundMatchingKey;
+				logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
+						"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+		}
+		else {
+			logger.info("Received an acknowledge for a locally generated key, and did " +
+					"not yet receive a candidate key from the remote host that we acknowledged. " +
+					"Thus using the locally generated key that has now been acknowledged." +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			realSharedKey = ackedMatchingKey;
+		}
+
+		// now that we finally have the (real) shared key, can wipe the state
+		wipe(remoteHostAddress);
+		ckp.wipe(remoteHostAddress);
+		
+		// raise the event to notify others
+		raiseAuthenticationSuccessEvent(remoteHostAddress, realSharedKey);
+			
+		// also allow derived classes to do special success handling
+		protocolSucceededHook(remoteHostAddress, realSharedKey);
+	}
+
+	/** Small helper function to wipe the generated candidate keys for a remote host. */
+	private void wipe(String remoteHostAddress) {
+		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.remove(remoteHostAddress);
+		if (cand != null) {
+			for (int i=0; i<cand.list.length; i++)
+				if (cand.list[i] != null) {
+					for (int j=0; j<cand.list[i].key.length; j++)
+						cand.list[i].key[j] = 0;
+					for (int j=0; j<cand.list[i].hash.length; j++)
+						cand.list[i].hash[j] = 0;
+				}
+			if (cand.foundMatchingKey != null)
+				for (int j=0; j<cand.foundMatchingKey.length; j++)
+					cand.foundMatchingKey[j] = 0;
+		}
+	}
+	
 	/** This is a helper class for handling incoming UDP packets. It is the
-	 * heart of CKoverUDP and does most of the work.
+	 * heart of CKoverUDP and triggers most of the work by calling the helper functions
+	 * declared above.
 	 */
 	private class UDPMessageHandler implements MessageListener {
 		public void handleMessage(byte[] message, int offset, int length, Object sender) {
-			// should be synchronized so that we process packets in their order of arrival
-			synchronized (this) {
+			/* should be synchronized so that we process packets in their order of arrival
+			 * (and not interrupt or be interrupted by other local methods) 
+			 */
+			synchronized (globalLock) {
 				// only use the IP address part, but not the host (which will be dynamic for sending packets)
 				String remoteHostAddress = ((InetAddress) sender).getHostAddress();
 				
@@ -468,9 +754,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								Object[] tmp = new Object[2];
 								tmp[0] = sender;
 								tmp[1] = keyParts;
-								keyPartsBuffer[keyPartsBufferIndex++] = tmp;
-								if (keyPartsBufferIndex == keyPartsBuffer.length)
-									keyPartsBufferIndex = 0;
+								incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
+								if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length)
+									incomingKeyPartsBufferIndex = 0;
 							}
 						}
 						else
@@ -496,24 +782,21 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
 						logger.debug("Received candidate key composed of " + numParts + " parts");
 						byte[] candKeyHash = Hex.decodeHex(pack.substring(off+1).toCharArray());
-						CandidateKey candKey = ckp.searchKey(remoteHostAddress, candKeyHash, numParts);
-					
-						if (candKey != null) {
-							// this is just a sanity check
-							for (int i=0; i<candKeyHash.length; i++)
-								if (candKey.hash[i] != candKeyHash[i])
-									throw new InternalApplicationException("Search for matching key returned "+
-										"different hash from what we searched for. This should not happen!" + 
-										(instanceId != null ? " [" + instanceId + "]" : ""));
-							logger.info("Generated local key that matches received candidate key identifier:" +
-									new String(Hex.encodeHex(candKey.key)) + 
+						
+						if (! checkForKeyMatch((InetAddress) sender, numParts, candKeyHash)) {
+							/* No match, but remember the received candidate key in case the match local 
+							 * candidates are about to be added. 
+							 */
+							logger.debug("Could not generate key with same hash as incoming candidate key, storing it in " +
+									"buffer for future reference"+ 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
-							// this sends a key acknowledge message to the remote host
-							authenticationSucceededStage1((InetAddress) sender, candKey.hash, candKey.key);
-						}
-						else {
-							logger.debug("Could not generate local key that matches received candidate key identifier" + 
-									(instanceId != null ? " [" + instanceId + "]" : ""));
+							Object[] tmp = new Object[3];
+							tmp[0] = sender;
+							tmp[1] = new Integer(numParts);
+							tmp[2] = candKeyHash;
+							incomingCandKeyBuffer[incomingCandKeyBufferIndex++] = tmp;
+							if (incomingCandKeyBufferIndex == incomingCandKeyBuffer.length)
+								incomingCandKeyBufferIndex = 0;
 						}
 					}
 					else if (pack.startsWith(Protocol_KeyAcknowledge)) {
@@ -552,195 +835,6 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					authenticationFailed((InetAddress) sender, true, e, "Could not search for matching key");
 				}
 			}
-		}
-		
-		/** Small helper function to wipe the generated candidate keys for a remote host. */
-		private void wipe(String remoteHostAddress) {
-			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.remove(remoteHostAddress);
-			if (cand != null) {
-				for (int i=0; i<cand.list.length; i++)
-					if (cand.list[i] != null) {
-						for (int j=0; j<cand.list[i].key.length; j++)
-							cand.list[i].key[j] = 0;
-						for (int j=0; j<cand.list[i].hash.length; j++)
-							cand.list[i].hash[j] = 0;
-					}
-				if (cand.foundMatchingKey != null)
-					for (int j=0; j<cand.foundMatchingKey.length; j++)
-						cand.foundMatchingKey[j] = 0;
-			}
-		}
-		
-		/** Small helper function to raise an authentication failure event and wipe all state
-		 * for the specified remote host. If some state was kept about this remote host,
-		 * a protocol termination message is also sent to it.
-		 */
-		private void authenticationFailed(InetAddress remoteHost, boolean sendTerminateMsg,
-				Exception e, String msg) {
-			String remoteHostAddress = remoteHost.getHostAddress();
-
-			logger.debug("Authentication with remote host " + remoteHostAddress + " failed" +
-					(e != null ? " with exception '" + e + "'" : "") +
-					(msg != null ? " with message '" + msg + "'" : "") + 
-					(instanceId != null ? " [" + instanceId + "]" : ""));
-			if (ckp.wipe(remoteHostAddress) && sendTerminateMsg) {
-				// ok, there was some state, also send a termination message
-				String termPacket = Protocol_Terminate;
-				logger.debug("Sending termination message to remote host" + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				try {
-					channel.sendTo(termPacket.getBytes(), remoteHost);
-				}
-				catch (IOException f) {
-					logger.error("Could not send protocol termination message to remote host: " + f + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-			}
-			// also wipe the state local to this class
-			wipe(remoteHostAddress);
-			
-			// raise the event to notify others
-			raiseAuthenticationFailureEvent(remoteHostAddress, e, msg);
-			
-			// also allow derived classes to do special failure handling
-			protocolFailedHook(remoteHostAddress, e, msg);
-		}
-		
-		/** Small helper function to deal with authentication success in stage 1. For details 
-		 * about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
-		 */
-		private void authenticationSucceededStage1(InetAddress remoteHost,
-				byte[] foundKeyHash, byte[] foundKey) throws InternalApplicationException, IOException {
-			String remoteHostAddress = remoteHost.getHostAddress();
-
-			if (! generatedKeys.containsKey(remoteHostAddress))
-				throw new InternalApplicationException("Got candidate key message from remote host " + 
-						remoteHost + " with no generated key candidates. This should not happen!" + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-
-			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
-			if (cand.foundMatchingKey != null) {
-				logger.warn("Not overwriting the found matching key for remote host " + remoteHost +
-						", because stage 2 not entered yet." + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-			}
-			else {
-				cand.foundMatchingKey = foundKey;
-
-				String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
-				logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
-						+ " to remote host " + remoteHostAddress + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				channel.sendTo(ackPacket.getBytes(), remoteHost);
-			}
-		}
-
-		/** Small helper function to deal with authentication success in stage 2. It raises an
-		 * authentication success event and wipes all state for the specified remote host when
-		 * finished. For details about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
-		 */
-		private void authenticationSucceededStage2(InetAddress remoteHost,
-				byte[] ackedKeyHash) throws InternalApplicationException, IOException {
-			String remoteHostAddress = remoteHost.getHostAddress();
-
-			if (! generatedKeys.containsKey(remoteHostAddress))
-				throw new InternalApplicationException("Got candidate key message from remote host " + 
-						remoteHostAddress + " with no generated key candidates. This should not happen!" + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-
-			GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
-
-			/* We need to look for the locally generated candidate key that has just been acknowledged
-			 * in any case.
-			 */
-			byte[] ackedMatchingKey = null;
-			// need to look through the recent list to find a key with that hash
-			for (int i=0; i<cand.list.length && ackedMatchingKey == null; i++) {
-				if (cand.list[i] != null) {
-					boolean match=true;
-					for (int j=0; j<ackedKeyHash.length && match; j++)
-						if (cand.list[i].hash[j] != ackedKeyHash[j])
-							match = false;
-					if (match) {
-						logger.debug("Found recently generated key matching the acknowledged hash" + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-						ackedMatchingKey = cand.list[i].key;
-					}
-				}
-			}
-			// sanity check
-			if (ackedMatchingKey == null) {
-				logger.warn("Could not find a recently generated key matching the acknowledged hash. " +
-						"This might indicate an ongoing attack! " +
-						"Wiping state for remote host " + remoteHostAddress + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				authenticationFailed(remoteHost, true, null, 
-					"Message received that shouldn't. Remote host is bad");
-				return;
-			}
-			
-			/* Ok, found the locally generated key to the incoming acknowledge, but there are now two possibilities:
-			 * - We have already received a key candidate from the remote host and found a key that
-			 *   matched it. In this case, it will be stored in cand.foundMatchingKey.
-			 * - We have not yet received a key candidate from the remote host, but the remote host
-			 *   has acknowledges our key candidate. In this case, cand.foundMatchingKey will not
-			 *   be set.
-			 */
-			byte[] realSharedKey = null;
-			if (cand.foundMatchingKey != null) {
-				logger.info("Received an acknowledge for a locally generated key, and already " +
-						"found and acknowledged a key matching a remote candidate key." + 
-						"Thus using the combination of both." +
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-
-				// another sanity check
-				if (ackedMatchingKey.length != cand.foundMatchingKey.length)
-					throw new InternalApplicationException("Found matching key has different length than " +
-							"acknowledged key" + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				/* And now check if the same key has been acknowledged that we ourselves
-				 * acknowledged (because a key with the same hash could be generated locally).
-				 */
-				boolean receivedAckMatchesOwnAck = true;
-				for (int i=0; i<cand.foundMatchingKey.length && receivedAckMatchesOwnAck; i++)
-					if (ackedMatchingKey[i] != cand.foundMatchingKey[i])
-						receivedAckMatchesOwnAck = false;
-				if (!receivedAckMatchesOwnAck) {
-					// just XOR them together to use just one key, independent of their order 
-					// (which might be different on both sides)
-					realSharedKey = new byte[cand.foundMatchingKey.length];
-					for (int i=0; i<cand.foundMatchingKey.length; i++)
-						realSharedKey[i] = (byte) (cand.foundMatchingKey[i] ^ ackedMatchingKey[i]);
-					logger.info("Overlapping candidate key match and acknowledgment messages detected, using " + 
-							"both keys: " + new String(Hex.encodeHex(realSharedKey)) + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-				else {
-					// When they match, do <b>NOT</b> XOR them together.
-					// [A^A = 0....]
-					realSharedKey = cand.foundMatchingKey;
-					logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
-							"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
-							(instanceId != null ? " [" + instanceId + "]" : ""));
-				}
-			}
-			else {
-				logger.info("Received an acknowledge for a locally generated key, and did " +
-						"not yet receive a candidate key from the remote host that we acknowledged. " +
-						"Thus using the locally generated key that has now been acknowledged." +
-						(instanceId != null ? " [" + instanceId + "]" : ""));
-				realSharedKey = ackedMatchingKey;
-			}
-
-			// now that we finally have the (real) shared key, can wipe the state
-			wipe(remoteHostAddress);
-			ckp.wipe(remoteHostAddress);
-			
-			// raise the event to notify others
-			raiseAuthenticationSuccessEvent(remoteHostAddress, realSharedKey);
-				
-			// also allow derived classes to do special success handling
-			protocolSucceededHook(remoteHostAddress, realSharedKey);
 		}
 	}
 }
