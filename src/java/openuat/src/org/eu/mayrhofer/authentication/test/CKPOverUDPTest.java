@@ -62,6 +62,10 @@ public class CKPOverUDPTest extends TestCase {
 	byte[][] keyParts_round1_side2;
 	byte[][] keyParts_round2_side1;
 	byte[][] keyParts_round2_side2;
+	
+	public CKPOverUDPTest(String s) {
+		super(s);
+	}
 
 	public void setUp() {
 		// 2 matches 1
