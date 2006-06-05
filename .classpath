@@ -10,7 +10,8 @@
 	<classpathentry kind="lib" path="lib/kxml2-2.2.2.jar"/>
 	<classpathentry kind="lib" path="lib/jfreechart-1.0.1.jar"/>
 	<classpathentry kind="lib" path="lib/swt-3.1.jar"/>
-	<classpathentry kind="lib" path="lib/relate-dist.jar"/>
-	<classpathentry kind="con" path="SWT_CONTAINER/JFACE/PLATFORM"/>
+	<classpathentry kind="con" path="SWT_CONTAINER/PLATFORM"/>
+	<classpathentry kind="lib" path="lib/relatecore.jar"/>
+	<classpathentry kind="lib" path="lib/relateapps.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
