@@ -37,6 +37,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	
 	public static final String MulticastGroup = "228.10.10.1";
 	
+	// TODO: make me settable
 	private int fftPoints = 128;
 	private int numQuantLevels = 8;
 	private int numCandidates = 6;
@@ -53,7 +54,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 *                Lightweight API classes will be used.
 	 * @throws IOException 
 	 */
-	public MotionAuthenticationProtocol2(int sampleRate, int minMatchingParts, boolean useJSSE) throws IOException {
+	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE) throws IOException {
 		// TODO: set minimum entropy
 		super(UdpPort, UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
 	}
@@ -153,8 +154,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		int minmatchingparts = 8;
 		
 		int samplerate = 128; // Hz
-		int windowsize = samplerate/2; // 1/2 second
-		int minsegmentsize = windowsize; // 1/2 second
+		int windowsize = samplerate; // 1 second
+		int minsegmentsize = windowsize; // 1 second
 		double varthreshold = 350;
 		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
@@ -170,8 +171,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
 		
-		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(samplerate, minmatchingparts, true); 
-		MotionAuthenticationProtocol2 ma2 = new MotionAuthenticationProtocol2(samplerate, minmatchingparts, true); 
+		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(minmatchingparts, true); 
+		MotionAuthenticationProtocol2 ma2 = new MotionAuthenticationProtocol2(minmatchingparts, true); 
 		aggr_a.addNextStageSamplesSink(ma1);
 		aggr_b.addNextStageSamplesSink(ma2);
 		
