@@ -264,6 +264,15 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		return continuousChecking;
 	}
 	
+	/** Returns the last coherence mean value that has been computed locally.
+	 * It is valid after protocolSucceededHook has been called and might be valid
+	 * after protocolFailedHook has been called.
+	 * @return The last coherence mean that has been computed.
+	 */
+	public double getLastCoherenceMean() {
+		return lastCoherenceMean;
+	}
+	
 	/** This is a helper class for executing the interlock protocol in the background.
 	 * It is started by startVerification.
 	 */
