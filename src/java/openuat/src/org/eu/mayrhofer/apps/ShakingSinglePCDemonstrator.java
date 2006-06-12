@@ -1,6 +1,16 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-05-16
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.apps;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
 
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Display;
@@ -12,6 +22,8 @@ import org.eclipse.swt.graphics.Font;
 
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol2;
+import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
+import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 
 public class ShakingSinglePCDemonstrator {
 
@@ -27,8 +39,10 @@ public class ShakingSinglePCDemonstrator {
 	private Label device1State = null;
 	private Label device2State = null;
 	
-	private MotionAuthenticationProtocol1 prot1 = null;
-	private MotionAuthenticationProtocol2 prot2 = null;
+	private Protocol1Hooks prot1_a = null;
+	private Protocol1Hooks prot1_b = null;
+	private Protocol2Hooks prot2_a = null;
+	private Protocol2Hooks prot2_b = null;
 
 	/**
 	 * This method initializes composite	
@@ -101,8 +115,45 @@ public class ShakingSinglePCDemonstrator {
 	}
 	
 	public void ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
-		prot1 = new MotionAuthenticationProtocol1(false);
-		prot2 = new MotionAuthenticationProtocol2(5, false);
+		/* 1: construct the central sensor reader object and the two segment aggregators */
+		int samplerate = 128; // Hz
+		int windowsize = samplerate/2; // 1/2 second
+		int minsegmentsize = windowsize; // 1/2 second
+		double varthreshold = 350;
+		ParallelPortPWMReader r = new ParallelPortPWMReader(device1, samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+		aggr_a.setOffset(0);
+		aggr_a.setMultiplicator(1/128f);
+		aggr_a.setSubtractTotalMean(true);
+		aggr_a.setActiveVarianceThreshold(varthreshold);
+		aggr_b.setOffset(0);
+		aggr_b.setMultiplicator(1/128f);
+		aggr_b.setSubtractTotalMean(true);
+		aggr_b.setActiveVarianceThreshold(varthreshold);
+
+		/* 2: construct the two prototol instances: two different variants, each with two sides */
+		prot1_a = new Protocol1Hooks();
+		prot1_b = new Protocol1Hooks();
+		// TODO: move this threshold into MotionAuthenticationProtocol2
+		prot2_a = new Protocol2Hooks(5);
+		prot2_b = new Protocol2Hooks(5);
+		
+		/* 3: register the protocols with the respective sides */
+		aggr_a.addNextStageSegmentsSink(prot1_a);
+		aggr_b.addNextStageSegmentsSink(prot1_b);
+		aggr_a.addNextStageSamplesSink(prot2_a);
+		aggr_b.addNextStageSamplesSink(prot2_b);
+
+		/* 4: authenticate for protocol variant 1 (variant 2 doesn't need this step) */
+		prot1_a.setContinuousChecking(true);
+		prot1_b.setContinuousChecking(true);
+		prot1_a.startServer();
+		prot1_b.startAuthentication("localhost");
+		
+		r.simulateSampling();
 	}
 
 	public static void main(String[] args) {
@@ -123,5 +174,43 @@ public class ShakingSinglePCDemonstrator {
 				display.sleep();
 		}
 		display.dispose();
+	}
+	
+	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
+		protected Protocol1Hooks() {
+			super(false);
+		}
+		
+		protected void protocolSucceededHook(InetAddress remote, 
+				Object optionalRemoteId, String optionalParameterFromRemote, 
+				byte[] sharedSessionKey, Socket toRemote) {
+		}		
+
+		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
+				Exception e, String message) {
+			
+		}
+		
+		protected void protocolProgressHook(InetAddress remote, 
+				Object optionalRemoteId, int cur, int max, String message) {
+		}		
+	}
+
+	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
+		protected Protocol2Hooks(int numMatches) throws IOException {
+			super(numMatches, false);
+		}
+		
+		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
+			
+		}
+
+		protected void protocolFailedHook(String remote, Exception e, String message) {
+			
+		}
+
+		protected void protocolProgressHook(String remote, int cur, int max, String message) {
+			
+		}
 	}
 }

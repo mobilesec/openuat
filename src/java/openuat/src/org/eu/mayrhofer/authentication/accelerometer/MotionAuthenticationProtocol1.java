@@ -60,8 +60,27 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	/** The current threshold for the coherence. If it is higher, the two segments
 	 * are considered similar enough.
 	 */
-	// TODO: make me modifieable (if necessary)
-	private double coherenceThreshold = 0.45;
+	private double coherenceThreshold = 0.50;
+	
+	/** If set to true, the thread started by startVerification will not terminate
+	 * but will check continuously, only calling the hook methods in this class
+	 * itself. This is mainly used for debugging, and should not be set to true for
+	 * "real-world" operation!
+	 */
+	private boolean continuousChecking = false;
+	
+	/** This is only used to remember the coherence mean that has been computed last.
+	 * It should only be used for debugging, because the decision if verification 
+	 * succeeded or not is made within this class.
+	 */
+	private double lastCoherenceMean = 0;
+	
+	/** This variable is only used for passing the socket from startVerification to the
+	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
+	 * @see #startVerification(byte[], InetAddress, String, Socket)
+	 * @see AsyncInterlockHelper#run
+	 */
+	private InetAddress remote = null;
 	
 	/** This variable is only used for passing the socket from startVerification to the
 	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
@@ -102,7 +121,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			Object optionalRemoteId, String optionalParameterFromRemote, 
 			byte[] sharedSessionKey, Socket toRemote) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.debug("protocolSucceededHook called");
+		logger.debug("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
 		System.out.println("SUCCESS");
 	}
 	
@@ -133,9 +152,16 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			InetAddress remote, String param, Socket socketToRemote) {
 		logger.info("startVerification hook called with " + remote + ", param " + param);
 	
-		this.socketToRemote = socketToRemote;
-		interlockRunner = new Thread(new AsyncInterlockHelper(sharedAuthenticationKey));
-		interlockRunner.start();
+		if (interlockRunner == null) {
+			this.remote = remote;
+			this.socketToRemote = socketToRemote;
+			interlockRunner = new Thread(new AsyncInterlockHelper(sharedAuthenticationKey));
+			interlockRunner.start();
+		}
+		else {
+			logger.warn("Interlock thread already running, can not process two interlock " +
+					"protocol runs concurrently. Terminating second request.");
+		}
 	}
 
 	/** This helper function calls Coherence.cohere on localSegment and remoteSegment,
@@ -164,10 +190,10 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			return false;
 		}
 		
-		double coherenceMean = Coherence.mean(coherence);
-		System.out.println("Coherence mean: " + coherenceMean);
+		lastCoherenceMean = Coherence.mean(coherence);
+		System.out.println("Coherence mean: " + lastCoherenceMean);
 		
-		return coherenceMean > coherenceThreshold;
+		return lastCoherenceMean > coherenceThreshold;
 	}
 	
 	/** The implementation of SegmentsSink.addSegment. It will be called whenever
@@ -195,6 +221,49 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		startAuthentication(remoteHost, null);
 	}
 	
+	/** Sets the coherence threshold. 
+	 * @param coherenceThreshold The threshold over which a coherence value will be taken
+	 *                           as valid (i.e. shaken within the same hand). Must be
+	 *                           between 0 and 1.
+	 * @see #coherenceThreshold 
+	 */
+	public void setCoherenceThreshold(double coherenceThreshold) {
+		if (coherenceThreshold < 0 || coherenceThreshold > 1)
+			throw new IllegalArgumentException("Coherence threshold must be in [0;1].");
+		
+		logger.debug("Setting coherence threshold to " + coherenceThreshold);
+		this.coherenceThreshold = coherenceThreshold;
+	}
+	
+	/** Returns the current value of the coherence threshold. 
+	 * @return The current coherence threshold.
+	 * @see #coherenceThreshold
+	 */
+	public double getCoherenceThreshold() {
+		return coherenceThreshold;
+	}
+	
+	/** Enable or disable continuous checking.
+	 * @param continuousChecking Only set to true after reading the description
+	 *                           of the member variable continuousChecking. Generally
+	 *                           leave to false (the default).
+	 * @see #continuousChecking
+	 */
+	public void setContinuousChecking(boolean continuousChecking) {
+		if (continuousChecking) {
+			logger.warn("Enabling continuous checking mode! This should only be used for debugging, and not in production");
+		}
+		this.continuousChecking = continuousChecking;
+	}
+	
+	/** Returns the current value of continuousChecking.
+	 * @return The current value of continuousChecking.
+	 * @see #continuousChecking
+	 */
+	public boolean getContinuousChecking() {
+		return continuousChecking;
+	}
+	
 	/** This is a helper class for executing the interlock protocol in the background.
 	 * It is started by startVerification.
 	 */
@@ -207,68 +276,90 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		
 		public void run() {
 			try {
-				// TODO: support continuous operation too instead of one-shot
-				while (true) {
-				// first wait for the local segment to be received to start the interlock protocol
-				logger.debug("Waiting for local segment");
-				synchronized(localSegmentLock) {
-					while (localSegment == null) {
-						try {
-							localSegmentLock.wait();
+				do {
+					// first wait for the local segment to be received to start the interlock protocol
+					logger.debug("Waiting for local segment");
+					synchronized(localSegmentLock) {
+						while (localSegment == null) {
+							try {
+								localSegmentLock.wait();
+							}
+							catch (InterruptedException e) {}
 						}
-						catch (InterruptedException e) {}
 					}
-				}
-				logger.debug("Local segment sampled, starting interlock protocol");
+					logger.debug("Local segment sampled, starting interlock protocol");
 			
-				// TODO: make configurable??? mabye not necessary
-				int rounds = 2;
+					// TODO: make configurable??? mabye not necessary
+					int rounds = 2;
 
-				// TODO: optimize me for smaller arrays!
-				String tmp = "";
-				synchronized (localSegmentLock) {
-					for (int i=0; i<localSegment.length; i++) {
-						tmp += Double.toString(localSegment[i]);
-						if (i<localSegment.length-1)
-							tmp+=" ";
+					// now generate our message for the interlock protocol segments
+					// TODO: optimize me for smaller arrays!
+					String tmp = "";
+					synchronized (localSegmentLock) {
+						for (int i=0; i<localSegment.length; i++) {
+							tmp += Double.toString(localSegment[i]);
+							if (i<localSegment.length-1)
+								tmp+=" ";
+						}
 					}
-				}
-				byte[] localPlainText = tmp.getBytes();
-				logger.debug("My segment is " + localPlainText.length + " bytes long");
+					byte[] localPlainText = tmp.getBytes();
+					logger.debug("My segment is " + localPlainText.length + " bytes long");
 			
-				byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
-						socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
-						sharedAuthenticationKey, rounds, false, 0, useJSSE);
-				if (remotePlainText == null) {
-//					verificationFailure(null, null, null, null);
-//					return;
-					continue;
-				}
+					// exchange with the remote host
+					byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
+							socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
+							sharedAuthenticationKey, rounds, false, 0, useJSSE);
+					if (remotePlainText == null) {
+						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
+						if (! continuousChecking) {
+							verificationFailure(null, null, null, "Interlock protocol failed");
+							return;
+						}
+						else {
+							// in case of checking continously, just call or own hook (for derived classes)
+							protocolFailedHook(remote, null, null, "Interlock protocol failed");
+							continue;
+						}
+					}
 			
-				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
-				StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
-				remoteSegment = new double[st.countTokens()];
-				int i=0;
-				while (st.hasMoreTokens()) {
-					remoteSegment[i++] = Float.parseFloat(st.nextToken());
-				}
-				logger.debug("remote segment is " + remoteSegment.length + " elements long");
+					// and check the received remote segment, compare it with our local segment
+					logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
+					StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
+					remoteSegment = new double[st.countTokens()];
+					int i=0;
+					while (st.hasMoreTokens()) {
+						remoteSegment[i++] = Float.parseFloat(st.nextToken());
+					}
+					logger.debug("remote segment is " + remoteSegment.length + " elements long");
 			
-				boolean coherence = checkCoherence();
-				System.out.println("COHERENCE MATCH: " + coherence);
+					boolean coherence = checkCoherence();
+					System.out.println("COHERENCE MATCH: " + coherence + "(computed " + 
+							lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
 			
-				/*if (coherence)
-					verificationSuccess(null, null);
-				else
-					verificationFailure(null, null, null, null);*/
+					// final decision
+					if (coherence) { 
+						if (! continuousChecking)
+							verificationSuccess(null, Double.toString(lastCoherenceMean));
+						else
+							protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null, null);
+					}
+					else {
+						if (! continuousChecking)
+							verificationFailure(null, null, null, "Coherence is below threshold, time series are not similar enough");
+						else
+							protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
+					}
 
-				localSegment = remoteSegment = null;
-			}
+					localSegment = remoteSegment = null;
+				} while (continuousChecking);
 				// HACK HACK HACK to make the application exit
 				//stopServer();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			
+			// thread finished, so allow next one to start
+			interlockRunner = null;
 		}
 	}
 	
