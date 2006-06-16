@@ -375,7 +375,7 @@ public abstract class AsciiLineReaderBase {
 		int numCandidatesMax = 8;
 		int numCandidatesStep = 2;
 		int cutOffFrequencyMin = 5;
-		int cutOffFrequencyMax = 50;
+		int cutOffFrequencyMax = 20;
 		int cutOffFrequencyStep = 5;
 		double[] windowOverlapFactors = new double[] {0, 1/8f, 1/4f, 1/3f, 1/2f, 2/3f, 3/4f, 7/8f}; // or just 1/2? 
 		
@@ -564,9 +564,13 @@ public abstract class AsciiLineReaderBase {
 											for (int k=0; k<max_ind; k++) {
 												sums1[k] = allCoeff1[k] + allCoeff1[k+1];
 												sums2[k] = allCoeff2[k] + allCoeff2[k+1];
+												//System.out.println("k=" + k + ": sum1=" + sums1[k] + " sum2=" + sums2[k]);
 											}
 											cand1 = Quantizer.generateCandidates(sums1, 0, Quantizer.max(sums1), numQuantLevels, numCandidates, false);
 											cand2 = Quantizer.generateCandidates(sums2, 0, Quantizer.max(sums2), numQuantLevels, numCandidates, false);
+											/*for (int k=0; k<max_ind; k++) {
+												System.out.println("k=" + k + ": cand1=" + cand1[0][k] + " cand2=" + cand2[0][k]);
+											}*/
 											match = false;
 											for (int i=0; i<cand1.length && !match; i++) {
 												for (int j=0; j<cand2.length && !match; j++) {
