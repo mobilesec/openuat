@@ -311,6 +311,37 @@ public abstract class AsciiLineReaderBase {
 		}
 	}
 
+	// just a helper function for comparing
+	private static boolean compareQuantizedVectors(int[][] cand1, int[][] cand2, int max_ind) {
+		for (int i=0; i<cand1.length; i++) {
+			for (int j=0; j<cand2.length; j++) {
+				boolean equal = true;
+				for (int k=0; k<max_ind && equal; k++) {
+					if (cand1[i][k] != cand2[j][k])
+						equal = false;
+				}
+				if (equal) {
+					//System.out.println("Match at i=" + i + ", j=" + j);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	private static boolean[] quantizeAndCompare(double[] vector1, double[] vector2, 
+			int numQuantLevels, int numCandidates, int max_ind) {
+		boolean[] ret = new boolean[2];
+		double max1 = Quantizer.max(vector1);
+		double max2 = Quantizer.max(vector2);
+		int cand1[][] = Quantizer.generateCandidates(vector1, 0, max1, numQuantLevels, false, numCandidates, false);
+		int cand2[][] = Quantizer.generateCandidates(vector2, 0, max2, numQuantLevels, false, numCandidates, false);
+		ret[0] = compareQuantizedVectors(cand1, cand2, max_ind);
+		cand1 = Quantizer.generateCandidates(vector1, 0, max1, numQuantLevels, true, numCandidates, false);
+		cand2 = Quantizer.generateCandidates(vector2, 0, max2, numQuantLevels, true, numCandidates, false);
+		ret[1] = compareQuantizedVectors(cand1, cand2, max_ind);
+		return ret;
+	}
 	
 	protected static void mainRunner(String runClassName, String[] args) throws IOException {
 		String filename = args[0];
@@ -523,6 +554,8 @@ public abstract class AsciiLineReaderBase {
 										
 										int numMatchesVariantA=0;
 										int numMatchesVariantB=0;
+										int numMatchesVariantC=0;
+										int numMatchesVariantD=0;
 										int numWindows=0;
 
 										for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
@@ -539,26 +572,15 @@ public abstract class AsciiLineReaderBase {
 											fftCoeff1[0] = 0;
 											fftCoeff2[0] = 0;
 											
-											// variant a: compare the quantized FFT coefficients directly
-											int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
-											int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
-											boolean match = false;
-											for (int i=0; i<cand1.length && !match; i++) {
-												for (int j=0; j<cand2.length && !match; j++) {
-													boolean equal = true;
-													for (int k=0; k<max_ind && equal; k++) {
-														if (cand1[i][k] != cand2[j][k])
-															equal = false;
-													}
-													if (equal) {
-														//System.out.println("Match at i=" + i + ", j=" + j);
-														match = true;
-														numMatchesVariantA++;
-													}
-												}
-											}
+											// variants a and c: compare the quantized FFT coefficients directly
+											boolean[] matches = quantizeAndCompare(fftCoeff1, fftCoeff2, 
+													numQuantLevels, numCandidates, max_ind);
+											if (matches[0])
+												numMatchesVariantA++;
+											if (matches[1])
+												numMatchesVariantC++;
 											
-											// variant b: compare the quantized pairwise neighboring sums of the coefficients
+											// variants b and d: compare the quantized pairwise neighboring sums of the coefficients
 											double sums1[] = new double[max_ind];
 											double sums2[] = new double[max_ind];
 											for (int k=0; k<max_ind; k++) {
@@ -566,31 +588,19 @@ public abstract class AsciiLineReaderBase {
 												sums2[k] = allCoeff2[k] + allCoeff2[k+1];
 												//System.out.println("k=" + k + ": sum1=" + sums1[k] + " sum2=" + sums2[k]);
 											}
-											cand1 = Quantizer.generateCandidates(sums1, 0, Quantizer.max(sums1), numQuantLevels, numCandidates, false);
-											cand2 = Quantizer.generateCandidates(sums2, 0, Quantizer.max(sums2), numQuantLevels, numCandidates, false);
-											/*for (int k=0; k<max_ind; k++) {
-												System.out.println("k=" + k + ": cand1=" + cand1[0][k] + " cand2=" + cand2[0][k]);
-											}*/
-											match = false;
-											for (int i=0; i<cand1.length && !match; i++) {
-												for (int j=0; j<cand2.length && !match; j++) {
-													boolean equal = true;
-													for (int k=0; k<max_ind && equal; k++) {
-														if (cand1[i][k] != cand2[j][k])
-															equal = false;
-													}
-													if (equal) {
-														//System.out.println("Match at i=" + i + ", j=" + j);
-														match = true;
-														numMatchesVariantB++;
-													}
-												}
-											}
+											matches = quantizeAndCompare(sums1, sums2,
+													numQuantLevels, numCandidates, max_ind);
+											if (matches[0])
+												numMatchesVariantB++;
+											if (matches[1])
+												numMatchesVariantD++;
 											
 											numWindows++;
 										}
 										System.out.println("Match A: " + (float) numMatchesVariantA / numWindows + " (" + numMatchesVariantA + " out of " + numWindows + ")" + 
 												" Match B: " + (float) numMatchesVariantB / numWindows + " (" + numMatchesVariantB + " out of " + numWindows + ")" +
+												" Match C: " + (float) numMatchesVariantC / numWindows + " (" + numMatchesVariantC + " out of " + numWindows + ")" +
+												" Match D: " + (float) numMatchesVariantD / numWindows + " (" + numMatchesVariantD + " out of " + numWindows + ")" +
 												" samplerate=" + samplerate + ", windowsize=" + windowsize + 
 												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold +
 												", windowoverlap=" + windowOverlap + ", numquantlevels=" + numQuantLevels +

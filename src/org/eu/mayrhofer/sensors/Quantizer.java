@@ -36,17 +36,25 @@ public class Quantizer {
 	 * @param numLevels The number of levels to distinguish. All output values will be in the
 	 *                  (integer) range [0;numLevels-1] with the exception of "error" values
 	 *                  when using error zones, which will be set to -1.
+	 * @param exponentialLevels If set to true, the quantization levels will be created with
+	 *                          exponentially growing ranges. If set to false, all quantization
+	 *                          levels will have an equal range, i.e. with equidistant points
+	 *                          to distinguish levels.
 	 * @param offset A value between -0.5 and +0.5 to specify an offset in the quantization. 
 	 *               It can be used to change the start of the quantization levels slightly 
 	 *               to account for small differences in the original data that would lead to 
-	 *               mismatch in the quantized data. Set to 0 if not needed.
+	 *               mismatch in the quantized data. This is necessary since small errors in the
+	 *               sensor values can easily cause quantization erros.
+	 *               Set to 0 if not needed.
 	 * @param errorZone If set to true, an error zone will be created around each quantum value 
 	 *                  and values outside those error zones will be marked in the output by being 
-	 *                  set to -1. If set to false, no error zones will be used.
+	 *                  set to -1. The error zone are <b>not</b> adapted to exponential ranges
+	 *                  is exponentialLevels is set to true.
+	 *                  If set to false, no error zones will be used.
 	 * @return The quantized values. This array will have the same number of elements as the input.
 	 */
 	public static int[] quantize(double[] vector, double lower, double upper, int numLevels, 
-			double offset, boolean errorZone) {
+			boolean exponentialLevels, double offset, boolean errorZone) {
 		if (lower >= upper)
 			throw new IllegalArgumentException("lower must be < upper");
 		if (numLevels < 2)
@@ -65,11 +73,26 @@ public class Quantizer {
 		double intervals[][] = new double[2][];
 		intervals[0] = new double[numLevels];
 		intervals[1] = new double[numLevels];
-		logger.debug("Creating intervals with lower=" + lower + ", upper=" + upper + 
+		logger.debug("Creating " + (exponentialLevels ? "exponential" : "linear") + 
+				" intervals with lower=" + lower + ", upper=" + upper + 
 				", numLevels=" + numLevels + ", offset=" + offset + ", errorMargin=" + errorMargin);
+		int totalQuantLevelsExp = 1, curQuantLevelsExp = 1, sumQuantLevelsExp = 0;
+		if (exponentialLevels) {
+			for (int i=0; i<numLevels; i++) totalQuantLevelsExp*=2;
+			totalQuantLevelsExp--;
+			logger.debug("Using " + totalQuantLevelsExp + " quants");
+		}
 		for (int i=0; i<numLevels; i++) {
-			intervals[0][i] = (i+offset) * (upper-lower)/numLevels + lower + errorMargin;
-			intervals[1][i] = (i+1+offset) * (upper-lower)/numLevels + lower - errorMargin;
+			if (! exponentialLevels) {
+				intervals[0][i] = (i+offset) * (upper-lower)/numLevels + lower + errorMargin;
+				intervals[1][i] = (i+1+offset) * (upper-lower)/numLevels + lower - errorMargin;
+			}
+			else {
+				intervals[0][i] =  (sumQuantLevelsExp+offset*curQuantLevelsExp) * (upper-lower)/totalQuantLevelsExp + lower + errorMargin;
+				intervals[1][i] = (sumQuantLevelsExp+(offset+1)*curQuantLevelsExp) * (upper-lower)/totalQuantLevelsExp + lower - errorMargin;
+				sumQuantLevelsExp+=curQuantLevelsExp;
+				curQuantLevelsExp*=2;
+			}
 			logger.debug("Using interval " + i + " from " + intervals[0][i] + " to " + intervals[1][i]);
 		}
 		// but (when using no error zones), set first and last intervals to be open
@@ -103,14 +126,15 @@ public class Quantizer {
 	
 	/** Generates multiple quantization candidates with different offset values.
 	 * 
-	 * @param vector @see quantize
-	 * @param lower @see quantize
-	 * @param upper @see quantize
-	 * @param numLevels @see quantize
+	 * @param vector @see #quantize
+	 * @param lower @see #quantize
+	 * @param upper @see #quantize
+	 * @param numLevels @see #quantize
+	 * @param exponentialLevels @see #quantize
 	 * @param numCandidates The number of candidates to create. That is, 
 	 *                      numCandidates offset values will be used from 0 to 0.5. It
 	 *                      must be at least 2 to make sense.
-	 * @param errorZone @see quantize
+	 * @param errorZone @see #quantize
 	 * @return An array of candidates, where the first dimension represents the
 	 *         different candidates (thus, the number of elements in the first
 	 *         dimension is numCandidates) and the second dimension represents the
@@ -118,7 +142,7 @@ public class Quantizer {
 	 *         is vector.length).
 	 */
 	public static int[][] generateCandidates(double[] vector, double lower, double upper, int numLevels, 
-			int numCandidates, boolean errorZone) {
+			boolean exponentialLevels, int numCandidates, boolean errorZone) {
 		if (numCandidates < 2)
 			throw new IllegalArgumentException("numCandidates must >= 2");
 		
@@ -130,7 +154,7 @@ public class Quantizer {
 		for (int i=0; i<numCandidates; i++) {
 			// with numCandidates different values, there's (numCandidates-1) additions in between...
 			double offset = i * 0.5 / (numCandidates-1);
-			candidates[i] = quantize(vector, lower, upper, numLevels, offset, errorZone);
+			candidates[i] = quantize(vector, lower, upper, numLevels, exponentialLevels, offset, errorZone);
 		}
 		return candidates;
 	}
