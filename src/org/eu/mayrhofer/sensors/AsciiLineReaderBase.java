@@ -365,7 +365,7 @@ public abstract class AsciiLineReaderBase {
 		}
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device
-		int[] samplerates = new int[] {128}; // {64, 128, 256, 512}; // different sample rates
+		int[] samplerates = new int[] {128, 256, 512}; // {64, 128, 256, 512}; // different sample rates
 		double[] windowsizeFactors = new double[] {1}; // {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection
 		double varthresholdMin = 350; // 50;
 		double varthresholdMax = 350; // 1000;
@@ -464,7 +464,9 @@ public abstract class AsciiLineReaderBase {
 							s1[i] = SegmentSink.segs[0][i];
 							s2[i] = SegmentSink.segs[1][i];
 						}
-						double[] coherence = Coherence.cohere(s1, s2, windowsize, 0);
+						
+						// disable coherence computation for now, we are searching for variant 2 parameters
+						/*double[] coherence = Coherence.cohere(s1, s2, windowsize, 0);
 						if (coherence != null) {
 							if (graph) {
 								XYSeries c = new XYSeries("Coefficients", false);
@@ -480,7 +482,7 @@ public abstract class AsciiLineReaderBase {
 							System.out.println("Coherence mean: " + coherenceMean + 
 									" samplerate=" + samplerate + ", windowsize=" + windowsize + 
 									", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
-						}
+						}*/
 
 						/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
 						for (int i3=0; i3<windowOverlapFactors.length; i3++) {
@@ -514,23 +516,32 @@ public abstract class AsciiLineReaderBase {
 										if (!paramSearch) {
 											cutOffFrequency = 15; // Hz
 										}
-							
-										int numMatches=0;
+
+										// only compare until the cutoff frequency
+										int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
+										//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+										
+										int numMatchesVariantA=0;
+										int numMatchesVariantB=0;
 										int numWindows=0;
 
 										for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-											double[] fftCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
-											double[] fftCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+											double[] allCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
+											double[] allCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+											
+											// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
+											double[] fftCoeff1 = new double[max_ind];
+											double[] fftCoeff2 = new double[max_ind];
+											System.arraycopy(allCoeff1, 0, fftCoeff1, 0, max_ind);
+											System.arraycopy(allCoeff2, 0, fftCoeff2, 0, max_ind);
+											
 											// HACK HACK HACK: set DC components to 0
 											fftCoeff1[0] = 0;
 											fftCoeff2[0] = 0;
-								
+											
+											// variant a: compare the quantized FFT coefficients directly
 											int cand1[][] = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, numCandidates, false);
 											int cand2[][] = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, numCandidates, false);
-											// only compare until the cutoff frequency
-											int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
-											//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
-					
 											boolean match = false;
 											for (int i=0; i<cand1.length && !match; i++) {
 												for (int j=0; j<cand2.length && !match; j++) {
@@ -542,17 +553,45 @@ public abstract class AsciiLineReaderBase {
 													if (equal) {
 														//System.out.println("Match at i=" + i + ", j=" + j);
 														match = true;
-														numMatches++;
+														numMatchesVariantA++;
 													}
 												}
 											}
+											
+											// variant b: compare the quantized pairwise neighboring sums of the coefficients
+											double sums1[] = new double[max_ind];
+											double sums2[] = new double[max_ind];
+											for (int k=0; k<max_ind; k++) {
+												sums1[k] = allCoeff1[k] + allCoeff1[k+1];
+												sums2[k] = allCoeff2[k] + allCoeff2[k+1];
+											}
+											cand1 = Quantizer.generateCandidates(sums1, 0, Quantizer.max(sums1), numQuantLevels, numCandidates, false);
+											cand2 = Quantizer.generateCandidates(sums2, 0, Quantizer.max(sums2), numQuantLevels, numCandidates, false);
+											match = false;
+											for (int i=0; i<cand1.length && !match; i++) {
+												for (int j=0; j<cand2.length && !match; j++) {
+													boolean equal = true;
+													for (int k=0; k<max_ind && equal; k++) {
+														if (cand1[i][k] != cand2[j][k])
+															equal = false;
+													}
+													if (equal) {
+														//System.out.println("Match at i=" + i + ", j=" + j);
+														match = true;
+														numMatchesVariantB++;
+													}
+												}
+											}
+											
 											numWindows++;
 										}
-										System.out.println("Match: " + (float) numMatches / numWindows + " (" + numMatches + " out of " + numWindows + ")" + 
+										System.out.println("Match A: " + (float) numMatchesVariantA / numWindows + " (" + numMatchesVariantA + " out of " + numWindows + ")" + 
+												" Match B: " + (float) numMatchesVariantB / numWindows + " (" + numMatchesVariantB + " out of " + numWindows + ")" +
 												" samplerate=" + samplerate + ", windowsize=" + windowsize + 
 												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold +
 												", windowoverlap=" + windowOverlap + ", numquantlevels=" + numQuantLevels +
-												", numcandidates=" + numCandidates + ", cutofffrequ=" + cutOffFrequency);
+												", numcandidates=" + numCandidates + ", cutofffrequ=" + cutOffFrequency +
+												" (" + max_ind + " FFT coefficients)");
 									}
 								}
 							}
