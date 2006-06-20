@@ -30,7 +30,14 @@ import org.eu.mayrhofer.channel.IPSecConnection;
 import org.eu.mayrhofer.channel.IPSecConnection_Factory;
 import org.eu.mayrhofer.channel.X509CertificateGenerator;
 
+import uk.ac.lancs.relate.apps.SetupHelper;
+import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.filter.FilterInvalid;
+import uk.ac.lancs.relate.filter.FilterList;
+import uk.ac.lancs.relate.filter.FilterTransducerNo;
+import uk.ac.lancs.relate.filter.KalmanFilter;
+
 import org.eclipse.swt.widgets.Group;
 
 /** @author Rene Mayrhofer
@@ -109,7 +116,25 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		 * For example, on Windows the Eclipse SWT 3.1 plugin jar is:
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
-		IPSecConnectorClient thisClass = new IPSecConnectorClient(null /*"/dev/ttyUSB0"*/);
+	    Configuration relateConf = new Configuration();
+	    relateConf.setSide("back");
+
+        SetupHelper helper = new SetupHelper(relateConf);
+        helper.getSerialConnector().setHostInfo(relateConf.getHostInfo());
+		//create filter list and add filters to the measurement manager
+        FilterList filters = new FilterList();
+        filters.addFilter(new FilterInvalid());
+        filters.addFilter(new FilterTransducerNo(2));
+        //filters.addFilter(new FilterOutlierDistance());
+        filters.addFilter(new KalmanFilter());
+        filters.addFilter(new FilterInvalid());
+        helper.getMeasurementManager().setFilterList(filters);
+
+        // TODO: check if we need these
+        //helper.getHostInfoManager();
+        //helper.getMDNSDiscovery();
+
+		IPSecConnectorClient thisClass = new IPSecConnectorClient(relateConf);
 		thisClass.display = Display.getDefault();
 		thisClass.sShell.open();
 
@@ -120,8 +145,8 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		thisClass.display.dispose();
 	}
 	
-	public IPSecConnectorClient(String serialPort) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
-		super(false, serialPort);
+	public IPSecConnectorClient(Configuration relateConf) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+		super(false, relateConf);
 		createSShell();
 	}
 

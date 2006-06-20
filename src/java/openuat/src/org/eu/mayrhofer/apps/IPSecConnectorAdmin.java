@@ -178,45 +178,34 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		}
 
 		// if we have an IP address as argument, then start in simulation mode
-		if (args.length > 0) 
+		Configuration relateConf = null;
+		SetupHelper helper = null;
+		if (args.length > 0)  {
 			serialPort = null;
+		}
+		else {
+			logger.info("Initializing with serial port " + serialPort);
+		    relateConf = new Configuration(serialPort);
+		    relateConf.setSide("back");
+
+	        helper = new SetupHelper(relateConf);
+	        helper.getSerialConnector().setHostInfo(relateConf.getHostInfo());
+			//create filter list and add filters to the measurement manager
+	        FilterList filters = new FilterList();
+	        filters.addFilter(new FilterInvalid());
+	        filters.addFilter(new FilterTransducerNo(2));
+	        //filters.addFilter(new FilterOutlierDistance());
+	        filters.addFilter(new KalmanFilter());
+	        filters.addFilter(new FilterInvalid());
+	        helper.getMeasurementManager().setFilterList(filters);
+
+	        // TODO: check if we need these
+            //helper.getHostInfoManager();
+            //helper.getMDNSDiscovery();
+		}
 
 		
-	    //setup local configuration
-/*	    Configuration config = new Configuration(args[0]);
-		config.setSide(args[1]);
-        SetupHelper helper = new SetupHelper(config);
-        helper.getSerialConnector().setHostInfo(config.getHostInfo());
-        
-		if (!System.getProperty("os.name").startsWith("Windows CE")){
-		    //this isn't a pocketPC
-            helper.getHostInfoManager();
-            helper.getMDNSDiscovery();
-        }
-		
-
-		//create filter list and add filters to the measurement manager
-        FilterList filters = new FilterList();
-        filters.addFilter(new FilterInvalid());
-        filters.addFilter(new FilterTransducerNo(2));
-        //filters.addFilter(new FilterOutlierDistance());
-        filters.addFilter(new KalmanFilter());
-        filters.addFilter(new FilterInvalid());
-        helper.getMeasurementManager().setFilterList(filters);
-        
-        
-                        
-		Shell shell = new Shell(new Display());
-		SimpleShowDemo s = new SimpleShowDemo(shell, config, helper.getMeasurementManager(), helper.getModel(), true, false);
-		s.open();
-
-		while (!shell.isDisposed()) {
-			if (!s.display.readAndDispatch()) {
-				s.display.sleep();
-			}
-		}*/
-		
-		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(serialPort, 
+		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(relateConf, 
 				caFile, "test password", "Test CA", confFile);
 		
 		// test code, only simulating
@@ -240,23 +229,9 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		else {
 			logger.debug("Starting selection GUI normally");
 			// when not testing, use the SimpleShowDemo instead
-		    Configuration config = new Configuration(serialPort);
-			config.setSide("back");
-
-	        SetupHelper helper = new SetupHelper(config);
-	        helper.getSerialConnector().setHostInfo(config.getHostInfo());
-			//create filter list and add filters to the measurement manager
-	        FilterList filters = new FilterList();
-	        filters.addFilter(new FilterInvalid());
-	        filters.addFilter(new FilterTransducerNo(2));
-	        //filters.addFilter(new FilterOutlierDistance());
-	        filters.addFilter(new KalmanFilter());
-	        filters.addFilter(new FilterInvalid());
-	        helper.getMeasurementManager().setFilterList(filters);
-			
-			Shell shell = new Shell(new Display());
+			Shell shell = new Shell(thisClass.display);
 			// this opens the window, and the authentication is started by right-click
-			selectionGui = thisClass.new AuthenticationEventsHandler(shell, config, 
+			selectionGui = thisClass.new AuthenticationEventsHandler(shell, relateConf, 
 					helper.getMeasurementManager(), helper.getModel());
 			selectionGui.open();
 		}
@@ -273,9 +248,9 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		}
 	}
 	
-	public IPSecConnectorAdmin(String serialPort, String caFile, String caPassword, String caAlias, 
+	public IPSecConnectorAdmin(Configuration relateConf, String caFile, String caPassword, String caAlias, 
 			String configFilename) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
-		super(true, serialPort);
+		super(true, relateConf);
 		
 		// also initialize the certificate generator
 		try {

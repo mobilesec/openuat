@@ -55,11 +55,6 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 	 */
 	protected boolean adminEnd;
 	
-	/** Holds the serial port we use to talk to the dongle. It just
-	 * remembers whatever value was given to the constructor.
-	 */
-	protected String serialPort;
-	
 	/** Holds our one and only instance of the relate authentication
 	 * protocol. It is initialized by the constructor. For the client
 	 * end, the authentication server is automatically started. 
@@ -87,23 +82,20 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 	 * @param serialPort The serial port to use. A special value of null means that we are in simulation mode and
 	 *                   not using any dongles at all (just assuming that dongle authentication always succeeds).
 	 */
-	protected IPSecConnectorCommon(boolean adminEnd, String serialPort) 
+	protected IPSecConnectorCommon(boolean adminEnd, Configuration relateConf) 
 			throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
 		this.adminEnd = adminEnd;
-		this.serialPort = serialPort;
 
 		if (System.getProperty("os.name").startsWith("Windows CE")) {
 			System.out.println("Configuring log4j");
 			PropertyConfigurator.configure("log4j.properties");
 		}
 
-		if (serialPort != null) {
-			logger.info("Initializing with serial port " + serialPort);
-        	Configuration conf = new Configuration(serialPort);
-        	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
+		if (relateConf != null) {
+        	SerialConnector connector = SerialConnector.getSerialConnector(relateConf.getDevicePortName(), relateConf.getDeviceType());
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
-            manager = new MeasurementManager(conf);
+            manager = new MeasurementManager(relateConf);
             EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, manager);
 		}
 		else {
@@ -111,7 +103,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			manager = null;
 			RelateAuthenticationProtocol.setSimulationMode(true);
 		}
-		auth = new RelateAuthenticationProtocol(serialPort, manager, !adminEnd, true, null);
+		auth = new RelateAuthenticationProtocol((relateConf != null ? relateConf.getPort() : null), manager, !adminEnd, true, null);
 		auth.addAuthenticationProgressHandler(this);
 		
 		if (! adminEnd) {

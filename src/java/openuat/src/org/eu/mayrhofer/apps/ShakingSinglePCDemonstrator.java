@@ -22,11 +22,17 @@ import org.eclipse.swt.graphics.Font;
 
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol2;
+import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
+import org.eu.mayrhofer.sensors.WiTiltRawReader;
 
+/** This is a simple demonstrator for the shaking authentication. It
+ * shows both protocol variants with a simple GUI.
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
 public class ShakingSinglePCDemonstrator {
-
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="10,10"
 	private Composite coherenceField = null;
 	private Composite matchingField = null;
@@ -43,6 +49,9 @@ public class ShakingSinglePCDemonstrator {
 	private Protocol1Hooks prot1_b = null;
 	private Protocol2Hooks prot2_a = null;
 	private Protocol2Hooks prot2_b = null;
+	
+	private AsciiLineReaderBase reader1 = null;
+	private AsciiLineReaderBase reader2 = null;
 
 	/**
 	 * This method initializes composite	
@@ -114,17 +123,36 @@ public class ShakingSinglePCDemonstrator {
 		sShell.setSize(new org.eclipse.swt.graphics.Point(786,515));
 	}
 	
-	public void ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
+	/** The only constructor for the shaking demonstrator. 
+	 * @param device1 If deviceType is set to 1, this specifies the log file (or pipe) to
+	 *                read the pulse-width parallel port data. If deviceType is set to 2,
+	 *                this specifies the name of the first serial port to read from the
+	 *                WiTilt sensor.
+	 * @param device2 If deviceType is set to 2, this specifies the name of the second 
+	 *                serial port to read from the WiTilt sensor. If deviceType is set to 1,
+	 *                it is simply ignored.
+	 * @param deviceType The sensor device type to use. If set to 1, pulse-width signals
+	 *                   will be sampled from the parallel port. If set to 2, WiTilt devices
+	 *                   will be used.
+	 * @throws IOException
+	 */
+	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
 		/* 1: construct the central sensor reader object and the two segment aggregators */
 		int samplerate = 128; // Hz
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
 		double varthreshold = 350;
-		ParallelPortPWMReader r = new ParallelPortPWMReader(device1, samplerate);
+		if (deviceType == 1)
+			reader1 = new ParallelPortPWMReader(device1, samplerate);
+		else if (deviceType == 2) {
+			reader1 = new WiTiltRawReader(device1);
+			reader2 = new WiTiltRawReader(device2);
+		}
+		else
+			throw new IllegalArgumentException("Device type " + deviceType + " unknown");
+		
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
-		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
@@ -152,28 +180,61 @@ public class ShakingSinglePCDemonstrator {
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startServer();
 		prot1_b.startAuthentication("localhost");
-		
-		r.simulateSampling();
+
+		if (deviceType == 1) {
+			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+			reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+			reader1.start();
+		}
+		else {
+			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+			reader2.addSink(new int[] {0, 1, 2}, aggr_b.getInitialSinks());
+			reader1.start();
+			reader2.start();
+		}
 	}
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+	public static void main(String[] args) throws IOException {
 		/* Before this is run, be sure to set up the launch configuration (Arguments->VM Arguments)
 		 * for the correct SWT library path in order to run with the SWT dlls. 
 		 * The dlls are located in the SWT plugin jar.  
 		 * For example, on Windows the Eclipse SWT 3.1 plugin jar is:
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
-		Display display = Display.getDefault();
-		ShakingSinglePCDemonstrator thisClass = new ShakingSinglePCDemonstrator();
+
+		if (args.length < 2) {
+			System.err.println("Required parameters: <device type: 'parallel' or 'witilt'> <device1> <device2>");
+			System.exit(1);
+		}
+		int deviceType = -1;
+		String dev1 = null, dev2 = null;
+		if (args[0].equals("parallel")) {
+			deviceType = 1;
+			dev1 = args[1];
+		}
+		else if (args[0].equals("witilt")) {
+			deviceType = 2;
+			dev1 = args[1];
+			dev2 = args[2];
+		}
+		ShakingSinglePCDemonstrator thisClass = new ShakingSinglePCDemonstrator(dev1, dev2, deviceType);
 		thisClass.createSShell();
 		thisClass.sShell.open();
 
+		Display display = Display.getDefault();
 		while (!thisClass.sShell.isDisposed()) {
 			if (!display.readAndDispatch())
 				display.sleep();
 		}
 		display.dispose();
+		
+		// stop the sensor listener threads properly
+		if (thisClass.reader1 != null)
+			thisClass.reader1.stop();
+		if (thisClass.reader2 != null)
+			thisClass.reader2.stop();
+		
+		System.exit(0);
 	}
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {

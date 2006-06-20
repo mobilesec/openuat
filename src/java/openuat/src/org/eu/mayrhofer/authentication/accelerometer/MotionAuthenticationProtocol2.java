@@ -21,7 +21,7 @@ import org.eu.mayrhofer.sensors.Quantizer;
 import org.eu.mayrhofer.sensors.SamplesSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 
-/** This is the first variant of the motion authentication protocol. It 
+/** This is the second variant of the motion authentication protocol. It 
  * broadcasts candidate keys over UDP and creates shared keys with the
  * candidate key protocol.
  * 
