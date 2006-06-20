@@ -180,6 +180,41 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		// if we have an IP address as argument, then start in simulation mode
 		if (args.length > 0) 
 			serialPort = null;
+
+		
+	    //setup local configuration
+/*	    Configuration config = new Configuration(args[0]);
+		config.setSide(args[1]);
+        SetupHelper helper = new SetupHelper(config);
+        helper.getSerialConnector().setHostInfo(config.getHostInfo());
+        
+		if (!System.getProperty("os.name").startsWith("Windows CE")){
+		    //this isn't a pocketPC
+            helper.getHostInfoManager();
+            helper.getMDNSDiscovery();
+        }
+		
+
+		//create filter list and add filters to the measurement manager
+        FilterList filters = new FilterList();
+        filters.addFilter(new FilterInvalid());
+        filters.addFilter(new FilterTransducerNo(2));
+        //filters.addFilter(new FilterOutlierDistance());
+        filters.addFilter(new KalmanFilter());
+        filters.addFilter(new FilterInvalid());
+        helper.getMeasurementManager().setFilterList(filters);
+        
+        
+                        
+		Shell shell = new Shell(new Display());
+		SimpleShowDemo s = new SimpleShowDemo(shell, config, helper.getMeasurementManager(), helper.getModel(), true, false);
+		s.open();
+
+		while (!shell.isDisposed()) {
+			if (!s.display.readAndDispatch()) {
+				s.display.sleep();
+			}
+		}*/
 		
 		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(serialPort, 
 				caFile, "test password", "Test CA", confFile);
