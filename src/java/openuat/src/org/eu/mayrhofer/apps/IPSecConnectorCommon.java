@@ -92,6 +92,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		}
 
 		if (relateConf != null) {
+			logger.debug("Registering MeasuementManager with SerialConnector");
         	SerialConnector connector = SerialConnector.getSerialConnector(relateConf.getDevicePortName(), relateConf.getDeviceType());
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
@@ -103,6 +104,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			manager = null;
 			RelateAuthenticationProtocol.setSimulationMode(true);
 		}
+		logger.debug("Creating RelateAuthenticationProtocol");
 		auth = new RelateAuthenticationProtocol((relateConf != null ? relateConf.getPort() : null), manager, !adminEnd, true, null);
 		auth.addAuthenticationProgressHandler(this);
 		
