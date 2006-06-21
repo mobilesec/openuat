@@ -19,6 +19,7 @@ import java.net.UnknownHostException;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.ProgressBar;
@@ -177,6 +178,11 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			confFile = "ipsec-conf.xml";
 		}
 
+		if (System.getProperty("os.name").startsWith("Windows CE")) {
+			System.out.println("Configuring log4j");
+			PropertyConfigurator.configure("log4j.properties");
+		}
+		
 		// if we have an IP address as argument, then start in simulation mode
 		Configuration relateConf = null;
 		SetupHelper helper = null;
@@ -204,15 +210,13 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
             //helper.getMDNSDiscovery();
 		}
 
-		
 		IPSecConnectorAdmin thisClass = new IPSecConnectorAdmin(relateConf, 
-				caFile, "test password", "Test CA", confFile);
+				caFile, "test password", "Test CA", confFile, Display.getDefault());
 		
 		// test code, only simulating
-		thisClass.display = Display.getDefault();
 		AuthenticationEventsHandler selectionGui = null;
 		if (args.length > 0) {
-			logger.debug("Simulating authentication with host " + args[0]);
+			logger.info("Simulating authentication with host " + args[0]);
 			thisClass.adminShell.open();
 			try {
 				// simulation, so just start the authentication
@@ -227,7 +231,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			}
 		}
 		else {
-			logger.debug("Starting selection GUI normally");
+			logger.info("Starting selection GUI normally");
 			// when not testing, use the SimpleShowDemo instead
 			Shell shell = new Shell(thisClass.display);
 			// this opens the window, and the authentication is started by right-click
@@ -236,24 +240,33 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 			selectionGui.open();
 		}
 
-		while (!thisClass.adminShell.isDisposed() && (selectionGui == null || selectionGui.isDisposed())) {
+		logger.info("Initialization complete, waiting for main window to be closed");
+		while (!thisClass.adminShell.isDisposed() || (selectionGui != null && !selectionGui.isDisposed())) {
 			if (!thisClass.display.readAndDispatch())
 				thisClass.display.sleep();
 		}
 		thisClass.display.dispose();
 		
-		if (! System.getProperty("os.name").startsWith("Windows CE")) {
-			// for Windows CE, don't call System.exit because then we wouldn't see the log output
+		// clean up properly
+		helper.getSerialConnector().stop();
+		helper.getSerialConnector().dispose();
+		
+		logger.info("Application exiting now.");
+		if (!System.getProperty("os.name").startsWith("Windows CE")/* || !logger.isDebugEnabled()*/) {
+			// for Windows CE, don't call System.exit when debugging because then we wouldn't see the log output
 			System.exit(0);
 		}
 	}
 	
 	public IPSecConnectorAdmin(Configuration relateConf, String caFile, String caPassword, String caAlias, 
-			String configFilename) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+			String configFilename, Display display) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
 		super(true, relateConf);
+		logger.info("Initializing IPSecConnectorAdmin");
+		this.display = display;
 		
 		// also initialize the certificate generator
 		try {
+			logger.debug("Initializing certificate authority from " + caFile + "(alias " + caAlias + ")");
 			certGenerator = new X509CertificateGenerator(caFile, caPassword, caAlias, true);
 		}
 		catch (Exception e) {
@@ -265,6 +278,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		}
 
 		// the the config block
+		logger.info("Reading configuration from " + configFilename);
 		config = new IPSecConfigHandler();
 		if (!config.parseConfig(new FileReader(configFilename))) {
 			logger.error("Could not load IPSec configuration from " + configFilename);
@@ -284,6 +298,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 		}
 
 		// and finally create the shell (with all information now available)
+		logger.info("Creating shell for admin window");
 		createSShell();
 	}
 
@@ -291,7 +306,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 * This method initializes adminShell
 	 */
 	private void createSShell() {
-		adminShell = new Shell();
+		adminShell = new Shell(display);
 		adminShell.setText("IPSec Connector Admin");
 		adminShell.setSize(new org.eclipse.swt.graphics.Point(249,360));
 		label1 = new Label(adminShell, SWT.NONE);
