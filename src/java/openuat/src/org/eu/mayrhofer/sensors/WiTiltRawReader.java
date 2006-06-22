@@ -10,8 +10,15 @@ package org.eu.mayrhofer.sensors;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
+
+import gnu.io.CommPortIdentifier;
+import gnu.io.NoSuchPortException;
+import gnu.io.PortInUseException;
+import gnu.io.SerialPort;
+import gnu.io.UnsupportedCommOperationException;
 
 import org.apache.log4j.Logger;
 
@@ -36,18 +43,112 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(WiTiltRawReader.class);
 
+	private final static int BAUDRATE = 57600;
+	
+	private SerialPort serialPort = null;
+	
+	private OutputStream portCmd = null;
+	
 	/** Initializes the WiTilt RAW reder. It only saves the
 	 * passed parameters and opens the InputStream to read from the specified
 	 * file, and thus implicitly to check if the file exists and can be opened.
 	 * 
-	 * @param filename The log to read from. This may either be a normal log file
-	 *                 when simulation is intended or it can be a FIFO/pipe to read
-	 *                 online data.
+	 * @param serialPortName The serial port to read from. It will be opened
+	 *                       and initialized with the correct parameters. 
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	public WiTiltRawReader(String filename) throws FileNotFoundException {
-		// we have a maximum of 3 values to read per sample
-		super(filename, 3);
+	public WiTiltRawReader(String serialPortName) throws IOException {
+		// we have a maximum of 3 values (X, Y, Z) to read per sample
+		super(3);
+		
+		// need to initialize the serial port properly
+		try {
+			logger.debug("Using port '" + serialPortName + "'");
+			CommPortIdentifier portId = CommPortIdentifier.getPortIdentifier(serialPortName);
+			if (portId.isCurrentlyOwned()) {
+				throw new IOException("port " + port + " is currently in use by " +
+						portId.getCurrentOwner());
+			} else {
+				/* Set serial port parameters directly that are not yet accessible via the (deeply broken) javax.comm API.
+				 * This is of course very OS specific, but hopefully only needs to be done once and not each time the port
+				 * is opened (i.e. in prepareMode).
+				 */
+				if (System.getProperty("os.name").startsWith("Linux")) {
+					logger.info("Using Linux-specific configuration of the serial port.");
+					try {
+						// WATCHME: sometimes, the option -opost fixes the "10" duplication, but is not enough 
+						// ("255" duplication still happens and seems to be solved by the raw option)
+						String[] cmdArgs = new String[] {"stty", "-F", serialPortName, "raw"};
+						int exitCode = Runtime.getRuntime().exec(cmdArgs).waitFor();
+						if (exitCode != 0) {
+							logger.error("Unable to set serial port parameters to prohibit post-processing of received characters. " +
+									"Exit code of 'stty -F " + port + " raw' was " + exitCode + ". " +
+							        "This is non-fatal, but the device communication might now be subtly broken.");
+						}
+					}
+					catch (InterruptedException e) {
+						throw new IOException("The process was interrupted while trying to set serial port parameters with " + e + ". " +
+						    "This is non-fatal, but the device communication might now be subtly broken.");
+					}
+					catch (IOException e) {
+						throw new IOException("The process execution failed while trying to set serial port parameters with " + e + ". " +
+					    "This is non-fatal, but the device communication might now be subtly broken.");
+					}
+				}
+
+				try {
+					serialPort = (SerialPort) portId.open("RelatePort", 500);
+					try {
+						serialPort.setSerialPortParams(BAUDRATE,
+								SerialPort.DATABITS_8,
+								SerialPort.STOPBITS_1,
+								SerialPort.PARITY_NONE);
+						// so that read on the getInputStream does not hang indefinitely but times out
+						serialPort.enableReceiveTimeout(1000);
+						if (!serialPort.isReceiveTimeoutEnabled())
+							logger.warn("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
+						serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+						logger.info("Opened port " + portId.getName() + " at " + serialPort.getBaudRate());
+					} catch (UnsupportedCommOperationException e) {
+						if (! System.getProperty("os.name").startsWith("Windows CE")) {
+							logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
+						}
+						else {
+							// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
+							logger.error("UnsupportedCommOperationException");
+						}
+					}
+					// also open the output stream to the port so that we can interact with the menu
+					portCmd = serialPort.getOutputStream();
+					port = serialPort.getInputStream();
+				}
+				catch (IOException e) {
+					throw new IOException("Could not open port for reading and/or writing: " + e);
+				}
+				catch (PortInUseException e) {
+					throw new IOException("Could not open port for reading and/or writing: " + e);
+				}
+			}
+		}
+		catch (NoSuchPortException e) {
+			throw new IOException("Could not create CommPortIdentifier object from port name '" + serialPortName + "': " + e);
+		}
+	}
+	
+	/** This closes the serial port properly. It should <b>not</b> be called manually!
+	 */
+	public void dispose() {
+		if (serialPort != null) {
+			try {
+				portCmd.close();
+				port.close();
+			}
+			catch (IOException e) {
+				logger.warn("Exception occured during closing the serial port streams: " + e);
+			}
+			serialPort.close();
+			serialPort = null;
+		}
 	}
 	
 	/** A helper function to parse single line of the format produced by 
