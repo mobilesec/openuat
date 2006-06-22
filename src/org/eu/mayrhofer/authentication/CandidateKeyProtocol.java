@@ -41,7 +41,7 @@ import org.eu.mayrhofer.util.Hash;
  * with this one may then flag that candidate out of the current list of candidates
  * in this iteration that they also have. A key part can thus go through three phases:
  * 1.  Features extracted form sensor data form a candidate key part and get
- *     broadcasts.
+ *     broadcast.
  * 2a. After received a candidate, it is checked against all local candidates.
  *     When there is a match, this candidate becomes a matching key part and
  *     the candidate's number is signalled to the host that generated it.
@@ -61,7 +61,7 @@ import org.eu.mayrhofer.util.Hash;
  * 
  * In short, the whole authentication protocol should be used as follows:
  * 1. Construct the object.
- * 2. For each set of feature vector that belong together, generate a set
+ * 2. For each set of feature vectors that belong together, generate a set
  *    of candidate key parts with generateCandidates. These will be kept
  *    in an internal history.
  * 3. Send the candidate key parts to the remote host.
@@ -141,6 +141,7 @@ public class CandidateKeyProtocol {
 		CandidateKeyPartIdentifier extractPublicIdentifier() {
 			CandidateKeyPartIdentifier ret = new CandidateKeyPartIdentifier();
 			ret.round = round;
+			ret.candidateNumber = candidateNumber;
 			ret.hash = hash;
 			return ret;
 		}
@@ -382,7 +383,12 @@ public class CandidateKeyProtocol {
 					if (match) {
 						advanceCandidateToMatch(remoteHost, j);
 						if (firstMatch == -1) {
-							firstMatch = i;
+							// sanity check
+							if (candidateIdentifiers[i].candidateNumber != i)
+								logger.warn("Incoming candidate number " + candidateIdentifiers[i].candidateNumber +
+										" in round " + candidateIdentifiers[i].round + " does not match its position " +
+										"in the array: " + i);
+							firstMatch = candidateIdentifiers[i].candidateNumber;
 							logger.debug("This is the first match, will report candidate number " + firstMatch);
 						}
 					}
