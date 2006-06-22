@@ -317,6 +317,12 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								" for candidate number " + i + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
+					// small otpimization: the candidate number is not transmitted explicitly, but just as its position
+					// but do a sanity check here (optimizations are always dangerous)
+					if (candidateKeyParts[i].candidateNumber != i) 
+						logger.warn("Locally generatared candidate number " + candidateKeyParts[i].candidateNumber +
+								" in round " + candidateKeyParts[i].round + " does not match its position " +
+								"in the array: " + i + ". Something might be subtly broken!");
 					String cand = new String(Hex.encodeHex(candidateKeyParts[i].hash)) + " ";
 					System.arraycopy(cand.getBytes(), 0, buffer, outIndex, cand.length());
 					outIndex += cand.length();
@@ -738,6 +744,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								keyParts[i] = new CandidateKeyPartIdentifier();
 								keyParts[i].hash = Hex.decodeHex(st.nextToken().toCharArray());
 								keyParts[i].round = round;
+								// small otpimization: the candidate number is not transmitted explicitly, but just as its position
+								keyParts[i].candidateNumber = (byte) i;
 							}
 							int match = ckp.matchCandidates(remoteHostAddress, keyParts);
 							if (match > -1) {
