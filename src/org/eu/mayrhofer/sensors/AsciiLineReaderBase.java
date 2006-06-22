@@ -50,7 +50,7 @@ public abstract class AsciiLineReaderBase {
 	/** This represent the file to read from and is opened in the constructor.
 	 * @see #AsciiLineReaderBase(String, int)
 	 */
-	private InputStream port;
+	protected InputStream port;
 	
 	/** Objects of this type are held in sinks. They represent listeners to 
 	 * be notified of samples.
@@ -102,7 +102,7 @@ public abstract class AsciiLineReaderBase {
 	 *                 online data.
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	public AsciiLineReaderBase(String filename, int maxNumLines) throws FileNotFoundException {
+	protected AsciiLineReaderBase(String filename, int maxNumLines) throws FileNotFoundException {
 		this.sinks = new LinkedList();
 		this.numSamples = 0;
 		this.maxNumLines = maxNumLines;
@@ -110,6 +110,17 @@ public abstract class AsciiLineReaderBase {
 		logger.info("Reading from " + filename);
 		
 		port = new FileInputStream(new File(filename));
+	}
+	
+	/** Initializes the reader base object. It only saves the
+	 * passed parameter and does <b>not</b> initialze the port
+	 * member variable. Any derived class using this constructor
+	 * <b>must</b> initialize port before calling any other method.
+	 */
+	protected AsciiLineReaderBase(int maxNumLines) {
+		this.sinks = new LinkedList();
+		this.numSamples = 0;
+		this.maxNumLines = maxNumLines;
 	}
 
 	/** Registers a sink, which will receive all new values as they are sampled.

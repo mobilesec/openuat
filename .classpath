@@ -9,9 +9,9 @@
 	<classpathentry kind="lib" path="lib/log4j-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/kxml2-2.2.2.jar"/>
 	<classpathentry kind="lib" path="lib/jfreechart-1.0.1.jar"/>
-	<classpathentry kind="lib" path="lib/swt-3.1.jar"/>
-	<classpathentry kind="con" path="SWT_CONTAINER/PLATFORM"/>
 	<classpathentry kind="lib" path="lib/relatecore.jar"/>
 	<classpathentry kind="lib" path="lib/relateapps.jar"/>
+	<classpathentry kind="lib" path="lib/RXTXcomm.jar"/>
+	<classpathentry kind="lib" path="lib/linux/swt-3.1.1_gtk.linux.x86.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
