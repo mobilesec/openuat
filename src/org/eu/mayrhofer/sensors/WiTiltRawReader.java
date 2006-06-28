@@ -8,9 +8,12 @@
  */
 package org.eu.mayrhofer.sensors;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
@@ -44,6 +47,8 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	private static Logger logger = Logger.getLogger(WiTiltRawReader.class);
 
 	private final static int BAUDRATE = 57600;
+	
+	private final static String MENU_HEADER = "WiTilt Firmware v3 - Configuration Menu:";
 	
 	private SerialPort serialPort = null;
 	
@@ -109,6 +114,19 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 							logger.warn("Warning: serial port driver does not support receive timeouts! It is possible that read operations will block indefinitely.");
 						serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 						logger.info("Opened port " + portId.getName() + " at " + serialPort.getBaudRate());
+
+						// also open the output stream to the port so that we can interact with the menu
+						portCmd = serialPort.getOutputStream();
+						port = serialPort.getInputStream();
+
+						if (! waitForMenuControl()) {
+							throw new IOException("Could not gain control of the WiTilt menu");
+						}
+						
+						// now start the sensor output
+						PrintWriter w = new PrintWriter(portCmd);
+						w.print('1');
+						w.flush();
 					} catch (UnsupportedCommOperationException e) {
 						if (! System.getProperty("os.name").startsWith("Windows CE")) {
 							logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
@@ -118,9 +136,6 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 							logger.error("UnsupportedCommOperationException");
 						}
 					}
-					// also open the output stream to the port so that we can interact with the menu
-					portCmd = serialPort.getOutputStream();
-					port = serialPort.getInputStream();
 				}
 				catch (IOException e) {
 					throw new IOException("Could not open port for reading and/or writing: " + e);
@@ -132,6 +147,63 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 		}
 		catch (NoSuchPortException e) {
 			throw new IOException("Could not create CommPortIdentifier object from port name '" + serialPortName + "': " + e);
+		}
+	}
+	
+	private boolean checkForMenuOutput(BufferedReader r) {
+		boolean foundMenu = false;
+		// drain all input
+		String line;
+		try {
+			line = r.readLine();
+			// TODO: add a timeout
+			while (!foundMenu && line != null) {
+				logger.debug("read from sensor: '" + line);
+				if (line.contains(MENU_HEADER)) {
+					logger.debug("Detected menu start header");
+					foundMenu = true;
+				}
+				line = r.readLine();
+			}
+		} catch (IOException e) {
+			// simply ignore, this means that the menu output has ended (or no output at all)
+			return false;
+		}
+		return foundMenu;
+	}
+	
+	private boolean waitForMenuControl() {
+		logger.info("Waiting to gain WiTilt menu control");
+		
+		try {
+			BufferedReader r = new BufferedReader(new InputStreamReader(port));
+			PrintWriter w = new PrintWriter(portCmd);
+			
+			boolean gotControl = false;
+			// TODO: add a timeout
+			while (!gotControl) {
+				logger.info("Trying to invoke menu ...");
+				// before trying to invoke the menu, drain the output
+				if (checkForMenuOutput(r))
+					logger.debug("Initial menu was printed before gaining control, device seems to have been reset");
+
+				// try to get the menu to print
+				w.print(' ');
+				w.flush();
+				
+				if (checkForMenuOutput(r)) {
+					logger.info("Successfully invoked menu");
+					gotControl = true;
+				}
+				else {
+					logger.info("Could not invoke menu, please reset device now");
+					Thread.sleep(1000);
+				}
+			}
+			return gotControl;
+		} catch (InterruptedException e) {
+			logger.error("Interrupted while trying to get menu control" + e);
+			return false;
 		}
 	}
 	
@@ -156,6 +228,11 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	 * @param line The line to parse.
 	 */
 	protected void parseLine(String line) {
+		//System.out.println("got line from sensor: '" + line + "'");
+		if (line.length() < 2)
+			// silently ignore empty lines (they might be due to \r\n conversion)
+			return;
+		
 		StringTokenizer st = new StringTokenizer(line, " =", false);
 		try {
 			double[] values = new double[maxNumLines];
@@ -163,28 +240,56 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 			// just read all values
 			for (int i=0; i<maxNumLines; i++) {
 				char valName = (char) ('X' + i);
-				if (! st.nextToken().equals(Character.toString(valName))) {
+				String tok = st.nextToken();
+				//System.out.println("token1: '" + tok + "'");
+				if (! tok.equals(Character.toString(valName))) {
 					logger.warn("Did not get start of " + valName + " value, skipping line");
 					return;
 				}
 				try {
-					values[i] = Integer.parseInt(st.nextToken());
+					tok = st.nextToken();
+					//System.out.println("token2: '" + tok + "'");
+					values[i] = Integer.parseInt(tok.trim());
 				}
 				catch (NumberFormatException e) {
-					logger.warn("Could not parse value for " + valName + ", skipping line");
+					logger.warn("Could not parse value for " + valName + ", skipping line (" + e + ")");
 				}
 			}
 			
 			emitSample(values);
 		}
 		catch (NoSuchElementException e) {
-			logger.warn("Could not parse line from WiTilt sensor, skipping it");
+			logger.warn("Could not parse line from WiTilt sensor, skipping it (" + e + ")");
 		}
 	}
 	
 	
 	/////////////////////////// test code begins here //////////////////////////////
+	private static class TestSamplesSink implements SamplesSink {
+		private char name;
+		
+		public void addSample(double sample, int index) {
+			System.out.println(name + ": " + sample);
+		}
+
+		public void segmentStart(int index) {
+		}
+
+		public void segmentEnd(int index) {
+		}
+	}
+	
 	public static void main(String[] args) throws IOException {
-		mainRunner("WiTiltRawReader", args);
+		//mainRunner("WiTiltRawReader", args);
+		
+		String filename = args[0];
+		AsciiLineReaderBase r = new WiTiltRawReader(filename);
+		TestSamplesSink[] sinks = new TestSamplesSink[3];
+		for (int i=0; i<=2; i++) {
+			sinks[i] = new TestSamplesSink();
+			sinks[i].name = (char) (('X' + i));
+		}
+		r.addSink(new int[] {0, 1, 2}, sinks);
+		r.simulateSampling();
 	}
 }
