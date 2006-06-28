@@ -204,7 +204,13 @@ public abstract class AsciiLineReaderBase {
 		String line = r.readLine();
 		while (line != null) {
 			parseLine(line);
-			line = r.readLine();
+			try {
+				line = r.readLine();
+			}
+			catch (IOException e) {
+				logger.debug("Ignoring exception: " + e);
+				line = null;
+			}
 		}
 	}
 
@@ -234,7 +240,13 @@ public abstract class AsciiLineReaderBase {
 				String line = r.readLine();
 				while (alive && line != null) {
 					parseLine(line);
-					line = r.readLine();
+					try {
+						line = r.readLine();
+					}
+					catch (IOException e) {
+						logger.debug("Ignoring exception: " + e);
+						line = null;
+					}
 				}
 				if (! alive)
 					logger.debug("Background sampling thread terminated regularly due to request");
