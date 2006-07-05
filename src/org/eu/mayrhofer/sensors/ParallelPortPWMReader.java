@@ -10,6 +10,7 @@ package org.eu.mayrhofer.sensors;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
@@ -66,6 +67,31 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 		this.lastSampleAt = 0;
 		
 		logger.info("Reading from " + filename +
+				" with sample rate " + samplerate + " Hz (sample width " + sampleWidth + " us)");
+	}
+
+	/** Initializes the parallel port PWM log reader. It only saves the
+	 * passed parameters. This is an alternative to @see #ParallelPortPWMReader(String, int)
+	 * and should only be used in special cases.
+	 * 
+	 * @param socket Specifies an UDP socket to read the ASCII lines from.
+	 *               It is assumed that another process (or host) will push
+	 *               the lines into this socket, with one line per UDP packet.
+	 * @param samplerate The sample rate in Hz.
+	 */
+	public ParallelPortPWMReader(DatagramSocket socket, int samplerate) {
+		// the maximum number of data lines to read from the port - obviously 8
+		super(socket, 8); 
+
+		this.sampleWidth = 1000000 / samplerate;
+		this.curSample = new ArrayList[maxNumLines];
+		for (int i=0; i<maxNumLines; i++)
+			curSample[i] = new ArrayList();
+		this.lastSampleValues = new double[maxNumLines];
+		
+		this.lastSampleAt = 0;
+		
+		logger.info("Reading from UDP port " + socket.getLocalPort() +
 				" with sample rate " + samplerate + " Hz (sample width " + sampleWidth + " us)");
 	}
 	

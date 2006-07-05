@@ -9,6 +9,7 @@
 package org.eu.mayrhofer.apps;
 
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 
@@ -125,7 +126,9 @@ public class ShakingSinglePCDemonstrator {
 	
 	/** The only constructor for the shaking demonstrator. 
 	 * @param device1 If deviceType is set to 1, this specifies the log file (or pipe) to
-	 *                read the pulse-width parallel port data. If deviceType is set to 2,
+	 *                read the pulse-width parallel port data. A special case is a syntax
+	 *                "port:<port number>" to open an UDP port and listen for incoming log
+	 *                lines on that port. If deviceType is set to 2,
 	 *                this specifies the name of the first serial port to read from the
 	 *                WiTilt sensor.
 	 * @param device2 If deviceType is set to 2, this specifies the name of the second 
@@ -142,8 +145,18 @@ public class ShakingSinglePCDemonstrator {
 		int windowsize = samplerate/2; // 1/2 second
 		int minsegmentsize = windowsize; // 1/2 second
 		double varthreshold = 350;
-		if (deviceType == 1)
-			reader1 = new ParallelPortPWMReader(device1, samplerate);
+		if (deviceType == 1) {
+			if (! device1.startsWith("port:")) {
+				// just read from the file
+				reader1 = new ParallelPortPWMReader(device1, samplerate);
+			}
+			else {
+				// open an UDP socket and read from there
+				int port = Integer.parseInt(device1.substring(5));
+				DatagramSocket sock = new DatagramSocket(port);
+				reader1 = new ParallelPortPWMReader(sock, samplerate);
+			}
+		}
 		else if (deviceType == 2) {
 			reader1 = new WiTiltRawReader(device1);
 			reader2 = new WiTiltRawReader(device2);
