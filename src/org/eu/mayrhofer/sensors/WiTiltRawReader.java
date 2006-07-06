@@ -159,7 +159,7 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 			// TODO: add a timeout
 			while (!foundMenu && line != null) {
 				logger.debug("read from sensor: '" + line);
-				if (line.contains(MENU_HEADER)) {
+				if (line.indexOf(MENU_HEADER) != -1) {
 					logger.debug("Detected menu start header");
 					foundMenu = true;
 				}
