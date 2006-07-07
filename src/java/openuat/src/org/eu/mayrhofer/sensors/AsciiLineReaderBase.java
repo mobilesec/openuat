@@ -15,8 +15,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -50,16 +48,9 @@ public abstract class AsciiLineReaderBase {
 	protected int maxNumLines;
 
 	/** This represent the file to read from and is opened in the constructor.
-	 * It may be null, in which case lines will be read from @see #socket instead.
 	 * @see #AsciiLineReaderBase(String, int)
 	 */
 	protected InputStream port;
-	
-	/** This represents the UDP socket to read lines from. It is only used if
-	 * @see #port is null.
-	 * @see #AsciiLineReaderBase(DatagramSocket, int)
-	 */
-	protected DatagramSocket socket;
 	
 	/** Objects of this type are held in sinks. They represent listeners to 
 	 * be notified of samples.
@@ -128,19 +119,17 @@ public abstract class AsciiLineReaderBase {
 	 * @see #AsciiLineReaderBase(String, int) and should only be used
 	 * in special cases. 
 	 * 
-	 * @param socket Specifies an UDP socket to read the ASCII lines from.
-	 *               It is assumed that another process (or host) will push
-	 *               the lines into this socket, with one line per UDP packet.
+	 * @param stream Specifies the InputStream to read from.
 	 * @param maxNumLines The maximum number of data lines to read from the device - 
 	 *                    depends on the sensor.
 	 */
-	protected AsciiLineReaderBase(DatagramSocket socket, int maxNumLines) {
+	protected AsciiLineReaderBase(InputStream stream, int maxNumLines) {
 		this.sinks = new LinkedList();
 		this.numSamples = 0;
 		this.maxNumLines = maxNumLines;
-		this.socket = socket;
+		this.port = stream;
 		
-		logger.info("Reading from datagram socket bound to port " + socket.getLocalPort());
+		logger.info("Reading from input stream");
 	}
 	
 	/** Initializes the reader base object. It only saves the
@@ -230,23 +219,19 @@ public abstract class AsciiLineReaderBase {
 	
 	/** Simulate sampling by reading all available lines from the spcified file. */
 	public void simulateSampling() throws IOException {
-		if (port != null) {
-			BufferedReader r = new BufferedReader(new InputStreamReader(port));
+		BufferedReader r = new BufferedReader(new InputStreamReader(port));
 		
-			String line = r.readLine();
-			while (line != null) {
-				parseLine(line);
-				try {
-					line = r.readLine();
-				}
-				catch (IOException e) {
-					logger.debug("Ignoring exception: " + e);
-					line = null;
-				}
+		String line = r.readLine();
+		while (line != null) {
+			parseLine(line);
+			try {
+				line = r.readLine();
+			}
+			catch (IOException e) {
+				logger.debug("Ignoring exception: " + e);
+				line = null;
 			}
 		}
-		else
-			logger.error("Simulation not supported when not reading from local port");
 	}
 
 	/** This causes the reader to be shut down properly by calling stop() and making
@@ -270,45 +255,53 @@ public abstract class AsciiLineReaderBase {
 	 */
 	private class RunHelper implements Runnable {
 		public void run() {
-			if (port != null) {
-				BufferedReader r = new BufferedReader(new InputStreamReader(port));
+			BufferedReader r = new BufferedReader(new InputStreamReader(port));
 			
-				try {
-					String line = r.readLine();
-					while (alive && line != null) {
-						parseLine(line);
-						try {
-							line = r.readLine();
-						}
-						catch (IOException e) {
-							logger.debug("Ignoring exception: " + e);
-							line = null;
-						}
+			try {
+				String line = r.readLine();
+				while (alive && line != null) {
+					parseLine(line);
+					try {
+						line = r.readLine();
 					}
-					if (! alive)
-						logger.debug("Background sampling thread terminated regularly due to request");
-					else
-						logger.warn("Background sampling thread received empty line! This should not happen when reading from a FIFO");
+					catch (IOException e) {
+						logger.debug("Ignoring exception: " + e);
+						line = null;
+					}
 				}
-				catch (Exception e) {
-					logger.error("Could not read from file: " + e);
-				}
+				if (! alive)
+					logger.debug("Background sampling thread terminated regularly due to request");
+				else
+					logger.warn("Background sampling thread received empty line! This should not happen when reading from a FIFO");
 			}
-			else {
+			catch (Exception e) {
+				logger.error("Could not read from file: " + e);
+			}
+			// old code that use to read from a UDP socket
+			/*else {
 				// no port to read from, instead read from UDP socket
-				byte[] lineBuffer = new byte[256];
+				byte[] lineBuffer = new byte[65536];
 				DatagramPacket packet = new DatagramPacket(lineBuffer, lineBuffer.length);
+				StringBuffer buf = new StringBuffer();
 				try {
 					while (alive) {
 						socket.receive(packet);
-						String line = new String(packet.getData());
-						parseLine(line);
+						// as we don't know where a packet might end, need to reconstruct the lines 
+						buf.append(new String(packet.getData()));
+						int nextLF = buf.indexOf("\n");
+						while (nextLF != -1) {
+							String line = buf.substring(0, nextLF).trim();
+							System.out.println("line: '" + line + "'");
+							buf.delete(0, nextLF+1);
+							parseLine(line);
+							nextLF = buf.indexOf("\n");
+						}
 					}
 				}
 				catch (IOException e) {
 					logger.error("Aborting reading from UDP port due to: " + e);
 				}
-			}
+			}*/
 		}
 	}
 	

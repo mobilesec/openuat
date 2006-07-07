@@ -9,10 +9,11 @@
 package org.eu.mayrhofer.apps;
 
 import java.io.IOException;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 
+import org.apache.log4j.Logger;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Composite;
@@ -34,6 +35,9 @@ import org.eu.mayrhofer.sensors.WiTiltRawReader;
  * @version 1.0
  */
 public class ShakingSinglePCDemonstrator {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(ShakingSinglePCDemonstrator.class);
+
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="10,10"
 	private Composite coherenceField = null;
 	private Composite matchingField = null;
@@ -127,7 +131,7 @@ public class ShakingSinglePCDemonstrator {
 	/** The only constructor for the shaking demonstrator. 
 	 * @param device1 If deviceType is set to 1, this specifies the log file (or pipe) to
 	 *                read the pulse-width parallel port data. A special case is a syntax
-	 *                "port:<port number>" to open an UDP port and listen for incoming log
+	 *                "port:<port number>" to open an TCP port and listen for incoming log
 	 *                lines on that port. If deviceType is set to 2,
 	 *                this specifies the name of the first serial port to read from the
 	 *                WiTilt sensor.
@@ -141,31 +145,13 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
 		/* 1: construct the central sensor reader object and the two segment aggregators */
-		int samplerate = 128; // Hz
-		int windowsize = samplerate/2; // 1/2 second
-		int minsegmentsize = windowsize; // 1/2 second
-		double varthreshold = 350;
-		if (deviceType == 1) {
-			if (! device1.startsWith("port:")) {
-				// just read from the file
-				reader1 = new ParallelPortPWMReader(device1, samplerate);
-			}
-			else {
-				// open an UDP socket and read from there
-				int port = Integer.parseInt(device1.substring(5));
-				DatagramSocket sock = new DatagramSocket(port);
-				reader1 = new ParallelPortPWMReader(sock, samplerate);
-			}
-		}
-		else if (deviceType == 2) {
-			reader1 = new WiTiltRawReader(device1);
-			reader2 = new WiTiltRawReader(device2);
-		}
-		else
-			throw new IllegalArgumentException("Device type " + deviceType + " unknown");
+		final int samplerate = 128; // Hz
+		final int windowsize = samplerate/2; // 1/2 second
+		final int minsegmentsize = windowsize; // 1/2 second
+		final double varthreshold = 350;
 		
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		final TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		final TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
@@ -193,18 +179,61 @@ public class ShakingSinglePCDemonstrator {
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startServer();
 		prot1_b.startAuthentication("localhost");
-
+		
 		if (deviceType == 1) {
-			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
-			reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
-			reader1.start();
+			if (! device1.startsWith("port:")) {
+				// just read from the file
+				reader1 = new ParallelPortPWMReader(device1, samplerate);
+
+				reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+				reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+				reader1.start();
+			}
+			else {
+				// open an UDP socket and read from there
+				int port = Integer.parseInt(device1.substring(5));
+				logger.info("Creating TCP listening socket on port " + port);
+				final ServerSocket serv = new ServerSocket(port);
+				new Thread(new Runnable() { 
+					public void run() {
+						try {
+							while (true) {
+								logger.info("Waiting for TCP client to connect");
+								aggr_a.reset();
+								aggr_b.reset();
+								Socket sock = serv.accept();
+								logger.info("Client " + sock.getRemoteSocketAddress() + " connected");
+								try {
+									reader1 = new ParallelPortPWMReader(sock.getInputStream(), samplerate);
+									reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+									reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+									reader1.simulateSampling();
+								}
+								catch (IOException e) {
+									logger.warn("Could not read from remote host " + sock.getRemoteSocketAddress() + 
+										", most probably client terminated connection. Disconnecting.");
+								}
+							}
+						}	
+						catch (IOException e) {
+							logger.error("Could not accept connection from socket: " + e);
+						}
+					}
+				}).start();
+			}
+
 		}
-		else {
+		else if (deviceType == 2) {
+			reader1 = new WiTiltRawReader(device1);
+			reader2 = new WiTiltRawReader(device2);
+
 			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 			reader2.addSink(new int[] {0, 1, 2}, aggr_b.getInitialSinks());
 			reader1.start();
 			reader2.start();
 		}
+		else
+			throw new IllegalArgumentException("Device type " + deviceType + " unknown");
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -230,6 +259,11 @@ public class ShakingSinglePCDemonstrator {
 			dev1 = args[1];
 			dev2 = args[2];
 		}
+		else if (args[0].equals("listentcp")) {
+			deviceType = 1;
+			dev1 = "port:" + args[1];
+		}
+		
 		ShakingSinglePCDemonstrator thisClass = new ShakingSinglePCDemonstrator(dev1, dev2, deviceType);
 		thisClass.createSShell();
 		thisClass.sShell.open();
@@ -258,15 +292,31 @@ public class ShakingSinglePCDemonstrator {
 		protected void protocolSucceededHook(InetAddress remote, 
 				Object optionalRemoteId, String optionalParameterFromRemote, 
 				byte[] sharedSessionKey, Socket toRemote) {
+			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote.getHostAddress() : "null") + 
+					": shared key is " + (sharedSessionKey != null ? sharedSessionKey.toString() : "null"));
+			Display.getCurrent().asyncExec(new Runnable() {
+				public void run() {
+					coherenceField.setBackground(new Color(Display.getCurrent(), 0, 255, 0));
+					coherenceValue.setText(Double.toString(lastCoherenceMean));
+				}
+			});
 		}		
 
 		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 				Exception e, String message) {
-			
+			logger.info("Protocol variant 1 failed with " + remote.getHostAddress()  + ": " + e + ", " + message); 
+			Display.getCurrent().asyncExec(new Runnable() {
+				public void run() {
+					coherenceField.setBackground(new Color(Display.getCurrent(), 255, 0, 0));
+					coherenceValue.setText(Double.toString(lastCoherenceMean));
+				}
+			});
 		}
 		
 		protected void protocolProgressHook(InetAddress remote, 
 				Object optionalRemoteId, int cur, int max, String message) {
+			logger.debug("Protocol variant 1 progress with " + remote.getHostAddress() +
+					" " + cur + " of " + max + ": " + message); 
 		}		
 	}
 
@@ -276,15 +326,29 @@ public class ShakingSinglePCDemonstrator {
 		}
 		
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
-			
+			logger.info("Protocol variant 2 succedded with " + remote + 
+					": shared key is " + sharedSessionKey.toString());
+			Display.getCurrent().asyncExec(new Runnable() {
+				public void run() {
+					matchingField.setBackground(new Color(Display.getCurrent(), 0, 255, 0));
+					//matchingValue.setText(Double.toString(lastCoherenceMean));
+				}
+			});
 		}
 
 		protected void protocolFailedHook(String remote, Exception e, String message) {
-			
+			logger.info("Protocol variant 2 failed with " + remote + ": " + e + ", " + message); 
+			Display.getCurrent().asyncExec(new Runnable() {
+				public void run() {
+					matchingField.setBackground(new Color(Display.getCurrent(), 255, 0, 0));
+					//matchingValue.setText(Double.toString(lastCoherenceMean));
+				}
+			});
 		}
 
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
-			
+			logger.debug("Protocol variant 2 progress with " + remote +
+					" " + cur + " of " + max + ": " + message); 
 		}
 	}
 }
