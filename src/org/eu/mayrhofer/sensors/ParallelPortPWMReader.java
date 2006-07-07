@@ -10,7 +10,7 @@ package org.eu.mayrhofer.sensors;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.DatagramSocket;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
@@ -74,14 +74,12 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 	 * passed parameters. This is an alternative to @see #ParallelPortPWMReader(String, int)
 	 * and should only be used in special cases.
 	 * 
-	 * @param socket Specifies an UDP socket to read the ASCII lines from.
-	 *               It is assumed that another process (or host) will push
-	 *               the lines into this socket, with one line per UDP packet.
+	 * @param stream Specifies the InputStream to read from.
 	 * @param samplerate The sample rate in Hz.
 	 */
-	public ParallelPortPWMReader(DatagramSocket socket, int samplerate) {
+	public ParallelPortPWMReader(InputStream stream, int samplerate) {
 		// the maximum number of data lines to read from the port - obviously 8
-		super(socket, 8); 
+		super(stream, 8); 
 
 		this.sampleWidth = 1000000 / samplerate;
 		this.curSample = new ArrayList[maxNumLines];
@@ -91,8 +89,8 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 		
 		this.lastSampleAt = 0;
 		
-		logger.info("Reading from UDP port " + socket.getLocalPort() +
-				" with sample rate " + samplerate + " Hz (sample width " + sampleWidth + " us)");
+		logger.info("Reading from input stream with sample rate " + samplerate + 
+				" Hz (sample width " + sampleWidth + " us)");
 	}
 	
 	/** A helper function to parse single line of the format produced by 
@@ -112,11 +110,23 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 			logger.warn("Short line with incomplete timestamp, ignoring line");
 			return;
 		}
+		catch (NumberFormatException e) {
+			logger.warn("Unable to decode timestamp, ignoring line");
+			return;
+		}
 		logger.debug("Reading at timestamp " + timestamp + " us");
 		// sanity check
 		if (timestamp <= lastSampleAt) {
-			logger.error("Reading from the past! Aborting parsing");
+			logger.error("Reading from the past (read " + timestamp + ", last sample at " + 
+					lastSampleAt + ")! Aborting parsing");
 			return;
+		}
+		// another sanity check
+		if (timestamp >= lastSampleAt + sampleWidth * 1000 &&
+			timestamp >= System.currentTimeMillis() * 1000) {
+			logger.error("Reading from the future (and jumping forwards by more than 1000 samples, read " +
+					timestamp + ", last sample at " + lastSampleAt + ", current time " + 
+					System.currentTimeMillis() + ")! Aborting parsing");
 		}
 		
 		// special case: first sample
@@ -156,7 +166,13 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 			int[] allLines = new int[8];
 			int elem=0;
 			while (elem<8 && st.hasMoreElements()) {
-				allLines[elem] = Integer.parseInt(st.nextToken());
+				try {
+					allLines[elem] = Integer.parseInt(st.nextToken());
+				}
+				catch (NumberFormatException e) {
+					logger.warn("Unable to decode sample value, ignoring line");
+					return;
+				}
 				elem++;
 			}
 			if (elem<8) {
