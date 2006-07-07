@@ -182,7 +182,7 @@ public class TimeSeriesAggregator {
 	/** Holds the index of the last complete sample that has been received. This
 	 * is the index received in the addSample method.
 	 */
-	private int curSampleIndex;
+	private int curSampleIndex = 0;
 	/** This holds the current, aggregated segment when currently in active state. If
 	 * in quiescent state, it is set to null;
 	 */
@@ -245,6 +245,15 @@ public class TimeSeriesAggregator {
 		}
 		segmentsSinks = new LinkedList();
 		samplesSinks = new LinkedList();
+	}
+
+	/** Resets the time series to the state as created when freshly constructing it. */
+	public void reset() {
+		for (int i=0; i<firstStageSeries.length; i++) {
+			firstStageSeries[i].reset();
+			firstStagesActive[i] = false;
+		}
+		curSampleIndex = 0;
 	}
 	
 	/** A helper function to check if the whole, multi-dimensional segment is active.
@@ -342,7 +351,7 @@ public class TimeSeriesAggregator {
 	 * @param sink The sink to push new aggregated segments to.
 	 */
 	public void addNextStageSamplesSink(SamplesSink sink) {
-		segmentsSinks.add(sink);
+		samplesSinks.add(sink);
 	}
 
 	/** Removes a previously registered sink.
@@ -351,6 +360,6 @@ public class TimeSeriesAggregator {
 	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
 	public boolean removeNextStageSamplesSink(SamplesSink sink) {
-		return segmentsSinks.remove(sink);
+		return samplesSinks.remove(sink);
 	}
 }
