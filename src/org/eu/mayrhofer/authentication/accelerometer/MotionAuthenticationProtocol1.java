@@ -73,7 +73,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * It should only be used for debugging, because the decision if verification 
 	 * succeeded or not is made within this class.
 	 */
-	private double lastCoherenceMean = 0;
+	protected double lastCoherenceMean = 0;
 	
 	/** This variable is only used for passing the socket from startVerification to the
 	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
@@ -322,11 +322,13 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 						if (! continuousChecking) {
 							verificationFailure(null, null, null, "Interlock protocol failed");
+							localSegment = remoteSegment = null;
 							return;
 						}
 						else {
 							// in case of checking continously, just call or own hook (for derived classes)
 							protocolFailedHook(remote, null, null, "Interlock protocol failed");
+							localSegment = remoteSegment = null;
 							continue;
 						}
 					}
