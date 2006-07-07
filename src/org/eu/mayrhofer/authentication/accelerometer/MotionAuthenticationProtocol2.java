@@ -59,9 +59,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		super(UdpPort, UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
 	}
 
-	/** The implementation of SegmentsSink.addSegment. It will be called whenever
-	 * a significant active segment has been sampled completely, i.e. when the
-	 * source has become quiescent again. 
+	/** The implementation of SamplesSink.addSegment. It will be called for all 
+	 * (aggregated) samples that occur during an active phase.
 	 * 
 	 * This implementation immediately computes the sliding FFT windows, quantizes
 	 * the coefficients, and sends out candidate key parts. 
