@@ -36,7 +36,7 @@ public class TimeSeries implements SamplesSink {
 	/** Keeps a running total sum over all squared samples added to this time series so far (not only the current time window). */
 	private double totalSum2 = 0;
 	/** The number of samples added to this time series so far (not only the current time window). */
-	private int totalNum;
+	private int totalNum = 0;
 	
 	/** Keeps a running sum over all samples pf the current time window. */
 	private double windowSum = 0;
@@ -93,6 +93,19 @@ public class TimeSeries implements SamplesSink {
 		}
 
 		circularBuffer = new double[windowSize];
+	}
+	
+	/** Resets the time series to the state as created when freshly constructing it. 
+	 * However, it does not reset the parameters offset, multiplicator, subtractWindowMean,
+	 * and subtractTotalMean. */
+	public void reset() {
+		index = 0;
+		full = false;
+		totalSum = 0;
+		totalSum2 = 0;
+		totalNum = 0;
+		windowSum = 0;
+		windowSum2 = 0;
 	}
 	
 	/** Adds a new sample to the time series in-memory buffer, updates statistics and
