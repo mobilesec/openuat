@@ -46,7 +46,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	
 	private LinkedList curSegment = null;
 
-	/** Initializes the object, only setting useJSSE at the moment.
+	/** Initializes the object, only setting useJSSE at the moment. This constructor sets
+	 * default values for udpSendPort, udpReceivePort and multicastGroup.
 	 * 
 	 * @param minMatchingParts
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
@@ -57,6 +58,22 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE) throws IOException {
 		// TODO: set minimum entropy
 		super(UdpPort, UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
+	}
+	
+	/** Initializes the object, only setting useJSSE at the moment.
+	 * 
+	 * @param minMatchingParts
+	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
+	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
+	 *                Lightweight API classes will be used.
+	 * @param udpRecvPort The UDP port number to listen for packets at.
+	 * @param udpSendPort The UDP port to send packets to.
+	 * @param sendAddress The (multicast or unicast) IP address to send UDP packets to.
+	 * @throws IOException 
+	 */
+	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE, 
+			int udpRecvPort, int udpSendPort, String sendAddress) throws IOException {
+		super(udpRecvPort, udpSendPort, sendAddress, null, true, false, minMatchingParts, 0, useJSSE);
 	}
 
 	/** The implementation of SamplesSink.addSegment. It will be called for all 
@@ -136,15 +153,15 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	}
 
 	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
-		
+		logger.info("CKP succeeded with remote " + remote + ", shared key is now " + sharedSessionKey.toString());
 	}
 
 	protected void protocolFailedHook(String remote, Exception e, String message) {
-		
+		logger.error("CKP failed with remote " + remote + ": " + message + "/" + e);
 	}
 
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
-		
+		logger.debug("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message);
 	}
 
 

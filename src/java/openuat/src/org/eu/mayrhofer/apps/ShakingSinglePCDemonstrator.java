@@ -64,7 +64,7 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	private void createComposite() {
 		coherenceField = new Composite(sShell, SWT.NONE);
-		coherenceField.setBackground(new Color(Display.getCurrent(), 227, 227, 255));
+		coherenceField.setBackground(new Color(Display.getDefault(), 227, 227, 255));
 		coherenceField.setBounds(new org.eclipse.swt.graphics.Rectangle(18,120,370,300));
 		coherence = new Label(coherenceField, SWT.NONE);
 		coherence.setBounds(new org.eclipse.swt.graphics.Rectangle(17,15,334,36));
@@ -82,7 +82,7 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	private void createComposite1() {
 		matchingField = new Composite(sShell, SWT.NONE);
-		matchingField.setBackground(new Color(Display.getCurrent(), 227, 227, 255));
+		matchingField.setBackground(new Color(Display.getDefault(), 227, 227, 255));
 		matchingField.setBounds(new org.eclipse.swt.graphics.Rectangle(394,120,370,300));
 		matching = new Label(matchingField, SWT.NONE);
 		matching.setBounds(new org.eclipse.swt.graphics.Rectangle(17,15,334,36));
@@ -149,6 +149,13 @@ public class ShakingSinglePCDemonstrator {
 		final int windowsize = samplerate/2; // 1/2 second
 		final int minsegmentsize = windowsize; // 1/2 second
 		final double varthreshold = 350;
+
+		/* First of all, open the display so that there's feedback and so that the events can write
+		 * to an open display.
+		 */
+		createSShell();
+		sShell.open();
+		System.out.println("+++++++++++++++++++++++++");
 		
 		final TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		final TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
@@ -165,8 +172,8 @@ public class ShakingSinglePCDemonstrator {
 		prot1_a = new Protocol1Hooks();
 		prot1_b = new Protocol1Hooks();
 		// TODO: move this threshold into MotionAuthenticationProtocol2
-		prot2_a = new Protocol2Hooks(5);
-		prot2_b = new Protocol2Hooks(5);
+		prot2_a = new Protocol2Hooks(5, 56789, 56798);
+		prot2_b = new Protocol2Hooks(5, 56798, 56789);
 		
 		/* 3: register the protocols with the respective sides */
 		aggr_a.addNextStageSegmentsSink(prot1_a);
@@ -265,8 +272,6 @@ public class ShakingSinglePCDemonstrator {
 		}
 		
 		ShakingSinglePCDemonstrator thisClass = new ShakingSinglePCDemonstrator(dev1, dev2, deviceType);
-		thisClass.createSShell();
-		thisClass.sShell.open();
 
 		Display display = Display.getDefault();
 		while (!thisClass.sShell.isDisposed()) {
@@ -294,9 +299,9 @@ public class ShakingSinglePCDemonstrator {
 				byte[] sharedSessionKey, Socket toRemote) {
 			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote.getHostAddress() : "null") + 
 					": shared key is " + (sharedSessionKey != null ? sharedSessionKey.toString() : "null"));
-			Display.getCurrent().asyncExec(new Runnable() {
+			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
-					coherenceField.setBackground(new Color(Display.getCurrent(), 0, 255, 0));
+					coherenceField.setBackground(new Color(Display.getDefault(), 0, 255, 0));
 					coherenceValue.setText(Double.toString(lastCoherenceMean));
 				}
 			});
@@ -305,9 +310,9 @@ public class ShakingSinglePCDemonstrator {
 		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 				Exception e, String message) {
 			logger.info("Protocol variant 1 failed with " + remote.getHostAddress()  + ": " + e + ", " + message); 
-			Display.getCurrent().asyncExec(new Runnable() {
+			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
-					coherenceField.setBackground(new Color(Display.getCurrent(), 255, 0, 0));
+					coherenceField.setBackground(new Color(Display.getDefault(), 255, 0, 0));
 					coherenceValue.setText(Double.toString(lastCoherenceMean));
 				}
 			});
@@ -321,16 +326,16 @@ public class ShakingSinglePCDemonstrator {
 	}
 
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
-		protected Protocol2Hooks(int numMatches) throws IOException {
-			super(numMatches, false);
+		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort) throws IOException {
+			super(numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1");
 		}
 		
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
 			logger.info("Protocol variant 2 succedded with " + remote + 
 					": shared key is " + sharedSessionKey.toString());
-			Display.getCurrent().asyncExec(new Runnable() {
+			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
-					matchingField.setBackground(new Color(Display.getCurrent(), 0, 255, 0));
+					matchingField.setBackground(new Color(Display.getDefault(), 0, 255, 0));
 					//matchingValue.setText(Double.toString(lastCoherenceMean));
 				}
 			});
@@ -338,9 +343,9 @@ public class ShakingSinglePCDemonstrator {
 
 		protected void protocolFailedHook(String remote, Exception e, String message) {
 			logger.info("Protocol variant 2 failed with " + remote + ": " + e + ", " + message); 
-			Display.getCurrent().asyncExec(new Runnable() {
+			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
-					matchingField.setBackground(new Color(Display.getCurrent(), 255, 0, 0));
+					matchingField.setBackground(new Color(Display.getDefault(), 255, 0, 0));
 					//matchingValue.setText(Double.toString(lastCoherenceMean));
 				}
 			});
