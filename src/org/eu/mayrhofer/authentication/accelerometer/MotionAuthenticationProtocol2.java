@@ -72,8 +72,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 * @throws IOException 
 	 */
 	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE, 
-			int udpRecvPort, int udpSendPort, String sendAddress) throws IOException {
-		super(udpRecvPort, udpSendPort, sendAddress, null, true, false, minMatchingParts, 0, useJSSE);
+			int udpRecvPort, int udpSendPort, String sendAddress, String instanceId) throws IOException {
+		super(udpRecvPort, udpSendPort, sendAddress, instanceId, true, false, minMatchingParts, 0, useJSSE);
 	}
 
 	/** The implementation of SamplesSink.addSegment. It will be called for all 

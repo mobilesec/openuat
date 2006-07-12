@@ -155,7 +155,6 @@ public class ShakingSinglePCDemonstrator {
 		 */
 		createSShell();
 		sShell.open();
-		System.out.println("+++++++++++++++++++++++++");
 		
 		final TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		final TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
@@ -172,8 +171,8 @@ public class ShakingSinglePCDemonstrator {
 		prot1_a = new Protocol1Hooks();
 		prot1_b = new Protocol1Hooks();
 		// TODO: move this threshold into MotionAuthenticationProtocol2
-		prot2_a = new Protocol2Hooks(5, 56789, 56798);
-		prot2_b = new Protocol2Hooks(5, 56798, 56789);
+		prot2_a = new Protocol2Hooks(5, 56789, 56798, "A");
+		prot2_b = new Protocol2Hooks(5, 56798, 56789, "B");
 		
 		/* 3: register the protocols with the respective sides */
 		aggr_a.addNextStageSegmentsSink(prot1_a);
@@ -326,8 +325,8 @@ public class ShakingSinglePCDemonstrator {
 	}
 
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
-		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort) throws IOException {
-			super(numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1");
+		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
+			super(numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
