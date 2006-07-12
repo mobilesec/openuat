@@ -888,6 +888,12 @@ public class CandidateKeyProtocol {
 				cookie.length);
 		ret.key = Hash.doubleSHA256(keyPartsModified, useJSSE);
 		ret.numParts = numParts;
+		
+		logger.debug("Generated key " + new String(Hex.encodeHex(ret.key)) +
+				" with hash " + new String(Hex.encodeHex(ret.hash)) +
+				" from " + ret.numParts + " assembled parts " + new String(Hex.encodeHex(keyParts)) +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		
 		return ret;
 	}
 }
