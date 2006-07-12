@@ -461,7 +461,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					genList = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 				}
 				else {
-					logger.debug("No list of generated key found for remote host '" + remoteHostAddress + 
+					logger.debug("No list of generated keys found for remote host '" + remoteHostAddress + 
 							"', creating new list" +
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					genList = new GeneratedKeyCandidates();
@@ -508,8 +508,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					throw new InternalApplicationException("Search for matching key returned "+
 						"different hash from what we searched for. This should not happen!" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
-			logger.info("Generated local key that matches received candidate key identifier: " +
-					new String(Hex.encodeHex(candKey.key)) + 
+			logger.info("Generated local key that matches candidate key identifier " +
+					new String(Hex.encodeHex(candKey.key)) + " received from " + remoteHost.getHostAddress() + " " +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			// this sends a key acknowledge message to the remote host
 			authenticationSucceededStage1(remoteHost, candKey.hash, candKey.key);
@@ -567,7 +567,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 
 		if (! generatedKeys.containsKey(remoteHostAddress))
 			throw new InternalApplicationException("Got candidate key message from remote host " + 
-					remoteHost + " with no generated key candidates. This should not happen!" + 
+					remoteHostAddress + " with no generated key candidates. This should not happen!" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 
 		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
