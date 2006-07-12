@@ -151,8 +151,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 * generated while the network messages were delivered.
 		 */
 		private CandidateKey[] list;
-		/** The index where to insert the next generated candidate key into generatedKeys.
-		 * @see #generatedKeys
+		/** The index where to insert the next generated candidate key into list.
+		 * @see #list
 		 */
 		private int index;
 
@@ -218,7 +218,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		}
 	}
 	/** Keep one list for each remote host we have contact to. Keys are remote object identifiers
-	 * (in this case InetAddress objects), values are GeneratedKeyCandidates. */
+	 * (in this case Strings containing host addresses), values are GeneratedKeyCandidates. */
 	HashMap generatedKeys = null;
 	
 	/** Construct the object by initializing basic variables.
@@ -565,10 +565,12 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			byte[] foundKeyHash, byte[] foundKey) throws InternalApplicationException, IOException {
 		String remoteHostAddress = remoteHost.getHostAddress();
 
-		if (! generatedKeys.containsKey(remoteHostAddress))
-			throw new InternalApplicationException("Got candidate key message from remote host " + 
-					remoteHostAddress + " with no generated key candidates. This should not happen!" + 
+		if (! generatedKeys.containsKey(remoteHostAddress)) {
+			logger.debug("Got candidate key message from remote host " + remoteHostAddress + 
+					" before generating our own key, creating new list" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
+			generatedKeys.put(remoteHostAddress, new GeneratedKeyCandidates());
+		}
 
 		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 		if (cand.foundMatchingKey != null) {
@@ -596,8 +598,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		String remoteHostAddress = remoteHost.getHostAddress();
 
 		if (! generatedKeys.containsKey(remoteHostAddress))
-			throw new InternalApplicationException("Got candidate key message from remote host " + 
-					remoteHostAddress + " with no generated key candidates. This should not happen!" + 
+			throw new InternalApplicationException("Got key acknowledge message from remote host " + 
+					remoteHostAddress + " with no locally generated key candidates or a found matching key. This should not happen!" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 
 		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
