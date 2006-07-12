@@ -29,7 +29,7 @@ public class BinaryBlockStreamerTest extends TestCase {
 	
 	public void testEitherInputOrOutputCheck() {
 		try {
-			BinaryBlockStreamer streamer = new BinaryBlockStreamer(null, null);
+			new BinaryBlockStreamer(null, null);
 		} catch (IllegalArgumentException e) {
 			// we expect this
 			return;
