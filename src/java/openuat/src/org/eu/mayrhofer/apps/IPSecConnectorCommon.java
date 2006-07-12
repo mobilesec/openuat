@@ -20,7 +20,7 @@ import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.authentication.relate.RelateAuthenticationProtocol;
 
 import uk.ac.lancs.relate.core.Configuration;
-import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.core.DeviceException;
 import uk.ac.lancs.relate.core.EventDispatcher;
 import uk.ac.lancs.relate.core.MeasurementManager;
 import uk.ac.lancs.relate.core.SerialConnector;
@@ -83,7 +83,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 	 *                   not using any dongles at all (just assuming that dongle authentication always succeeds).
 	 */
 	protected IPSecConnectorCommon(boolean adminEnd, Configuration relateConf) 
-			throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+			throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		this.adminEnd = adminEnd;
 
 		if (System.getProperty("os.name").startsWith("Windows CE")) {

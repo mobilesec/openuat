@@ -33,7 +33,7 @@ import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.channel.X509CertificateGenerator;
 
 import uk.ac.lancs.relate.core.Configuration;
-import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.core.DeviceException;
 import uk.ac.lancs.relate.core.MeasurementManager;
 import uk.ac.lancs.relate.filter.FilterInvalid;
 import uk.ac.lancs.relate.filter.FilterList;
@@ -164,7 +164,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	 * @throws ConfigurationErrorException 
 	 * @throws DongleException 
 	 */
-	public static void main(String[] args) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+	public static void main(String[] args) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		// TODO: hard-coding is not nice...
 		String serialPort = null, caFile = null, confFile = null;
 		if (System.getProperty("os.name").startsWith("Windows CE")) {
@@ -259,7 +259,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon {
 	}
 	
 	public IPSecConnectorAdmin(Configuration relateConf, String caFile, String caPassword, String caAlias, 
-			String configFilename, Display display) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+			String configFilename, Display display) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		super(true, relateConf);
 		logger.info("Initializing IPSecConnectorAdmin");
 		this.display = display;

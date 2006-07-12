@@ -18,7 +18,7 @@ import java.security.SecureRandom;
 
 import uk.ac.lancs.relate.core.SerialConnector;
 import uk.ac.lancs.relate.core.MessageQueue;
-import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.core.DeviceException;
 import uk.ac.lancs.relate.events.RelateEvent;
 import uk.ac.lancs.relate.events.MeasurementEvent;
 import uk.ac.lancs.relate.events.AuthenticationEvent;
@@ -201,7 +201,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				return false;
 			}
 		} 
-		catch (DongleException e) {
+		catch (DeviceException e) {
 			logger.fatal("ERROR: could not send start-of-authentication packet to dongle: " + e);
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), e, "Unable to send start-of-authentication packet to dongle, resetting it.");
 			serialConn.switchDiagnosticMode(false);
@@ -232,7 +232,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 						"Is the dongle asleep or malfunctioning so that it doesn't generate any messages?");
 				continue;
 			}
-			if (e instanceof AuthenticationEvent && ((AuthenticationEvent) e).getRemoteDongleId() == remoteRelateId) {
+			if (e instanceof AuthenticationEvent && ((AuthenticationEvent) e).getRemoteDeviceId() == remoteRelateId) {
 				AuthenticationEvent ae = (AuthenticationEvent) e;
 
 				// sanity check
@@ -259,7 +259,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				// the last messages might not even carry any bits at all
 				lastAuthPart = ae.getRound()-1;
 			}
-			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getDongleId() == localRelateId &&  
+			else if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getDeviceId() == localRelateId &&  
 					((MeasurementEvent) e).getMeasurement().getRelatumId() == remoteRelateId) {
 				MeasurementEvent me = (MeasurementEvent) e;
 				

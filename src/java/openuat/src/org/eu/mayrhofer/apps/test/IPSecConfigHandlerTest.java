@@ -16,7 +16,6 @@ import junit.framework.*;
 
 public class IPSecConfigHandlerTest extends TestCase {
 	private IPSecConfigHandler handler = null;
-	private String tempFile;
 
 	public IPSecConfigHandlerTest(String s) {
 		super(s);
