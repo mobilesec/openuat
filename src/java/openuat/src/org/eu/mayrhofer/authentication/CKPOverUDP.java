@@ -671,7 +671,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				// When they match, do <b>NOT</b> XOR them together.
 				// [A^A = 0....]
 				realSharedKey = cand.foundMatchingKey;
-				logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match." +
+				logger.info("Last matching candidate key has been acknowledged, thus both acknowledges should match. " +
 						"Using it as the shared key: " + new String(Hex.encodeHex(realSharedKey)) + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
