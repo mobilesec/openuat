@@ -26,7 +26,7 @@ import org.apache.log4j.PropertyConfigurator;
 import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.MeasurementQueue;
 import uk.ac.lancs.relate.core.SerialConnector;
-import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.core.DeviceException;
 import uk.ac.lancs.relate.core.Measurement;
 import uk.ac.lancs.relate.core.MeasurementManager;
 import uk.ac.lancs.relate.core.EventDispatcher;
@@ -320,7 +320,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 				serialConn = SerialConnector.getSerialConnector(serialPort, 1);
 				logger.info("-------- connected successfully to dongle at port " + serialPort + ", including first handshake. My ID is " + serialConn.getLocalRelateId());
 			}
-			catch (DongleException e) {
+			catch (DeviceException e) {
 				logger.error("-------- failed to connect to dongle at port " + serialPort + ", didn't get my ID.");
 				// throw new ConfigurationErrorException("Can't connect to dongle.", e);
 				return false;
@@ -585,7 +585,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB0", 1).switchDiagnosticMode(false);
 		}
-		catch (DongleException e) { 
+		catch (DeviceException e) { 
 			logger.error("Could not reset dongle");
 		}
 		try {
@@ -594,7 +594,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB1", 1).switchDiagnosticMode(false);
 		}
-		catch (DongleException e) { 
+		catch (DeviceException e) { 
 			logger.error("Could not reset dongle");
 		}
 	}
@@ -793,7 +793,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		localId1 = connector1.getLocalRelateId();
             	connector2.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
         	}
-        	catch (DongleException e) {
+        	catch (DeviceException e) {
         		logger.error("-------- failed to connect to dongle, didn't get my ID.");
         		System.out.println(e);
         		//e.printStackTrace();

@@ -32,7 +32,7 @@ import org.eu.mayrhofer.channel.X509CertificateGenerator;
 
 import uk.ac.lancs.relate.apps.SetupHelper;
 import uk.ac.lancs.relate.core.Configuration;
-import uk.ac.lancs.relate.core.DongleException;
+import uk.ac.lancs.relate.core.DeviceException;
 import uk.ac.lancs.relate.filter.FilterInvalid;
 import uk.ac.lancs.relate.filter.FilterList;
 import uk.ac.lancs.relate.filter.FilterTransducerNo;
@@ -108,7 +108,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	 * @throws ConfigurationErrorException 
 	 * @throws DongleException 
 	 */
-	public static void main(String[] args) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+	public static void main(String[] args) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		// TODO Auto-generated method stub
 		/* Before this is run, be sure to set up the launch configuration (Arguments->VM Arguments)
 		 * for the correct SWT library path in order to run with the SWT dlls. 
@@ -145,7 +145,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		thisClass.display.dispose();
 	}
 	
-	public IPSecConnectorClient(Configuration relateConf) throws DongleException, ConfigurationErrorException, InternalApplicationException, IOException {
+	public IPSecConnectorClient(Configuration relateConf) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		super(false, relateConf);
 		createSShell();
 	}
