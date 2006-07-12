@@ -274,7 +274,7 @@ public abstract class AsciiLineReaderBase {
 				else
 					logger.warn("Background sampling thread received empty line! This should not happen when reading from a FIFO");
 			}
-			catch (Exception e) {
+			catch (IOException e) {
 				logger.error("Could not read from file: " + e);
 			}
 			// old code that use to read from a UDP socket
