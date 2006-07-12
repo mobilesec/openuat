@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 import org.eu.mayrhofer.util.Hash;
@@ -588,6 +589,9 @@ public class CandidateKeyProtocol {
 			return null;
 		}
 
+		logger.debug("Trying to create key for remote '" + remoteHost + "' with hash " + 
+				new String(Hex.encodeHex(hash)) + " from " + numParts + " parts" +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		// TODO: the candidate searching would not be necessary if we could be sure that there would be only
 		// one match for each round. that could make it faster
@@ -609,10 +613,13 @@ public class CandidateKeyProtocol {
 			if (numCopied != numParts) 
 				throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			
+
+			logger.debug("Comparing " + keyParts.length + " candidate keys at offset " + offset);
 			// and compare the target hash with hashes over all candidate keys
 			for (int i=0; i<keyParts.length; i++) {
 				byte[] candidateHash = Hash.doubleSHA256(keyParts[i], useJSSE);
+				logger.debug("Checking candidate number " + i + ": hash " + new String(Hex.encodeHex(candidateHash)) +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				boolean match = true;
 				for (int j=0; j<candidateHash.length && j<hash.length && match; j++)
 					if (candidateHash[j] != hash[j])
@@ -822,7 +829,7 @@ public class CandidateKeyProtocol {
 			
 			// only for debugging purposes
 			if (logger.isDebugEnabled()) {
-				logger.debug("Following candidate keys have been assembled (candidate numbers for each round:" +
+				logger.debug("Following candidate keys have been assembled (candidate numbers for each round):" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				for (int j=0; j<numCombinations; j++) {
 					String candidateNumbers = "";
@@ -835,7 +842,8 @@ public class CandidateKeyProtocol {
 		}
 		else {
 			// just use the first possible candidate in each round, i.e. the one already collected
-			logger.debug("Using only first matches in each round to create a single candidate key");
+			logger.debug("Using only first matches in each round to create a single candidate key" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			allCombinations = new CandidateKeyPart[1][];
 			allCombinations[0] = initialCombination;
 		}
@@ -853,6 +861,8 @@ public class CandidateKeyProtocol {
 						allCombinations[i][j].keyPart.length);
 				outPos += allCombinations[i][j].keyPart.length;
 			}
+			logger.debug("Concatenated key parts to candidate key " + i + ": " + new String(Hex.encodeHex(keyParts[i])) +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		// I hate Java
 		return new Object[] {keyParts, new Integer(numCopied) };
