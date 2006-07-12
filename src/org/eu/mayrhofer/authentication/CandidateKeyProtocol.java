@@ -177,8 +177,8 @@ public class CandidateKeyProtocol {
 	private class MatchingKeyParts {
 		/** The parts that matched with this remote host. */
 		CandidateKeyPart[] parts = new CandidateKeyPart[matchHistorySize];
-		/** The index where to insert the next matching key part into matchingKeyParts.
-		 * @see #matchingKeyParts
+		/** The index where to insert the next matching key part for this host into parts.
+		 * @see #parts
 		 */
 		int index = 0;
 		/** The time when this list of matching key parts was updated last. Used for
@@ -436,7 +436,7 @@ public class CandidateKeyProtocol {
 	 *                   @see #matchCandidates for more details.
 	 * @param candidateIndex The index of the candidate in recentKeyParts.
 	 */
-	private void advanceCandidateToMatch(Object remoteHost, int candidateIndex) {
+	private synchronized void advanceCandidateToMatch(Object remoteHost, int candidateIndex) {
 		MatchingKeyParts matchList = null;
 		if (matchingKeyParts.containsKey(remoteHost))
 			matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
@@ -676,7 +676,7 @@ public class CandidateKeyProtocol {
 	 * one element if extractAllCombinations is set to false), and an Integer specifying how
 	 * many parts have been copied (guaranteed to be equal to numParts if not -1).
 	 */
-	private Object[] assembleKeyFromMatches(Object remoteHost, int offset, int numParts, boolean extractAllCombinations) {
+	private synchronized Object[] assembleKeyFromMatches(Object remoteHost, int offset, int numParts, boolean extractAllCombinations) {
 		if (! matchingKeyParts.containsKey(remoteHost))
 			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -756,10 +756,11 @@ public class CandidateKeyProtocol {
 			logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			for (int i=0; i<roundsWithDuplicates.length; i++) {
-				LinkedList alternatives = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
-				logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternatives.size() + 
-						" candidates");
-				numCombinations *= (alternatives.size()+1);
+				LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
+				logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
+						" alternatives to its first match" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				numCombinations *= (alternativeIndices.size()+1);
 			}
 			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -810,7 +811,7 @@ public class CandidateKeyProtocol {
 					for (int j=0; j<numCombinations; j+=alternatives.length*spacing) {
 						for (int k=0; k<alternatives.length; k++) {
 							for (int l=0; l<spacing; l++) {
-								allCombinations[j+k+l][i] = alternatives[k];
+								allCombinations[j+k*spacing+l][i] = alternatives[k];
 							}
 						}
 					}
@@ -821,7 +822,7 @@ public class CandidateKeyProtocol {
 			
 			// only for debugging purposes
 			if (logger.isDebugEnabled()) {
-				logger.debug("Following candidate keys have been assmebled (candidate numbers for each round:" +
+				logger.debug("Following candidate keys have been assembled (candidate numbers for each round:" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				for (int j=0; j<numCombinations; j++) {
 					String candidateNumbers = "";
@@ -834,6 +835,7 @@ public class CandidateKeyProtocol {
 		}
 		else {
 			// just use the first possible candidate in each round, i.e. the one already collected
+			logger.debug("Using only first matches in each round to create a single candidate key");
 			allCombinations = new CandidateKeyPart[1][];
 			allCombinations[0] = initialCombination;
 		}
