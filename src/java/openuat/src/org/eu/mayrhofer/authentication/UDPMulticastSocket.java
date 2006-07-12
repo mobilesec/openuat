@@ -124,11 +124,14 @@ public class UDPMulticastSocket {
 
 		multicastReceiveSocket = new MulticastSocket(this.receivePort) ;
 		multicastReceiveSocket.setSoTimeout(Timeout_Receive);
+		boolean usingMulticast;
 		if (groupAddress.isMulticastAddress()) {
 			multicastReceiveSocket.joinGroup(groupAddress);
+			usingMulticast = true;
 		}
 		else {
 			logger.warn("Address " + multicastGroup + " is not a multicast address, not joining group");
+			usingMulticast = false;
 		}
 		
 		// create one multicast socket for each address
@@ -167,23 +170,33 @@ public class UDPMulticastSocket {
 				logger.debug("Ignoring interface because it is blacklisted");
 			}
 		}
-		// start the responders
-		logger.debug("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
 		
-		multicastSendSockets = new MulticastSocket[allAddrs.size()];
-		Iterator iter = allAddrs.iterator();
-		for (int i=0; i<multicastSendSockets.length; i++) {
-			InetAddress addr = (InetAddress) iter.next();
-			// bind to a specific address, but to some random port
-			multicastSendSockets[i] = new MulticastSocket(new InetSocketAddress(addr, 0));
-			multicastSendSockets[i].setSoTimeout(Timeout_Receive);
+		// start the responders
+		if (usingMulticast) {
+			logger.debug("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
 
-			// loopback is not needed, multicast packets seem to be received anyway
-			/*if (loopbackToLocalhost) {
-				multicastSendSockets[i].setLoopbackMode(true);
-				if (!multicastSendSockets[i].getLoopbackMode())
-					logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
-			 }*/
+			multicastSendSockets = new MulticastSocket[allAddrs.size()];
+			Iterator iter = allAddrs.iterator();
+			for (int i=0; i<multicastSendSockets.length; i++) {
+				InetAddress addr = (InetAddress) iter.next();
+				// bind to a specific address, but to some random port
+				multicastSendSockets[i] = new MulticastSocket(new InetSocketAddress(addr, 0));
+				multicastSendSockets[i].setSoTimeout(Timeout_Receive);
+
+				// loopback is not needed, multicast packets seem to be received anyway
+				/*if (loopbackToLocalhost) {
+					multicastSendSockets[i].setLoopbackMode(true);
+					if (!multicastSendSockets[i].getLoopbackMode())
+						logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
+				 }*/
+			}
+		}
+		else {
+			logger.warn("Not using multicast group to send to, therefore not binding to specific local addresses");
+			
+			multicastSendSockets = new MulticastSocket[1];
+			multicastSendSockets[0] = new MulticastSocket();
+			multicastSendSockets[0].setSoTimeout(Timeout_Receive);
 		}
 	}
 	
