@@ -194,6 +194,6 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 
 	/////////////////////////// test code begins here //////////////////////////////
 	public static void main(String[] args) throws IOException {
-		mainRunner("ParallelPortPWMReader", args);
+		org.eu.mayrhofer.sensors.test.AsciiLineReaderRunner.mainRunner("ParallelPortPWMReader", args);
 	}
 }
