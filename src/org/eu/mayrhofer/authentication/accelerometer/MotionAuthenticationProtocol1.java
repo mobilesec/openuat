@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
@@ -302,16 +305,25 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 					int rounds = 2;
 
 					// now generate our message for the interlock protocol segments
-					// TODO: optimize me for smaller arrays!
-					String tmp = "";
+					// to keep the size of the strings down, restrict the number of digits to transmit to 4
+					StringBuffer tmp = new StringBuffer();
+					DecimalFormatSymbols fmtSym = new DecimalFormatSymbols(Locale.US);
+					DecimalFormat fmt = new DecimalFormat("0.0000", fmtSym);
 					synchronized (localSegmentLock) {
 						for (int i=0; i<localSegment.length; i++) {
-							tmp += Double.toString(localSegment[i]);
+							// sanity check
+							if (localSegment[i] < 0 || localSegment[i] > 2) {
+								logger.error("Sample value out of expected range: " + localSegment[i]);
+								verificationFailure(null, null, null, "Interlock exchange aborted: sample value out of expected range");
+								localSegment = remoteSegment = null;
+								return;
+							}
+							tmp.append(fmt.format(localSegment[i]));
 							if (i<localSegment.length-1)
-								tmp+=" ";
+								tmp.append(' ');
 						}
 					}
-					byte[] localPlainText = tmp.getBytes();
+					byte[] localPlainText = tmp.toString().getBytes();
 					logger.debug("My segment is " + localPlainText.length + " bytes long");
 			
 					// exchange with the remote host
