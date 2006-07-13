@@ -26,6 +26,7 @@ import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtoco
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol2;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
+import org.eu.mayrhofer.sensors.SamplesSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 import org.eu.mayrhofer.sensors.WiTiltRawReader;
 
@@ -37,6 +38,11 @@ import org.eu.mayrhofer.sensors.WiTiltRawReader;
 public class ShakingSinglePCDemonstrator {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(ShakingSinglePCDemonstrator.class);
+	
+	/** The displayed text when a device is active. */
+	private static String DEVICE_STATE_ACTIVE = "active";
+	/** The displayed text when a device is quiescent. */
+	private static String DEVICE_STATE_QUIESCENT = "quiescent";
 
 	private Shell sShell = null;  //  @jve:decl-index=0:visual-constraint="10,10"
 	private Composite coherenceField = null;
@@ -47,13 +53,15 @@ public class ShakingSinglePCDemonstrator {
 	private Label matchingValue = null;
 	private Label device1 = null;
 	private Label device2 = null;
-	private Label device1State = null;
-	private Label device2State = null;
+	private Label[] deviceStates = null;
 	
 	private Protocol1Hooks prot1_a = null;
 	private Protocol1Hooks prot1_b = null;
 	private Protocol2Hooks prot2_a = null;
 	private Protocol2Hooks prot2_b = null;
+	
+	private StateListener devState1 = null;
+	private StateListener devState2 = null;
 	
 	private AsciiLineReaderBase reader1 = null;
 	private AsciiLineReaderBase reader2 = null;
@@ -112,16 +120,17 @@ public class ShakingSinglePCDemonstrator {
 		device2.setAlignment(SWT.LEFT);
 		device2.setText("Device 2:");
 
-		device1State = new Label(sShell, SWT.NONE);
-		device1State.setBounds(new org.eclipse.swt.graphics.Rectangle(230,10,300,30));
-		device1State.setFont(new Font(Display.getDefault(), "Sans", 18, SWT.NORMAL));
-		device1State.setAlignment(SWT.LEFT);
-		device1State.setText("quiescent");
-		device2State = new Label(sShell, SWT.NONE);
-		device2State.setBounds(new org.eclipse.swt.graphics.Rectangle(230,40,300,30));
-		device2State.setFont(new Font(Display.getDefault(), "Sans", 18, SWT.NORMAL));
-		device2State.setAlignment(SWT.LEFT);
-		device2State.setText("quiescent");
+		deviceStates = new Label[2];
+		deviceStates[0] = new Label(sShell, SWT.NONE);
+		deviceStates[0].setBounds(new org.eclipse.swt.graphics.Rectangle(230,10,300,30));
+		deviceStates[0].setFont(new Font(Display.getDefault(), "Sans", 18, SWT.NORMAL));
+		deviceStates[0].setAlignment(SWT.LEFT);
+		deviceStates[0].setText(DEVICE_STATE_QUIESCENT);
+		deviceStates[1] = new Label(sShell, SWT.NONE);
+		deviceStates[1].setBounds(new org.eclipse.swt.graphics.Rectangle(230,40,300,30));
+		deviceStates[1].setFont(new Font(Display.getDefault(), "Sans", 18, SWT.NORMAL));
+		deviceStates[1].setAlignment(SWT.LEFT);
+		deviceStates[1].setText(DEVICE_STATE_QUIESCENT);
 		
 		createComposite();
 		createComposite1();
@@ -166,6 +175,11 @@ public class ShakingSinglePCDemonstrator {
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
+		// including our listeners for the device status
+		devState1 = new StateListener(0);
+		devState2 = new StateListener(1);
+		aggr_a.addNextStageSamplesSink(devState1);
+		aggr_b.addNextStageSamplesSink(devState2);
 
 		/* 2: construct the two prototol instances: two different variants, each with two sides */
 		prot1_a = new Protocol1Hooks();
@@ -179,7 +193,7 @@ public class ShakingSinglePCDemonstrator {
 		aggr_b.addNextStageSegmentsSink(prot1_b);
 		aggr_a.addNextStageSamplesSink(prot2_a);
 		aggr_b.addNextStageSamplesSink(prot2_b);
-
+		
 		/* 4: authenticate for protocol variant 1 (variant 2 doesn't need this step) */
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
@@ -353,6 +367,39 @@ public class ShakingSinglePCDemonstrator {
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
 			logger.debug("Protocol variant 2 progress with " + remote +
 					" " + cur + " of " + max + ": " + message); 
+		}
+	}
+	
+	private class StateListener implements SamplesSink {
+		/** The index in @see #deviceStates that this object is responsible for. */
+		int deviceIndex;
+		
+		private StateListener(int deviceIndex) {
+			this.deviceIndex = deviceIndex;
+		}
+		
+		/** This implementation changes the display state of the respective device to active. */
+		public void segmentStart(int numSample) {
+			logger.debug("Device " + deviceIndex + " became active at sample " + numSample);
+			Display.getDefault().asyncExec(new Runnable() {
+				public void run() {
+					deviceStates[deviceIndex].setText(DEVICE_STATE_ACTIVE);
+				}
+			});
+		}
+		
+		/** This implementation changes the display state of the respective device to quiescent. */
+		public void segmentEnd(int numSample) {
+			logger.debug("Device " + deviceIndex + " became qiescent at sample " + numSample);
+			Display.getDefault().asyncExec(new Runnable() {
+				public void run() {
+					deviceStates[deviceIndex].setText(DEVICE_STATE_QUIESCENT);
+				}
+			});
+		}
+
+		/** This method is a dummy implementation and does nothing. */ 
+		public void addSample(double sample, int numSample) {
 		}
 	}
 }
