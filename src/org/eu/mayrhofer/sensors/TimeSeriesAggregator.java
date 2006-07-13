@@ -41,13 +41,69 @@ public class TimeSeriesAggregator {
 	 * events of the TimeSeries.
 	 * @author Rene Mayrhofer
 	 */
-	private class TimeSeriesSink implements SamplesSink {
-		/** This index is represented by this object. */
-		private int seriesIndex;
+	private class TimeSeriesSinks extends DeviceStateListener {
+		private TimeSeriesSinks(int numLines) {
+			super(numLines);
+		}
+		
+		/** When the first dimension becomes active, this method starts a new active,
+		 * aggregated segment.
+		 */
+		protected void toActive(int lineIndex, int numSample) {
+			/* one of the time series just became active when no one was before 
+			 * --> start of active segment, start aggregating
+			 */
+			aggregatedSeries = new ArrayList();
 
-		/** Only initializes seriesIndex. */
-		TimeSeriesSink(int seriesIndex) {
-			this.seriesIndex = seriesIndex;
+			// also forward this event to the sample listeners
+			if (samplesSinks != null) {
+				logger.debug("Forwarding segment start event to " + samplesSinks.size() + " registered sinks");
+				for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
+					SamplesSink s = (SamplesSink) j.next();
+					s.segmentStart(numSample);
+				}			
+			}
+		}
+		
+		/** When the last dimension becomes quiescent, this method stops the active,
+		 * aggregated segment. It will also send the complete segment to registered listeners. 
+		 */
+		protected void toQuiescent(int lineIndex, int numSample) {
+			if (curSampleIndex-windowSize+1 != numSample)
+				logger.warn("Unexpected index of segment end, got " + numSample 
+						+ ", expected " + (curSampleIndex-windowSize+1));
+			
+			/* the last time series just became quiescent when at least one was active before 
+			 * --> end of active segment, forward the complete segment
+			 */
+			if (aggregatedSeries.size() > windowSize && 
+					aggregatedSeries.size()-windowSize >= minSegmentSize) {
+				
+				double[] segment = new double[aggregatedSeries.size()-windowSize];
+				for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
+					segment[i] = ((Double) aggregatedSeries.get(i)).doubleValue();
+				if (segmentsSinks != null) {
+					logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
+					for (ListIterator j = segmentsSinks.listIterator(); j.hasNext(); ) {
+						SegmentsSink s = (SegmentsSink) j.next();
+						s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
+					}				
+				}
+			}
+			else
+				logger.error("Detected segment that is smaller than the window size. This should not happen!");
+			
+			logger.debug("Finished forwarding segment to sinks");
+			aggregatedSeries = null;
+
+			// also forward this event to the sample listeners
+			if (samplesSinks != null) {
+				logger.debug("Forwarding segment end event to " + samplesSinks.size() + " registered sinks");
+				for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
+					SamplesSink s = (SamplesSink) j.next();
+					s.segmentEnd(numSample);
+				}			
+			}
 		}
 		
 		/** Buffers the current sample until all dimensions have been received, and
@@ -57,10 +113,10 @@ public class TimeSeriesAggregator {
 		 * @see TimeSeriesAggregator#isCurSampleComplete() for checking if the current sample is complete
 		 * @see TimeSeriesAggregator#curSampleReceived is reset when all sample dimensions are complete and have been aggregated
 		 */
-		public void addSample(double sample, int numSample) {
+		protected void sampleAdded(int lineIndex, double sample, int numSample) {
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
-			curSample[seriesIndex] = sample;
-			curSampleReceived[seriesIndex] = true;
+			curSample[lineIndex] = sample;
+			curSampleReceived[lineIndex] = true;
 			// if currently active, aggregatedSeries will be set
 			if (aggregatedSeries != null && isCurSampleComplete()) {
 				// this time step is now complete, so immediately aggregate
@@ -85,76 +141,6 @@ public class TimeSeriesAggregator {
 				}
 			}
 		}
-		
-		/** If this is the first dimension to become active, this method starts a new active,
-		 * aggregated segment.
-		 */
-		public void segmentStart(int numSample) {
-			boolean previouslyActive = isActive();
-			firstStagesActive[seriesIndex] = true;
-			if (!previouslyActive && isActive()) {
-				logger.debug("Time series " + seriesIndex + " is first to become active at index " + numSample);
-				/* one of the time series just became active when no one was before 
-				 * --> start of active segment, start aggregating
-				 */
-				aggregatedSeries = new ArrayList();
-
-				// also forward this event to the sample listeners
-				if (samplesSinks != null) {
-					logger.debug("Forwarding segment start event to " + samplesSinks.size() + " registered sinks");
-					for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
-						SamplesSink s = (SamplesSink) j.next();
-						s.segmentStart(numSample);
-					}			
-				}
-			}
-		}
-		
-		/** If this is the last dimension to become quiescent, this method stops the active,
-		 * aggregated segment. It will also send the complete segment to registered listeners. 
-		 */
-		public void segmentEnd(int numSample) {
-			if (curSampleIndex-windowSize+1 != numSample)
-				logger.warn("Unexpected index of segment end, got " + numSample 
-						+ ", expected " + (curSampleIndex-windowSize+1));
-			
-			boolean previouslyActive = isActive();
-			firstStagesActive[seriesIndex] = false;
-			if (previouslyActive && !isActive()) {
-				logger.debug("Time series " + seriesIndex + " is last to become quiescent");
-				/* the last time series just became quiescent when at least one was active before 
-				 * --> end of active segment, forward the complete segment
-				 */
-				if (aggregatedSeries.size() > windowSize && 
-						aggregatedSeries.size()-windowSize >= minSegmentSize) {
-					
-					double[] segment = new double[aggregatedSeries.size()-windowSize];
-					for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
-						segment[i] = ((Double) aggregatedSeries.get(i)).doubleValue();
-					if (segmentsSinks != null) {
-						logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
-						for (ListIterator j = segmentsSinks.listIterator(); j.hasNext(); ) {
-							SegmentsSink s = (SegmentsSink) j.next();
-							s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
-						}				
-					}
-				}
-				else
-					logger.error("Detected segment that is smaller than the window size. This should not happen!");
-				
-				logger.debug("Finished forwarding segment to sinks");
-				aggregatedSeries = null;
-
-				// also forward this event to the sample listeners
-				if (samplesSinks != null) {
-					logger.debug("Forwarding segment end event to " + samplesSinks.size() + " registered sinks");
-					for (ListIterator j = samplesSinks.listIterator(); j.hasNext(); ) {
-						SamplesSink s = (SamplesSink) j.next();
-						s.segmentEnd(numSample);
-					}			
-				}
-			}
-		}
 	}
 	
 	/** These are the time series for the first stage. The objects are responsible for
@@ -165,11 +151,7 @@ public class TimeSeriesAggregator {
 	/** Holds the TimeSeriesSink objects that are registered as sinks with the 
 	 * firstStageSeries objects.
 	 */
-	private TimeSeriesSink[] firstStageHandlers;
-	/** These represent the last reported states for each dimension. They are updated
-	 * by TimeSeriesSink#segmentStart and TimeSeriesStart#segmentEnd.
-	 */
-	private boolean[] firstStagesActive;
+	private TimeSeriesSinks firstStageHandlers;
 	/** This is just a buffer to keep the current sample dimension until all 
 	 * dimensions have been received and can thus be aggregated into a new value
 	 * appended to aggregatedSeries.
@@ -235,13 +217,10 @@ public class TimeSeriesAggregator {
 		curSample = new double[numSeries];
 		curSampleReceived = new boolean[numSeries];
 		firstStageSeries = new TimeSeries[numSeries];
-		firstStageHandlers = new TimeSeriesSink[numSeries];
-		firstStagesActive = new boolean[numSeries];
+		firstStageHandlers = new TimeSeriesSinks(numSeries);
 		for (int i=0; i<numSeries; i++) {
 			firstStageSeries[i] = new TimeSeries(windowSize);
-			firstStageHandlers[i] = new TimeSeriesSink(i);
-			firstStageSeries[i].addNextStageSink(firstStageHandlers[i]);
-			firstStagesActive[i] = false;
+			firstStageSeries[i].addNextStageSink(firstStageHandlers.getSinks()[i]);
 		}
 		segmentsSinks = new LinkedList();
 		samplesSinks = new LinkedList();
@@ -251,23 +230,11 @@ public class TimeSeriesAggregator {
 	public void reset() {
 		for (int i=0; i<firstStageSeries.length; i++) {
 			firstStageSeries[i].reset();
-			firstStagesActive[i] = false;
 		}
 		curSampleIndex = 0;
+		firstStageHandlers.reset();
 	}
 	
-	/** A helper function to check if the whole, multi-dimensional segment is active.
-	 * 
-	 * @return True when any of the dimensions is active, i.e. when at least one of 
-	 *         firstStagesActive is true, false otherwise.
-	 */
-	private boolean isActive() {
-		for (int i=0; i<firstStagesActive.length; i++)
-			if (firstStagesActive[i])
-				return true;
-		return false;
-	}
-
 	/** A helper function to check if the current sample has been received completely.
 	 * 
 	 * @return True when all dimensions of the current sample have been received, i.e. when
