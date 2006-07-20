@@ -14,7 +14,6 @@
     <property name="build" location="build"/>
     <property name="bin" location="${build}/bin"/>
     <property name="lib" location="lib"/>
-    <property name="relate-lib" location="../relate/lib"/>
     <property name="nativelib" location="nativelib"/>
     <property name="dist" location="dist"/>
     <property name="dist.webstart" location="${dist}/webstart"/>
@@ -22,7 +21,6 @@
     <property name="reports" location="reports"/>
     <property name="reports.tests" location="${reports}/tests"/>
     <property name="thirdparty" location="thirdparty"/>
-    <property name="relate-thirdparty.nativelib" location="../relate/thirdparty/nativelib"/>
     <property name="thirdparty-BC-core" location="${thirdparty}/bouncycastle-core-deps"/>
     <property name="bin-BC-core" location="${build}/bin-bouncycastle-core"/>
     <property name="thirdparty-BC-x509" location="${thirdparty}/bouncycastle-x509-deps"/>
@@ -95,7 +93,7 @@
            distribution JAR because there are multiple OS versions.
            Therefore, include it only in this class path but not in
            the JAR collection set. -->
-	    <pathelement location="../relate/lib/linux/swt-3.1.1_gtk.linux.x86.jar"/>
+	    <pathelement location="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar"/>
     </path>
 
     <target name="compile" description="Compile code">
@@ -226,27 +224,27 @@
     <target name="dist-webstart" depends="jar" description="Create distribution for Java webstart">
 	    <mkdir dir="${dist.webstart}"/>
 	    <!-- Linux native libraries -->
-	    <copy file="${relate-lib}/linux/swt-3.1.1_gtk.linux.x86.jar" 
+	    <copy file="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar" 
 		  tofile="${dist.webstart}/swt-3.1_gtk.linux.x86.jar"/>
 	    <zip zipfile="${dist.webstart}/swt-3.1-native_gtk.linux.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${relate-thirdparty.nativelib}/linux/" includes="libswt*.so" />
+		    <fileset dir="${nativelib}/linux/" includes="libswt*.so" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_linux.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${relate-thirdparty.nativelib}/linux/" includes="librxtxSerial.so" />
+		    <fileset dir="${nativelib}/linux/" includes="librxtxSerial.so" />
 	    </zip>
 	    
 	    <!-- Windows native libraries -->
-	    <copy file="${relate-lib}/win32/swt-3.1_win32.x86.jar" 
+	    <copy file="${lib}/win32/swt-3.1_win32.x86.jar" 
 		  tofile="${dist.webstart}/swt-3.1_win32.x86.jar"/>
 	    <zip zipfile="${dist.webstart}/swt-3.1-native_win32.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${relate-thirdparty.nativelib}/win32/" includes="swt*.dll" />
+		    <fileset dir="${nativelib}/win32/" includes="swt*.dll" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_win32.x86.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${relate-thirdparty.nativelib}/win32/" includes="rxtxSerial.dll" />
+		    <fileset dir="${nativelib}/win32/" includes="rxtxSerial.dll" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/ipsec-1.0-native_win32.x86.jar" 
 		 update="true" duplicate="fail">
@@ -254,19 +252,20 @@
 	    </zip>
 	    
 	    <!-- MacOXX native libraries -->
-	    <copy file="${relate-lib}/macosx/swt-3.1_macosx.jar" 
+	    <copy file="${lib}/macosx/swt-3.1_macosx.jar" 
 		  tofile="${dist.webstart}/swt-3.1_macosx.jar"/>
 	    <zip zipfile="${dist.webstart}/swt-3.1-native_macosx.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${relate-thirdparty.nativelib}/macosx/" includes="libswt*.jnilib" />
+		    <fileset dir="${nativelib}/macosx/" includes="libswt*.jnilib" />
 	    </zip>
 	    <zip zipfile="${dist.webstart}/rxtx-2.1-native_macosx.jar" 
 		 update="true" duplicate="fail">
-		    <fileset dir="${relate-thirdparty.nativelib}/macosx/" includes="librxtxSerial.jnilib" />
+		    <fileset dir="${nativelib}/macosx/" includes="librxtxSerial.jnilib" />
 	    </zip>
 	    
 	    <!-- don't forget the relate core -->
-	    <copy file="${lib}/relatecore.jar" todir="${dist.webstart}" />
+	    <copy file="${lib}/relate-2.0-core.jar" todir="${dist.webstart}" />
+	    <copy file="${lib}/relate-2.0-apps.jar" todir="${dist.webstart}" />
 	    <!-- nor the required support libraries -->
 	    <copy file="${lib}/log4j-1.2.jar" todir="${dist.webstart}" />
 	    <copy file="${lib}/kxml2-2.2.2.jar" todir="${dist.webstart}" />
