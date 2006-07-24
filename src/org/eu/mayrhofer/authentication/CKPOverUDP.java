@@ -10,8 +10,8 @@ package org.eu.mayrhofer.authentication;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.StringTokenizer;
 
@@ -344,17 +344,19 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				 * more work later on). However, hashing arrays should be fast, so performance
 				 * impact should be negligable anyways.
 				 */
-				HashSet parts = new HashSet();
-				for (int i=0; i<keyParts.length; i++)
-					parts.add(keyParts[i]);
+				HashMap parts = new HashMap();
+				for (int i=0; i<keyParts.length; i++) {
+					parts.put(new Integer(Arrays.hashCode(keyParts[i])), keyParts[i]);
+				}
 				// sanity check
 				if (parts.size() > keyParts.length)
 					throw new InternalApplicationException("Set of hashed key parts is bigger than the original vector. This should not happen");
 				if (parts.size() < keyParts.length) {
 					logger.info("Duplicate feature vectors detected: " + parts.size() +
-							" unique vectors out of " + keyParts.length);
+							" unique vectors out of " + keyParts.length +
+							(instanceId != null ? " [" + instanceId + "]" : ""));
 					keyParts = new byte[parts.size()][];
-					Iterator iter = parts.iterator();
+					Iterator iter = parts.values().iterator();
 					for (int i=0; i<keyParts.length; i++)
 						keyParts[i] = (byte[]) iter.next();
 				}
