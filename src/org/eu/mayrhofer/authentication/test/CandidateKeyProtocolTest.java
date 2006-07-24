@@ -101,7 +101,7 @@ public class CandidateKeyProtocolTest extends TestCase {
 	public void testMatching_1Round() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2[] = p2.generateCandidates(keyParts_round1_side2, 0);
-		
+
 		int ind1 = p1.matchCandidates(remoteIdentifier2, i2);
 		int ind2 = p2.matchCandidates(remoteIdentifier1, i1);
 		Assert.assertEquals("Match did not return correct index", 1, ind1);
@@ -109,12 +109,14 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		Assert.assertEquals(1, p1.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(1, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
 	}
 
 	public void testMatching_2Rounds() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
-		
+
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
 		int ind2_1 = p2.matchCandidates(remoteIdentifier1, i1_1);
 		int ind2_2 = p2.matchCandidates(remoteIdentifier1, i1_2);
@@ -123,8 +125,12 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		// only 1 match now, because second round candidates not yet generated in p2
 		Assert.assertEquals(1, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertTrue(Math.abs(p2.getMatchingRoundsFraction(remoteIdentifier1) - 1.0) <= 0.0001);
 		
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2, 0);
+
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+		
 		int ind1_1 = p1.matchCandidates(remoteIdentifier2, i2_1);
 		int ind1_2 = p1.matchCandidates(remoteIdentifier2, i2_2);
 		ind2_1 = p2.matchCandidates(remoteIdentifier1, i1_1);
@@ -134,6 +140,11 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals("Match did not return correct index", 2, ind2_2);
 		Assert.assertEquals("Match did not return correct index", 1, ind1_1);
 		Assert.assertEquals("Match did not return correct index", 1, ind1_2);
+
+		Assert.assertEquals(3, p2.getNumLocalRounds(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertTrue(Math.abs(p2.getMatchingRoundsFraction(remoteIdentifier1) - 1.0) <= 0.0001);
+		Assert.assertTrue(Math.abs(p1.getMatchingRoundsFraction(remoteIdentifier2) - 1.0) <= 0.0001);
 
 		// now it must be 3 matches
 		Assert.assertEquals(3, p2.getNumTotalMatches(remoteIdentifier1));
@@ -146,8 +157,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		p1.matchCandidates(remoteIdentifier2, i2);
 		p2.matchCandidates(remoteIdentifier1, i1);
 		
-		Assert.assertEquals(1, p1.getNumTotalMatches(remoteIdentifier2));
-		Assert.assertEquals(1, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -167,6 +178,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		
 		Assert.assertEquals(3, p1.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(3, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -190,6 +203,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		Assert.assertEquals(3, p1.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(3, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -211,7 +226,6 @@ public class CandidateKeyProtocolTest extends TestCase {
 	}
 
 	public void testMatchingAndKeyGeneration_2Rounds_searchKey_multipleCandidates_historyTooSmall() throws InternalApplicationException {
-		
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
@@ -224,6 +238,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		Assert.assertEquals(5, p1.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(5, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -241,7 +257,6 @@ public class CandidateKeyProtocolTest extends TestCase {
 	}
 
 	public void testMatchingAndKeyGeneration_2Rounds_searchKey_multipleCandidates_historySufficient() throws InternalApplicationException {
-		
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1a.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2a.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1a.generateCandidates(keyParts_round2_side1, 0);
@@ -254,6 +269,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		Assert.assertEquals(6, p1a.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(6, p2a.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1a.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2a.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1a.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2a.generateKey(remoteIdentifier1);
@@ -283,6 +300,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		Assert.assertEquals(1, p1.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(1, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -302,6 +321,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		Assert.assertEquals(3, p1.getNumTotalMatches(remoteIdentifier2));
 		Assert.assertEquals(1, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -327,6 +348,9 @@ public class CandidateKeyProtocolTest extends TestCase {
 		// only two matches here because only acknowledge matches, but p2 didn't match itself 
 		Assert.assertEquals(2, p2.getNumTotalMatches(remoteIdentifier1));
 		
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
 		Assert.assertNotNull(k1);
@@ -350,6 +374,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals(5, p1.getNumTotalMatches(remoteIdentifier2));
 		// only two matches here because only acknowledge matches, but p2 didn't match itself 
 		Assert.assertEquals(2, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -374,6 +400,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals(5, p1.getNumTotalMatches(remoteIdentifier2));
 		// only two matches here because only acknowledge matches, but p2 didn't match itself 
 		Assert.assertEquals(2, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
@@ -404,6 +432,8 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals(6, p1a.getNumTotalMatches(remoteIdentifier2));
 		// only two matches here because only acknowledge matches, but p2 didn't match itself 
 		Assert.assertEquals(2, p2a.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1a.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2a.getNumLocalRounds(remoteIdentifier1));
 		
 		CandidateKeyProtocol.CandidateKey k1 = p1a.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k2 = p2a.generateKey(remoteIdentifier1);
@@ -440,6 +470,12 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals(1, p2.getNumTotalMatches(remoteIdentifier3));
 		Assert.assertEquals(1, p3.getNumTotalMatches(remoteIdentifier1));
 		Assert.assertEquals(1, p3.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier3));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier3));
+		Assert.assertEquals(1, p3.getNumLocalRounds(remoteIdentifier1));
+		Assert.assertEquals(1, p3.getNumLocalRounds(remoteIdentifier2));
 		
 		CandidateKeyProtocol.CandidateKey k1_2 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k1_3 = p1.generateKey(remoteIdentifier3);
@@ -491,6 +527,12 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertEquals(1, p3.getNumTotalMatches(remoteIdentifier1));
 		Assert.assertEquals(0, p2.getNumTotalMatches(remoteIdentifier3));
 		Assert.assertEquals(0, p3.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier3));
+		Assert.assertEquals(1, p2.getNumLocalRounds(remoteIdentifier1));
+		Assert.assertEquals(0, p2.getNumLocalRounds(remoteIdentifier3));
+		Assert.assertEquals(1, p3.getNumLocalRounds(remoteIdentifier1));
+		Assert.assertEquals(0, p3.getNumLocalRounds(remoteIdentifier2));
 		
 		CandidateKeyProtocol.CandidateKey k1_2 = p1.generateKey(remoteIdentifier2);
 		CandidateKeyProtocol.CandidateKey k1_3 = p1.generateKey(remoteIdentifier3);

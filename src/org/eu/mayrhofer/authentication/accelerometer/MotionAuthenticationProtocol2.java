@@ -40,10 +40,28 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	// TODO: make me settable
 	private int fftPoints = 128;
 	private int numQuantLevels = 8;
-	private int numCandidates = 6;
+	private int numCandidates = 8;
 	private int cutOffFrequency = 15; // Hz
 	private int windowOverlap = fftPoints/2; 
+	private static final float matchThreshold = 0.35f;
 	
+	public final static int MinimumNumberOfRoundsForAction = 5;
+	
+	/** Remember our own (locally generated) last 30 candidate key parts for detecting
+	 * possible matches.
+	 * TODO: this should depend on numCandidates
+	 */ 
+	public final static int LocalCandidateHistorySize = 20 * 8;
+	
+	/** For each remote host, remember the last 20 matching key parts to have enough 
+	 * material for generating candidate keys.
+	 * TODO: this should depend on numCandidates
+	 */
+	public final static int MatchingCandidatesHistorySize = 10 * MinimumNumberOfRoundsForAction * 8;
+	
+	/** Keep the match history for each remote host for 5 minutes - should really be enough. */
+	public final static int MaximumMatchingCandidatesAge = 300;
+
 	private LinkedList curSegment = null;
 
 	/** Initializes the object, only setting useJSSE at the moment. This constructor sets
@@ -57,7 +75,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 */
 	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE) throws IOException {
 		// TODO: set minimum entropy
-		super(UdpPort, UdpPort, MulticastGroup, null, true, false, minMatchingParts, 0, useJSSE);
+		super(UdpPort, UdpPort, MulticastGroup, null, true, false, LocalCandidateHistorySize, MatchingCandidatesHistorySize, MaximumMatchingCandidatesAge, 
+				matchThreshold, 0, matchThreshold/2, MinimumNumberOfRoundsForAction, useJSSE);
 	}
 	
 	/** Initializes the object, only setting useJSSE at the moment.
@@ -73,7 +92,9 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 */
 	public MotionAuthenticationProtocol2(int minMatchingParts, boolean useJSSE, 
 			int udpRecvPort, int udpSendPort, String sendAddress, String instanceId) throws IOException {
-		super(udpRecvPort, udpSendPort, sendAddress, instanceId, true, false, minMatchingParts, 0, useJSSE);
+		// TODO: set minimum entropy
+		super(udpRecvPort, udpSendPort, sendAddress, instanceId, true, false, LocalCandidateHistorySize, MatchingCandidatesHistorySize, MaximumMatchingCandidatesAge, 
+				matchThreshold, 0, matchThreshold/2, MinimumNumberOfRoundsForAction, useJSSE);
 	}
 
 	/** The implementation of SamplesSink.addSegment. It will be called for all 
