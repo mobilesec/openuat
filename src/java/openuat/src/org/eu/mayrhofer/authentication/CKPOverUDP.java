@@ -40,7 +40,6 @@ import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
  * 3. When a key could be generated from the matches given the requirements passed
  *    when constructing the object, its hash will be sent to the remote host and,
  *    upon receiving acknowledgement, the protocolSucceededHook will be called.
- * TODO: Also emit protocol failed events based on criteria!
  * TODO: Also emit protocol progress events (but what is max??)
  * Generally, events will be emitted by this class to all registered listeners.
  * 
@@ -90,17 +89,29 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 */
 	private boolean sendMatches;
 	
-	/** The minimum number of matching parts before a key will be created. This is set by the
+	/** The minimum fraction of matching parts before a key will be created. This is set by the
 	 * constructor.
-	 * @see #CKPOverUDP(int, int, String, String, boolean, boolean, int, int, boolean)
+	 * @see #CKPOverUDP
 	 */
-	private int minMatchingParts;
+	private float minMatchingRoundsFraction;
+	
+	/** The maximum fraction of rounds without any matching parts before the protocol will be
+	 * aborted with the respective host. Set to 0 to disable aborting the protocol.
+	 * @see #CKPOverUDP
+	 */
+	private float maxMismatchRoundsFraction;
 	
 	/** The minimum entropy of the matching parts before a key will be created. This is set by the
 	 * constructor.
-	 * @see #CKPOverUDP(int, int, String, String, boolean, boolean, int, int, boolean)
+	 * @see #CKPOverUDP
 	 */
-	private int minMatchingEntropy;
+	private float minMatchingEntropy;
+	
+	/** The minimum number of rounds before any action (success or failure) is taken. This is
+	 * set by the constructor. 
+	 * @see #CKPOverUDP
+	 */
+	private int minNumRoundsForAction;
 	
 	/** This is used as a circular buffer for incoming candidate key part messages where no
 	 * match has been found. When new local candidates are added, we then try to match with
@@ -226,6 +237,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @param udpReceivePort The UDP port to use for listening to packets.
 	 * @param udpSendPort The UDP target port to send packets to. Will usually be the same as the
 	 *                    udpReceivePort.
+	 * @param multicastGroup The multicast group to use for exchanging candidate key parts.
+	 *                       When a unicast address is specified instead, special handling will
+	 *                       be used. Only use a unicast address if you have read and understood
+	 *                       the source code.
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
@@ -246,23 +261,55 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 *                    be assumed that candidate key part identifiers get lost, or in an
 	 *                    asymmetric setting where one host broadcasts the candidate key part
 	 *                    identifiers and the other acknowledges matches.
-	 * @param minMatchingParts The minimum number of key parts that need to match before a key will
-	 *                         be generated. The CandidateKeyProtocol instance will be initialized
-	 *                         with twice this number of entries in the matching part history and
-	 *                         8 times this number of entries in the recent candidates history.
+	 * @param localCandidateHistorySize The number of local candidates to keep in the history.
+	 *                                  If this is too small, matches might not be found. A good
+	 *                                  compromise between supporting asynchronity (which requires
+	 *                                  a large history) and minimizing required memory is 20 times
+	 *                                  the number of candidates that are created in each round,
+	 *                                  for many applications. 
+	 * @param matchingPartsHistorySize The number of matching key parts to keep in the history for
+	 *                                 each remote host. This needs to be large enough to hold sufficient
+	 *                                 entropy (i.e. number of parts) for creating a shared key. A 
+	 *                                 good compromise between asynchronity (which requires a large
+	 *                                 history) and minimizing required memory and key search time
+	 *                                 if 10 times the minimum number of rounds for action times the
+	 *                                 number of candidates that are create in each round. 
+	 * @param maxMatchAge The maximum age, in seconds, to keep matches with remote hosts before pruning
+	 *                    them. For many interactive protocols, 300 (5 minutes) is a good value.
+	 * @param minMatchingRoundsFraction The minimum fraction of rounds that need at least one match before a key will
+	 *                                 be generated.
+	*                                  The sum of minMatchingRoundsFraction and maxMismatchRoundsFraction
+	*                                  must be <= 1.0, because a mismatch is defined as (1-match), and there
+	*                                  must be a clear distinction between match and mismatch.
 	 * @param minMatchingEntropy The minimum entropy that needs to be collected in matching key parts
 	 *                           before a key will be generated.
+	 * @param maxMismatchRoundsFraction The maximum fraction of rounds that are allowed to have no
+	 *                                  match before the protocol is aborted with an error. 
+	 *                                  The sum of minMatchingRoundsFraction and maxMismatchRoundsFraction
+	 *                                  must be <= 1.0, because a mismatch is defined as (1-match), and there
+	 *                                  must be a clear distinction between match and mismatch.
+	 * @param minNumRoundsForAction The minimum number of (local) rounds that need to pass with each
+	 *                              remote host before any action (success or failure) is taken for that
+	 *                              remote host. 
 	 * @throws IOException 
 	 */
 	protected CKPOverUDP(int udpReceivePort, int udpSendPort, String multicastGroup, String instanceId, 
-			boolean broadcastCandidates, boolean sendMatches, 
-			int minMatchingParts, int minMatchingEntropy, boolean useJSSE) throws IOException {
+			boolean broadcastCandidates, boolean sendMatches,
+			int localCandidateHistorySize, int matchingPartsHistorySize, int maxMatchAge,
+			float minMatchingRoundsFraction, float minMatchingEntropy, float maxMismatchRoundsFraction,  
+			int minNumRoundsForAction, boolean useJSSE) throws IOException {
 		this.useJSSE = useJSSE;
 		this.instanceId = instanceId;
 		this.broadcastCandidates = broadcastCandidates;
 		this.sendMatches = sendMatches;
-		this.minMatchingParts = minMatchingParts;
+		this.minMatchingRoundsFraction = minMatchingRoundsFraction;
 		this.minMatchingEntropy = minMatchingEntropy;
+		this.maxMismatchRoundsFraction = maxMismatchRoundsFraction;
+		this.minNumRoundsForAction = minNumRoundsForAction;
+		
+		// sanity check
+		if (minMatchingRoundsFraction + maxMismatchRoundsFraction > 1.0f)
+			throw new IllegalArgumentException("minMatchingRoundsFraction + maxMismatchRoundsFraction must be <= 1.0");
 		
 		// remember the last 5 incoming messages for matching with new local key parts
 		this.incomingKeyPartsBuffer= new Object[5][];
@@ -274,8 +321,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		channel.addIncomingMessageListener(new UDPMessageHandler());
 		// channel.dispose() takes care of calling stopListening();
 		channel.startListening();
-		// keep the match history for each remote host for 5 minutes - should really be enough
-		ckp = new CandidateKeyProtocol(minMatchingParts*8, minMatchingParts*2, 300, instanceId, useJSSE);
+		ckp = new CandidateKeyProtocol(localCandidateHistorySize, matchingPartsHistorySize, 
+				maxMatchAge, instanceId, useJSSE);
 		generatedKeys = new HashMap();
 	}
 
@@ -322,7 +369,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					if (candidateKeyParts[i].candidateNumber != i) 
 						logger.warn("Locally generatared candidate number " + candidateKeyParts[i].candidateNumber +
 								" in round " + candidateKeyParts[i].round + " does not match its position " +
-								"in the array: " + i + ". Something might be subtly broken!");
+								"in the array: " + i + ". Something might be subtly broken!" +
+								(instanceId != null ? " [" + instanceId + "]" : ""));
 					String cand = new String(Hex.encodeHex(candidateKeyParts[i].hash)) + " ";
 					System.arraycopy(cand.getBytes(), 0, buffer, outIndex, cand.length());
 					outIndex += cand.length();
@@ -442,17 +490,74 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				}
 		}
 	}
+	
+	/** This helper function checks if the criteria for generating a key are
+	 * already fulfilled for a remote host. If the "positive" criteria are
+	 * fulfilled, this function returns true, otherwise false. Additionally, if
+	 * the "negative" criteria are fulfilled, this function also returns false,
+	 * but immediately aborts the protocol and generates a protocol failure event.
+	 * @return true if a key can be generated according to the criteria, false
+	 *         otherwise.
+	 * @see #minNumRoundsForAction
+	 * @see #minMatchingRoundsFraction
+	 * @see #minMatchingEntropy
+	 * @see #maxMismatchRoundsFraction
+	 */
+	private boolean checkKeyCriteria(InetAddress remoteHost) throws InternalApplicationException {
+		String remoteHostAddress = remoteHost.getHostAddress();
+		
+		// only if enough rounds have passed in total with this remote host can we do anything
+		logger.debug("Checking criteria for generating a key for remote host " + remoteHostAddress + 
+				": " + ckp.getNumLocalRounds(remoteHostAddress) + " local rounds, " +
+				ckp.getMatchingRoundsFraction(remoteHostAddress) + " matching, " +
+				ckp.getSumMatchEntropy(remoteHostAddress) + " entropy sum; " +
+				minNumRoundsForAction + " minimum rounds for action, " +
+				minMatchingRoundsFraction + " minimum match treshold, " +
+				minMatchingEntropy + " minimum entropy sum threshold, " + 
+				maxMismatchRoundsFraction + " maximum mismatch threshold" +
+				(instanceId != null ? " [" + instanceId + "]" : ""));
+		if (ckp.getNumLocalRounds(remoteHostAddress) >= minNumRoundsForAction) {
+			// check if the "positive" criteria are fulfilled so that we can try and create a candidate key
+			if (ckp.getMatchingRoundsFraction(remoteHostAddress) >= minMatchingRoundsFraction &&
+					ckp.getSumMatchEntropy(remoteHostAddress) >= minMatchingEntropy) {
+				logger.info("Positive criteria are fulfilled for remote host " + remoteHostAddress + 
+						", can now generate candidate key" + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				return true;
+			}
+			// check if the "negative" criteria are fulfilled
+			else if ((1-ckp.getMatchingRoundsFraction(remoteHostAddress)) >= maxMismatchRoundsFraction) {
+				logger.warn("Negative criteria are fulfilled for remote host " + remoteHostAddress + 
+						", aborting protocol and generating authentication failure event" +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				// abort protocol and generated authentication failure event
+				authenticationFailed(remoteHost, true, null, "Too many rounds without a matching key part encountered");
+				return false;
+			}
+			else {
+				logger.debug("Enough local rounds have passed with remote host " + remoteHostAddress +
+						", but neither positive nor negative criteria are fulfilled" +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				return false;
+			}
+		}
+		else {
+			logger.debug("Not enough local rounds have passed yet for remote host " +
+					remoteHostAddress + " to check for any action (" + 
+					ckp.getNumLocalRounds(remoteHostAddress) + " passed, want " + minNumRoundsForAction + ")" +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+			return false;
+		}
+	}
 
 	/** This helper function checks if a key can already be generated and sends it
 	 * to the remote host, if yes.
+	 * @throws InternalApplicationException 
 	 */
-	private void checkForKeyGeneration(InetAddress remoteHost) {
+	private void checkForKeyGeneration(InetAddress remoteHost) throws InternalApplicationException {
 		String remoteHostAddress = remoteHost.getHostAddress();
 
-		if (ckp.getNumTotalMatches(remoteHostAddress) >= minMatchingParts &&
-				ckp.getSumMatchEntropy(remoteHostAddress) >= minMatchingEntropy) {
-			logger.info("Received enough matches to generate candidate key" + 
-					(instanceId != null ? " [" + instanceId + "]" : ""));
+		if (checkKeyCriteria(remoteHost)) {
 			try {
 				CandidateKey candKey = ckp.generateKey(remoteHostAddress);
 				// and remember this key for later matching with the acknowledge
@@ -472,20 +577,20 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				genList.list[genList.index++] = candKey;
 				if (genList.index == genList.list.length)
 					genList.index = 0;
-				
+			
 				logger.debug("Sending candidate key of " + candKey.numParts + " parts with hash " + 
 						new String(Hex.encodeHex(candKey.hash)) +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				String candKeyPacket = Protocol_CandidateKey + candKey.numParts + " " +
-					new String(Hex.encodeHex(candKey.hash));
+						new String(Hex.encodeHex(candKey.hash));
 				channel.sendTo(candKeyPacket.getBytes(), remoteHost);
 			}
 			catch (InternalApplicationException e) {
 				logger.error("Could not generate key: " + e + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			} catch (IOException e) {
 				logger.debug("Can not send candidate key packet: " + e + 
-						(instanceId != null ? " [" + instanceId + "]" : ""));
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 		}
 	}
@@ -508,12 +613,23 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					throw new InternalApplicationException("Search for matching key returned "+
 						"different hash from what we searched for. This should not happen!" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
-			logger.info("Generated local key that matches candidate key identifier " +
-					new String(Hex.encodeHex(candKey.key)) + " received from " + remoteHost.getHostAddress() + " " +
-					(instanceId != null ? " [" + instanceId + "]" : ""));
-			// this sends a key acknowledge message to the remote host
-			authenticationSucceededStage1(remoteHost, candKey.hash, candKey.key);
-			return true;
+			
+			// also check if our local criteria for generating a key are fulfilled
+			if (checkKeyCriteria(remoteHost)) {
+				logger.info("Generated local key that matches candidate key identifier " +
+						new String(Hex.encodeHex(candKey.key)) + " received from " + remoteHost.getHostAddress() + " " +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				// this sends a key acknowledge message to the remote host
+				authenticationSucceededStage1(remoteHost, candKey.hash, candKey.key);
+				return true;
+			}
+			else {
+				logger.warn("Received candidate key from remote host " + remoteHost.getHostAddress() +
+						" and successfully generated matching key, but local criteria for key generation " +
+						"are not yet fulfilled. Ignoring this candidate key." +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				return false;
+			}
 		}
 		else {
 			logger.debug("Could not generate local key that matches received candidate key identifier" + 
@@ -617,7 +733,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						match = false;
 				if (match) {
 					logger.debug("Found recently generated key matching the acknowledged hash" + 
-					(instanceId != null ? " [" + instanceId + "]" : ""));
+							(instanceId != null ? " [" + instanceId + "]" : ""));
 					ackedMatchingKey = cand.list[i].key;
 				}
 			}
@@ -758,7 +874,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								handleMatchingCandidateKeyPart(round, match, (InetAddress) sender);
 							}
 							else {
-								/* No match, but remember the received key parts in case the match local 
+								/* No match, but remember the received key parts in case the matching local 
 								 * candidates are about to be added. 
 								 */
 								logger.debug("None of the incoming candidate key parts matches, storing it in " +
@@ -770,6 +886,16 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
 								if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length)
 									incomingKeyPartsBufferIndex = 0;
+								
+								/* But since this was a mismatch, need to check if negative criteria might be fulfilled now.
+								 * This method call takes care of it.
+								 */
+								boolean positiveCriteria = checkKeyCriteria((InetAddress) sender);
+								// sanity check
+								if (positiveCriteria) 
+									throw new InternalApplicationException("Received candidate key parts without a match for this round, " +
+											"but just discovered that a key could be generated. This should not happen!" +
+											(instanceId != null ? " [" + instanceId + "]" : ""));
 							}
 						}
 						else
@@ -793,7 +919,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					else if (pack.startsWith(Protocol_CandidateKey)) {
 						int off = pack.indexOf(' ', Protocol_CandidateKey.length());
 						int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
-						logger.debug("Received candidate key composed of " + numParts + " parts");
+						logger.debug("Received candidate key composed of " + numParts + " parts" +
+								(instanceId != null ? " [" + instanceId + "]" : ""));
 						byte[] candKeyHash = Hex.decodeHex(pack.substring(off+1).toCharArray());
 						
 						if (! checkForKeyMatch((InetAddress) sender, numParts, candKeyHash)) {

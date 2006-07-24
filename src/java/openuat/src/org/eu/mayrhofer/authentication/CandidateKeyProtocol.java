@@ -186,6 +186,22 @@ public class CandidateKeyProtocol {
 		 * pruning of aged entries to keep memory consumption finite.
 		 */
 		long lastUpdate = System.currentTimeMillis();
+		/** The first local round number at which a match with this remote host
+		 * occured. The difference between this value and the current value of
+		 * @see #lastRound therefore specifies the number of (local) rounds during
+		 * which authentication with this remote host has been running.
+		 */
+		int firstLocalRoundNumber;
+		/** The number of rounds in which a match was found. */
+		int numMatchingRounds = 0;
+		
+		/** Initializes an instance for a remote host. It only sets @see #firstLocalRoundNumber
+		 * to the current value of @see #lastRound minus 1 (because when creating this object,
+		 * exactly one round has already been involved with the respective remote host).
+		 */
+		MatchingKeyParts() {
+			this.firstLocalRoundNumber = lastRound-1;
+		}
 	}
 
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
@@ -225,10 +241,11 @@ public class CandidateKeyProtocol {
 	 */
 	private int maxRemoteMatchListAge;
 
-	/** Our system-wide counter. Use to generate counter values for the
-	 * candidate key parts.
+	/** Our protocol-wide counter, i.e. a single counter for all remote hosts. Increased with
+	 * each call to @see generateCandidates, i.e. every time a new local feature vector has
+	 * been added. Used to generate counter values for the candidate key parts.
 	 */
-	private static int lastRound = 0;
+	private int lastRound = 0;
 	
 	/** Initializes the candidate key protocol, setting a few parameters and
 	 * creating the local candidate key parts history.
@@ -279,7 +296,8 @@ public class CandidateKeyProtocol {
 	 * @throws InternalApplicationException 
 	 * @see #recentKeyParts
 	 */
-	public synchronized CandidateKeyPartIdentifier[] generateCandidates(byte[][] candidateKeys, float entropy) throws InternalApplicationException {
+	public synchronized CandidateKeyPartIdentifier[] generateCandidates(byte[][] candidateKeys, float entropy) 
+			throws InternalApplicationException {
 		if (candidateKeys == null)
 			throw new IllegalArgumentException("candidateKeys can not be null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -291,8 +309,9 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		CandidateKeyPartIdentifier[] ret = new CandidateKeyPartIdentifier[candidateKeys.length];
+		lastRound++;
 		logger.debug("Adding " + candidateKeys.length + " candidates to local history, assigning round " +
-				++lastRound + 
+				lastRound + 
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 
 		int candidateKeyPartsLength = -1;
@@ -325,7 +344,7 @@ public class CandidateKeyProtocol {
 	}
 	
 	/** Match an incoming list of candidate key part identifiers with the internal
-	 * history and report and remember the candidate the matches.
+	 * history and report and remember the candidate the matches. 
 	 * @param remoteHost An identifier for the remote host that sent the candidate
 	 *                   key part identifierts. The same identifier (i.e. equal in the sense
 	 *                   of Object.equal) must be passed to subsequent calls to this
@@ -339,7 +358,8 @@ public class CandidateKeyProtocol {
 	 *         contained in the matching candidate identifier may be sent to the remote
 	 *         host (or group), but does not have to. This depends on the application.
 	 */
-	public synchronized int matchCandidates(Object remoteHost, CandidateKeyPartIdentifier[] candidateIdentifiers) {
+	public synchronized int matchCandidates(Object remoteHost, CandidateKeyPartIdentifier[] candidateIdentifiers) 
+			throws InternalApplicationException {
 		if (candidateIdentifiers == null)
 			throw new IllegalArgumentException("candidateIdentifiers can not be null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -388,9 +408,14 @@ public class CandidateKeyProtocol {
 							if (candidateIdentifiers[i].candidateNumber != i)
 								logger.warn("Incoming candidate number " + candidateIdentifiers[i].candidateNumber +
 										" in round " + candidateIdentifiers[i].round + " does not match its position " +
-										"in the array: " + i);
+										"in the array: " + i +
+										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							firstMatch = candidateIdentifiers[i].candidateNumber;
-							logger.debug("This is the first match, will report candidate number " + firstMatch);
+							logger.debug("This is the first match, will report candidate number " + firstMatch +
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+							
+							// since this is the first match within the round, increase the number of matching rounds for this remote host
+							increaseNumMatchingRounds(remoteHost);
 						}
 					}
 				}
@@ -398,7 +423,8 @@ public class CandidateKeyProtocol {
 		}
 
 		if (firstMatch == -1)
-			logger.info("No match found, not reporting to remote host");
+			logger.info("No match found, not reporting to remote host" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		return firstMatch;
 	}
 	
@@ -410,8 +436,9 @@ public class CandidateKeyProtocol {
 	 *              the remote host.
 	 * @param candidateNumber The local counter identifiying the matching key parts, as
 	 *                        received from the remote host.
+	 * @throws InternalApplicationException 
 	 */
-	public synchronized void acknowledgeMatches(Object remoteHost, int round, int candidateNumber) {
+	public synchronized void acknowledgeMatches(Object remoteHost, int round, int candidateNumber) throws InternalApplicationException {
 		// need to find the local index in the recent history with that round and number
 		boolean found=false;
 		for (int i=0; i<recentKeyParts.length && !found; i++)
@@ -419,6 +446,8 @@ public class CandidateKeyProtocol {
 					recentKeyParts[i].candidateNumber == candidateNumber) {
 				advanceCandidateToMatch(remoteHost, i);
 				found = true;
+				// also mark this round as an additional match
+				increaseNumMatchingRounds(remoteHost);
 			}
 		if (!found)
 			logger.warn("Local candidate number of round " + round + " with number " + candidateNumber + 
@@ -442,13 +471,15 @@ public class CandidateKeyProtocol {
 		if (matchingKeyParts.containsKey(remoteHost))
 			matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 		else {
-			logger.debug("Creating new match list for remote host " + remoteHost);
+			logger.debug("Creating new match list for remote host " + remoteHost +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			matchList = new MatchingKeyParts();
 			matchingKeyParts.put(remoteHost, matchList);
 		}
 		long curTime = System.currentTimeMillis();
 		matchList.lastUpdate = curTime;
 
+		// TODO: (simply to do) move this check into a background thread
 		// before inserting something new, prune matching lists that are too old
 		for (Iterator allRemoteHosts = matchingKeyParts.keySet().iterator();
 				allRemoteHosts.hasNext(); ) {
@@ -456,10 +487,13 @@ public class CandidateKeyProtocol {
 			long lastUpdate = ((MatchingKeyParts) matchingKeyParts.get(checkHost)).lastUpdate; 
 			if (lastUpdate + maxRemoteMatchListAge < curTime) {
 				logger.debug("Pruning match list for remote host " + checkHost + 
-						", its last update was " + lastUpdate);
+						", its last update was " + lastUpdate +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				// TODO: generate timeout events so that higher levels can react (e.g. with failure events and protocol abort)
 				if (matchingKeyParts.remove(checkHost) == null) 
 					logger.error("Could not purge match list for remote host " + checkHost + 
-							". This should not happen.");
+							". This should not happen." +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			}
 		}
 		
@@ -487,6 +521,56 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
+	/** This small helper function just increases the number of matching rounds for
+	 * a remote host, i.e. @see MatchingKeyParts#numMatchingRounds. However, it does
+	 * some sanity checks and makes sure that other conditions are met. This method
+	 * should be called for the first match in each round, after calling 
+	 * @see #advanceCandidateToMatch.
+	 * @throws InternalApplicationException 
+	 */
+	private synchronized void increaseNumMatchingRounds(Object remoteHost) throws InternalApplicationException {
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+		// sanity check
+		if (matchList == null)
+			throw new InternalApplicationException("Just advanced a candidate to a matching key part, but no match known for remote host " +
+					remoteHost + ". This should not happen!" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		// TODO: make sure that the same round is not counted twice - this is not done now
+		// and works as long as either matches are processed or match messages are sent (but not when both are enabled)
+		matchList.numMatchingRounds++;
+		logger.debug("Remote host " + remoteHost + " now has " + matchList.numMatchingRounds + 
+				" rounds with matches out of " + (lastRound-matchList.firstLocalRoundNumber) +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (lastRound-matchList.firstLocalRoundNumber < matchList.numMatchingRounds) {
+			logger.info("More matching rounds (" + matchList.numMatchingRounds + ") than total rounds (" +
+					(lastRound-matchList.firstLocalRoundNumber) + "), correcting first round number for remote host " +
+					remoteHost + " to " + (lastRound-matchList.numMatchingRounds) +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			matchList.firstLocalRoundNumber = lastRound-matchList.numMatchingRounds;
+		}
+	}
+	
+	/** Returns the number of rounds that have passed during the authentication with
+	 * the specified remote host.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
+	 * @return The number of rounds that have passed with this remote host.
+	 * @throws InternalApplicationException 
+	 */
+	public synchronized int getNumLocalRounds(Object remoteHost) throws InternalApplicationException {
+		if (! matchingKeyParts.containsKey(remoteHost)) {
+			logger.warn("getNumLocalRounds called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			return 0;
+		}
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+		// sanity check
+		if (lastRound <= matchList.firstLocalRoundNumber)
+			throw new InternalApplicationException("lastRound <= first round with remote host " + remoteHost + ". Overflow?" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		return lastRound - matchList.firstLocalRoundNumber;
+	}
+	
 	/** Returns the number of entries in the matches list. 
 	 * @param remoteHost An identifier for the remote host. Refer to 
 	 *                   @see #matchCandidates for more details.
@@ -495,7 +579,8 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized int getNumTotalMatches(Object remoteHost) {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("getNumTotalMatches called for a remote host where no match list has yet been created or it has already been pruned, returning 0");
+			logger.warn("getNumTotalMatches called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return 0;
 		}
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
@@ -506,6 +591,43 @@ public class CandidateKeyProtocol {
 		return numMatches;
 	}
 	
+	/** Returns the fraction of (local) rounds where at least one matching key 
+	 * part has been found for the specified remote host. A local round is defined
+	 * by a call to @see #generateCandidates.
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
+	 * @return The fraction of matching rounds with this remote host. By definition
+	 *         between 0 and 1 (inclusive).
+	 * @throws InternalApplicationException 
+	 */
+	public synchronized float getMatchingRoundsFraction(Object remoteHost) throws InternalApplicationException {
+		if (! matchingKeyParts.containsKey(remoteHost)) {
+			logger.warn("getMatchingRoundsFraction called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			return 0;
+		}
+		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+		
+		// sanity check
+		if (lastRound <= matchList.firstLocalRoundNumber)
+			throw new InternalApplicationException("lastRound <= first round with remote host " + remoteHost + ". Overflow?" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		
+		float ret = ((float) matchList.numMatchingRounds) / (lastRound - matchList.firstLocalRoundNumber);
+		if (ret > 1) {
+			logger.warn("Computed a matching rounds fraction > 1 - this indicates a strange order " +
+					"of local and remote message generation and should not happen in practice! " +
+					"Check the higher level protocol implementation!");
+			ret=1;
+		}
+		// sanity check
+		if (ret < 0)
+			throw new InternalApplicationException("Computed negative fraction with remote host " + remoteHost + ". Overflow?" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+
+			return ret;
+	}
+	
 	/** Returns the sum of all entropy values for matching key parts. 
 	 * @param remoteHost An identifier for the remote host. Refer to 
 	 *                   @see #matchCandidates for more details.
@@ -514,7 +636,8 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized float getSumMatchEntropy(Object remoteHost) {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("getSumMatchEntropy called for a remote host where no match list has yet been created or it has already been pruned, returning 0");
+			logger.warn("getSumMatchEntropy called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return 0;
 		}
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
@@ -541,7 +664,8 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized CandidateKey generateKey(Object remoteHost) throws InternalApplicationException {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("generateKey called for a remote host where no match list has yet been created or it has already been pruned, returning null");
+			logger.warn("generateKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 
@@ -614,7 +738,8 @@ public class CandidateKeyProtocol {
 				throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 
-			logger.debug("Comparing " + keyParts.length + " candidate keys at offset " + offset);
+			logger.debug("Comparing " + keyParts.length + " candidate keys at offset " + offset +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			// and compare the target hash with hashes over all candidate keys
 			for (int i=0; i<keyParts.length; i++) {
 				byte[] candidateHash = Hash.doubleSHA256(keyParts[i], useJSSE);
