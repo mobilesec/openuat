@@ -11,6 +11,8 @@ package org.eu.mayrhofer.authentication;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.StringTokenizer;
 
 import org.apache.commons.codec.DecoderException;
@@ -335,6 +337,29 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	protected void addCandidates(byte[][] keyParts, float entropy) throws InternalApplicationException, IOException {
 		// this is synchronized so that handleMessage will not try to match while we 
 		synchronized (globalLock) {
+			{
+				/* Optimization: Check for duplicates in the key parts - this costs some 
+				 * performance now, but can save significantly later on. This whole block can be
+				 * skipped entirely, and it will still work the very same way (maybe just doing some
+				 * more work later on). However, hashing arrays should be fast, so performance
+				 * impact should be negligable anyways.
+				 */
+				HashSet parts = new HashSet();
+				for (int i=0; i<keyParts.length; i++)
+					parts.add(keyParts[i]);
+				// sanity check
+				if (parts.size() > keyParts.length)
+					throw new InternalApplicationException("Set of hashed key parts is bigger than the original vector. This should not happen");
+				if (parts.size() < keyParts.length) {
+					logger.info("Duplicate feature vectors detected: " + parts.size() +
+							" unique vectors out of " + keyParts.length);
+					keyParts = new byte[parts.size()][];
+					Iterator iter = parts.iterator();
+					for (int i=0; i<keyParts.length; i++)
+						keyParts[i] = (byte[]) iter.next();
+				}
+			}
+			
 			CandidateKeyPartIdentifier[] candidateKeyParts = ckp.generateCandidates(keyParts, entropy);
 			/* send out as many UDP multicast packets as necessary to transmit all the generated 
 			 * candidate key parts
@@ -890,12 +915,12 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								/* But since this was a mismatch, need to check if negative criteria might be fulfilled now.
 								 * This method call takes care of it.
 								 */
-								boolean positiveCriteria = checkKeyCriteria((InetAddress) sender);
-								// sanity check
-								if (positiveCriteria) 
-									throw new InternalApplicationException("Received candidate key parts without a match for this round, " +
-											"but just discovered that a key could be generated. This should not happen!" +
-											(instanceId != null ? " [" + instanceId + "]" : ""));
+								checkKeyCriteria((InetAddress) sender);
+								/* If positive criteria are fulfilled, don't care here. When the last
+								 * match was received (or the last candidate key message), no key could
+								 * be generated, so now it will not be possible either (no changes to
+								 * the "positive" match set).
+								 */
 							}
 						}
 						else
