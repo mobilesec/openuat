@@ -9,6 +9,7 @@
 package org.eu.mayrhofer.authentication;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -510,6 +511,7 @@ public class CandidateKeyProtocol {
 			matchList.parts[matchList.index++] = recentKeyParts[candidateIndex];
 			logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
 					" with number " + recentKeyParts[candidateIndex].candidateNumber + " to matching status" +
+					" (match list index is now " + matchList.index + ")" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			if (matchList.index == matchList.parts.length)
 				matchList.index = 0;
@@ -827,12 +829,16 @@ public class CandidateKeyProtocol {
 		if (extractAllCombinations)
 			duplicateRounds = new HashMap();
 		/* copy all rounds to the temporary array to sort them, but make sure
-		   that each round is represented by one candidate */
-		int numCopied=0, keyPartsLength=0;
+		   that each round is represented by exactly one candidate */
+		int numCopied=0, keyPartsLength=0, numMatches=0;
 		for (int i=offset; i<matchList.parts.length; i++) {
 			if (matchList.parts[i] != null) {
+				numMatches++;
 				boolean alreadyCopied = false;
-				for (int j=0; j<numCopied; j++) {
+				/* (Small) Performance optimization: can stop looking after the first match, since round 
+				 * numbers in initialCombination  are guaranteed to be uniqeue. 
+				 */
+				for (int j=0; j<numCopied && !alreadyCopied; j++) {
 					if (matchList.parts[i].round == initialCombination[j].round) {
 						alreadyCopied = true;
 						if (!extractAllCombinations) {
@@ -868,17 +874,32 @@ public class CandidateKeyProtocol {
 			}
 		}
 		if (numParts > numCopied) {
-			logger.error("Could not assemble " + numParts + " key parts, only got " + numCopied +
+			String roundNumbers = "";
+			for (int j=0; j<numCopied; j++) {
+				roundNumbers += initialCombination[j].round;
+				roundNumbers += " ";
+			}
+			logger.info("Could not assemble " + numParts + " key parts, only got " + numCopied +
+					" from " + numMatches + " matches in the list from offset " + offset + 
+					", encountered round numbers: " + roundNumbers +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			return null;
 		}
 		// but if we copied more, only use as many as requested
-		if (numParts != -1 && numCopied > numParts)
+		if (numParts != -1 && numCopied > numParts) {
+			logger.debug("Collected " + numCopied + " rounds from the match list, but only want " + numParts +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			numCopied = numParts;
+		}
 		
 		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts" +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread + " + Thread.currentThread());
+		// sort by round number, ascending
 		Arrays.sort(initialCombination, 0, numCopied);
+		// and remember which round numbers to use (for performance purposes, see below)
+		BitSet roundNumbersToUse = new BitSet();
+		for (int i=0; i<numCopied; i++)
+			roundNumbersToUse.set(initialCombination[i].round);
 		
 		CandidateKeyPart[][] allCombinations = null;
 		// and now (on the sorted array because it can be faster), explode combinations
@@ -889,10 +910,18 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			for (int i=0; i<roundsWithDuplicates.length; i++) {
 				LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
-				logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
-						" alternatives to its first match" +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				numCombinations *= (alternativeIndices.size()+1);
+				/* (Large) Performance optimization: only use those rounds that are actually used for
+				 * creating the key later on, because it might save tremendously on the "explosion".
+				 */
+				if (roundNumbersToUse.get(((Integer) roundsWithDuplicates[i]).intValue())) { 
+					logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
+							" alternatives to its first match" + 
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+					numCombinations *= (alternativeIndices.size()+1);
+				}
+				else
+					logger.debug("Ignoring round " + roundsWithDuplicates[i] + " duplicates" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			}
 			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -954,7 +983,13 @@ public class CandidateKeyProtocol {
 			
 			// only for debugging purposes
 			if (logger.isDebugEnabled()) {
-				logger.debug("Following candidate keys have been assembled (candidate numbers for each round):" +
+				String roundNumbers = "";
+				for (int j=0; j<numCopied; j++) {
+					roundNumbers += initialCombination[j].round;
+					roundNumbers += " ";
+				}
+				logger.debug("Following candidate keys have been assembled (candidate numbers for rounds " +
+						roundNumbers + "):" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				for (int j=0; j<numCombinations; j++) {
 					String candidateNumbers = "";
