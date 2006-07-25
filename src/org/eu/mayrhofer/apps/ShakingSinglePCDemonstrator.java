@@ -343,23 +343,26 @@ public class ShakingSinglePCDemonstrator {
 			super(numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
-		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
-			logger.info("Protocol variant 2 succedded with " + remote + 
-					": shared key is " + sharedSessionKey.toString());
+		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
+			logger.info("Protocol variant 2 succedded with " + remote + " with " + 
+					matchingRoundsFraction + " matching rounds: shared key is " + sharedSessionKey.toString());
+			final float fraction = matchingRoundsFraction;
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
 					matchingField.setBackground(new Color(Display.getDefault(), 0, 255, 0));
-					//matchingValue.setText(Double.toString(lastCoherenceMean));
+					matchingValue.setText(Float.toString(fraction));
 				}
 			});
 		}
 
-		protected void protocolFailedHook(String remote, Exception e, String message) {
-			logger.info("Protocol variant 2 failed with " + remote + ": " + e + ", " + message); 
+		protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
+			logger.info("Protocol variant 2 failed with " + remote + " with " + 
+					matchingRoundsFraction + " matching rounds: " + e + ", " + message); 
+			final float fraction = matchingRoundsFraction;
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
 					matchingField.setBackground(new Color(Display.getDefault(), 255, 0, 0));
-					//matchingValue.setText(Double.toString(lastCoherenceMean));
+					matchingValue.setText(Double.toString(fraction));
 				}
 			});
 		}

@@ -177,12 +177,14 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		curSegment = null;
 	}
 
-	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
-		logger.info("CKP succeeded with remote " + remote + ", shared key is now " + sharedSessionKey.toString());
+	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
+		logger.info("CKP succeeded with remote " + remote + " with " + matchingRoundsFraction + 
+				" matching rounds, shared key is now " + sharedSessionKey.toString());
 	}
 
-	protected void protocolFailedHook(String remote, Exception e, String message) {
-		logger.error("CKP failed with remote " + remote + ": " + message + "/" + e);
+	protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
+		logger.error("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
+				" matching rounds: " + message + "/" + e);
 	}
 
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
