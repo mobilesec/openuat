@@ -716,7 +716,7 @@ public class CandidateKeyProtocol {
 		}
 
 		// assemble the key for all available parts
-		Object[] keyRet = assembleKeyFromMatches(remoteHost, 0, -1, false);
+		Object[] keyRet = assembleKeyFromMatches(remoteHost, -1, false);
 		byte[] keyParts = ((byte[][]) keyRet[0])[0];
 		int numCopied = ((Integer) keyRet[1]).intValue();
 		return generateKey(keyParts, numCopied);
@@ -763,43 +763,38 @@ public class CandidateKeyProtocol {
 				new String(Hex.encodeHex(hash)) + " from " + numParts + " parts" +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
-		// TODO: the candidate searching would not be necessary if we could be sure that there would be only
-		// one match for each round. that could make it faster
-
-		for (int offset=0; offset < matchList.parts.length-numParts; offset++) {
-			Object[] keyRet = assembleKeyFromMatches(remoteHost, offset, numParts, true);
-			if (keyRet == null) {
-				/* if not enough key parts could be found for this offset, it will not be possible
-				   for larger ones */
-				logger.debug("Could not generate key candidates with " + numParts + " parts at offset " + offset +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				return null;
-			}
+		Object[] keyRet = assembleKeyFromMatches(remoteHost, numParts, true);
+		if (keyRet == null) {
+			/* if not enough key parts could be found for this offset, it will not be possible
+			   for larger ones */
+			logger.debug("Could not generate key candidates with " + numParts + " parts" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			return null;
+		}
 			
-			// generate all candidates for this offset
-			byte[][] keyParts = (byte[][]) keyRet[0];
-			int numCopied = ((Integer) keyRet[1]).intValue();
-			// sanity check
-			if (numCopied != numParts) 
-				throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		// generate all candidates for this offset
+		byte[][] keyParts = (byte[][]) keyRet[0];
+		int numCopied = ((Integer) keyRet[1]).intValue();
+		// sanity check
+		if (numCopied != numParts) 
+			throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 
-			logger.debug("Comparing " + keyParts.length + " candidate keys at offset " + offset +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			// and compare the target hash with hashes over all candidate keys
-			for (int i=0; i<keyParts.length; i++) {
-				byte[] candidateHash = Hash.doubleSHA256(keyParts[i], useJSSE);
-				logger.debug("Checking candidate number " + i + ": hash " + new String(Hex.encodeHex(candidateHash)) +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				boolean match = true;
-				for (int j=0; j<candidateHash.length && j<hash.length && match; j++)
-					if (candidateHash[j] != hash[j])
-						match = false;
-				if (match) {
-					logger.info("Could generate key with same hash" +
-							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-					return generateKey(keyParts[i], numParts);
-				}
+		logger.debug("Comparing " + keyParts.length + " candidate keys" +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		// and compare the target hash with hashes over all candidate keys
+		for (int i=0; i<keyParts.length; i++) {
+			byte[] candidateHash = Hash.doubleSHA256(keyParts[i], useJSSE);
+			logger.debug("Checking candidate number " + i + ": hash " + new String(Hex.encodeHex(candidateHash)) +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			boolean match = true;
+			for (int j=0; j<candidateHash.length && j<hash.length && match; j++)
+				if (candidateHash[j] != hash[j])
+					match = false;
+			if (match) {
+				logger.info("Could generate key with same hash" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				return generateKey(keyParts[i], numParts);
 			}
 		}
 		
@@ -809,7 +804,7 @@ public class CandidateKeyProtocol {
 	}
 
 	// TODO: implement me
-	public synchronized CandidateKey searchKey(Object remoteHost, byte[] hash, int[][] remoteCandidateNumbers) throws InternalApplicationException {
+	public synchronized CandidateKey searchKey(Object remoteHost, byte[] hash, int [][] localIndices, int[][] remoteIndices) throws InternalApplicationException {
 		return null;
 	}
 	
@@ -858,12 +853,13 @@ public class CandidateKeyProtocol {
 	 * successful. On success, it returns an array of assembled plain text keys (only
 	 * one element if extractAllCombinations is set to false), and an Integer specifying how
 	 * many parts have been copied (guaranteed to be equal to numParts if not -1).
+	 * @throws InternalApplicationException 
 	 */
-	private synchronized Object[] assembleKeyFromMatches(Object remoteHost, int offset, int numParts, boolean extractAllCombinations) {
+	private synchronized Object[] assembleKeyFromMatches(Object remoteHost, int numParts, boolean extractAllCombinations) throws InternalApplicationException {
 		if (! matchingKeyParts.containsKey(remoteHost))
 			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		logger.debug("assembleKeyFromMatches called for remote host " + remoteHost + ", offset " + offset + 
+		logger.debug("assembleKeyFromMatches called for remote host " + remoteHost + 
 				" for " + numParts + " parts, extractAllCombinations=" + extractAllCombinations + " in thread " + Thread.currentThread() +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
@@ -880,7 +876,7 @@ public class CandidateKeyProtocol {
 		/* copy all rounds to the temporary array to sort them, but make sure
 		   that each round is represented by exactly one candidate */
 		int numCopied=0, numMatches=0;
-		for (int i=offset; i<matchList.parts.length; i++) {
+		for (int i=0; i<matchList.parts.length; i++) {
 			if (matchList.parts[i] != null) {
 				numMatches++;
 				boolean alreadyCopied = false;
@@ -928,137 +924,181 @@ public class CandidateKeyProtocol {
 				roundNumbers += " ";
 			}
 			logger.info("Could not assemble " + numParts + " key parts, only got " + numCopied +
-					" from " + numMatches + " matches in the list from offset " + offset + 
-					", encountered round numbers: " + roundNumbers +
+					" from " + numMatches + " matches in the list, encountered round numbers: " + roundNumbers +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			return null;
 		}
-		// but if we copied more, only use as many as requested
+		
+		/* But if we copied more, only use as many as requested - however, this means another 
+		 * explosion into the different possibilities of choosing the rounds.
+		 */ 
+		BitSet[] roundNumbersToUse = null;
 		if (numParts != -1 && numCopied > numParts) {
 			logger.debug("Collected " + numCopied + " rounds from the match list, but only want " + numParts +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
-			numCopied = numParts;
+			
+			if (!extractAllCombinations)
+				logger.warn("extractAllCombinations is set to false, but collected more parts than explicitly requested. " +
+						"Will skip exploding into different possibilities of choosing rounds and only choose the first rounds.");
+			else {
+				// really need to explode the possibilities for different round numbers here
+				int[] set = new int[numCopied];
+				for (int i=0; i<numCopied; i++)
+					set[i] = initialCombination[i].round;
+				roundNumbersToUse = explodeKOutOfN(set, numParts);
+			}
 		}
-		
-		logger.info("Generating candidate key(s) from " + numCopied + " matching key parts" +
+		else {
+			// simple case: all collected rounds are used
+			roundNumbersToUse = new BitSet[1];
+			roundNumbersToUse[0] = new BitSet();
+			for (int i=0; i<numCopied; i++)
+				roundNumbersToUse[0].set(initialCombination[i].round);
+			numParts = numCopied;
+		}
+		// from here on, numParts will represent the number we should generate, and numCopied the number we collected
+
+		logger.info("Generating candidate key(s) from " + numParts + " matching key parts" +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread + " + Thread.currentThread());
 		// sort by round number, ascending
-		Arrays.sort(initialCombination, 0, numCopied);
+		Arrays.sort(initialCombination, 0, numParts);
 		// and find out how long the resulting key(s) will be (all _must_ have exactly the same length)
 		int keyPartsLength=0;
-		for (int i=0; i<numCopied; i++)
+		for (int i=0; i<numParts; i++)
 			keyPartsLength += initialCombination[i].keyPart.length;
 		
 		CandidateKeyPart[][] allCombinations = null;
 		// and now (on the sorted array because it can be faster), explode combinations
 		if (extractAllCombinations) {
-			// remember which round numbers to use (for performance purposes, see below)
-			BitSet roundNumbersToUse = new BitSet();
-			for (int i=0; i<numCopied; i++)
-				roundNumbersToUse.set(initialCombination[i].round);
-
-			int numCombinations = 1;
-			Object[] roundsWithDuplicates = duplicateRounds.keySet().toArray();
-			logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			for (int i=0; i<roundsWithDuplicates.length; i++) {
-				LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
-				/* (Large) Performance optimization: only use those rounds that are actually used for
-				 * creating the key later on, because it might save tremendously on the "explosion".
-				 */
-				if (roundNumbersToUse.get(((Integer) roundsWithDuplicates[i]).intValue())) { 
-					logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
-							" alternatives to its first match" + 
-							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-					numCombinations *= (alternativeIndices.size()+1);
+			LinkedList allTmpCombinations = new LinkedList();
+			int numAllCombinations = 0;
+			for (int ri=0; ri<roundNumbersToUse.length; ri++) {
+				logger.debug("Generating all candidates for rounds combination " + ri +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				
+				int numCombinations = 1;
+				Object[] roundsWithDuplicates = duplicateRounds.keySet().toArray();
+				logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				for (int i=0; i<roundsWithDuplicates.length; i++) {
+					LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
+					/* (Large) Performance optimization: only use those rounds that are actually used for
+					 * creating the key later on, because it might save tremendously on the "explosion".
+					 */
+					if (roundNumbersToUse[ri].get(((Integer) roundsWithDuplicates[i]).intValue())) { 
+						logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
+								" alternatives to its first match" + 
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						numCombinations *= (alternativeIndices.size()+1);
+					}
+					else
+						logger.debug("Ignoring round " + roundsWithDuplicates[i] + " duplicates" +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				}
-				else
-					logger.debug("Ignoring round " + roundsWithDuplicates[i] + " duplicates" +
-							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			}
-			logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			
-			allCombinations = new CandidateKeyPart[numCombinations][];
-			// seed with initial candidate
-			allCombinations[0] = new CandidateKeyPart[numCopied];
-			System.arraycopy(initialCombination, 0, allCombinations[0], 0, numCopied);
-			for (int j=1; j<numCombinations; j++) {
-				allCombinations[j] = new CandidateKeyPart[numCopied];
-			}
-			// and copy, changing the candidates
-			int spacing=1;
-			for (int i=0; i<numCopied; i++) {
-				Integer round = new Integer(allCombinations[0][i].round);
-				if (! duplicateRounds.containsKey(round)) {
-					// simple, just copy
-					logger.debug("Round " + round + " does not have multiple candidates" +
-							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-					for (int j=1; j<numCombinations; j++)
-						allCombinations[j][i] = allCombinations[0][i];
+				CandidateKeyPart[][] tmpCombinations = new CandidateKeyPart[numCombinations][];
+				// seed with initial candidate
+				tmpCombinations[0] = new CandidateKeyPart[numParts];
+				// take exactly those rounds that we currently use in this iteration
+				int outI=0;
+				for (int i=0; i<numCopied; i++)
+					if (roundNumbersToUse[ri].get(initialCombination[i].round))
+						tmpCombinations[0][outI++] = initialCombination[i];
+				for (int j=1; j<numCombinations; j++) {
+					tmpCombinations[j] = new CandidateKeyPart[numParts];
 				}
-				else {
-					LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(round);
-					// first collect all the candidate key parts for this round, including the initial alternative
-					CandidateKeyPart[] alternatives = new CandidateKeyPart[alternativeIndices.size()+1];
-					alternatives[0] = allCombinations[0][i];
-					for (int k=1; k<alternatives.length; k++)
-						alternatives[k] = matchList.parts[((Integer) alternativeIndices.get(k-1)).intValue()];
-					logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
-							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-					/** This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
-					 * 5 different rounds a, b, c, d, and e are 1, 2, 1, 3, and 2, respectively, it will
-					 * produce the following pattern:
-					 * Round        0  1  2  3  4
-					 * Candidate    a  b1 c  d1 e1
-					 *              a  b2 c  d1 e1
-					 *              a  b1 c  d2 e1
-					 *              a  b2 c  d2 e1
-					 *              a  b1 c  d3 e1
-					 *              a  b2 c  d3 e1
-					 *              a  b1 c  d1 e2
-					 *              a  b2 c  d1 e2
-					 *              a  b1 c  d2 e2
-					 *              a  b2 c  d2 e2
-					 *              a  b1 c  d3 e2
-					 *              a  b2 c  d3 e2
-					 */ 
-					for (int j=0; j<numCombinations; j+=alternatives.length*spacing) {
-						for (int k=0; k<alternatives.length; k++) {
-							for (int l=0; l<spacing; l++) {
-								allCombinations[j+k*spacing+l][i] = alternatives[k];
+				// and copy, changing the candidates
+				int spacing=1;
+				for (int i=0; i<numParts; i++) {
+					Integer round = new Integer(tmpCombinations[0][i].round);
+					if (! duplicateRounds.containsKey(round)) {
+						// simple, just copy
+						logger.debug("Round " + round + " does not have multiple candidates" +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						for (int j=1; j<numCombinations; j++)
+							tmpCombinations[j][i] = tmpCombinations[0][i];
+					}
+					else {
+						LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(round);
+						// first collect all the candidate key parts for this round, including the initial alternative
+						CandidateKeyPart[] alternatives = new CandidateKeyPart[alternativeIndices.size()+1];
+						alternatives[0] = tmpCombinations[0][i];
+						for (int k=1; k<alternatives.length; k++)
+							alternatives[k] = matchList.parts[((Integer) alternativeIndices.get(k-1)).intValue()];
+						logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						/* This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
+						 * 5 different rounds a, b, c, d, and e are 1, 2, 1, 3, and 2, respectively, it will
+						 * produce the following pattern:
+						 * Round        0  1  2  3  4
+						 * Candidate    a  b1 c  d1 e1
+						 *              a  b2 c  d1 e1
+						 *              a  b1 c  d2 e1
+						 *              a  b2 c  d2 e1
+						 *              a  b1 c  d3 e1
+						 *              a  b2 c  d3 e1
+						 *              a  b1 c  d1 e2
+						 *              a  b2 c  d1 e2
+						 *              a  b1 c  d2 e2
+						 *              a  b2 c  d2 e2
+						 *              a  b1 c  d3 e2
+						 *              a  b2 c  d3 e2
+						 */ 
+						for (int j=0; j<numCombinations; j+=alternatives.length*spacing) {
+							for (int k=0; k<alternatives.length; k++) {
+								for (int l=0; l<spacing; l++) {
+									tmpCombinations[j+k*spacing+l][i] = alternatives[k];
+								}
 							}
 						}
+						// next column will have larger spacing
+						spacing *= alternatives.length;
 					}
-					// next column will have larger spacing
-					spacing *= alternatives.length;
 				}
-			}
-			
-			// only for debugging purposes
-			if (logger.isDebugEnabled()) {
-				String roundNumbers = "";
-				for (int j=0; j<numCopied; j++) {
-					roundNumbers += initialCombination[j].round;
-					roundNumbers += " ";
-				}
-				logger.debug("Following candidate keys have been assembled (candidate numbers for rounds " +
-						roundNumbers + "):" +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				for (int j=0; j<numCombinations; j++) {
-					String candidateNumbers = "";
-					for (int i=0; i<numCopied; i++)
-						candidateNumbers += allCombinations[j][i].candidateNumber + " ";
-					logger.debug("    " + candidateNumbers +
+				// and remember this combination
+				allTmpCombinations.add(tmpCombinations);
+				numAllCombinations += numCombinations;
+
+				// only for debugging purposes
+				if (logger.isDebugEnabled()) {
+					String roundNumbers = "";
+					for (int j=0; j<numParts; j++) {
+						roundNumbers += initialCombination[j].round;
+						roundNumbers += " ";
+					}
+					logger.debug("Following candidate keys have been assembled (candidate numbers for rounds " +
+							roundNumbers + "):" +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+					for (int j=0; j<numCombinations; j++) {
+						String candidateNumbers = "";
+						for (int i=0; i<numParts; i++)
+							candidateNumbers += tmpCombinations[j][i].candidateNumber + " ";
+						logger.debug("    " + candidateNumbers +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+					}
 				}
 			}
+			// need to convert to a nice array now...
+			logger.debug("All combinations (explosions into outer explosion) yielded " + numAllCombinations + " candidates" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			allCombinations = new CandidateKeyPart[numAllCombinations][];
+			int i=0;
+			for (Iterator iter=allTmpCombinations.iterator(); iter.hasNext();) {
+				CandidateKeyPart[][] tmpCombinations = (CandidateKeyPart[][]) iter.next();
+				System.arraycopy(tmpCombinations, 0, allCombinations, i, tmpCombinations.length);
+				i+=tmpCombinations.length;
+			}
+			// sanity check
+			if (i != numAllCombinations)
+				throw new InternalApplicationException("Did not copy the same number of combinations as expected. This should not happen!");
 		}
 		else {
 			// just use the first possible candidate in each round, i.e. the one already collected
 			if (logger.isDebugEnabled()) {
 				String roundNumbers = "";
-				for (int j=0; j<numCopied; j++) {
+				for (int j=0; j<numParts; j++) {
 					roundNumbers += initialCombination[j].round;
 					roundNumbers += " ";
 				}
@@ -1066,8 +1106,8 @@ public class CandidateKeyProtocol {
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			}
 			allCombinations = new CandidateKeyPart[1][];
-			allCombinations[0] = new CandidateKeyPart[numCopied];
-			System.arraycopy(initialCombination, 0, allCombinations[0], 0, numCopied);
+			allCombinations[0] = new CandidateKeyPart[numParts];
+			System.arraycopy(initialCombination, 0, allCombinations[0], 0, numParts);
 		}
 		
 		// this is the concatenated "plain text", which does not have key-quality attributes
@@ -1077,8 +1117,8 @@ public class CandidateKeyProtocol {
 			//logger.debug("  Assembling combination " + i + " (length " + keyPartsLength + " bytes)");
 			keyParts[i] = new byte[keyPartsLength];
 			int outPos=0;
-			for (int j=0; j<numCopied; j++) {
-				//logger.debug("   Part " + i + ": copying " + allCombinations[i][j].keyPart.length + " bytes to offset " + outPos);
+			for (int j=0; j<numParts; j++) {
+				logger.trace("   Part " + i + ": copying " + allCombinations[i][j].keyPart.length + " bytes to offset " + outPos);
 				System.arraycopy(allCombinations[i][j].keyPart, 0, keyParts[i], outPos, 
 						allCombinations[i][j].keyPart.length);
 				outPos += allCombinations[i][j].keyPart.length;
@@ -1087,7 +1127,90 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		// I hate Java
-		return new Object[] {keyParts, new Integer(numCopied) };
+		return new Object[] {keyParts, new Integer(numParts) };
+	}
+	
+	/** Just a small helper function to compute the factorial. */
+	private static int fact(int n) {
+		int f = 1;
+		for (int i=2; i<=n; i++)
+			f *= i;
+		return f;
+	}
+	
+	// TODO: this should actually be split into a helper class
+	/** Returns an array of bit sets, where each of the bit sets represents one combination
+	 * of choosing k values from the set.
+	 * This is only public so that JUnit tests can cover it. 
+	 * @param set The set of numbers to choose from.
+	 * @param k How many to choose from the set. This must be <= set.length
+	 * @return  The number of numParts totalParts is 
+	 *          (numTotal over numParts) = (n over k) = (n!) / (k! * (n-k)!)
+	 * @throws InternalApplicationException 
+	 */
+	public static BitSet[] explodeKOutOfN(int[] set, int k) throws InternalApplicationException {
+		// just some sanity checks
+		if (set == null)
+			throw new IllegalArgumentException("Need a set of elements to choose from");
+		if (k > set.length)
+			throw new IllegalArgumentException("Can not choose " + k + " elements from a set of length " + set.length);
+		if (k < 1)
+			throw new IllegalArgumentException("Need to choose at least one element");
+		
+		int numSetCombinations = fact(set.length) / (fact(k) * fact(set.length - k));
+		logger.debug("Pre-exploding into " + numSetCombinations + " different combinations of rounds");
+		BitSet[] combinations = new BitSet[numSetCombinations];
+		
+		/* This is a classical backtracking algorithm. */
+		int[] indices = new int[k];	// keeps the current indices into the set (unique, sorted)
+		int level=0,				 	// the index which is currently modified in indices (i.e. a meta-index), 0<=level<k
+			combinationNumber=0;		// the index into combinations, i.e. where to write the next combination to
+		indices[0] = -1;				// initializazion: start "outside" normal boundaries
+		// as long as it's still possible to create a new combination with this start...
+		while (indices[0] <= set.length-k) {
+			indices[level]++;
+			logger.trace("Now at level " + level + ", index is " + indices[level]);
+			if (level < k-1) {
+				// is it possible to go forward?
+				if (indices[level] < set.length-1) {
+					logger.trace("Not last level, forward track");
+					// yes, forward track
+					indices[level+1] = indices[level];
+					level++;
+				}
+				else {
+					logger.trace("Not last level, back track");
+					// no, need to back track even further
+					level--;
+				}
+			}
+			else {
+				// still a valid combination?
+				if (indices[level] < set.length) {
+					logger.trace("Last level, storing indices/values ");
+					// yes, last level, remember current combination
+					combinations[combinationNumber] = new BitSet();
+					for (int i=0; i<k; i++) {
+						combinations[combinationNumber].set(set[indices[i]]);
+						logger.trace(indices[i] + "/" + set[indices[i]] + " ");
+					}
+					logger.trace("at output position " + combinationNumber);
+					combinationNumber++;
+				}
+				else {
+					logger.trace("Last level, invalid index, back track");
+					// no longer valid, back track
+					level--;
+				}
+			}
+		}
+		
+		// sanity check
+		if (combinationNumber != numSetCombinations)
+			throw new InternalApplicationException("Aiee, got backtracking wrong (" + combinationNumber + 
+					" instead of " + numSetCombinations + "). This should not happen!");
+		
+		return combinations;
 	}
 	
 	/** Another small helper function that creates a proper CandidateKey object
