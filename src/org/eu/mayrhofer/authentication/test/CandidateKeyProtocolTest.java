@@ -8,6 +8,8 @@
  */
 package org.eu.mayrhofer.authentication.test;
 
+import java.util.BitSet;
+
 import org.eu.mayrhofer.authentication.CandidateKeyProtocol;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 
@@ -670,5 +672,98 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1_2.key, k1_3.key));
 		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k2_1.hash, k3_1.hash));
 		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k2_1.key, k3_1.key));
+	}
+	
+	// this should actually be split into a helper class
+	public void testSetExploder() throws InternalApplicationException {
+		int[] set = {1, 2, 3, 4, 5};
+		
+		BitSet[] combinations = CandidateKeyProtocol.explodeKOutOfN(set, 4);
+		Assert.assertNotNull(combinations);
+		Assert.assertEquals(5, combinations.length);
+		Assert.assertNotNull(combinations[0]);
+		Assert.assertEquals(4, combinations[0].cardinality());
+		Assert.assertTrue(combinations[0].get(1));
+		Assert.assertTrue(combinations[0].get(2));
+		Assert.assertTrue(combinations[0].get(3));
+		Assert.assertTrue(combinations[0].get(4));
+		Assert.assertNotNull(combinations[1]);
+		Assert.assertEquals(4, combinations[1].cardinality());
+		Assert.assertTrue(combinations[1].get(1));
+		Assert.assertTrue(combinations[1].get(2));
+		Assert.assertTrue(combinations[1].get(3));
+		Assert.assertTrue(combinations[1].get(5));
+		Assert.assertNotNull(combinations[2]);
+		Assert.assertEquals(4, combinations[2].cardinality());
+		Assert.assertTrue(combinations[2].get(1));
+		Assert.assertTrue(combinations[2].get(2));
+		Assert.assertTrue(combinations[2].get(4));
+		Assert.assertTrue(combinations[2].get(5));
+		Assert.assertNotNull(combinations[3]);
+		Assert.assertEquals(4, combinations[3].cardinality());
+		Assert.assertTrue(combinations[3].get(1));
+		Assert.assertTrue(combinations[3].get(3));
+		Assert.assertTrue(combinations[3].get(4));
+		Assert.assertTrue(combinations[3].get(5));
+		Assert.assertNotNull(combinations[1]);
+		Assert.assertEquals(4, combinations[4].cardinality());
+		Assert.assertTrue(combinations[4].get(2));
+		Assert.assertTrue(combinations[4].get(3));
+		Assert.assertTrue(combinations[4].get(4));
+		Assert.assertTrue(combinations[4].get(5));
+
+		combinations = CandidateKeyProtocol.explodeKOutOfN(set, 3);
+		Assert.assertNotNull(combinations);
+		Assert.assertEquals(10, combinations.length);
+		Assert.assertNotNull(combinations[0]);
+		Assert.assertEquals(3, combinations[0].cardinality());
+		Assert.assertTrue(combinations[0].get(1));
+		Assert.assertTrue(combinations[0].get(2));
+		Assert.assertTrue(combinations[0].get(3));
+		Assert.assertNotNull(combinations[1]);
+		Assert.assertEquals(3, combinations[1].cardinality());
+		Assert.assertTrue(combinations[1].get(1));
+		Assert.assertTrue(combinations[1].get(2));
+		Assert.assertTrue(combinations[1].get(4));
+		Assert.assertNotNull(combinations[2]);
+		Assert.assertEquals(3, combinations[2].cardinality());
+		Assert.assertTrue(combinations[2].get(1));
+		Assert.assertTrue(combinations[2].get(2));
+		Assert.assertTrue(combinations[2].get(5));
+		Assert.assertNotNull(combinations[3]);
+		Assert.assertEquals(3, combinations[3].cardinality());
+		Assert.assertTrue(combinations[3].get(1));
+		Assert.assertTrue(combinations[3].get(3));
+		Assert.assertTrue(combinations[3].get(4));
+		Assert.assertNotNull(combinations[4]);
+		Assert.assertEquals(3, combinations[4].cardinality());
+		Assert.assertTrue(combinations[4].get(1));
+		Assert.assertTrue(combinations[4].get(3));
+		Assert.assertTrue(combinations[4].get(5));
+		Assert.assertNotNull(combinations[5]);
+		Assert.assertEquals(3, combinations[5].cardinality());
+		Assert.assertTrue(combinations[5].get(1));
+		Assert.assertTrue(combinations[5].get(4));
+		Assert.assertTrue(combinations[5].get(5));
+		Assert.assertNotNull(combinations[6]);
+		Assert.assertEquals(3, combinations[6].cardinality());
+		Assert.assertTrue(combinations[6].get(2));
+		Assert.assertTrue(combinations[6].get(3));
+		Assert.assertTrue(combinations[6].get(4));
+		Assert.assertNotNull(combinations[7]);
+		Assert.assertEquals(3, combinations[7].cardinality());
+		Assert.assertTrue(combinations[7].get(2));
+		Assert.assertTrue(combinations[7].get(3));
+		Assert.assertTrue(combinations[7].get(5));
+		Assert.assertNotNull(combinations[8]);
+		Assert.assertEquals(3, combinations[8].cardinality());
+		Assert.assertTrue(combinations[8].get(2));
+		Assert.assertTrue(combinations[8].get(4));
+		Assert.assertTrue(combinations[8].get(5));
+		Assert.assertNotNull(combinations[9]);
+		Assert.assertEquals(3, combinations[9].cardinality());
+		Assert.assertTrue(combinations[9].get(3));
+		Assert.assertTrue(combinations[9].get(4));
+		Assert.assertTrue(combinations[9].get(5));
 	}
 }
