@@ -444,17 +444,21 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @param sharedSessionKey The shared session key (which is different from the
 	 *                         shared authentication key used for verification) that
 	 *                         can now be used for subsequent secure communication.
+	 * @param matchingRoundsFraction The fraction of rounds where a match could be
+	 *                               found.
 	 */
 	protected abstract void protocolSucceededHook(String remote, 
-			byte[] sharedSessionKey);
+			byte[] sharedSessionKey, float matchingRoundsFraction);
 	
 	/** This hook will be called when the whole authentication protocol has
 	 * failed. Derived classes should implement it to react to this failure.
 	 * @param remote The remote host address with which the key exchange failed.
+	 * @param matchingRoundsFraction The fraction of rounds where a match could be
+	 *                               found. Will be set to 0 if unknown.
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */
-	protected abstract void protocolFailedHook(String remote, 
+	protected abstract void protocolFailedHook(String remote, float matchingRoundsFraction,
 			Exception e, String message);
 
 	/** This hook will be called when the whole authentication protocol has
@@ -691,6 +695,14 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 		}
+
+		// before wiping state, remember the fraction of matching rounds
+		float matchingRoundsFraction = 0;
+		try { 
+			matchingRoundsFraction = ckp.getMatchingRoundsFraction(remoteHostAddress);
+		}
+		catch (InternalApplicationException f) { }
+
 		// also wipe the state local to this class
 		wipe(remoteHostAddress);
 		
@@ -698,7 +710,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		raiseAuthenticationFailureEvent(remoteHostAddress, e, msg);
 		
 		// also allow derived classes to do special failure handling
-		protocolFailedHook(remoteHostAddress, e, msg);
+		protocolFailedHook(remoteHostAddress, matchingRoundsFraction, e, msg);
 	}
 	
 	/** Small helper function to deal with authentication success in stage 1. For details 
@@ -829,6 +841,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			realSharedKey = ackedMatchingKey;
 		}
 
+		// before wiping state, remember the fraction of matching rounds
+		float matchingRoundsFraction = ckp.getMatchingRoundsFraction(remoteHostAddress);
+		
 		// now that we finally have the (real) shared key, can wipe the state
 		wipe(remoteHostAddress);
 		ckp.wipe(remoteHostAddress);
@@ -837,7 +852,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		raiseAuthenticationSuccessEvent(remoteHostAddress, realSharedKey);
 			
 		// also allow derived classes to do special success handling
-		protocolSucceededHook(remoteHostAddress, realSharedKey);
+		protocolSucceededHook(remoteHostAddress, realSharedKey, matchingRoundsFraction);
 	}
 
 	/** Small helper function to wipe the generated candidate keys for a remote host. */

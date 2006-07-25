@@ -33,12 +33,12 @@ public class CKPOverUDPTest extends TestCase {
 			numResetHookCalled++;
 		}
 
-		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey) {
+		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingFraction) {
 			numSucceededHookCalled++;
 			this.sharedSessKey = sharedSessionKey;
 		}
 
-		protected void protocolFailedHook(String remote, Exception e, String message) {
+		protected void protocolFailedHook(String remote, float matchingFraction, Exception e, String message) {
 			numFailedHookCalled++;
 			
 		}
