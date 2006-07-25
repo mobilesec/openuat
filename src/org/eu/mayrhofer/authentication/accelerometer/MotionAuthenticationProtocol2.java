@@ -131,7 +131,11 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 			double[] fftCoeff1 = FFT.fftPowerSpectrum(segment, 0, fftPoints);
 			// HACK HACK HACK: set DC components to 0
 			fftCoeff1[0] = 0;
-			int[][] cand = Quantizer.generateCandidates(fftCoeff1, 0, Quantizer.max(fftCoeff1), numQuantLevels, false, numCandidates, false);
+			// and take only the relevant coefficients
+			double[] fftCoeff2 = new double[max_ind];
+			System.arraycopy(fftCoeff1, 0, fftCoeff2, 0, max_ind);
+			
+			int[][] cand = Quantizer.generateCandidates(fftCoeff2, 0, Quantizer.max(fftCoeff2), numQuantLevels, false, numCandidates, false);
 			// and transform to byte array - we certainly use less than 256 quantization stages, so just byte-cast
 			byte[][] candBytes = new byte[numCandidates][];
 			for (int i=0; i<numCandidates; i++) {

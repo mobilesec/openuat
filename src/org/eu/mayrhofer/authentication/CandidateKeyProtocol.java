@@ -110,8 +110,7 @@ public class CandidateKeyProtocol {
 		public byte[] hash;
 	}
 	
-	/** This is only a helper class for keeping the internal candidates history and
-	 * the list of matching key parts.
+	/** This is only a helper class for keeping the internal candidates history.
 	 */
 	private class CandidateKeyPart implements Comparable {
 		/** A counter that is used to refer to this round. It is assumed to
@@ -156,6 +155,25 @@ public class CandidateKeyProtocol {
 		}
 	}
 	
+	/** This is only a helper class for keeping the list of matching key parts.
+	 */
+	private class MatchingKeyPart extends CandidateKeyPart {
+		/** This is the round number that the matching part is referred to
+		 * by the remote host. Set to -1 if unknown.
+		 */
+		int remoteRound;
+		/** This is the candidate number that the matching part is referred to
+		 * by the remote host. Set to -1 if unknown.
+		 */
+		int remoteCandidateNumber;
+		
+		MatchingKeyPart(CandidateKeyPart candidateBase, int remoteRound, int remoteCandidateNumber) throws InternalApplicationException {
+			super(candidateBase.keyPart, candidateBase.round, candidateBase.candidateNumber, candidateBase.entropy);
+			this.remoteRound = remoteRound;
+			this.remoteCandidateNumber = remoteCandidateNumber;
+		}
+	}
+	
 	/** This class represents a complete candidate key, with both the private
 	 * part (key) and a hash for comparing it with a remote host's candidate
 	 * (hash).
@@ -171,6 +189,22 @@ public class CandidateKeyProtocol {
 		 * for comparison.
 		 */
 		public byte[] hash;
+		/** The round/candidate number tuples that are used locally to refer
+		 * to all parts of the key. This matrix has 2 rows (first index) and 
+		 * numParts columns (second column). The first row specifies the (unique)
+		 * rounds that have been used and the second row gives the candidate key
+		 * numbers within those rounds.
+		 */
+		public int[][] localIndices;
+		/** The round/candidate number tuples that are used remotely to refer
+		 * to all parts of the key. This matrix has 2 rows (first index) and 
+		 * numParts columns (second column). The first row specifies the (unique)
+		 * rounds that have been used and the second row gives the candidate key
+		 * numbers within those rounds.
+		 * If these remote indices are not known to this host (because the other
+		 * host has not reported them), the respective values will be set to -1.
+		 */
+		public int[][] remoteIndices;
 	}
 	
 	/** This helper class defines a list of matching key parts, and should be
@@ -178,7 +212,7 @@ public class CandidateKeyProtocol {
 	 */
 	private class MatchingKeyParts {
 		/** The parts that matched with this remote host. */
-		CandidateKeyPart[] parts = new CandidateKeyPart[matchHistorySize];
+		MatchingKeyPart[] parts = new MatchingKeyPart[matchHistorySize];
 		/** The index where to insert the next matching key part for this host into parts.
 		 * @see #parts
 		 */
@@ -372,15 +406,15 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		int firstMatch = -1;
-		for (int i=0; i<candidateIdentifiers.length; i++) {
-			if (candidateIdentifiers[i] == null) {
-				logger.warn("Candidate with index " + i + " is null, ignoring" +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				continue;
-			}
-			// check against the whole history
-			for (int j=0; j<recentKeyParts.length; j++) {
-				if (recentKeyParts[j] != null) {
+		// check against the whole history
+		for (int j=0; j<recentKeyParts.length; j++) {
+			if (recentKeyParts[j] != null) {
+				for (int i=0; i<candidateIdentifiers.length; i++) {
+					if (candidateIdentifiers[i] == null) {
+						logger.warn("Candidate with index " + i + " is null, ignoring" +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						continue;
+					}
 					int compareBytes = recentKeyParts[j].hash.length;
 					if (recentKeyParts[j].hash.length != candidateIdentifiers[i].hash.length) {
 						compareBytes = recentKeyParts[j].hash.length < candidateIdentifiers[i].hash.length ?
@@ -403,7 +437,7 @@ public class CandidateKeyProtocol {
 					 * the remote candidate back to the other host
 					 */
 					if (match) {
-						advanceCandidateToMatch(remoteHost, j);
+						advanceCandidateToMatch(remoteHost, j, candidateIdentifiers[i].round, candidateIdentifiers[i].candidateNumber);
 						if (firstMatch == -1) {
 							// sanity check
 							if (candidateIdentifiers[i].candidateNumber != i)
@@ -414,9 +448,6 @@ public class CandidateKeyProtocol {
 							firstMatch = candidateIdentifiers[i].candidateNumber;
 							logger.debug("This is the first match, will report candidate number " + firstMatch +
 									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-							
-							// since this is the first match within the round, increase the number of matching rounds for this remote host
-							increaseNumMatchingRounds(remoteHost);
 						}
 					}
 				}
@@ -445,10 +476,8 @@ public class CandidateKeyProtocol {
 		for (int i=0; i<recentKeyParts.length && !found; i++)
 			if (recentKeyParts[i] != null && recentKeyParts[i].round == round && 
 					recentKeyParts[i].candidateNumber == candidateNumber) {
-				advanceCandidateToMatch(remoteHost, i);
 				found = true;
-				// also mark this round as an additional match
-				increaseNumMatchingRounds(remoteHost);
+				advanceCandidateToMatch(remoteHost, i, -1, -1);
 			}
 		if (!found)
 			logger.warn("Local candidate number of round " + round + " with number " + candidateNumber + 
@@ -466,8 +495,14 @@ public class CandidateKeyProtocol {
 	 * @param remoteHost An identifier for the remote host. Refer to 
 	 *                   @see #matchCandidates for more details.
 	 * @param candidateIndex The index of the candidate in recentKeyParts.
+	 * @param remoteReportedRound The round number that the remote host reported in
+	 *                            referring to this match. Set to -1 if not known.
+	 * @param remoteReportedCandidateNumber The candidate number that the remote host reported in
+	 *                                      referring to this match. Set to -1 if not known.
+	 * @throws InternalApplicationException 
 	 */
-	private synchronized void advanceCandidateToMatch(Object remoteHost, int candidateIndex) {
+	private synchronized void advanceCandidateToMatch(Object remoteHost, int candidateIndex, 
+			int remoteReportedRound, int remoteReportedCandidateNumber) throws InternalApplicationException {
 		MatchingKeyParts matchList = null;
 		if (matchingKeyParts.containsKey(remoteHost))
 			matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
@@ -508,15 +543,26 @@ public class CandidateKeyProtocol {
 		}
 		
 		if (!found) {
-			matchList.parts[matchList.index++] = recentKeyParts[candidateIndex];
+			// also mark this round as an additional match (if this round number was not yet in the match list for this host)
+			boolean roundAlreadyMatched = false;
+			for (int i=0; i<matchList.parts.length; i++)
+				if (matchList.parts[i] != null && matchList.parts[i].round == recentKeyParts[candidateIndex].round)
+					roundAlreadyMatched = true;
+			if (! roundAlreadyMatched)
+				increaseNumMatchingRounds(remoteHost);
+
+			matchList.parts[matchList.index++] = new MatchingKeyPart(recentKeyParts[candidateIndex], 
+					remoteReportedRound, remoteReportedCandidateNumber);
 			logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
-					" with number " + recentKeyParts[candidateIndex].candidateNumber + " to matching status" +
+					" with number " + recentKeyParts[candidateIndex].candidateNumber + 
+					" (remote uses round " + remoteReportedRound + " with number " + remoteReportedCandidateNumber + 
+					") to matching status" +
 					" (match list index is now " + matchList.index + ")" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			if (matchList.index == matchList.parts.length)
 				matchList.index = 0;
 		}
-		else 
+		else
 			logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
 					" with number " + recentKeyParts[candidateIndex].candidateNumber + 
 					" already marked as match, skipping to add it" +
@@ -537,8 +583,6 @@ public class CandidateKeyProtocol {
 			throw new InternalApplicationException("Just advanced a candidate to a matching key part, but no match known for remote host " +
 					remoteHost + ". This should not happen!" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		// TODO: make sure that the same round is not counted twice - this is not done now
-		// and works as long as either matches are processed or match messages are sent (but not when both are enabled)
 		matchList.numMatchingRounds++;
 		logger.debug("Remote host " + remoteHost + " now has " + matchList.numMatchingRounds + 
 				" rounds with matches out of " + (lastRound-matchList.firstLocalRoundNumber) +
@@ -764,6 +808,11 @@ public class CandidateKeyProtocol {
 		return null;
 	}
 
+	// TODO: implement me
+	public synchronized CandidateKey searchKey(Object remoteHost, byte[] hash, int[][] remoteCandidateNumbers) throws InternalApplicationException {
+		return null;
+	}
+	
 	/** Wipes all state that is held with respect to a remote host. This method should
 	 * be called when the whole authentication fails as well as when it suceeds. By
 	 * overwriting key material before freeing the memory, it makes sure that key material
@@ -830,7 +879,7 @@ public class CandidateKeyProtocol {
 			duplicateRounds = new HashMap();
 		/* copy all rounds to the temporary array to sort them, but make sure
 		   that each round is represented by exactly one candidate */
-		int numCopied=0, keyPartsLength=0, numMatches=0;
+		int numCopied=0, numMatches=0;
 		for (int i=offset; i<matchList.parts.length; i++) {
 			if (matchList.parts[i] != null) {
 				numMatches++;
@@ -869,7 +918,6 @@ public class CandidateKeyProtocol {
 				}
 				if (!alreadyCopied) {
 					initialCombination[numCopied++] = matchList.parts[i];
-					keyPartsLength += matchList.parts[i].keyPart.length;
 				}
 			}
 		}
@@ -896,14 +944,19 @@ public class CandidateKeyProtocol {
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread + " + Thread.currentThread());
 		// sort by round number, ascending
 		Arrays.sort(initialCombination, 0, numCopied);
-		// and remember which round numbers to use (for performance purposes, see below)
-		BitSet roundNumbersToUse = new BitSet();
+		// and find out how long the resulting key(s) will be (all _must_ have exactly the same length)
+		int keyPartsLength=0;
 		for (int i=0; i<numCopied; i++)
-			roundNumbersToUse.set(initialCombination[i].round);
+			keyPartsLength += initialCombination[i].keyPart.length;
 		
 		CandidateKeyPart[][] allCombinations = null;
 		// and now (on the sorted array because it can be faster), explode combinations
 		if (extractAllCombinations) {
+			// remember which round numbers to use (for performance purposes, see below)
+			BitSet roundNumbersToUse = new BitSet();
+			for (int i=0; i<numCopied; i++)
+				roundNumbersToUse.set(initialCombination[i].round);
+
 			int numCombinations = 1;
 			Object[] roundsWithDuplicates = duplicateRounds.keySet().toArray();
 			logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
@@ -928,7 +981,8 @@ public class CandidateKeyProtocol {
 			
 			allCombinations = new CandidateKeyPart[numCombinations][];
 			// seed with initial candidate
-			allCombinations[0] = initialCombination;
+			allCombinations[0] = new CandidateKeyPart[numCopied];
+			System.arraycopy(initialCombination, 0, allCombinations[0], 0, numCopied);
 			for (int j=1; j<numCombinations; j++) {
 				allCombinations[j] = new CandidateKeyPart[numCopied];
 			}
@@ -1002,10 +1056,18 @@ public class CandidateKeyProtocol {
 		}
 		else {
 			// just use the first possible candidate in each round, i.e. the one already collected
-			logger.debug("Using only first matches in each round to create a single candidate key" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled()) {
+				String roundNumbers = "";
+				for (int j=0; j<numCopied; j++) {
+					roundNumbers += initialCombination[j].round;
+					roundNumbers += " ";
+				}
+				logger.debug("Using only first matches in each of the rounds " + roundNumbers + "to create a single candidate key" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			}
 			allCombinations = new CandidateKeyPart[1][];
-			allCombinations[0] = initialCombination;
+			allCombinations[0] = new CandidateKeyPart[numCopied];
+			System.arraycopy(initialCombination, 0, allCombinations[0], 0, numCopied);
 		}
 		
 		// this is the concatenated "plain text", which does not have key-quality attributes
@@ -1021,7 +1083,7 @@ public class CandidateKeyProtocol {
 						allCombinations[i][j].keyPart.length);
 				outPos += allCombinations[i][j].keyPart.length;
 			}
-			logger.debug("Concatenated key parts to candidate key " + i + ": " + new String(Hex.encodeHex(keyParts[i])) +
+			logger.debug("Concatenated " + allCombinations[i].length + " key parts to candidate key " + i + ": " + new String(Hex.encodeHex(keyParts[i])) +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		// I hate Java
