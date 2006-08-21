@@ -707,11 +707,12 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         if (args.length > 1 && args[0].equals("server")) {
         	logger.info("Starting server mode");
         	String serialPort = args[1];
+        	int deviceType = Integer.parseInt(args[2]);
         		
             // no longer need this
             //int referenceMeasurement1 = helper_getReferenceMeasurement(serialPort, (byte) Integer.parseInt(args[2]));
         	
-        	Configuration conf = new Configuration(serialPort);
+        	Configuration conf = new Configuration(serialPort, deviceType);
         	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
@@ -732,10 +733,11 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             //h1.stopListening();
         } 
         else if (args.length > 4 && args[0].equals("client")) {
-        	System.out.println("starting client mode: port=" + args[1] + ", server=" + args[2] + ", remoteid=" + args[3] + ", rounds=" + args[4]);
+        	System.out.println("starting client mode: port=" + args[1] + ", devicetype=" + args[2] + ", server=" + args[3] + ", remoteid=" + args[4] + ", rounds=" + args[5]);
         	String serialPort = args[1];
+        	int deviceType = Integer.parseInt(args[2]);
         	logger.info("Starting client mode");
-        	Configuration conf = new Configuration(serialPort);
+        	Configuration conf = new Configuration(serialPort, deviceType);
         	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
         	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
@@ -745,7 +747,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
         	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
         	r.addAuthenticationProgressHandler(t);
-        	r.startAuthentication(args[2], (byte) Integer.parseInt(args[3]), Integer.parseInt(args[4]));
+        	r.startAuthentication(args[3], (byte) Integer.parseInt(args[4]), Integer.parseInt(args[5]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
             new Thread(new Runnable() {
@@ -777,10 +779,11 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         else if (args.length == 2 && args[0].equals("both")) {
         	logger.info("Starting mutual authentication mode with two dongles");
         	int localId1 = -1, localId2 = -1;
-        	String serialPort1 = "/dev/ttyUSB0", serialPort2 = "/dev/ttyUSB1";
+        	String serialPort1 = args[1], serialPort2 = args[3];
+        	int deviceType1 = Integer.parseInt(args[2]), deviceType2 = Integer.parseInt(args[4]);
 
-        	Configuration conf1 = new Configuration(serialPort1);
-        	Configuration conf2 = new Configuration(serialPort2);
+        	Configuration conf1 = new Configuration(serialPort1, deviceType1);
+        	Configuration conf2 = new Configuration(serialPort2, deviceType2);
         	// first need to get my local ids
         	try {
             	SerialConnector connector1 = SerialConnector.getSerialConnector(conf1.getDevicePortName(), conf1.getDeviceType());
@@ -817,7 +820,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             // client side
             RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol(serialPort2, man2, useJSSEClient, false, null);
         	r_client.addAuthenticationProgressHandler(ht);
-        	r_client.startAuthentication("localhost", (byte) localId1, Integer.parseInt(args[1]));
+        	r_client.startAuthentication("localhost", (byte) localId1, Integer.parseInt(args[5]));
         	
         	// safety belt
             new Thread(new Runnable() {
