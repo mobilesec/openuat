@@ -63,7 +63,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	private final static int MAGIC_1 = 10000;
 	
 	/** The remote relate id to perform the authentication with. */
-	private byte remoteRelateId;
+	private int remoteRelateId;
 	
 	/** The serial port to use for talking to the dongle. */
 	private String serialPort;
@@ -97,7 +97,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public DongleProtocolHandler(String serialPort, byte remoteRelateId, boolean useJSSE) {
+	public DongleProtocolHandler(String serialPort, int remoteRelateId, boolean useJSSE) {
 		this.serialPort = serialPort;
 		this.remoteRelateId = remoteRelateId;
 		this.useJSSE = useJSSE;
@@ -545,7 +545,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
      * 
      * @return The remote relate ID used as the authentication peer.
      */
-    public byte getRemoteRelateId() {
+    public int getRemoteRelateId() {
     	return remoteRelateId;
     }
 }
