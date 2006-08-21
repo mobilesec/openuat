@@ -62,7 +62,13 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	/** Keep the match history for each remote host for 5 minutes - should really be enough. */
 	public final static int MaximumMatchingCandidatesAge = 300;
 
+	/** This keeps the current segment while it is still being collected. It is only set after a
+	 * call to segmentStart and before the next call to segmentEnd.
+	 */
 	private LinkedList curSegment = null;
+	
+	/** Used to keep track of the number of windows that have been collected. */
+	int numWindows = 0;
 
 	/** Initializes the object, only setting useJSSE at the moment. This constructor sets
 	 * default values for udpSendPort, udpReceivePort and multicastGroup.
@@ -114,7 +120,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		curSegment.add(new Double(sample));
 		
 		if (curSegment.size() == fftPoints) {
-			// ok, got a full segment to work on
+			// ok, got a full window to work on
 			
 			// convert to array
 			double[] segment = new double[fftPoints];
@@ -152,6 +158,9 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 				logger.error("Could not add candidates: " + e);
 			}
 			
+			numWindows++;
+			logger.info("Finished adding window " + numWindows + " as new candidates, now shifting");
+			
 			// and remove the overlap from the front
 			for (int i=0; i<windowOverlap; i++)
 				curSegment.removeFirst();
@@ -165,6 +174,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		}
 		
 		curSegment = new LinkedList();
+		numWindows = 0;
 	}
 	
 	public void segmentEnd(int numSample) {
@@ -175,6 +185,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		
 		// TODO: don't discard, do something with it?
 		curSegment = null;
+		
+		logger.info("Active segment ending now, after extracting " + numWindows + " windows");
 	}
 
 	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
