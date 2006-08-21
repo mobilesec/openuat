@@ -49,13 +49,11 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	
 	/** Remember our own (locally generated) last 30 candidate key parts for detecting
 	 * possible matches.
-	 * TODO: this should depend on numCandidates
 	 */ 
 	public final static int LocalCandidateHistorySize = 5 * 8;
 	
 	/** For each remote host, remember the last 20 matching key parts to have enough 
 	 * material for generating candidate keys.
-	 * TODO: this should depend on numCandidates
 	 */
 	public final static int MatchingCandidatesHistorySize = 10 * MinimumNumberOfRoundsForAction * 8;
 	
