@@ -134,7 +134,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * @param remoteRelateId
 	 * @return
 	 */
-	/*private static int helper_getReferenceMeasurement(String serialPort, byte remoteRelateId) throws ConfigurationErrorException, InternalApplicationException {
+	/*private static int helper_getReferenceMeasurement(String serialPort, int remoteRelateId) throws ConfigurationErrorException, InternalApplicationException {
 		int referenceMeasurement;
 		SerialConnector serialConn;
 		
@@ -256,7 +256,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * @see #startAuthentication for the "outgoing" authentication
 	 * @see #startVerification(byte[], InetAddress, String, Socket) for the "incoming" authentication
 	 */
-	private int fetchReferenceMeasurement(byte remoteRelateId) {
+	private int fetchReferenceMeasurement(int remoteRelateId) {
 		int ref = -1;
 		while (ref == -1) {
 			logger.debug("Fetching reference mesurements from dongle at port " + serialPort + " to remote id " + remoteRelateId);
@@ -298,7 +298,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * @see AuthenticationEventSender#addAuthenticationProgressHandler
 	 * @see DongleProtocolHandler#handleDongleCommunication
 	 */
-	public boolean startAuthentication(String remoteHost, byte remoteRelateId, int rounds) 
+	public boolean startAuthentication(String remoteHost, int remoteRelateId, int rounds) 
 			throws UnknownHostException, IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (rounds < 2) {
 			logger.error("Invalid number of rounds (" + rounds + "), need at least 2");
@@ -446,15 +446,15 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		String param1 = param.substring(0, param.indexOf(' '));
 		String param2 = param.substring(param.indexOf(' ')+1, param.length());
 		// distinguish between client and server mode here
-		byte otherRelateId;
+		int otherRelateId;
 		if (remoteRelateId != -1) {
 			// "client" mode - this is the id that was passed to startAuthentication
-     		otherRelateId = (byte) remoteRelateId;
+     		otherRelateId = remoteRelateId;
      		logger.debug("Client mode at port " + serialPort + ": taking remote relate id that was passed earlier: " + otherRelateId);
 		}
 		else {
      		// "server" mode - take the id that was passed by the client
-     		otherRelateId = Byte.parseByte(param1);
+     		otherRelateId = Integer.parseInt(param1);
      		logger.debug("Server mode at port " + serialPort + ": taking remote relate id from authentication request message: " + otherRelateId);
  			/* And remember the last reference measurement taken to the remote relate id for
  			 * future use (i.e. computing the delays). For client mode, it has been set even
@@ -704,13 +704,13 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
    			useJSSEServer = useJSSEClient = false;
    		}
     	
-        if (args.length > 1 && args[0].equals("server")) {
+        if (args.length > 2 && args[0].equals("server")) {
         	logger.info("Starting server mode");
         	String serialPort = args[1];
         	int deviceType = Integer.parseInt(args[2]);
         		
             // no longer need this
-            //int referenceMeasurement1 = helper_getReferenceMeasurement(serialPort, (byte) Integer.parseInt(args[2]));
+            //int referenceMeasurement1 = helper_getReferenceMeasurement(serialPort, Integer.parseInt(args[2]));
         	
         	Configuration conf = new Configuration(serialPort, deviceType);
         	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
@@ -732,7 +732,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 
             //h1.stopListening();
         } 
-        else if (args.length > 4 && args[0].equals("client")) {
+        else if (args.length > 5 && args[0].equals("client")) {
         	System.out.println("starting client mode: port=" + args[1] + ", devicetype=" + args[2] + ", server=" + args[3] + ", remoteid=" + args[4] + ", rounds=" + args[5]);
         	String serialPort = args[1];
         	int deviceType = Integer.parseInt(args[2]);
@@ -747,7 +747,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
         	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
         	r.addAuthenticationProgressHandler(t);
-        	r.startAuthentication(args[3], (byte) Integer.parseInt(args[4]), Integer.parseInt(args[5]));
+        	r.startAuthentication(args[3], Integer.parseInt(args[4]), Integer.parseInt(args[5]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
             // not so simple for the server.
             new Thread(new Runnable() {
@@ -776,7 +776,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             else
                 while (true) Thread.sleep(1000);
         }
-        else if (args.length == 2 && args[0].equals("both")) {
+        else if (args.length == 6 && args[0].equals("both")) {
         	logger.info("Starting mutual authentication mode with two dongles");
         	int localId1 = -1, localId2 = -1;
         	String serialPort1 = args[1], serialPort2 = args[3];
@@ -793,7 +793,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		Thread.sleep(3000);
 
             	SerialConnector connector2 = SerialConnector.getSerialConnector(conf2.getDevicePortName(), conf2.getDeviceType());
-        		localId1 = connector1.getLocalRelateId();
+        		localId2 = connector2.getLocalRelateId();
             	connector2.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
         	}
         	catch (DeviceException e) {
@@ -820,7 +820,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             // client side
             RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol(serialPort2, man2, useJSSEClient, false, null);
         	r_client.addAuthenticationProgressHandler(ht);
-        	r_client.startAuthentication("localhost", (byte) localId1, Integer.parseInt(args[5]));
+        	r_client.startAuthentication("localhost", localId1, Integer.parseInt(args[5]));
         	
         	// safety belt
             new Thread(new Runnable() {
