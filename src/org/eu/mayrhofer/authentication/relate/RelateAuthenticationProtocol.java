@@ -587,7 +587,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	}
 	
 	// helper function to better facilitate the experiments, just interrupt both dongles
-	private static void resetBothDongles() {
+	private static void resetBothDongles(int deviceType) {
 		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB0", 1).switchDiagnosticMode(false);
 		}
@@ -595,7 +595,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			logger.error("Could not reset dongle");
 		}
 		try {
-			Thread.sleep(2000);
+			Thread.sleep(deviceType == 1 ? 2000 : 500);
 		} catch (InterruptedException e) {}
 		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB1", 1).switchDiagnosticMode(false);
@@ -613,6 +613,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 
 		class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
 			private int mode; // 0 = client, 1 = server, 2 = both
+			private int deviceType;
 			
 			private final static boolean useProgressBar = false;
 			
@@ -621,8 +622,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			Object d;
 			Object s;
 			
-			public TempAuthenticationEventHandler(int mode) {
+			public TempAuthenticationEventHandler(int mode, int deviceType) {
     			this.mode = mode;
+    			this.deviceType = deviceType;
     				
     			if (useProgressBar) {
     				d = new org.eclipse.swt.widgets.Display();
@@ -660,9 +662,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
     			else if (mode == 2) {
     				// give it time to settle....
     				try {
-    					Thread.sleep(3000);
+    					Thread.sleep(deviceType == 1 ? 3000 : 500);
     				} catch (InterruptedException e) {}
-    				resetBothDongles();
+    				resetBothDongles(deviceType);
     				Runtime.getRuntime().exit(0);
     			}
     		}
@@ -689,7 +691,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
     					Runtime.getRuntime().exit(1);
     			}
     			else if (mode == 2) {
-    				resetBothDongles();
+    				resetBothDongles(deviceType);
    					Runtime.getRuntime().exit(1);
    				}
    			}
@@ -730,7 +732,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             // this initializes the object with the passed arguments, but doesn't do much else 
             RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEServer, false, null);
             // register the listeners
-            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1);
+            TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1, deviceType);
             r.addAuthenticationProgressHandler(ht);
         	// and start....
             r.startServer();
@@ -743,7 +745,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         else if (args.length > 5 && args[0].equals("client")) {
         	System.out.println("starting client mode: port=" + args[1] + ", devicetype=" + args[2] + ", server=" + args[3] + ", remoteid=" + args[4] + ", rounds=" + args[5]);
         	String serialPort = args[1];
-        	int deviceType = Integer.parseInt(args[2]);
+        	final int deviceType = Integer.parseInt(args[2]);
         	logger.info("Starting client mode");
         	Configuration conf = new Configuration(serialPort, deviceType);
         	SerialConnector connector = SerialConnector.getSerialConnector(conf.getDevicePortName(), conf.getDeviceType());
@@ -753,7 +755,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man);
             
         	RelateAuthenticationProtocol r = new RelateAuthenticationProtocol(serialPort, man, useJSSEClient, false, null);
-        	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0);
+        	TempAuthenticationEventHandler t = new TempAuthenticationEventHandler(0, deviceType);
         	r.addAuthenticationProgressHandler(t);
         	r.startAuthentication(args[3], Integer.parseInt(args[4]), Integer.parseInt(args[5]));
             // This is the last safety belt: a timer to kill the client if the dongle hangs for some reason. This is
@@ -767,7 +769,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             		} catch (InterruptedException e) {}
             		System.out.println("******** Timed out");
         			statisticsLogger.error("- Timer killed client");
-   	        		resetBothDongles();
+   	        		resetBothDongles(deviceType);
    	        		if (! System.getProperty("os.name").startsWith("Windows CE"))
    	        			System.exit(100);
             	}
@@ -798,7 +800,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		localId1 = connector1.getLocalRelateId();
             	connector1.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
 
-        		Thread.sleep(1000);
+        		Thread.sleep(deviceType1 == 1 ? 1000 : 500);
 
             	SerialConnector connector2 = SerialConnector.getSerialConnector(conf2.getDevicePortName(), conf2.getDeviceType());
         		localId2 = connector2.getLocalRelateId();
@@ -820,7 +822,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             EventDispatcher.getDispatcher().addEventListener(MeasurementEvent.class, man2);
         		
         	// server side
-        	TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2);
+        	TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2, deviceType1);
             RelateAuthenticationProtocol r_serv = new RelateAuthenticationProtocol(serialPort1, man1, useJSSEServer, false, null);
             r_serv.addAuthenticationProgressHandler(ht);
             r_serv.startServer();
