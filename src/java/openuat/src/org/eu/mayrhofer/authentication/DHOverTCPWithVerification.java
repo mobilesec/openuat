@@ -372,20 +372,20 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		        String optionalParameterFromRemote = remoteStatus.substring(Protocol_Success.length());
 		        
 		        if (!keepSocketConnected) {
-			        /* our result object i here the secret key that is shared (host authentication) 
+			        // first also call the hook to allow the derived classes to react too
+			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, null);
+			        /* our result object is here the secret key that is shared (host authentication) 
 			           and now spatially authenticated (dongle authentication) */
 		        	raiseAuthenticationSuccessEvent(remoteParam, sharedKey);
-			        // and also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, null);
 		        }
 		        else {
+			        // first also call the hook to allow the derived classes to react too
+			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, socketToRemote);
 		        	/* It has been requested that the socket be kept open, so pass it over
 		        	 * in addition to the shared secret key.
 		        	 * As we need to pass two parameters in this case, again use an array...
 		        	 */
 		        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, socketToRemote});
-			        // and also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, socketToRemote);
 		        }
 		        		
 				// if the socket is not going to be re-used, don't forget to close it properly

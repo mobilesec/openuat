@@ -368,6 +368,10 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			byte[] sharedSessionKey, Socket toRemote) {
 		// the optionalRemoteId is set to the DongleProtocolHandler object
 		DongleProtocolHandler localSide = (DongleProtocolHandler) optionalRemoteId;
+		logger.debug("protocolSucceededHook called at port " + serialPort + " with remote " + 
+				remote + "/" + optionalRemoteId + ", param " + optionalParameterFromRemote + ", session key " + 
+				SerialConnector.byteArrayToHexString((byte[]) sharedSessionKey) + 
+				", socket " + toRemote);
 		
 		// in addition to the "standard" event sent by the super class, send the specialized Relate event too
 		if (relateEventHandler != null)
@@ -418,6 +422,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	protected void protocolProgressHook(InetAddress remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
+		logger.debug("protocolProgressHook called at port " + serialPort + " with " + 
+				remote + "/" + optionalRemoteId + ": " + cur + "/" + max + ": " + message);
 		if (relateEventHandler != null)
 			relateEventHandler.progress(serialPort, remote.toString(),
 					optionalRemoteId instanceof DongleProtocolHandler ? 
@@ -635,8 +641,10 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
     			Object[] remoteParam = (Object[]) remote;
     			logger.info("Received relate authentication success event from " + sender + 
     					" with " + remoteParam[0] + "/" + remoteParam[1]);
-    			if (result != null)
-    				logger.error("Received result object while not expecting one: " + result);
+    			if (result == null)
+    				logger.error("Did not receive a result object, don't know the session key");
+    			else
+    				logger.info("Session key is now " + SerialConnector.byteArrayToHexString((byte[]) result));
     			System.out.println("SUCCESS");
 
     			// HACK HACK HACK HACK: interrupt the dongle to be sure to get it out of authentication mode
@@ -790,7 +798,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		localId1 = connector1.getLocalRelateId();
             	connector1.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
 
-        		Thread.sleep(3000);
+        		Thread.sleep(1000);
 
             	SerialConnector connector2 = SerialConnector.getSerialConnector(conf2.getDevicePortName(), conf2.getDeviceType());
         		localId2 = connector2.getLocalRelateId();
