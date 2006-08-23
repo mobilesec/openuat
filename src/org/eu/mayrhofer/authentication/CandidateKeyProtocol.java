@@ -1144,7 +1144,7 @@ public class CandidateKeyProtocol {
 	 * This is only public so that JUnit tests can cover it. 
 	 * @param set The set of numbers to choose from.
 	 * @param k How many to choose from the set. This must be <= set.length
-	 * @return  The number of numParts totalParts is 
+	 * @return  The number of numParts (k) out of totalParts (set.length) is 
 	 *          (numTotal over numParts) = (n over k) = (n!) / (k! * (n-k)!)
 	 * @throws InternalApplicationException 
 	 */
@@ -1152,12 +1152,18 @@ public class CandidateKeyProtocol {
 		// just some sanity checks
 		if (set == null)
 			throw new IllegalArgumentException("Need a set of elements to choose from");
+		if (set.length < 1)
+			throw new IllegalArgumentException("Need to have at least one element in the set to choose from");
 		if (k > set.length)
 			throw new IllegalArgumentException("Can not choose " + k + " elements from a set of length " + set.length);
 		if (k < 1)
 			throw new IllegalArgumentException("Need to choose at least one element");
 		
 		int numSetCombinations = fact(set.length) / (fact(k) * fact(set.length - k));
+		// sanity check
+		if (numSetCombinations < 1)
+			throw new InternalApplicationException("Would pre-explode into " + numSetCombinations + 
+					". This is invalid, need at least 1 combination at this point. This should not happen.");
 		logger.debug("Pre-exploding into " + numSetCombinations + " different combinations of rounds");
 		BitSet[] combinations = new BitSet[numSetCombinations];
 		
