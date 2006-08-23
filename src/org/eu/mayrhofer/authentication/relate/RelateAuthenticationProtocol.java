@@ -595,7 +595,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			logger.error("Could not reset dongle");
 		}
 		try {
-			Thread.sleep(deviceType == 1 ? 2000 : 500);
+			Thread.sleep(deviceType == 1 ? 2000 : 2000);
 		} catch (InterruptedException e) {}
 		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB1", 1).switchDiagnosticMode(false);
@@ -662,7 +662,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
     			else if (mode == 2) {
     				// give it time to settle....
     				try {
-    					Thread.sleep(deviceType == 1 ? 3000 : 500);
+    					Thread.sleep(deviceType == 1 ? 3000 : 3000);
     				} catch (InterruptedException e) {}
     				resetBothDongles(deviceType);
     				Runtime.getRuntime().exit(0);
@@ -800,7 +800,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		localId1 = connector1.getLocalRelateId();
             	connector1.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
 
-        		Thread.sleep(deviceType1 == 1 ? 1000 : 500);
+        		Thread.sleep(deviceType1 == 1 ? 1000 : 1000);
 
             	SerialConnector connector2 = SerialConnector.getSerialConnector(conf2.getDevicePortName(), conf2.getDeviceType());
         		localId2 = connector2.getLocalRelateId();
