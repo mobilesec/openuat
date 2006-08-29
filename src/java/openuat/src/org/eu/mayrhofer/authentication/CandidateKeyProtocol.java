@@ -1131,8 +1131,8 @@ public class CandidateKeyProtocol {
 	}
 	
 	/** Just a small helper function to compute the factorial. */
-	private static int fact(int n) {
-		int f = 1;
+	private static long fact(int n) {
+		long f = 1;
 		for (int i=2; i<=n; i++)
 			f *= i;
 		return f;
@@ -1159,7 +1159,8 @@ public class CandidateKeyProtocol {
 		if (k < 1)
 			throw new IllegalArgumentException("Need to choose at least one element");
 		
-		int numSetCombinations = fact(set.length) / (fact(k) * fact(set.length - k));
+		int numSetCombinations = (int) (fact(set.length) / (fact(k) * fact(set.length - k)));
+		logger.trace("(" + set.length + " over " + k + ") = " + numSetCombinations);
 		// sanity check
 		if (numSetCombinations < 1)
 			throw new InternalApplicationException("Would pre-explode into " + numSetCombinations + 
@@ -1193,14 +1194,14 @@ public class CandidateKeyProtocol {
 			else {
 				// still a valid combination?
 				if (indices[level] < set.length) {
-					logger.trace("Last level, storing indices/values ");
+					logger.trace("Last level, storing indices/values at output position " +
+							combinationNumber + " (out of " + combinations.length + ")");
 					// yes, last level, remember current combination
 					combinations[combinationNumber] = new BitSet();
 					for (int i=0; i<k; i++) {
 						combinations[combinationNumber].set(set[indices[i]]);
 						logger.trace(indices[i] + "/" + set[indices[i]] + " ");
 					}
-					logger.trace("at output position " + combinationNumber);
 					combinationNumber++;
 				}
 				else {
