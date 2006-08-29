@@ -766,4 +766,11 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertTrue(combinations[9].get(4));
 		Assert.assertTrue(combinations[9].get(5));
 	}
+
+	// this should actually be split into a helper class
+	public void testSetExploder_FixedErrorCase1() throws InternalApplicationException {
+		int[] set = new int[13];
+		
+		BitSet[] combinations = CandidateKeyProtocol.explodeKOutOfN(set, 10);
+	}		
 }
