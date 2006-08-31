@@ -266,6 +266,7 @@ public class ShakingSinglePCDemonstrator {
 
 		if (args.length < 2) {
 			System.err.println("Required parameters: <device type: 'parallel' or 'witilt'> <device1> <device2>");
+			System.err.println("                     listentcp port:<tcp port>");
 			System.exit(1);
 		}
 		int deviceType = -1;
