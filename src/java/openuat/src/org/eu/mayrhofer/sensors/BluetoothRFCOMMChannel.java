@@ -86,8 +86,8 @@ public class BluetoothRFCOMMChannel {
 		// just remember the parameters
 		this.remoteDeviceAddress = remoteDeviceAddress;
 		this.remoteChannelNumber = remoteChannelNumber;
-		logger.debug("Creating RFCOMM channel object to remote device '" + remoteDeviceAddress +
-				"' to SDP port "+ remoteChannelNumber);
+		logger.debug("Creating RFCOMM channel object to remote device '" + this.remoteDeviceAddress +
+				"' to SDP port "+ this.remoteChannelNumber);
 		
 		serviceURL = "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
 			";authenticate=false;master=true;encrypt=false";
@@ -101,6 +101,8 @@ public class BluetoothRFCOMMChannel {
 		if (connection != null) {
 			throw new InternalApplicationException("Channel has already been opened");
 		}
+		logger.debug("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
+				"' with port " + remoteChannelNumber);
 		
 		connection = (StreamConnection) Connector.open(serviceURL);
 		fromRemote = connection.openInputStream();
@@ -116,6 +118,8 @@ public class BluetoothRFCOMMChannel {
 		if (connection == null || toRemote == null || fromRemote == null) {
 			throw new InternalApplicationException("RFCOMM channel has not yet been openend propely");
 		}
+		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
+				"' with port " + remoteChannelNumber);
 		
 		fromRemote.close();
 		toRemote.close();
