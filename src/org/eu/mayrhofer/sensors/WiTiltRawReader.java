@@ -39,6 +39,20 @@ import org.apache.log4j.Logger;
  * to sample all 3 axises and with the correct sampling rate. They also need to
  * be configured to generate their "RAW" data stream. 
  * 
+ * There are two ways to connect to a WiTilt device:
+ * - With a (virtual) serial port. This can be used then the WiTilt device is
+ *   connected to a physical serial port via its Debug port or with the operating
+ *   system RFCOMM emulation, e.g. the /dev/rfommX devices unter Linux or COMX 
+ *   devices under Windows. To use this method, use the method 
+ *   @see #openSerial(String, boolean).
+ * - Directly from Java with a JSR82 implementation. To use this method, use 
+ *   the method @see #openBluetooth(String, boolean).
+ *   
+ * Additionally, this class can be used either with the original firmware, which
+ * displays the menu of the WiTilt device when connecting to it, or with a modified
+ * firmware that goes directly into sampling mode after connecting. This can be 
+ * controlled by the boolean parameters given to the open methods.
+ * 
  * @author Rene Mayrhofer
  * @version 1.0
  */
@@ -46,25 +60,51 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(WiTiltRawReader.class);
 
+	/** The baud rate to use when connecting to a serial port. This is not used
+	 * when connecting directly to the RFCOMM channel.
+	 */
 	private final static int BAUDRATE = 57600;
 	
 	private final static String MENU_HEADER = "WiTilt Firmware v3 - Configuration Menu:";
 	
+	/** The serial port object when connecting via method 1 (serial port). */
 	private SerialPort serialPort = null;
 	
+	/** The Bluetooth RFCOMM channel when connecting via method 2 (JSR82). */
+	private BluetoothRFCOMMChannel rfcommChannel = null;
+	
+	/** An output stream used to interact with the WiTilt menu, if necessary. The
+	 * InputStream object is held by the super class.
+	 */
 	private OutputStream portCmd = null;
 	
-	/** Initializes the WiTilt RAW reder. It only saves the
-	 * passed parameters and opens the InputStream to read from the specified
-	 * file, and thus implicitly to check if the file exists and can be opened.
+	/** Initializes the WiTilt RAW reader object, but does not open a connection.
+	 * @see #openSerial(String, boolean)
+	 * @see #openBluetooth(String, boolean)
+	 */
+	public WiTiltRawReader() {
+		// we have a maximum of 3 values (X, Y, Z) to read per sample
+		super(3);
+	}
+	
+	/** Opens a connection to the WiTilt device via a (virtual) serial port.
+	 * It only saves the passed parameters and opens the InputStream to read 
+	 * from the specified file, and thus implicitly to check if the file exists 
+	 * and can be opened.
 	 * 
 	 * @param serialPortName The serial port to read from. It will be opened
 	 *                       and initialized with the correct parameters. 
+	 * @param usingMenu Set to true when the Witilt device runs the original
+	 *                  firmware and we need to interact with its menu during
+	 *                  initialization. Set to false when using the modified
+	 *                  firmware that goes directly into sampling mode.
+	 * @throws InternalApplicationException 
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	public WiTiltRawReader(String serialPortName) throws IOException {
-		// we have a maximum of 3 values (X, Y, Z) to read per sample
-		super(3);
+	public void openSerial(String serialPortName, boolean usingMenu) throws IOException {
+		if (serialPort != null || rfcommChannel != null) {
+			throw new IOException("Already opened a channel");
+		}
 		
 		// need to initialize the serial port properly
 		try {
@@ -102,7 +142,7 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 				}
 
 				try {
-					serialPort = (SerialPort) portId.open("RelatePort", 500);
+					serialPort = (SerialPort) portId.open("WiTiltPort", 500);
 					try {
 						serialPort.setSerialPortParams(BAUDRATE,
 								SerialPort.DATABITS_8,
@@ -118,15 +158,8 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 						// also open the output stream to the port so that we can interact with the menu
 						portCmd = serialPort.getOutputStream();
 						port = serialPort.getInputStream();
-
-						if (! waitForMenuControl()) {
-							throw new IOException("Could not gain control of the WiTilt menu");
-						}
 						
-						// now start the sensor output
-						PrintWriter w = new PrintWriter(portCmd);
-						w.print('1');
-						w.flush();
+						openFinalize(usingMenu);
 					} catch (UnsupportedCommOperationException e) {
 						if (! System.getProperty("os.name").startsWith("Windows CE")) {
 							logger.error("UnsupportedCommOperationException: " + e + "\n" + e.getStackTrace());
@@ -149,7 +182,57 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 			throw new IOException("Could not create CommPortIdentifier object from port name '" + serialPortName + "': " + e);
 		}
 	}
+
+	/** Opens a connection to the WiTilt device via an RFCOMM channel with JSR82.
+	 * It saves the passed parameters, tries to connect to the RFCOMM channel, and 
+	 * opens the InputStream to read from the specified port.
+	 * 
+	 * @param deviceAddress The Bluetooth MAC address of the WiTilt sensor to connect
+	 *                      to, in the format "AABBCCDDEEFF"; 
+	 * @param usingMenu Set to true when the Witilt device runs the original
+	 *                  firmware and we need to interact with its menu during
+	 *                  initialization. Set to false when using the modified
+	 *                  firmware that goes directly into sampling mode.
+	 */
+	public void openBluetooth(String deviceAddress, boolean usingMenu) throws IOException {
+		if (serialPort != null || rfcommChannel != null) {
+			throw new IOException("Already opened a channel");
+		}
+		
+		rfcommChannel = new BluetoothRFCOMMChannel(deviceAddress, 1);
+		rfcommChannel.open();
+		
+		// also open the output stream to the port so that we can interact with the menu
+		portCmd = rfcommChannel.getOutputStream();
+		port = rfcommChannel.getInputStream();
+		
+		openFinalize(usingMenu);
+	}
 	
+	/** This is just a small helper function called by both public open methods
+	 * that will, conditionally on usingMenu being true, try to start sampling mode
+	 * via the menu.
+	 * @throws IOException 
+	 */
+	private void openFinalize(boolean usingMenu) throws IOException {
+		if (usingMenu) {
+			logger.debug("Interacting with menu: trying to gain control");
+			if (! waitForMenuControl()) {
+				throw new IOException("Could not gain control of the WiTilt menu");
+			}
+			logger.debug("Gained menu control, now starting sampling mode");
+			// now start the sensor output
+			PrintWriter w = new PrintWriter(portCmd);
+			w.print('1');
+			w.flush();
+		}
+		else {
+			logger.debug("Not interacting with menu, assuming sampling mode to be enabled already");
+		}
+	}
+	
+	/** This is just a small helper function for checking if the WiTilt device printed 
+	 * its menu. */
 	private boolean checkForMenuOutput(BufferedReader r) {
 		boolean foundMenu = false;
 		// drain all input
@@ -172,6 +255,10 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 		return foundMenu;
 	}
 	
+	/** This is a helper function to try to get menu control. It waits for the menu
+	 * being printed and asks the user to reset the device if necessary.
+	 * @return
+	 */
 	private boolean waitForMenuControl() {
 		logger.info("Waiting to gain WiTilt menu control");
 		
@@ -207,7 +294,8 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 		}
 	}
 	
-	/** This closes the serial port properly. It should <b>not</b> be called manually!
+	/** This closes the serial port or Bluetooth channel properly. 
+	 * It should <b>not</b> be called manually!
 	 */
 	public void dispose() {
 		if (serialPort != null) {
@@ -282,8 +370,36 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	public static void main(String[] args) throws IOException {
 		//mainRunner("WiTiltRawReader", args);
 		
-		String filename = args[0];
-		AsciiLineReaderBase r = new WiTiltRawReader(filename);
+		if (args.length != 3) {
+			System.err.println("Usage: <serial|bluetooth> <port name|device name> <using menu: true|false>");
+			System.exit(1);
+		}
+		boolean serial = false;
+		if (args[0].equals("serial"))
+			serial = true;
+		else if (args[0].equals("bluetooth"))
+			serial = false;
+		else {
+			System.err.println("Usage: <serial|bluetooth> <port name|device name> <using menu: true|false>");
+			System.exit(2);
+		}
+		String name = args[1];
+		boolean menu = false;
+		if (args[2].equals("true"))
+			menu = true;
+		else if (args[2].equals("false"))
+			menu = false;
+		else {
+			System.err.println("Usage: <serial|bluetooth> <port name|device name> <using menu: true|false>");
+			System.exit(3);
+		}
+
+		AsciiLineReaderBase r = new WiTiltRawReader();
+		if (serial)
+			((WiTiltRawReader) r).openSerial(name, menu);
+		else
+			((WiTiltRawReader) r).openBluetooth(name, menu);
+
 		TestSamplesSink[] sinks = new TestSamplesSink[3];
 		for (int i=0; i<=2; i++) {
 			sinks[i] = new TestSamplesSink();
