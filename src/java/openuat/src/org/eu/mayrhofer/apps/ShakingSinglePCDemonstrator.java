@@ -141,15 +141,16 @@ public class ShakingSinglePCDemonstrator {
 	 * @param device1 If deviceType is set to 1, this specifies the log file (or pipe) to
 	 *                read the pulse-width parallel port data. A special case is a syntax
 	 *                "port:<port number>" to open an TCP port and listen for incoming log
-	 *                lines on that port. If deviceType is set to 2,
-	 *                this specifies the name of the first serial port to read from the
-	 *                WiTilt sensor.
+	 *                lines on that port. If deviceType is set to 2 or 3,
+	 *                this specifies the name of the first serial port or the first Bluetooth
+	 *                MAC address, respectively, to read from the WiTilt sensor.
 	 * @param device2 If deviceType is set to 2, this specifies the name of the second 
-	 *                serial port to read from the WiTilt sensor. If deviceType is set to 1,
-	 *                it is simply ignored.
+	 *                serial port or the second Bluetooth MAC address to read from the 
+	 *                WiTilt sensor. If deviceType is set to 1, it is simply ignored.
 	 * @param deviceType The sensor device type to use. If set to 1, pulse-width signals
 	 *                   will be sampled from the parallel port. If set to 2, WiTilt devices
-	 *                   will be used.
+	 *                   will be used with a (virtual) serial port, if set to 3, WiTilt devices
+	 *                   will be used via JSR82 RFCOMM channels.
 	 * @throws IOException
 	 */
 	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
@@ -243,9 +244,17 @@ public class ShakingSinglePCDemonstrator {
 			}
 
 		}
-		else if (deviceType == 2) {
-			reader1 = new WiTiltRawReader(device1);
-			reader2 = new WiTiltRawReader(device2);
+		else if (deviceType == 2 || deviceType == 3) {
+			reader1 = new WiTiltRawReader();
+			reader2 = new WiTiltRawReader();
+			if (deviceType == 2) {
+				((WiTiltRawReader) reader1).openSerial(device1, false);
+				((WiTiltRawReader) reader2).openSerial(device2, false);
+			}
+			else {
+				((WiTiltRawReader) reader1).openBluetooth(device1, false);
+				((WiTiltRawReader) reader2).openBluetooth(device2, false);
+			}
 
 			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 			reader2.addSink(new int[] {0, 1, 2}, aggr_b.getInitialSinks());
@@ -265,8 +274,8 @@ public class ShakingSinglePCDemonstrator {
 		 */
 
 		if (args.length < 2) {
-			System.err.println("Required parameters: <device type: 'parallel' or 'witilt'> <device1> <device2>");
-			System.err.println("                     listentcp port:<tcp port>");
+			System.err.println("Required parameters: <device type: 'parallel' or 'witilt-serial' or 'witilt-bluetooth'> <device1> <device2>");
+			System.err.println("                     listentcp <tcp port>        ... assumes parallel");
 			System.exit(1);
 		}
 		int deviceType = -1;
@@ -275,8 +284,13 @@ public class ShakingSinglePCDemonstrator {
 			deviceType = 1;
 			dev1 = args[1];
 		}
-		else if (args[0].equals("witilt")) {
+		else if (args[0].equals("witilt-serial")) {
 			deviceType = 2;
+			dev1 = args[1];
+			dev2 = args[2];
+		}
+		else if (args[0].equals("witilt-bluetooth")) {
+			deviceType = 3;
 			dev1 = args[1];
 			dev2 = args[2];
 		}
