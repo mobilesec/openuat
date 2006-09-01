@@ -17,7 +17,6 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 
 import org.apache.log4j.Logger;
-import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 
 /** This is a very simple class that uses the JSR82 API to open an RFCOMM channel
  * to a Bluetooth device. 
@@ -73,7 +72,7 @@ public class BluetoothRFCOMMChannel {
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
 	 * @param remoteDeviceAddress The Bluetooth MAC address to connect to, in format
-	 *                            "AA:BB:CC:DD:EE:FF".
+	 *                            "AABBCCDDEEFF".
 	 * @param remoteChannelNumber The SDP RFCOMM channel number to connect to, usually between
 	 *                            1 and 10.
 	 * @throws IOException When the local Bluetooth stack was not initialized properly.
@@ -95,11 +94,11 @@ public class BluetoothRFCOMMChannel {
 	
 	/** Opens a channel to the endpoint given to the constructor.
 	 * @throws IOException On Bluetooth errors.
-	 * @throws InternalApplicationException When the channel has already been opened.
+	 * @throws IOException When the channel has already been opened.
 	 */
-	public void open() throws IOException, InternalApplicationException {
+	public void open() throws IOException {
 		if (connection != null) {
-			throw new InternalApplicationException("Channel has already been opened");
+			throw new IOException("Channel has already been opened");
 		}
 		logger.debug("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber);
@@ -112,11 +111,11 @@ public class BluetoothRFCOMMChannel {
 	/** Closes the channel to the endpoint given to the constructor. It may be
 	 * re-opened with another call to @see #open.
 	 * @throws IOException On Bluetooth errors.
-	 * @throws InternalApplicationException When the channel has not yet been opened.
+	 * @throws IOException When the channel has not yet been opened.
 	 */
-	public void close() throws IOException, InternalApplicationException {
+	public void close() throws IOException {
 		if (connection == null || toRemote == null || fromRemote == null) {
-			throw new InternalApplicationException("RFCOMM channel has not yet been openend propely");
+			throw new IOException("RFCOMM channel has not yet been openend propely");
 		}
 		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber);
@@ -131,11 +130,11 @@ public class BluetoothRFCOMMChannel {
 	
 	/** Returns the InputStream object for reading from the remote Bluetooth device.
 	 * @return The InputStream object openend in @see #open.
-	 * @throws InternalApplicationException When the channel has not yet been opened.
+	 * @throws IOException When the channel has not yet been opened.
 	 */
-	public InputStream getInputStream() throws InternalApplicationException {
+	public InputStream getInputStream() throws IOException {
 		if (connection == null || fromRemote == null) {
-			throw new InternalApplicationException("RFCOMM channel has not yet been opened properly");
+			throw new IOException("RFCOMM channel has not yet been opened properly");
 		}
 		
 		return fromRemote;
@@ -143,11 +142,11 @@ public class BluetoothRFCOMMChannel {
 
 	/** Returns the OutputStream object for writing to the remote Bluetooth device.
 	 * @return The OutputStream object openend in @see #open.
-	 * @throws InternalApplicationException When the channel has not yet been opened.
+	 * @throws IOException When the channel has not yet been opened.
 	 */
-	public OutputStream getOutputStream() throws InternalApplicationException {
+	public OutputStream getOutputStream() throws IOException {
 		if (connection == null || toRemote == null) {
-			throw new InternalApplicationException("RFCOMM channel has not yet been opened properly");
+			throw new IOException("RFCOMM channel has not yet been opened properly");
 		}
 		
 		return toRemote;
@@ -200,7 +199,6 @@ public class BluetoothRFCOMMChannel {
 
 	   /**
 	    * Switches the state of the local device between Master and Slave
-	 * @throws InternalApplicationException 
 	 * @throws IOException 
 	 * @throws NumberFormatException 
 	    */
@@ -213,7 +211,7 @@ public class BluetoothRFCOMMChannel {
 
 	   }*/
 	  
-	  public static void main(String[] args) throws IOException, InternalApplicationException, NumberFormatException {
+	  public static void main(String[] args) throws IOException, NumberFormatException {
 		  BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
 		  c.open();
 		  InputStream i = c.getInputStream();
