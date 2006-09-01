@@ -1,66 +1,153 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-09-01
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.eu.mayrhofer.sensors;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.bluetooth.DeviceClass;
-import javax.bluetooth.DiscoveryAgent;
-import javax.bluetooth.DiscoveryListener;
-import javax.bluetooth.L2CAPConnection;
 import javax.bluetooth.LocalDevice;
-import javax.bluetooth.RemoteDevice;
-import javax.bluetooth.ServiceRecord;
-import javax.bluetooth.UUID;
-import javax.microedition.io.Connection;
 import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
-import javax.microedition.io.StreamConnectionNotifier;
-import javax.obex.*;
 
-import de.avetana.bluetooth.hci.LinkQuality;
-import de.avetana.bluetooth.hci.Rssi;
+import org.apache.log4j.Logger;
+import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 
-
+/** This is a very simple class that uses the JSR82 API to open an RFCOMM channel
+ * to a Bluetooth device. 
+ *  
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
 public class BluetoothRFCOMMChannel {
-	  // Connection streams. These streams are only used with BluetoothStream connections (RFCOMN)
-	  private InputStream is = null;
-	  private OutputStream os = null;
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(BluetoothRFCOMMChannel.class);
 
-	  // The connection instance. Can be an L2CAPConnectionImpl or an RFCOMMConnectionImpl, depending on
-	  // the protocol choosen. (VERSION 1.2)
-	  private Connection streamCon = null;
-	  // Connection notifier for SDP server profiles
-	  private Connection notify=null;
-  
-	  //javax.bluetooth.* classical classes
-	  //Saving this two instances avoid to continuily call the static methods (getLocalDevice(), getDiscoveryAgent()) of
-	  //these two classes
-	  private DiscoveryAgent m_agent;
-	  private LocalDevice m_local;
+	/** Represents our local device and is currently only used to print the local
+	 * Bluetooth MAC address.
+	 */
+	private static LocalDevice localDevice = null;
+	
+	/** The remote device address string, as passed to the constructor. */
+	private String remoteDeviceAddress;
+	/** The remote RFCOMM channel number (SDP number), as passed to the 
+	 * constructor.
+	 */
+	private int remoteChannelNumber;
+	/** This service URL gets constructed from remoteDeviceAddress and remoteChannelNumber
+	 * in the constructor and is used in @see #open;
+	 */
+	private String serviceURL;
+	
+	/** After a call to @see #open, this will hold the connection object.
+	 */
+	private StreamConnection connection = null;
+	/** Initialized by @see #open.
+	 */
+	private InputStream fromRemote = null;
+	/** Initialized by @see #open.
+	 */
+	private OutputStream toRemote = null;
+	
+	static {
+		logger.debug("Initializing Avetana JSR82 implementation");
+		// Initialize the java stack.
+		try {
+			de.avetana.bluetooth.stack.BluetoothStack.init(new de.avetana.bluetooth.stack.AvetanaBTStack());
+			localDevice = LocalDevice.getLocalDevice();
+			logger.info("Initialized Bluetooth stack successfully, local device has address " +
+					localDevice.getBluetoothAddress() + " with friendly name '" +
+					localDevice.getFriendlyName() + "'");
+		} catch (Exception e) {
+			logger.error("Could not initialize local Bluetooth stack. RFCOMM channels will not work");
+			e.printStackTrace();
+		}
+	}
 
-	  private static final int rfcommPackLen = 100;
-	  
-	  public BluetoothRFCOMMChannel() {
-		  try {
-		       // Initialize the java stack.
-			  de.avetana.bluetooth.stack.BluetoothStack.init(new de.avetana.bluetooth.stack.AvetanaBTStack());
-			     m_local=LocalDevice.getLocalDevice();
-			     m_agent=m_local.getDiscoveryAgent();
+	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
+	 * This does not yet open the channel, @see open needs to be called for that.
+	 * @param remoteDeviceAddress The Bluetooth MAC address to connect to, in format
+	 *                            "AA:BB:CC:DD:EE:FF".
+	 * @param remoteChannelNumber The SDP RFCOMM channel number to connect to, usually between
+	 *                            1 and 10.
+	 * @throws IOException When the local Bluetooth stack was not initialized properly.
+	 */
+	public BluetoothRFCOMMChannel(String remoteDeviceAddress, int remoteChannelNumber) throws IOException {
+		if (localDevice == null) {
+			throw new IOException("Local Bluetooth stack was not initialized properly, can not construct channel objects");
+		}
+		
+		// just remember the parameters
+		this.remoteDeviceAddress = remoteDeviceAddress;
+		this.remoteChannelNumber = remoteChannelNumber;
+		logger.debug("Creating RFCOMM channel object to remote device '" + remoteDeviceAddress +
+				"' to SDP port "+ remoteChannelNumber);
+		
+		serviceURL = "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
+			";authenticate=false;master=true;encrypt=false";
+	}
+	
+	/** Opens a channel to the endpoint given to the constructor.
+	 * @throws IOException On Bluetooth errors.
+	 * @throws InternalApplicationException When the channel has already been opened.
+	 */
+	public void open() throws IOException, InternalApplicationException {
+		if (connection != null) {
+			throw new InternalApplicationException("Channel has already been opened");
+		}
+		
+		connection = (StreamConnection) Connector.open(serviceURL);
+		fromRemote = connection.openInputStream();
+		toRemote = connection.openOutputStream();
+	}
+	
+	/** Closes the channel to the endpoint given to the constructor. It may be
+	 * re-opened with another call to @see #open.
+	 * @throws IOException On Bluetooth errors.
+	 * @throws InternalApplicationException When the channel has not yet been opened.
+	 */
+	public void close() throws IOException, InternalApplicationException {
+		if (connection == null || toRemote == null || fromRemote == null) {
+			throw new InternalApplicationException("RFCOMM channel has not yet been openend propely");
+		}
+		
+		fromRemote.close();
+		toRemote.close();
+		connection.close();
+		fromRemote = null;
+		toRemote = null;
+		connection = null;
+	}
+	
+	/** Returns the InputStream object for reading from the remote Bluetooth device.
+	 * @return The InputStream object openend in @see #open.
+	 * @throws InternalApplicationException When the channel has not yet been opened.
+	 */
+	public InputStream getInputStream() throws InternalApplicationException {
+		if (connection == null || fromRemote == null) {
+			throw new InternalApplicationException("RFCOMM channel has not yet been opened properly");
+		}
+		
+		return fromRemote;
+	}
 
-			     String serviceURL = "btspp://00A0961360C8:1;authenticate=false;master=true;encrypt=false";
-			     StreamConnection connection = (StreamConnection) Connector.open(serviceURL);
-			     InputStream is = connection.openInputStream();
-			     int c = is.read();
-			     while (c != -1) {
-			    	 System.out.print((char) c);
-			    	 c = is.read();
-			     }
-			     
-		     }catch(Exception ex) {
-		       ex.printStackTrace();
-		       System.exit(0);
-		     }
-	  }
+	/** Returns the OutputStream object for writing to the remote Bluetooth device.
+	 * @return The OutputStream object openend in @see #open.
+	 * @throws InternalApplicationException When the channel has not yet been opened.
+	 */
+	public OutputStream getOutputStream() throws InternalApplicationException {
+		if (connection == null || toRemote == null) {
+			throw new InternalApplicationException("RFCOMM channel has not yet been opened properly");
+		}
+		
+		return toRemote;
+	}
 
 	   /**
 	    * Shows information about the remote device (name, device class, BT address ..etc..)
@@ -109,6 +196,9 @@ public class BluetoothRFCOMMChannel {
 
 	   /**
 	    * Switches the state of the local device between Master and Slave
+	 * @throws InternalApplicationException 
+	 * @throws IOException 
+	 * @throws NumberFormatException 
 	    */
 	   /*public void switchMaster() {
 	     try {
@@ -118,5 +208,16 @@ public class BluetoothRFCOMMChannel {
 	     }
 
 	   }*/
+	  
+	  public static void main(String[] args) throws IOException, InternalApplicationException, NumberFormatException {
+		  BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
+		  c.open();
+		  InputStream i = c.getInputStream();
+		  int tmp = i.read();
+		  while (tmp != -1) {
+			  System.out.print((char) tmp);
+			  tmp = i.read();
+		  }
+	  }
 }
 
