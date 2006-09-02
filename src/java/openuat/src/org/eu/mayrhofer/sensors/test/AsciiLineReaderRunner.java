@@ -132,9 +132,10 @@ public class AsciiLineReaderRunner {
 			AsciiLineReaderBase r = null;
 			if (runClassName.equals("ParallelPortPWMReader"))
 				r = new ParallelPortPWMReader(filename, 100);
-			else if (runClassName.equals("WiTiltRawReader"))
-				r = new WiTiltRawReader(filename);
-			else {
+			else if (runClassName.equals("WiTiltRawReader")) {
+				r = new WiTiltRawReader();
+				((WiTiltRawReader) r).openSerial(filename, false);
+			} else {
 				System.err.println("Unknown derived class name!");
 				System.exit(200);
 			}
