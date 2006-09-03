@@ -86,6 +86,10 @@ import org.eu.mayrhofer.util.Hash;
 public class CandidateKeyProtocol {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(CandidateKeyProtocol.class);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.motionauthentication");
 
 	/** This is used for deriving the shared key them from the one used for comparing 
 	 * key to ensure that they are different. It's just some random text, the exact value really 
@@ -306,7 +310,6 @@ public class CandidateKeyProtocol {
 	public CandidateKeyProtocol(int candidateHistorySize, int matchHistorySize, 
 			int maxRemoteMatchListAge, String instanceId, boolean useJSSE) {
 		this.remoteIdentifier = instanceId;
-		this.matchHistorySize = matchHistorySize;
 		this.maxRemoteMatchListAge = maxRemoteMatchListAge;
 		this.useJSSE = useJSSE;
 		
@@ -367,8 +370,11 @@ public class CandidateKeyProtocol {
 			// first add to the history
 			CandidateKeyPart p = new CandidateKeyPart(candidateKeys[i], lastRound, (byte) i, entropy);
 			recentKeyParts[recentKeyPartsIndex++] = p;
-			if (recentKeyPartsIndex == recentKeyParts.length)
+			if (recentKeyPartsIndex == recentKeyParts.length) {
+				statisticsLogger.debug("o recentKeyPartsIndex overflow (" + recentKeyParts.length + ") while adding " + 
+						candidateKeys.length + " candidate key parts; lastRound=" + lastRound);
 				recentKeyPartsIndex = 0;
+			}
 			// and generate the candidate identifier to send to the remote host
 			ret[i] = p.extractPublicIdentifier();
 			logger.debug("Generating local candidate identifier number " + p.candidateNumber +
@@ -405,10 +411,12 @@ public class CandidateKeyProtocol {
 			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
-		int firstMatch = -1;
+		int firstMatch = -1, numMatches = 0, numHistoryParts = 0;
 		// check against the whole history
 		for (int j=0; j<recentKeyParts.length; j++) {
 			if (recentKeyParts[j] != null) {
+				numHistoryParts++;
+				
 				for (int i=0; i<candidateIdentifiers.length; i++) {
 					if (candidateIdentifiers[i] == null) {
 						logger.warn("Candidate with index " + i + " is null, ignoring" +
@@ -437,6 +445,7 @@ public class CandidateKeyProtocol {
 					 * the remote candidate back to the other host
 					 */
 					if (match) {
+						numMatches++;
 						advanceCandidateToMatch(remoteHost, j, candidateIdentifiers[i].round, candidateIdentifiers[i].candidateNumber);
 						if (firstMatch == -1) {
 							// sanity check
@@ -454,6 +463,10 @@ public class CandidateKeyProtocol {
 			}
 		}
 
+		statisticsLogger.info("m found " + numMatches + " matches out of " + candidateIdentifiers.length +
+				" incoming candidates from + " + remoteHost + " and " + numHistoryParts + 
+				" parts in the recent history; lastRound=" + lastRound + "; numMatches=" + 
+				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
 		if (firstMatch == -1)
 			logger.info("No match found, not reporting to remote host" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -511,11 +524,13 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			matchList = new MatchingKeyParts();
 			matchingKeyParts.put(remoteHost, matchList);
+			statisticsLogger.debug("+ Creating new match list for " + remoteHost + ", now " + 
+					matchingKeyParts.size() + " lists; lastRound=" + lastRound);
 		}
 		long curTime = System.currentTimeMillis();
 		matchList.lastUpdate = curTime;
 
-		// TODO: (simply to do) move this check into a background thread
+		// TODO: (simple to do) move this check into a background thread
 		// before inserting something new, prune matching lists that are too old
 		for (Iterator allRemoteHosts = matchingKeyParts.keySet().iterator();
 				allRemoteHosts.hasNext(); ) {
@@ -526,10 +541,12 @@ public class CandidateKeyProtocol {
 						", its last update was " + lastUpdate +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				// TODO: generate timeout events so that higher levels can react (e.g. with failure events and protocol abort)
-				if (matchingKeyParts.remove(checkHost) == null) 
+				if (! wipe(checkHost)) 
 					logger.error("Could not purge match list for remote host " + checkHost + 
 							". This should not happen." +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				statisticsLogger.debug("- Removing old match list for " + checkHost + ", now " + 
+						matchingKeyParts.size() + " lists; lastRound=" + lastRound);
 			}
 		}
 		
@@ -559,8 +576,14 @@ public class CandidateKeyProtocol {
 					") to matching status" +
 					" (match list index is now " + matchList.index + ")" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			if (matchList.index == matchList.parts.length)
+			if (matchList.index == matchList.parts.length) {
 				matchList.index = 0;
+				statisticsLogger.debug("o matchList index overflow for " + remoteHost + " (" + 
+						matchList.parts.length + "); lastRound=" + lastRound);
+			}
+			statisticsLogger.debug("= now " + matchList.numMatchingRounds + " matches for " + remoteHost + 
+					" since round " + matchList.firstLocalRoundNumber + " (max list size " + matchList.parts.length + 
+					"); lastRound=" + lastRound);
 		}
 		else
 			logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
@@ -719,6 +742,9 @@ public class CandidateKeyProtocol {
 		Object[] keyRet = assembleKeyFromMatches(remoteHost, -1, false);
 		byte[] keyParts = ((byte[][]) keyRet[0])[0];
 		int numCopied = ((Integer) keyRet[1]).intValue();
+		statisticsLogger.info("g generated key for " + remoteHost + " out of " + numCopied + 
+				" matching parts; lastRound=" + lastRound + "; numMatches=" + 
+				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
 		return generateKey(keyParts, numCopied);
 	}
 	
@@ -765,20 +791,20 @@ public class CandidateKeyProtocol {
 		
 		Object[] keyRet = assembleKeyFromMatches(remoteHost, numParts, true);
 		if (keyRet == null) {
-			/* if not enough key parts could be found for this offset, it will not be possible
-			   for larger ones */
 			logger.debug("Could not generate key candidates with " + numParts + " parts" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 			
-		// generate all candidates for this offset
 		byte[][] keyParts = (byte[][]) keyRet[0];
 		int numCopied = ((Integer) keyRet[1]).intValue();
 		// sanity check
 		if (numCopied != numParts) 
 			throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		statisticsLogger.info("g* generated " + keyParts.length + " candiates keys for " + remoteHost + 
+				" out of " + numCopied + " matching parts; lastRound=" + lastRound + "; numMatches=" + 
+				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
 
 		logger.debug("Comparing " + keyParts.length + " candidate keys" +
 				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -823,13 +849,22 @@ public class CandidateKeyProtocol {
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.remove(remoteHost);
 			// not only remove from list but really wipe
-			for (int i=0; i<matchList.parts.length; i++)
+			int numMatches=0;
+			for (int i=0; i<matchList.parts.length; i++) {
 				if (matchList.parts[i] != null) {
+					numMatches++;
 					for (int j=0; j<matchList.parts[i].keyPart.length; j++)
 						matchList.parts[i].keyPart[j] = 0;
 					for (int j=0; j<matchList.parts[i].hash.length; j++)
 						matchList.parts[i].hash[j] = 0;
+					matchList.parts[i] = null;
 				}
+			}
+			statisticsLogger.debug("- wiping match list for " + remoteHost + ", contained " +
+					numMatches + " matches; lastRound=" + lastRound);
+			
+			// and call the garbage collector
+			System.gc();
 			return true;
 		}
 		else
@@ -845,6 +880,8 @@ public class CandidateKeyProtocol {
 		Iterator iter = matchingKeyParts.values().iterator();
 		while (iter.hasNext())
 			wipe(iter.next());
+		// and call the garbage collector
+		System.gc();
 	}
 	
 	/** This is a helper function used by generateKey and searchKey to assemble

@@ -51,6 +51,10 @@ import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
 public abstract class CKPOverUDP extends AuthenticationEventSender {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(CKPOverUDP.class);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.motionauthentication");
 
 	private final static String Protocol_CandidateKeyPart = "CAND ";
 
