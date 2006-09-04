@@ -584,15 +584,15 @@ public class InterlockProtocol {
 			logger.debug("Sending line to remote host: command '" + command + "', value '" + value + "'");
 		toRemote.println(command + " " + value);
 		toRemote.flush();
-		String remoteLine = "";
+		StringBuffer remoteLine = new StringBuffer();
 		int ch = fromRemote.read();
 		while (ch != -1 && ch != '\n') {
 			// TODO: check if this is enough to deal with line ending problems
 			if (ch != '\r')
-				remoteLine += (char) ch;
+				remoteLine.append((char) ch);
 			ch = fromRemote.read();
 		}
-		if (remoteLine.startsWith(command + " ")) {
+		if (remoteLine.substring(0, command.length()+1).equals(command + " ")) {
 			String ret = remoteLine.substring(command.length() + 1);
 			if (logger.isDebugEnabled())
 				logger.debug("Received line from remote host: command '" + command + "', value + '" + ret + "'");
@@ -666,8 +666,12 @@ public class InterlockProtocol {
 		for (int round=0; round<rounds; round++) {
 			if (logger.isDebugEnabled())
 				logger.debug("Sending my round " + round + ", length of part is " + localParts[round].length + " bytes");
+			StringBuffer remoteTmp = new StringBuffer();
+			remoteTmp.append(round);
+			remoteTmp.append(' ');
+			remoteTmp.append(Hex.encodeHex(localParts[round]));
 			String remotePart = swapLine(ProtocolLine_Round, 
-					round + " " + new String(Hex.encodeHex(localParts[round])),
+					remoteTmp.toString(),
 					fromRemote, writer);
 			if (remotePart == null) {
 				logger.error("Did not received round " + round + " from remote. Can not continue.");

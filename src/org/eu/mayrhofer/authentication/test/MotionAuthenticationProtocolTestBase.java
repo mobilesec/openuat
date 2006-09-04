@@ -31,7 +31,7 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 	protected static final double varthreshold = 350;
 	
 	// only allow to take this much more time than the data set is long --> "soft-realtime"
-	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 1200;
+	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 2;
 	
 	protected TimeSeriesAggregator aggr_a, aggr_b;
 	
