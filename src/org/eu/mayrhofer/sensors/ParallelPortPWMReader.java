@@ -114,7 +114,8 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 			logger.warn("Unable to decode timestamp, ignoring line");
 			return;
 		}
-		logger.debug("Reading at timestamp " + timestamp + " us");
+		if (logger.isDebugEnabled())
+			logger.debug("Reading at timestamp " + timestamp + " us");
 		// sanity check
 		if (timestamp <= lastSampleAt) {
 			logger.error("Reading from the past (read " + timestamp + ", last sample at " + 
@@ -131,17 +132,20 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 		
 		// special case: first sample
 		if (lastSampleAt == 0) {
-			logger.debug("First sample starting at " + timestamp + " us");
+			if (logger.isDebugEnabled())
+				logger.debug("First sample starting at " + timestamp + " us");
 			lastSampleAt = timestamp;
 		}
 		
 		// check if this sample creates a new sample period
 		if (timestamp > lastSampleAt + sampleWidth) {
-			logger.debug("Current reading creates new sample");
+			if (logger.isDebugEnabled())
+				logger.debug("Current reading creates new sample");
 			
 			// get the average over the last period's samples (if there are any, if not, just use the last period's samples)
 			if (curSample[0].size() > 0) {
-				logger.debug("Averaging over " + curSample[0].size() + " values for the last sample");
+				if (logger.isDebugEnabled())
+					logger.debug("Averaging over " + curSample[0].size() + " values for the last sample");
 				for (int i=0; i<maxNumLines; i++) {
 					lastSampleValues[i] = 0;
 					for (int j=0; j<curSample[i].size(); j++)
@@ -155,7 +159,8 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 			while (timestamp > lastSampleAt + sampleWidth) {
 				lastSampleAt += sampleWidth;
 				// and put into all sinks
-				logger.debug("Emitting sample for timestamp " + lastSampleAt);
+				if (logger.isDebugEnabled())
+					logger.debug("Emitting sample for timestamp " + lastSampleAt);
 				emitSample(lastSampleValues);
 			}
 		}
@@ -182,13 +187,15 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 				// extract the lines we want and remember the values
 				for (int i=0; i<maxNumLines; i++) {
 					int val = allLines[i]; 
-					logger.debug("Read value " + val + " on line " + i);
+					if (logger.isDebugEnabled())
+						logger.debug("Read value " + val + " on line " + i);
 					curSample[i].add(new Integer(val));
 				}
 			}
 		}
 		else
-			logger.debug("This is an empty reading containing only a timestamp");
+			if (logger.isDebugEnabled())
+				logger.debug("This is an empty reading containing only a timestamp");
 	}
 
 
