@@ -35,6 +35,10 @@ public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProto
 	public void tearDown() {
 	}
 	
+	public void testMemoryOverflowCase() throws IOException {
+		runCase("tests/motionauth/specialcases/outofmemory.gz");
+	}
+	
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
 			super(numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
