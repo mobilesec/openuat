@@ -468,10 +468,12 @@ public class CandidateKeyProtocol {
 			}
 		}
 
-		statisticsLogger.info("m found " + numMatches + " matches out of " + candidateIdentifiers.length +
-				" incoming candidates from + " + remoteHost + " and " + numHistoryParts + 
-				" parts in the recent history; lastRound=" + lastRound + "; numMatches=" + 
-				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
+		if (statisticsLogger.isInfoEnabled())
+			statisticsLogger.info("m found " + numMatches + " matches out of " + candidateIdentifiers.length +
+					" incoming candidates from + " + remoteHost + " and " + numHistoryParts + 
+					" parts in the recent history; lastRound=" + lastRound + 
+					(matchingKeyParts.containsKey(remoteHost) ? ("; numMatches=" + 
+							((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds) : ""));
 		if (firstMatch == -1)
 			logger.info("No match found, not reporting to remote host" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -756,9 +758,10 @@ public class CandidateKeyProtocol {
 		Object[] keyRet = assembleKeyFromMatches(remoteHost, -1, false);
 		byte[] keyParts = ((byte[][]) keyRet[0])[0];
 		int numCopied = ((Integer) keyRet[1]).intValue();
-		statisticsLogger.info("g generated key for " + remoteHost + " out of " + numCopied + 
-				" matching parts; lastRound=" + lastRound + "; numMatches=" + 
-				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
+		if (statisticsLogger.isInfoEnabled())
+			statisticsLogger.info("g generated key for " + remoteHost + " out of " + numCopied + 
+					" matching parts; lastRound=" + lastRound + "; numMatches=" + 
+					((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
 		return generateKey(keyParts, numCopied);
 	}
 	
@@ -818,9 +821,10 @@ public class CandidateKeyProtocol {
 		if (numCopied != numParts) 
 			throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		statisticsLogger.info("g* generated " + keyParts.length + " candiates keys for " + remoteHost + 
-				" out of " + numCopied + " matching parts; lastRound=" + lastRound + "; numMatches=" + 
-				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
+		if (statisticsLogger.isInfoEnabled())
+			statisticsLogger.info("g* generated " + keyParts.length + " candiates keys for " + remoteHost + 
+					" out of " + numCopied + " matching parts; lastRound=" + lastRound + "; numMatches=" + 
+					((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
 
 		if (logger.isDebugEnabled())
 			logger.debug("Comparing " + keyParts.length + " candidate keys" +
