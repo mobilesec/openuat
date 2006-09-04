@@ -348,9 +348,10 @@ public class CandidateKeyProtocol {
 		
 		CandidateKeyPartIdentifier[] ret = new CandidateKeyPartIdentifier[candidateKeys.length];
 		lastRound++;
-		logger.debug("Adding " + candidateKeys.length + " candidates to local history, assigning round " +
-				lastRound + 
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (logger.isDebugEnabled())
+			logger.debug("Adding " + candidateKeys.length + " candidates to local history, assigning round " +
+					lastRound + 
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 
 		int candidateKeyPartsLength = -1;
 		for (int i=0; i<candidateKeys.length; i++) {
@@ -371,14 +372,16 @@ public class CandidateKeyProtocol {
 			CandidateKeyPart p = new CandidateKeyPart(candidateKeys[i], lastRound, (byte) i, entropy);
 			recentKeyParts[recentKeyPartsIndex++] = p;
 			if (recentKeyPartsIndex == recentKeyParts.length) {
-				statisticsLogger.debug("o recentKeyPartsIndex overflow (" + recentKeyParts.length + ") while adding " + 
-						candidateKeys.length + " candidate key parts; lastRound=" + lastRound);
+				if (statisticsLogger.isDebugEnabled())
+					statisticsLogger.debug("o recentKeyPartsIndex overflow (" + recentKeyParts.length + ") while adding " + 
+							candidateKeys.length + " candidate key parts; lastRound=" + lastRound);
 				recentKeyPartsIndex = 0;
 			}
 			// and generate the candidate identifier to send to the remote host
 			ret[i] = p.extractPublicIdentifier();
-			logger.debug("Generating local candidate identifier number " + p.candidateNumber +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Generating local candidate identifier number " + p.candidateNumber +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		
 		return ret;
@@ -435,11 +438,12 @@ public class CandidateKeyProtocol {
 					for (int k=0; k<compareBytes && match; k++)
 						if (recentKeyParts[j].hash[k] != candidateIdentifiers[i].hash[k])
 							match = false;
-					logger.debug("Incoming candidate of round " + candidateIdentifiers[i].round +
-							" with number " + candidateIdentifiers[i].candidateNumber + " " + 
-							(match ? "matches" : "does not match") + " local candidate of round " + 
-							recentKeyParts[j].round + " with number " + recentKeyParts[j].candidateNumber +
-							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+					if (logger.isDebugEnabled())
+						logger.debug("Incoming candidate of round " + candidateIdentifiers[i].round +
+								" with number " + candidateIdentifiers[i].candidateNumber + " " + 
+								(match ? "matches" : "does not match") + " local candidate of round " + 
+								recentKeyParts[j].round + " with number " + recentKeyParts[j].candidateNumber +
+								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					
 					/* when it matches, add this local candidate to the matches list and report
 					 * the remote candidate back to the other host
@@ -455,8 +459,9 @@ public class CandidateKeyProtocol {
 										"in the array: " + i +
 										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							firstMatch = candidateIdentifiers[i].candidateNumber;
-							logger.debug("This is the first match, will report candidate number " + firstMatch +
-									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+							if (logger.isDebugEnabled())
+								logger.debug("This is the first match, will report candidate number " + firstMatch +
+										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						}
 					}
 				}
@@ -520,12 +525,14 @@ public class CandidateKeyProtocol {
 		if (matchingKeyParts.containsKey(remoteHost))
 			matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 		else {
-			logger.debug("Creating new match list for remote host " + remoteHost +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Creating new match list for remote host " + remoteHost +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			matchList = new MatchingKeyParts();
 			matchingKeyParts.put(remoteHost, matchList);
-			statisticsLogger.debug("+ Creating new match list for " + remoteHost + ", now " + 
-					matchingKeyParts.size() + " lists; lastRound=" + lastRound);
+			if (statisticsLogger.isDebugEnabled())
+				statisticsLogger.debug("+ Creating new match list for " + remoteHost + ", now " + 
+						matchingKeyParts.size() + " lists; lastRound=" + lastRound);
 		}
 		long curTime = System.currentTimeMillis();
 		matchList.lastUpdate = curTime;
@@ -537,16 +544,18 @@ public class CandidateKeyProtocol {
 			Object checkHost = allRemoteHosts.next();
 			long lastUpdate = ((MatchingKeyParts) matchingKeyParts.get(checkHost)).lastUpdate; 
 			if (lastUpdate + maxRemoteMatchListAge < curTime) {
-				logger.debug("Pruning match list for remote host " + checkHost + 
-						", its last update was " + lastUpdate +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				if (logger.isDebugEnabled())
+					logger.debug("Pruning match list for remote host " + checkHost + 
+							", its last update was " + lastUpdate +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				// TODO: generate timeout events so that higher levels can react (e.g. with failure events and protocol abort)
 				if (! wipe(checkHost)) 
 					logger.error("Could not purge match list for remote host " + checkHost + 
 							". This should not happen." +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				statisticsLogger.debug("- Removing old match list for " + checkHost + ", now " + 
-						matchingKeyParts.size() + " lists; lastRound=" + lastRound);
+				if (statisticsLogger.isDebugEnabled())
+					statisticsLogger.debug("- Removing old match list for " + checkHost + ", now " + 
+							matchingKeyParts.size() + " lists; lastRound=" + lastRound);
 			}
 		}
 		
@@ -570,26 +579,30 @@ public class CandidateKeyProtocol {
 
 			matchList.parts[matchList.index++] = new MatchingKeyPart(recentKeyParts[candidateIndex], 
 					remoteReportedRound, remoteReportedCandidateNumber);
-			logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
-					" with number " + recentKeyParts[candidateIndex].candidateNumber + 
-					" (remote uses round " + remoteReportedRound + " with number " + remoteReportedCandidateNumber + 
-					") to matching status" +
-					" (match list index is now " + matchList.index + ")" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Advancing local candidate of round " + recentKeyParts[candidateIndex].round +
+						" with number " + recentKeyParts[candidateIndex].candidateNumber + 
+						" (remote uses round " + remoteReportedRound + " with number " + remoteReportedCandidateNumber + 
+						") to matching status" +
+						" (match list index is now " + matchList.index + ")" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			if (matchList.index == matchList.parts.length) {
 				matchList.index = 0;
-				statisticsLogger.debug("o matchList index overflow for " + remoteHost + " (" + 
-						matchList.parts.length + "); lastRound=" + lastRound);
+				if (statisticsLogger.isDebugEnabled())
+					statisticsLogger.debug("o matchList index overflow for " + remoteHost + " (" + 
+							matchList.parts.length + "); lastRound=" + lastRound);
 			}
-			statisticsLogger.debug("= now " + matchList.numMatchingRounds + " matches for " + remoteHost + 
-					" since round " + matchList.firstLocalRoundNumber + " (max list size " + matchList.parts.length + 
-					"); lastRound=" + lastRound);
+			if (statisticsLogger.isDebugEnabled())
+				statisticsLogger.debug("= now " + matchList.numMatchingRounds + " matches for " + remoteHost + 
+						" since round " + matchList.firstLocalRoundNumber + " (max list size " + matchList.parts.length + 
+						"); lastRound=" + lastRound);
 		}
 		else
-			logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
-					" with number " + recentKeyParts[candidateIndex].candidateNumber + 
-					" already marked as match, skipping to add it" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Local candidate of round " + recentKeyParts[candidateIndex].round +
+						" with number " + recentKeyParts[candidateIndex].candidateNumber + 
+						" already marked as match, skipping to add it" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 	}
 	
 	/** This small helper function just increases the number of matching rounds for
@@ -607,9 +620,10 @@ public class CandidateKeyProtocol {
 					remoteHost + ". This should not happen!" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		matchList.numMatchingRounds++;
-		logger.debug("Remote host " + remoteHost + " now has " + matchList.numMatchingRounds + 
-				" rounds with matches out of " + (lastRound-matchList.firstLocalRoundNumber) +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (logger.isDebugEnabled())
+			logger.debug("Remote host " + remoteHost + " now has " + matchList.numMatchingRounds + 
+					" rounds with matches out of " + (lastRound-matchList.firstLocalRoundNumber) +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (lastRound-matchList.firstLocalRoundNumber < matchList.numMatchingRounds) {
 			logger.info("More matching rounds (" + matchList.numMatchingRounds + ") than total rounds (" +
 					(lastRound-matchList.firstLocalRoundNumber) + "), correcting first round number for remote host " +
@@ -785,14 +799,16 @@ public class CandidateKeyProtocol {
 			return null;
 		}
 
-		logger.debug("Trying to create key for remote '" + remoteHost + "' with hash " + 
-				new String(Hex.encodeHex(hash)) + " from " + numParts + " parts" +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (logger.isDebugEnabled())
+			logger.debug("Trying to create key for remote '" + remoteHost + "' with hash " + 
+					new String(Hex.encodeHex(hash)) + " from " + numParts + " parts" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		Object[] keyRet = assembleKeyFromMatches(remoteHost, numParts, true);
 		if (keyRet == null) {
-			logger.debug("Could not generate key candidates with " + numParts + " parts" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Could not generate key candidates with " + numParts + " parts" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 			
@@ -806,13 +822,15 @@ public class CandidateKeyProtocol {
 				" out of " + numCopied + " matching parts; lastRound=" + lastRound + "; numMatches=" + 
 				((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
 
-		logger.debug("Comparing " + keyParts.length + " candidate keys" +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (logger.isDebugEnabled())
+			logger.debug("Comparing " + keyParts.length + " candidate keys" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		// and compare the target hash with hashes over all candidate keys
 		for (int i=0; i<keyParts.length; i++) {
 			byte[] candidateHash = Hash.doubleSHA256(keyParts[i], useJSSE);
-			logger.debug("Checking candidate number " + i + ": hash " + new String(Hex.encodeHex(candidateHash)) +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Checking candidate number " + i + ": hash " + new String(Hex.encodeHex(candidateHash)) +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			boolean match = true;
 			for (int j=0; j<candidateHash.length && j<hash.length && match; j++)
 				if (candidateHash[j] != hash[j])
@@ -845,8 +863,9 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized boolean wipe(Object remoteHost) {
 		if (matchingKeyParts.containsKey(remoteHost)) {
-			logger.debug("Wiping key material for remote host " + remoteHost + 
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled())
+				logger.debug("Wiping key material for remote host " + remoteHost + 
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.remove(remoteHost);
 			// not only remove from list but really wipe
 			int numMatches=0;
@@ -862,8 +881,9 @@ public class CandidateKeyProtocol {
 			}
 			matchList.parts = null;
 			matchList = null;
-			statisticsLogger.debug("- wiping match list for " + remoteHost + ", contained " +
-					numMatches + " matches; lastRound=" + lastRound);
+			if (statisticsLogger.isDebugEnabled())
+				statisticsLogger.debug("- wiping match list for " + remoteHost + ", contained " +
+						numMatches + " matches; lastRound=" + lastRound);
 			
 			// and call the garbage collector
 			System.gc();
@@ -902,9 +922,10 @@ public class CandidateKeyProtocol {
 		if (! matchingKeyParts.containsKey(remoteHost))
 			throw new IllegalArgumentException("Called for a remote host where no match list has yet been created or it has already been pruned, this should not happen!" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		logger.debug("assembleKeyFromMatches called for remote host " + remoteHost + 
-				" for " + numParts + " parts, extractAllCombinations=" + extractAllCombinations + " in thread " + Thread.currentThread() +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (logger.isDebugEnabled())
+			logger.debug("assembleKeyFromMatches called for remote host " + remoteHost + 
+					" for " + numParts + " parts, extractAllCombinations=" + extractAllCombinations + " in thread " + Thread.currentThread() +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 
@@ -947,9 +968,10 @@ public class CandidateKeyProtocol {
 								// already detected another duplicate, so just amend the list
 								alternatives = (LinkedList) duplicateRounds.get(round);
 							}
-							logger.debug("Adding candidate number " + matchList.parts[i].candidateNumber + 
-									" as duplicate to round " + round +
-									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+							if (logger.isDebugEnabled())
+								logger.debug("Adding candidate number " + matchList.parts[i].candidateNumber + 
+										" as duplicate to round " + round +
+										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							// only remember the index in matchingKeyParts, that's all we need
 							alternatives.add(new Integer(i));
 						}
@@ -977,8 +999,9 @@ public class CandidateKeyProtocol {
 		 */ 
 		BitSet[] roundNumbersToUse = null;
 		if (numParts != -1 && numCopied > numParts) {
-			logger.debug("Collected " + numCopied + " rounds from the match list, but only want " + numParts +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
+			if (logger.isDebugEnabled())
+				logger.debug("Collected " + numCopied + " rounds from the match list, but only want " + numParts +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			
 			if (!extractAllCombinations)
 				logger.warn("extractAllCombinations is set to false, but collected more parts than explicitly requested. " +
@@ -1016,30 +1039,35 @@ public class CandidateKeyProtocol {
 			LinkedList allTmpCombinations = new LinkedList();
 			int numAllCombinations = 0;
 			for (int ri=0; ri<roundNumbersToUse.length; ri++) {
-				logger.debug("Generating all candidates for rounds combination " + ri +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				if (logger.isDebugEnabled())
+					logger.debug("Generating all candidates for rounds combination " + ri +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				
 				int numCombinations = 1;
 				Object[] roundsWithDuplicates = duplicateRounds.keySet().toArray();
-				logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				if (logger.isDebugEnabled())
+					logger.debug("Found " + roundsWithDuplicates.length + " rounds with multiple candidates" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				for (int i=0; i<roundsWithDuplicates.length; i++) {
 					LinkedList alternativeIndices = (LinkedList) duplicateRounds.get(roundsWithDuplicates[i]);
 					/* (Large) Performance optimization: only use those rounds that are actually used for
 					 * creating the key later on, because it might save tremendously on the "explosion".
 					 */
 					if (roundNumbersToUse[ri].get(((Integer) roundsWithDuplicates[i]).intValue())) { 
-						logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
-								" alternatives to its first match" + 
-								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						if (logger.isDebugEnabled())
+							logger.debug("Round " + roundsWithDuplicates[i] + " has " + alternativeIndices.size() + 
+									" alternatives to its first match" + 
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						numCombinations *= (alternativeIndices.size()+1);
 					}
 					else
-						logger.debug("Ignoring round " + roundsWithDuplicates[i] + " duplicates" +
-								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						if (logger.isDebugEnabled())
+							logger.debug("Ignoring round " + roundsWithDuplicates[i] + " duplicates" +
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				}
-				logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
-						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				if (logger.isDebugEnabled())
+					logger.debug("Exploding into " + numCombinations + " different candidate combinations for this set of rounds" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			
 				CandidateKeyPart[][] tmpCombinations = new CandidateKeyPart[numCombinations][];
 				// seed with initial candidate
@@ -1058,8 +1086,9 @@ public class CandidateKeyProtocol {
 					Integer round = new Integer(tmpCombinations[0][i].round);
 					if (! duplicateRounds.containsKey(round)) {
 						// simple, just copy
-						logger.debug("Round " + round + " does not have multiple candidates" +
-								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						if (logger.isDebugEnabled())
+							logger.debug("Round " + round + " does not have multiple candidates" +
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						for (int j=1; j<numCombinations; j++)
 							tmpCombinations[j][i] = tmpCombinations[0][i];
 					}
@@ -1070,8 +1099,9 @@ public class CandidateKeyProtocol {
 						alternatives[0] = tmpCombinations[0][i];
 						for (int k=1; k<alternatives.length; k++)
 							alternatives[k] = matchList.parts[((Integer) alternativeIndices.get(k-1)).intValue()];
-						logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
-								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+						if (logger.isDebugEnabled())
+							logger.debug("Round " + round + " has " + alternatives.length + " candidates" +
+									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						/* This looks a bit tricky, but really isn't. If e.g. the numbers of alternatives for
 						 * 5 different rounds a, b, c, d, and e are 1, 2, 1, 3, and 2, respectively, it will
 						 * produce the following pattern:
@@ -1122,10 +1152,10 @@ public class CandidateKeyProtocol {
 								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					}
 				}
+				// need to convert to a nice array now...
+				logger.debug("All combinations (explosions into outer explosion) yielded " + numAllCombinations + " candidates" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			}
-			// need to convert to a nice array now...
-			logger.debug("All combinations (explosions into outer explosion) yielded " + numAllCombinations + " candidates" +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			allCombinations = new CandidateKeyPart[numAllCombinations][];
 			int i=0;
 			for (Iterator iter=allTmpCombinations.iterator(); iter.hasNext();) {
@@ -1161,13 +1191,15 @@ public class CandidateKeyProtocol {
 			keyParts[i] = new byte[keyPartsLength];
 			int outPos=0;
 			for (int j=0; j<numParts; j++) {
-				logger.trace("   Part " + i + ": copying " + allCombinations[i][j].keyPart.length + " bytes to offset " + outPos);
+				if (logger.isTraceEnabled())
+					logger.trace("   Part " + i + ": copying " + allCombinations[i][j].keyPart.length + " bytes to offset " + outPos);
 				System.arraycopy(allCombinations[i][j].keyPart, 0, keyParts[i], outPos, 
 						allCombinations[i][j].keyPart.length);
 				outPos += allCombinations[i][j].keyPart.length;
 			}
-			logger.debug("Concatenated " + allCombinations[i].length + " key parts to candidate key " + i + ": " + new String(Hex.encodeHex(keyParts[i])) +
-					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			if (logger.isDebugEnabled()) 
+				logger.debug("Concatenated " + allCombinations[i].length + " key parts to candidate key " + i + ": " + new String(Hex.encodeHex(keyParts[i])) +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		// I hate Java
 		return new Object[] {keyParts, new Integer(numParts) };
@@ -1203,12 +1235,14 @@ public class CandidateKeyProtocol {
 			throw new IllegalArgumentException("Need to choose at least one element");
 		
 		int numSetCombinations = (int) (fact(set.length) / (fact(k) * fact(set.length - k)));
-		logger.trace("(" + set.length + " over " + k + ") = " + numSetCombinations);
+		if (logger.isTraceEnabled())
+			logger.trace("(" + set.length + " over " + k + ") = " + numSetCombinations);
 		// sanity check
 		if (numSetCombinations < 1)
 			throw new InternalApplicationException("Would pre-explode into " + numSetCombinations + 
 					". This is invalid, need at least 1 combination at this point. This should not happen.");
-		logger.debug("Pre-exploding into " + numSetCombinations + " different combinations of rounds");
+		if (logger.isDebugEnabled())
+			logger.debug("Pre-exploding into " + numSetCombinations + " different combinations of rounds");
 		BitSet[] combinations = new BitSet[numSetCombinations];
 		
 		/* This is a classical backtracking algorithm. */
@@ -1219,17 +1253,20 @@ public class CandidateKeyProtocol {
 		// as long as it's still possible to create a new combination with this start...
 		while (indices[0] <= set.length-k) {
 			indices[level]++;
-			logger.trace("Now at level " + level + ", index is " + indices[level]);
+			if (logger.isTraceEnabled())
+				logger.trace("Now at level " + level + ", index is " + indices[level]);
 			if (level < k-1) {
 				// is it possible to go forward?
 				if (indices[level] < set.length-1) {
-					logger.trace("Not last level, forward track");
+					if (logger.isTraceEnabled())
+						logger.trace("Not last level, forward track");
 					// yes, forward track
 					indices[level+1] = indices[level];
 					level++;
 				}
 				else {
-					logger.trace("Not last level, back track");
+					if (logger.isTraceEnabled())
+						logger.trace("Not last level, back track");
 					// no, need to back track even further
 					level--;
 				}
@@ -1237,18 +1274,21 @@ public class CandidateKeyProtocol {
 			else {
 				// still a valid combination?
 				if (indices[level] < set.length) {
-					logger.trace("Last level, storing indices/values at output position " +
-							combinationNumber + " (out of " + combinations.length + ")");
+					if (logger.isTraceEnabled())
+						logger.trace("Last level, storing indices/values at output position " +
+								combinationNumber + " (out of " + combinations.length + ")");
 					// yes, last level, remember current combination
 					combinations[combinationNumber] = new BitSet();
 					for (int i=0; i<k; i++) {
 						combinations[combinationNumber].set(set[indices[i]]);
-						logger.trace(indices[i] + "/" + set[indices[i]] + " ");
+						if (logger.isTraceEnabled())
+							logger.trace(indices[i] + "/" + set[indices[i]] + " ");
 					}
 					combinationNumber++;
 				}
 				else {
-					logger.trace("Last level, invalid index, back track");
+					if (logger.isTraceEnabled())
+						logger.trace("Last level, invalid index, back track");
 					// no longer valid, back track
 					level--;
 				}
@@ -1284,10 +1324,11 @@ public class CandidateKeyProtocol {
 		ret.key = Hash.doubleSHA256(keyPartsModified, useJSSE);
 		ret.numParts = numParts;
 		
-		logger.debug("Generated key " + new String(Hex.encodeHex(ret.key)) +
-				" with hash " + new String(Hex.encodeHex(ret.hash)) +
-				" from " + ret.numParts + " assembled parts " + new String(Hex.encodeHex(keyParts)) +
-				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		if (logger.isDebugEnabled())
+			logger.debug("Generated key " + new String(Hex.encodeHex(ret.key)) +
+					" with hash " + new String(Hex.encodeHex(ret.hash)) +
+					" from " + ret.numParts + " assembled parts " + new String(Hex.encodeHex(keyParts)) +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
 		return ret;
 	}
