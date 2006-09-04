@@ -150,17 +150,21 @@ public abstract class AsciiLineReaderBase {
 		if (lines.length < 1 || lines.length > maxNumLines)
 			throw new IllegalArgumentException("Number of lines to read must be between 1 and " +
 					maxNumLines);
-		String tmp = "";
+		StringBuffer tmp = new StringBuffer();
 		for (int i=0; i<lines.length; i++) {
 			if (lines[i] < 0 || lines[i] > maxNumLines-1)
 				throw new IllegalArgumentException("Line index must be between 0 and " +
 						(maxNumLines-1));
-			tmp += lines[i] + " ";
+			if (logger.isDebugEnabled()) {
+				tmp.append(lines[i]);
+				tmp.append(' ');
+			}
 		}
 		if (sink.length != lines.length)
 			throw new IllegalArgumentException("Passed TimeSeries array has " + sink.length 
 					+ " elements, but sampling " + lines.length + " devices lines");
-		logger.debug("Registering new listener for lines " + tmp);
+		if (logger.isDebugEnabled())
+			logger.debug("Registering new listener for lines " + tmp.toString());
 		sinks.add(new ListenerCombination(lines, sink));
 	}
 	
@@ -180,7 +184,8 @@ public abstract class AsciiLineReaderBase {
 	 */
 	public void start() {
 		if (samplingThread == null) {
-			logger.debug("Starting sampling thread");
+			if (logger.isDebugEnabled())
+				logger.debug("Starting sampling thread");
 			samplingThread = new Thread(new RunHelper());
 			samplingThread.start();
 		}
@@ -189,7 +194,8 @@ public abstract class AsciiLineReaderBase {
 	/** Stops the background thread, if started previously. */
 	public void stop() {
 		if (samplingThread != null) {
-			logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
+			if (logger.isDebugEnabled())
+				logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
 			alive = false;
 			try {
 				samplingThread.interrupt();
@@ -220,7 +226,8 @@ public abstract class AsciiLineReaderBase {
 				line = r.readLine();
 			}
 			catch (IOException e) {
-				logger.debug("Ignoring exception: " + e);
+				if (logger.isDebugEnabled())
+					logger.debug("Ignoring exception: " + e);
 				line = null;
 			}
 		}
@@ -265,12 +272,14 @@ public abstract class AsciiLineReaderBase {
 						line = r.readLine();
 					}
 					catch (IOException e) {
-						logger.debug("Ignoring exception: " + e);
+						if (logger.isDebugEnabled())
+							logger.debug("Ignoring exception: " + e);
 						line = null;
 					}
 				}
 				if (! alive)
-					logger.debug("Background sampling thread terminated regularly due to request");
+					if (logger.isDebugEnabled())
+						logger.debug("Background sampling thread terminated regularly due to request");
 				else
 					logger.warn("Background sampling thread received empty line! This should not happen when reading from a FIFO");
 			}
