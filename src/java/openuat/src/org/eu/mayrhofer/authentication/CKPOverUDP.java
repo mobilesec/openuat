@@ -359,6 +359,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					logger.info("Duplicate feature vectors detected: " + parts.size() +
 							" unique vectors out of " + keyParts.length +
 							(instanceId != null ? " [" + instanceId + "]" : ""));
+					statisticsLogger.debug("d duplicate feature vectors detected: " + parts.size() + " out of " + keyParts.length + " are unique");
 					keyParts = new byte[parts.size()][];
 					Iterator iter = parts.values().iterator();
 					for (int i=0; i<keyParts.length; i++)
@@ -374,7 +375,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				logger.debug("Broadcasting " + candidateKeyParts.length + " candidate key parts" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				byte[] buffer = new byte[Maximum_Udp_Data_Size];
-				int outIndex = 0;
+				int outIndex = 0, numMessages = 0;
 				for (int i=0; i<candidateKeyParts.length; i++) {
 					if (outIndex == 0 || outIndex+candidateKeyParts[i].hash.length*2+1 >= Maximum_Udp_Data_Size) {
 						// send the old packet and construct a new one
@@ -386,6 +387,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 							channel.sendMulticast(packet);
 						}
 						
+						numMessages++;
 						String packetStart = Protocol_CandidateKeyPart + candidateKeyParts[i].round + " ";
 						// default ASCII coding
 						System.arraycopy(packetStart.getBytes(), 0, buffer, 0, packetStart.length());
@@ -413,13 +415,17 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					System.arraycopy(buffer, 0, packet, 0, outIndex);
 					channel.sendMulticast(packet);
 				}
+				statisticsLogger.info("sc broadcasting " + numMessages + " packets for " + candidateKeyParts.length + " candidate key parts");
 			}
 		
 			// and also go through the list of archived yet unmatched incoming messages
+			int numOldMessages = 0, numOldCandidates = 0;
 			for (int i=0; i<incomingKeyPartsBuffer.length; i++)
 				if (incomingKeyPartsBuffer[i] != null) {
+					numOldMessages++;
 					InetAddress sender = (InetAddress) incomingKeyPartsBuffer[i][0];
 					CandidateKeyPartIdentifier[] incomingKeyParts = (CandidateKeyPartIdentifier[]) incomingKeyPartsBuffer[i][1];
+					numOldCandidates += incomingKeyParts.length;
 					int match = ckp.matchCandidates(sender.getHostAddress(), incomingKeyParts);
 					if (match > -1) {
 						// yes, we have a match, handle it
@@ -428,6 +434,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						incomingKeyPartsBuffer[i] = null;
 					}
 				}
+			statisticsLogger.debug("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
 	
@@ -513,16 +520,20 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			checkForKeyGeneration(remote);
 
 			// and also go through the list of archived yet unmatched incoming messages
+			int numOldMessages = 0, numOldCandidates = 0;
 			for (int i=0; i<incomingCandKeyBuffer.length; i++)
 				if (incomingCandKeyBuffer[i] != null) {
+					numOldMessages++;
 					InetAddress sender = (InetAddress) incomingCandKeyBuffer[i][0];
 					int numParts = ((Integer) incomingCandKeyBuffer[i][1]).intValue();
 					byte[] candKeyHash = (byte[]) incomingCandKeyBuffer[i][2];
+					numOldCandidates += numParts;
 					// the call to checkForKeyMatch already handles to send the message if successful
 					if (checkForKeyMatch(sender, numParts, candKeyHash))
 						// and remove from the list to not match one incoming message twice
 						incomingCandKeyBuffer[i] = null;
 				}
+			statisticsLogger.debug("rk* processed " + numOldMessages + " old incoming KEY messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
 	
@@ -610,12 +621,15 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 				logger.debug("Inserting candidate key for host " + remoteHostAddress + " at list position " + genList.index +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				genList.list[genList.index++] = candKey;
-				if (genList.index == genList.list.length)
+				if (genList.index == genList.list.length) {
+					statisticsLogger.debug("o candidate key list overflow (" + genList.list.length + ")");
 					genList.index = 0;
+				}
 			
 				logger.debug("Sending candidate key of " + candKey.numParts + " parts with hash " + 
 						new String(Hex.encodeHex(candKey.hash)) +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
+				statisticsLogger.info("sk sending candidate key of " + candKey.numParts + " parts");
 				String candKeyPacket = Protocol_CandidateKey + candKey.numParts + " " +
 						new String(Hex.encodeHex(candKey.hash));
 				channel.sendTo(candKeyPacket.getBytes(), remoteHost);
@@ -869,10 +883,17 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						cand.list[i].key[j] = 0;
 					for (int j=0; j<cand.list[i].hash.length; j++)
 						cand.list[i].hash[j] = 0;
+					cand.list[i] = null;
 				}
+			cand.list = null;
 			if (cand.foundMatchingKey != null)
 				for (int j=0; j<cand.foundMatchingKey.length; j++)
 					cand.foundMatchingKey[j] = 0;
+			cand.foundMatchingKey = null;
+			cand = null;
+			
+			// and call the garbage collector
+			System.gc();
 		}
 	}
 	
@@ -917,6 +938,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 							int match = ckp.matchCandidates(remoteHostAddress, keyParts);
 							if (match > -1) {
 								// yes, we have a match, handle it
+								statisticsLogger.debug("rc+ match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
 								handleMatchingCandidateKeyPart(round, match, (InetAddress) sender);
 							}
 							else {
@@ -926,12 +948,15 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								logger.debug("None of the incoming candidate key parts matches, storing it in " +
 										"buffer for future reference"+ 
 										(instanceId != null ? " [" + instanceId + "]" : ""));
+								statisticsLogger.debug("rc- no match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
 								Object[] tmp = new Object[2];
 								tmp[0] = sender;
 								tmp[1] = keyParts;
 								incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
-								if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length)
+								if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length) {
+									statisticsLogger.debug("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
 									incomingKeyPartsBufferIndex = 0;
+								}
 								
 								/* But since this was a mismatch, need to check if negative criteria might be fulfilled now.
 								 * This method call takes care of it.
@@ -981,8 +1006,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 							tmp[1] = new Integer(numParts);
 							tmp[2] = candKeyHash;
 							incomingCandKeyBuffer[incomingCandKeyBufferIndex++] = tmp;
-							if (incomingCandKeyBufferIndex == incomingCandKeyBuffer.length)
+							if (incomingCandKeyBufferIndex == incomingCandKeyBuffer.length) {
+								statisticsLogger.debug("o incoming KEY messages list overflow (" + incomingCandKeyBuffer.length + ")");
 								incomingCandKeyBufferIndex = 0;
+							}
 						}
 					}
 					else if (pack.startsWith(Protocol_KeyAcknowledge)) {
