@@ -860,6 +860,8 @@ public class CandidateKeyProtocol {
 					matchList.parts[i] = null;
 				}
 			}
+			matchList.parts = null;
+			matchList = null;
 			statisticsLogger.debug("- wiping match list for " + remoteHost + ", contained " +
 					numMatches + " matches; lastRound=" + lastRound);
 			
@@ -880,6 +882,10 @@ public class CandidateKeyProtocol {
 		Iterator iter = matchingKeyParts.values().iterator();
 		while (iter.hasNext())
 			wipe(iter.next());
+		// sanity check
+		if (matchingKeyParts.size() > 0)
+			logger.error("Wiping all matching key parts failed");
+		
 		// and call the garbage collector
 		System.gc();
 	}
