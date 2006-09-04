@@ -62,13 +62,13 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 		classIsReadyForTests = false;
 	}
 	
-	public void testSoftRealtime() throws IOException {
+	protected void runCase(String filename) throws IOException {
 		if (classIsReadyForTests) {
-			int dataSetLength = determineDataSetLength("tests/motionauth/negative/1.gz");
+			int dataSetLength = determineDataSetLength(filename);
 			System.out.println("Data set is " + dataSetLength + " seconds long");
 			int timeout = (dataSetLength + MAX_PROTOCOL_LATENCY_SECONDS) * 1000;
 			// just read from the file
-			FileInputStream in = new FileInputStream("tests/motionauth/negative/1.gz");
+			FileInputStream in = new FileInputStream(filename);
 			AsciiLineReaderBase reader1 = new ParallelPortPWMReader(new GZIPInputStream(in), samplerate);
 
 			reader1.addSink(new int[] { 0, 1, 2 }, aggr_a.getInitialSinks());
@@ -86,6 +86,10 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 			reader1.stop();
 			Assert.assertTrue("Protocol did not finish within time limit", end);
 		}
+	}
+	
+	public void testSoftRealtime() throws IOException {
+		runCase("tests/motionauth/negative/1.gz");
 	}
 	
 	/** This helper function returns the length of the data set in seconds. */ 
