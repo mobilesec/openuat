@@ -98,9 +98,10 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 	 * @param line The line to parse.
 	 */
 	protected void parseLine(String line) {
+		long timestamp = 0;
+		/* Version 1 
 		StringTokenizer st = new StringTokenizer(line, " .", false);
 		// first two columns (with a '.' in between) are the timestamp (sec and usec)
-		long timestamp = 0;
 		try {
 			int timestampSecs = Integer.parseInt(st.nextToken()); 
 			int timestampUSecs = Integer.parseInt(st.nextToken());
@@ -113,7 +114,20 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 		catch (NumberFormatException e) {
 			logger.warn("Unable to decode timestamp, ignoring line");
 			return;
+		}*/
+		
+		/* Version 2: maybe faster? - just slightly it seems, but keep it anyway */ 
+		try {
+			int timestampSecs = Integer.parseInt(line.substring(0, 10)); 
+			int timestampUSecs = Integer.parseInt(line.substring(11, 17));
+			timestamp = (long)timestampSecs*1000000 + timestampUSecs;
 		}
+		catch (NumberFormatException e) {
+			logger.warn("Unable to decode timestamp, ignoring line");
+			return;
+		}
+		StringTokenizer st = new StringTokenizer(line.substring(18), " ", false);
+		
 		if (logger.isDebugEnabled())
 			logger.debug("Reading at timestamp " + timestamp + " us");
 		// sanity check
