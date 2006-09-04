@@ -278,7 +278,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testSplitAndReassemble_Variant1_Case2() throws InternalApplicationException {
-		for (int rounds=2; rounds<=50; rounds++) {
+		for (int rounds=2; rounds<=40; rounds+=3) {
 			// TODO: would rather like to run that up to 128 or 256, but for some reason the ant junit task will abort with out of memory if it's higher
 			for (int messageBytes=17; messageBytes<=64; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
@@ -320,7 +320,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testSplitAndReassemble_Variant2_Case2() throws InternalApplicationException {
-		for (int rounds=2; rounds<=50; rounds++) {
+		for (int rounds=2; rounds<=40; rounds+=3) {
 			// TODO: would rather like to run that up to 128 or 256, but for some reason the ant junit task will abort with out of memory if it's higher
 			for (int messageBytes=17; messageBytes<=64; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
