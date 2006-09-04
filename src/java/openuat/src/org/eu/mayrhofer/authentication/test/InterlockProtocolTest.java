@@ -125,6 +125,7 @@ public class InterlockProtocolTest extends TestCase {
 		// this should not work with incorrect parameters
 		try {
 			InterlockProtocol p = new InterlockProtocol(new byte[] {1}, 2, 128, null, useJSSE);
+			System.out.println("Should not get here, and this makes Eclipse warning shut up: " + p);
 			Assert.fail();
 		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
@@ -135,6 +136,7 @@ public class InterlockProtocolTest extends TestCase {
 		// this should not work with incorrect parameters
 		try {
 			InterlockProtocol p = new InterlockProtocol(null, 1, 128, null, useJSSE);
+			System.out.println("Should not get here, and this makes Eclipse warning shut up: " + p);
 			Assert.fail();
 		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
@@ -145,6 +147,7 @@ public class InterlockProtocolTest extends TestCase {
 		// this should not work with incorrect parameters
 		try {
 			InterlockProtocol p = new InterlockProtocol(null, 129, 128, null, useJSSE);
+			System.out.println("Should not get here, and this makes Eclipse warning shut up: " + p);
 			Assert.fail();
 		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
@@ -155,6 +158,7 @@ public class InterlockProtocolTest extends TestCase {
 		// this should not work with incorrect parameters
 		try {
 			InterlockProtocol p = new InterlockProtocol(new byte[32], 2, 127, null, useJSSE);
+			System.out.println("Should not get here, and this makes Eclipse warning shut up: " + p);
 			Assert.fail();
 		} catch (IllegalArgumentException e) {
 			Assert.assertTrue(true);
