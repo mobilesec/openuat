@@ -801,10 +801,11 @@ public class CandidateKeyProtocol {
 	 * matches, which can lead to double insertion due to differences in timing.
 	 * @param remoteHost An identifier for the remote host. Refer to 
 	 *                   @see #matchCandidates for more details.
-	 * @return The candidate for which the hash and numParts should be broadcast.
-	 *         Returns null if no match list has yet been created for the specified
-	 *         remoteHost, either because not matches have yet been received with 
-	 *         this host or because it has been pruned due to aging.
+	 * @return The candidate for which the hash, numParts, and index tuple lists 
+	 *         should be broadcast. Returns null if no match list has yet been 
+	 *         created for the specified remoteHost, either because not matches 
+	 *         have yet been received with this host or because it has been pruned 
+	 *         due to aging.
 	 * @throws InternalApplicationException 
 	 */
 	public synchronized CandidateKey generateKey(Object remoteHost) throws InternalApplicationException {
@@ -828,24 +829,31 @@ public class CandidateKeyProtocol {
 	}
 	
 	/** Tries to generate a key that produces the same hash from the
-	 * list of matching key parts. To search for the possible key, it uses
+	 * list of matching key parts. To search for the possible key, it ideally
+	 * performs a complete search over all possible keys that can be generated 
+	 * from the list of matching key parts for this host. When this can not be
+	 * done due to CPU and resource constrains, it falls back to either check only
+	 * the more recent key parts insted of the whole history, or to use
 	 * a sliding window of numParts over the local list of matching key parts
 	 * and, if multiple candidates match for the same round, tries all possible
-	 * combinations of these candidates. This can be an expensive operation.
+	 * combinations of these candidates. <br>
+	 * <b>This can be an expensive operation.</b> It is advisable to use the 
+	 * other variant of searchKey whenever the list of index tuples is available
+	 * for the received candidate key. 
 	 * @param remoteHost An identifier for the remote host. Refer to 
 	 *                   @see #matchCandidates for more details.
 	 * @param hash The hash received from the remote host.
 	 * @param numParts The number of key parts that the key is composed of, as
-	 *                 reported by the remote host. <b>Note:</b> This parameter is
-	 *                 not strictly necessary and could be omitted for slightly
-	 *                 better security (i.e. less information to an eavesdropper).
-	 *                 It is used for better performance in searching for a matching
-	 *                 key.
+	 *                 reported by the remote host. <b>Note:</b> This parameter would
+	 *                 not be strictly necessary and could be omitted. It is used for 
+	 *                 better performance in searching for a matching key.
 	 * @return The key matching the hash, or null when same hash could not be
 	 *         generated a combination of parts in matchingKeyParts 
 	 *         Returns null if no match list has yet been created for the specified
 	 *         remoteHost, either because not matches have yet been received with 
-	 *         this host or because it has been pruned due to aging.
+	 *         this host or because it has been pruned due to aging. Also returns
+	 *         null on any other error or cause that leads to a failure in
+	 *         creating a key with the same hash.
 	 * @throws InternalApplicationException */
 	public synchronized CandidateKey searchKey(Object remoteHost, byte[] hash, int numParts) throws InternalApplicationException {
 		if (hash == null)
@@ -916,6 +924,39 @@ public class CandidateKeyProtocol {
 		return null;
 	}
 
+	/** Tries to generate a key that produces the same hash from the
+	 * list of matching key parts. 
+	 * @param remoteHost An identifier for the remote host. Refer to 
+	 *                   @see #matchCandidates for more details.
+	 * @param hash The hash received from the remote host.
+	 * @param localIndices The list of index tuples (<round,candidate)
+	 *                     that reference the parts that have been used
+	 *                     to construct the key with the given hash. This
+	 *                     list is using the indices of this host. Parts
+	 *                     where the index tuples of this host were 
+	 *                     unknown to the host that generated this candidate
+	 *                     key can be set to -1. But either this element
+	 *                     or the one in remoteIndices <b>must</b> be set
+	 *                     to something >= 0 (this always applies to both
+	 *                     numbers in the tuple).
+	 * @param remoteIndices The list of index tuples (<round,candidate)
+	 *                      that reference the parts that have been used
+	 *                      to construct the key with the given hash. This
+	 *                      list is using the indices of the remote host. Parts
+	 *                      where its own index tuples were unknown to the 
+	 *                      remote host that generated this candidate
+	 *                      key can be set to -1. But either this element
+	 *                      or the one in localIndices <b>must</b> be set
+	 *                      to something >= 0 (this always applies to both
+	 *                      numbers in the tuple).
+	 * @return The key matching the hash, or null when same hash could not be
+	 *         generated a combination of parts in matchingKeyParts 
+	 *         Returns null if no match list has yet been created for the specified
+	 *         remoteHost, either because not matches have yet been received with 
+	 *         this host or because it has been pruned due to aging. Also returns
+	 *         null on any other error or cause that leads to a failure in
+	 *         creating a key with the same hash.
+	 * @throws InternalApplicationException */
 	public synchronized CandidateKey searchKey(Object remoteHost, byte[] hash, int [][] localIndices, int[][] remoteIndices) throws InternalApplicationException {
 		if (hash == null)
 			throw new IllegalArgumentException("hash must be set");
@@ -959,7 +1000,80 @@ public class CandidateKeyProtocol {
 					" and remote indices " + remoteIndices +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
-		return null;
+		
+		// after all the prelude, finally go through the lists of index tuples to gather the parts
+		byte[][] keyParts = new byte[localIndices.length][];
+		int keyPartsLength = 0;
+		for (int i=0; i<localIndices.length; i++) {
+			boolean found = false;
+			if (localIndices[i][0] >= 0 && localIndices[i][1] >= 0) {
+				// use our own index tuple
+				for (int j=0; j<matchList.parts.length && !found; j++) { 
+					if (matchList.parts[j].round == localIndices[i][0] &&
+						matchList.parts[j].candidateNumber == localIndices[i][0]) {
+						keyParts[i] = matchList.parts[j].keyPart;
+						keyPartsLength += keyParts[i].length;
+						found = true;
+					}
+				}
+			}
+			else if (remoteIndices[i][0] >= 0 && remoteIndices[i][1] >= 0) {
+				// use the remote index tuple
+				for (int j=0; j<matchList.parts.length && !found; j++) { 
+					if (matchList.parts[j].remoteRound == remoteIndices[i][0] &&
+						matchList.parts[j].remoteCandidateNumber == remoteIndices[i][0]) {
+						keyParts[i] = matchList.parts[j].keyPart;
+						keyPartsLength += keyParts[i].length;
+						found = true;
+					}
+				}
+			}
+			else {
+				// Houston, we have a problem
+				logger.error("Both local and remote index tuples at position " + i + " are invalid. Can not construct a key" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				return null;
+			}
+			
+			if (!found) {
+				// another problem: could not find the reported numbers
+				logger.error("Unable to locate matching key part at position " + i + ". Can not construct a key" +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				return null;
+			}
+		}
+		
+		// after getting all parts, assemble the key
+		byte[] assembledKey = new byte[keyPartsLength];
+		int off = 0;
+		for (int i=0; i<keyParts.length; i++) {
+			System.arraycopy(keyParts[i], 0, assembledKey, off, keyParts[i].length);
+			off += keyParts[i].length;
+		}
+		
+		// sanity check - is the hash really the same?
+		byte[] candidateHash = Hash.doubleSHA256(assembledKey, useJSSE);
+		if (logger.isDebugEnabled())
+			logger.debug("Checking assembled key parts with hash " + new String(Hex.encodeHex(candidateHash)) +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		/* Note: This is deliberately not using Arrays.equals, because we can not be 
+		 * sure that the hash will always have the full length.
+		 */
+		boolean match = true;
+		for (int j=0; j<candidateHash.length && j<hash.length && match; j++)
+			if (candidateHash[j] != hash[j])
+				match = false;
+		if (match) {
+			logger.info("Could generate key with same hash" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			// this just returns the same indices, but that's ok, we used them to construct the key
+			return generateKey(assembledKey, localIndices.length, localIndices, remoteIndices);
+		}
+		else {
+			logger.error("Key that has been assembled from given index tuples does not match" +
+					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			return null;
+		}
 	}
 	
 	/** Wipes all state that is held with respect to a remote host. This method should
