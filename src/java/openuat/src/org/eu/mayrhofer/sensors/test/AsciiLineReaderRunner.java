@@ -175,15 +175,17 @@ public class AsciiLineReaderRunner {
 		}
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device
-		int[] samplerates = new int[] {128, 256, 512}; // {64, 128, 256, 512}; // different sample rates
+		int[] samplerates;
 		double[] windowsizeFactors;
 		double varthresholdMin, varthresholdMax, varthresholdStep;
 		if (paramSearch_coherence) {
+			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
 			varthresholdMin = 50;
 			varthresholdMax = 1000;
 			varthresholdStep = 10;
 		} else {
+			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1}; 
 			varthresholdMin = 350;
 			varthresholdMax = 350;
