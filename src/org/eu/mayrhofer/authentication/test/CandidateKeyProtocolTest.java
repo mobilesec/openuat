@@ -211,7 +211,7 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertFalse("Generated keys should not match because of different match order, but do!", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
 	}
 
-	public void testMatchingAndKeyGeneration_2Rounds_searchKey() throws InternalApplicationException {
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey_variant1() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
@@ -246,7 +246,42 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
 	}
 
-	public void testMatchingAndKeyGeneration_2Rounds_searchKey_multipleCandidates_historyTooSmall() throws InternalApplicationException {
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey_variant2() throws InternalApplicationException {
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2, 0);
+
+		Assert.assertEquals(1, p1.matchCandidates(remoteIdentifier2, i2_1));
+		Assert.assertEquals(2, p2.matchCandidates(remoteIdentifier1, i1_1));
+		Assert.assertEquals(3, p1.matchCandidates(remoteIdentifier2, i2_2));
+		Assert.assertEquals(4, p2.matchCandidates(remoteIdentifier1, i1_2));
+
+		Assert.assertEquals(3, p1.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(3, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		
+		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
+
+		Assert.assertNotNull("Should have been able to generate an equal key", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.hash, k2.hash));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.key, k2.key));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
+	}
+
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey_variant1_multipleCandidates_historyTooSmall() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
@@ -277,7 +312,38 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
 	}
 
-	public void testMatchingAndKeyGeneration_2Rounds_searchKey_multipleCandidates_historySufficient() throws InternalApplicationException {
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey_variant2_multipleCandidates_historyTooSmall() throws InternalApplicationException {
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2_multipleMatches, 0);
+
+		Assert.assertEquals(1, p1.matchCandidates(remoteIdentifier2, i2_1));
+		Assert.assertEquals(2, p2.matchCandidates(remoteIdentifier1, i1_1));
+		Assert.assertEquals(4, p1.matchCandidates(remoteIdentifier2, i2_2));
+		Assert.assertEquals(4, p2.matchCandidates(remoteIdentifier1, i1_2));
+
+		Assert.assertEquals(5, p1.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(5, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		
+		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
+
+		Assert.assertNull("Should not have been able to generate an equal key", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
+	}
+
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey_variant1_multipleCandidates_historySufficient() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1a.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2a.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1a.generateCandidates(keyParts_round2_side1, 0);
@@ -303,6 +369,41 @@ public class CandidateKeyProtocolTest extends TestCase {
 		
 		CandidateKeyProtocol.CandidateKey sk1 = p1a.searchKey(remoteIdentifier2, k2.hash, k2.numParts);
 		CandidateKeyProtocol.CandidateKey sk2 = p2a.searchKey(remoteIdentifier1, k1.hash, k1.numParts);
+
+		Assert.assertNotNull("Should have been able to generate an equal key", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.hash, k2.hash));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.key, k2.key));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
+	}
+	
+	public void testMatchingAndKeyGeneration_2Rounds_searchKey_variant2_multipleCandidates_historySufficient() throws InternalApplicationException {
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1a.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2a.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1a.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2a.generateCandidates(keyParts_round2_side2_multipleMatches, 0);
+
+		Assert.assertEquals(1, p1a.matchCandidates(remoteIdentifier2, i2_1));
+		Assert.assertEquals(2, p2a.matchCandidates(remoteIdentifier1, i1_1));
+		Assert.assertEquals(4, p1a.matchCandidates(remoteIdentifier2, i2_2));
+		Assert.assertEquals(4, p2a.matchCandidates(remoteIdentifier1, i1_2));
+
+		Assert.assertEquals(6, p1a.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(6, p2a.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1a.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2a.getNumLocalRounds(remoteIdentifier1));
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1a.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2a.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		
+		CandidateKeyProtocol.CandidateKey sk1 = p1a.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2a.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
 
 		Assert.assertNotNull("Should have been able to generate an equal key", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
@@ -407,7 +508,7 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertFalse("Generated keys should not match because of different match order, but do!", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
 	}
 
-	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_2Rounds_searchKey_multipleCandidates_historyTooSmall() throws InternalApplicationException {
+	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_2Rounds_searchKey_variant1_multipleCandidates_historyTooSmall() throws InternalApplicationException {
 		p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
 		p1.generateCandidates(keyParts_round2_side1, 0);
@@ -439,7 +540,39 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNull("Should not have been able to generate an equal key", sk2);
 	}
 
-	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_2Rounds_searchKey_multipleCandidates_historySufficient() throws InternalApplicationException {
+	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_2Rounds_searchKey_variant2_multipleCandidates_historyTooSmall() throws InternalApplicationException {
+		p1.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
+		p1.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2_multipleMatches, 0);
+
+		int ind1_1 = p1.matchCandidates(remoteIdentifier2, i2_1);
+		p2.acknowledgeMatches(remoteIdentifier1, i2_1[0].round, ind1_1);
+		int ind1_2 = p1.matchCandidates(remoteIdentifier2, i2_2);
+		p2.acknowledgeMatches(remoteIdentifier1, i2_2[0].round, ind1_2);
+
+		Assert.assertEquals(5, p1.getNumTotalMatches(remoteIdentifier2));
+		// only two matches here because only acknowledge matches, but p2 didn't match itself 
+		Assert.assertEquals(2, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertFalse("Generated keys should not match because of different match order, but do!", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match because of different match order, but do!", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+
+		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
+
+		Assert.assertNull("Should not have been able to generate an equal key", sk1);
+		Assert.assertNull("Should not have been able to generate an equal key", sk2);
+	}
+
+	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_2Rounds_searchKey_variant1_multipleCandidates_historySufficient() throws InternalApplicationException {
 		p1a.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2a.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
 		p1a.generateCandidates(keyParts_round2_side1, 0);
@@ -466,6 +599,40 @@ public class CandidateKeyProtocolTest extends TestCase {
 
 		CandidateKeyProtocol.CandidateKey sk1 = p1a.searchKey(remoteIdentifier2, k2.hash, k2.numParts);
 		CandidateKeyProtocol.CandidateKey sk2 = p2a.searchKey(remoteIdentifier1, k1.hash, k1.numParts);
+
+		Assert.assertNotNull("Should have been able to generate an equal key", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
+		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.hash, sk2.hash));
+		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(sk1.key, sk2.key));
+	}
+	
+	public void testMatchingAcknowledgeAndKeyGeneration_Asymmetric_2Rounds_searchKey_variant2_multipleCandidates_historySufficient() throws InternalApplicationException {
+		p1a.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2a.generateCandidates(keyParts_round1_side2_multipleMatches, 0);
+		p1a.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2a.generateCandidates(keyParts_round2_side2_multipleMatches, 0);
+
+		int ind1_1 = p1a.matchCandidates(remoteIdentifier2, i2_1);
+		p2a.acknowledgeMatches(remoteIdentifier1, i2_1[0].round, ind1_1);
+		int ind1_2 = p1a.matchCandidates(remoteIdentifier2, i2_2);
+		p2a.acknowledgeMatches(remoteIdentifier1, i2_2[0].round, ind1_2);
+
+		Assert.assertEquals(6, p1a.getNumTotalMatches(remoteIdentifier2));
+		// only two matches here because only acknowledge matches, but p2 didn't match itself 
+		Assert.assertEquals(2, p2a.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(2, p1a.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2a.getNumLocalRounds(remoteIdentifier1));
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1a.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2a.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+
+		CandidateKeyProtocol.CandidateKey sk1 = p1a.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2a.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
 
 		Assert.assertNotNull("Should have been able to generate an equal key", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key", sk2);
@@ -500,7 +667,7 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertTrue("Generated keys do not match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
 	}
 
-	public void testBug1_2Rounds_generateKey_generateThenMatch_RoundsWithSameParts_sameMatchOrder() throws InternalApplicationException {
+	public void testBug1_2Rounds_generateKey_generateThenMatch_variant1_RoundsWithSameParts_sameMatchOrder() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
@@ -535,7 +702,42 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
 	}
 	
-	public void testBug1_2Rounds_searchKey_generateThenMatch_RoundsWithSameParts_differentMatchOrder() throws InternalApplicationException {
+	public void testBug1_2Rounds_generateKey_generateThenMatch_variant2_RoundsWithSameParts_sameMatchOrder() throws InternalApplicationException {
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2_matchWith_round1_side1_1, 0);
+
+		Assert.assertEquals(1, p1.matchCandidates(remoteIdentifier2, i2_1));
+		Assert.assertEquals(2, p2.matchCandidates(remoteIdentifier1, i1_1));
+		Assert.assertEquals(1, p1.matchCandidates(remoteIdentifier2, i2_2));
+		Assert.assertEquals(-1, p2.matchCandidates(remoteIdentifier1, i1_2));
+
+		Assert.assertEquals(2, p1.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+		Assert.assertTrue(Math.abs(p1.getMatchingRoundsFraction(remoteIdentifier2) - 1.0) <= 0.0001);
+		Assert.assertTrue(Math.abs(p2.getMatchingRoundsFraction(remoteIdentifier1) - 1.0) <= 0.0001);
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		
+		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
+
+		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
+	}
+	
+	public void testBug1_2Rounds_searchKey_generateThenMatch_variant1_RoundsWithSameParts_differentMatchOrder() throws InternalApplicationException {
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
 		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
@@ -561,6 +763,39 @@ public class CandidateKeyProtocolTest extends TestCase {
 		
 		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.numParts);
 		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.numParts);
+
+		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
+		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
+	}
+
+	public void testBug1_2Rounds_searchKey_generateThenMatch_variant2_RoundsWithSameParts_differentMatchOrder() throws InternalApplicationException {
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_1[] = p1.generateCandidates(keyParts_round1_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_1[] = p2.generateCandidates(keyParts_round1_side2, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i1_2[] = p1.generateCandidates(keyParts_round2_side1, 0);
+		CandidateKeyProtocol.CandidateKeyPartIdentifier i2_2[] = p2.generateCandidates(keyParts_round2_side2_matchWith_round1_side1_2, 0);
+
+		Assert.assertEquals(1, p1.matchCandidates(remoteIdentifier2, i2_1));
+		Assert.assertEquals(2, p2.matchCandidates(remoteIdentifier1, i1_1));
+		Assert.assertEquals(1, p1.matchCandidates(remoteIdentifier2, i2_2));
+		Assert.assertEquals(-1, p2.matchCandidates(remoteIdentifier1, i1_2));
+
+		Assert.assertEquals(2, p1.getNumTotalMatches(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumTotalMatches(remoteIdentifier1));
+		Assert.assertEquals(1, p1.getNumLocalRounds(remoteIdentifier2));
+		Assert.assertEquals(2, p2.getNumLocalRounds(remoteIdentifier1));
+		
+		CandidateKeyProtocol.CandidateKey k1 = p1.generateKey(remoteIdentifier2);
+		CandidateKeyProtocol.CandidateKey k2 = p2.generateKey(remoteIdentifier1);
+		Assert.assertNotNull(k1);
+		Assert.assertNotNull(k2);
+		
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		
+		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.localIndices, k2.remoteIndices);
+		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.localIndices, k1.remoteIndices);
 
 		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
@@ -771,6 +1006,6 @@ public class CandidateKeyProtocolTest extends TestCase {
 	public void testSetExploder_FixedErrorCase1() throws InternalApplicationException {
 		int[] set = new int[13];
 		
-		BitSet[] combinations = CandidateKeyProtocol.explodeKOutOfN(set, 10);
+		CandidateKeyProtocol.explodeKOutOfN(set, 10);
 	}		
 }
