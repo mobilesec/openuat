@@ -14,6 +14,7 @@ import java.util.ArrayList;
 
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
+import org.eu.mayrhofer.sensors.Coherence;
 import org.eu.mayrhofer.sensors.FFT;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.Quantizer;
@@ -272,7 +273,7 @@ public class AsciiLineReaderRunner {
 						}
 						
 						// disable coherence computation for now, we are searching for variant 2 parameters
-						/*double[] coherence = Coherence.cohere(s1, s2, windowsize, 0);
+						double[] coherence = Coherence.cohere(s1, s2, windowsize, 0);
 						if (coherence != null) {
 							if (graph) {
 								XYSeries c = new XYSeries("Coefficients", false);
@@ -288,7 +289,7 @@ public class AsciiLineReaderRunner {
 							System.out.println("Coherence mean: " + coherenceMean + 
 									" samplerate=" + samplerate + ", windowsize=" + windowsize + 
 									", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
-						}*/
+						}
 
 						/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
 						for (int i3=0; i3<windowOverlapFactors.length; i3++) {
