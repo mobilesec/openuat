@@ -122,11 +122,14 @@ public class AsciiLineReaderRunner {
 		String filename = args[0];
 		
 		boolean graph = false;
-		boolean paramSearch = false;
+		boolean paramSearch_coherence = false;
+		boolean paramSearch_matches = false;
 		if (args.length > 1 && args[1].equals("dographs"))
 			graph = true;
-		if (args.length > 1 && args[1].equals("paramsearch"))
-			paramSearch = true;
+		if (args.length > 1 && args[1].equals("paramsearch_coherence"))
+			paramSearch_coherence = true;
+		if (args.length > 1 && args[1].equals("paramsearch_matches"))
+			paramSearch_matches = true;
 		
 		/////// test 1: just plot all time series
 		if (graph) {
@@ -173,10 +176,19 @@ public class AsciiLineReaderRunner {
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device
 		int[] samplerates = new int[] {128, 256, 512}; // {64, 128, 256, 512}; // different sample rates
-		double[] windowsizeFactors = new double[] {1}; // {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection
-		double varthresholdMin = 350; // 50;
-		double varthresholdMax = 350; // 1000;
-		double varthresholdStep = 50; // 10;
+		double[] windowsizeFactors;
+		double varthresholdMin, varthresholdMax, varthresholdStep;
+		if (paramSearch_coherence) {
+			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
+			varthresholdMin = 50;
+			varthresholdMax = 1000;
+			varthresholdStep = 10;
+		} else {
+			windowsizeFactors = new double[] {1}; 
+			varthresholdMin = 350;
+			varthresholdMax = 350;
+			varthresholdStep = 50;
+		}
 		int[] quantLevels = new int[] {2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20};
 		int numCandidatesMin = 2;
 		int numCandidatesMax = 8;
@@ -190,7 +202,7 @@ public class AsciiLineReaderRunner {
 		for (int i1=0; i1<samplerates.length; i1++) {
 			int samplerate = samplerates[i1];
 			// these are the defaults when not searching for parameters
-			if (!paramSearch) {
+			if (!paramSearch_coherence && !paramSearch_matches) {
 				samplerate = 128; // Hz
 				i1=samplerates.length; // makes the loop exit after this run
 			}
@@ -203,16 +215,16 @@ public class AsciiLineReaderRunner {
 				// this is not yet searched, but restrict the minimum significant segment size to 1/2s
 				int minsegmentsize = windowsize;
 				// these are the defaults when not searching for parameters
-				if (!paramSearch) {
+				if (!paramSearch_coherence && !paramSearch_matches) {
 					windowsize = samplerate/2; // 1/2 second
 					minsegmentsize = windowsize; // 1/2 second
 					i2=windowsizeFactors.length; // makes the loop exit after this run
 				}
 				
 				for (double varthreshold=varthresholdMin; varthreshold<=varthresholdMax; 
-						varthreshold+=(paramSearch ? varthresholdStep : varthresholdMax)) {
+						varthreshold+=(paramSearch_coherence ? varthresholdStep : varthresholdMax)) {
 					// these are the defaults when not searching for parameters
-					if (!paramSearch) {
+					if (!paramSearch_coherence) {
 						varthreshold = 350;
 					}
 					
@@ -296,7 +308,7 @@ public class AsciiLineReaderRunner {
 							int fftpoints = samplerate;
 							int windowOverlap = (int) (fftpoints*windowOverlapFactors[i3]);
 							// these are the defaults when not searching for parameters
-							if (!paramSearch) {
+							if (!paramSearch_matches) {
 								windowOverlap = fftpoints/2;
 								i3=windowOverlapFactors.length;
 							}
@@ -307,20 +319,20 @@ public class AsciiLineReaderRunner {
 //									numQuantLevels+=(paramSearch ? numQuantLevelsStep : numQuantLevelsMax)) {
 								int numQuantLevels = quantLevels[i4];
 								// these are the defaults when not searching for parameters
-								if (!paramSearch) {
+								if (!paramSearch_matches) {
 									numQuantLevels = 8;
 								}
 								for (int numCandidates=numCandidatesMin; numCandidates<=numCandidatesMax; 
-									numCandidates+=(paramSearch ? numCandidatesStep : numCandidatesMax)) {
+									numCandidates+=(paramSearch_matches ? numCandidatesStep : numCandidatesMax)) {
 									// these are the defaults when not searching for parameters
-									if (!paramSearch) {
+									if (!paramSearch_matches) {
 										numCandidates = 6;
 									}
 
 									for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
-										cutOffFrequency+=(paramSearch ? cutOffFrequencyStep : cutOffFrequencyMax)) {
+										cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 										// these are the defaults when not searching for parameters
-										if (!paramSearch) {
+										if (!paramSearch_matches) {
 											cutOffFrequency = 15; // Hz
 										}
 
