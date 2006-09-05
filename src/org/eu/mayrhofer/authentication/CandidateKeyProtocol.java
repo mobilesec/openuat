@@ -96,6 +96,26 @@ public class CandidateKeyProtocol {
 	 * does not matter. */
 	private static final String MAGIC_COOKIE = "MAGIC COOKIE FOR SENSOR AUTHENTICAION";
 	
+	/** Only take this many more found matches into account than the number of parts that
+	 * have been asked for when creating a key. This leads to a pre-explosion of the key
+	 * search space into a maximum of (numParts+MAX_EXPLODE_SEARCH_SPACE over numParts), if
+	 * numParts is the number of parts the key should be composed of, and more or equal to
+	 * numParts+MAX_EXPLODE_SEARCH_SPACE have been found for this remote host. For each of 
+	 * combination of rounds numbers to take, another explosion into the different matches
+	 * for each round can happen.<br>
+	 * <b>Therefore this number needs to be kept small for performance purposes.</b> The 
+	 * protocol should even work with it set to 0, even if it will not find many of the
+	 * potentially matching keys. This is in fact a trade-off between CPU and memory usage
+	 * and finding keys.
+	 */
+	private static final int MAX_EXPLODE_SEARCH_SPACE = 2;
+	
+	/** Another restriction on the explosion: only explode until this many parts in the 
+	 * set, and do just offset-shifting if it is more. Because even with MAX_EXPLODE_SEARCH_SPACE,
+	 * e.g. (20 over 18) is quite a large number, just for the pre-explosion.
+	 */
+	private static final int MAX_PARTS_FOR_EXPLOSION = 12;
+	
 	/** This class represents the complete identification information for a key 
 	 * part candidate. It should be sent to the remote host(s) after being generated
 	 * by generateCandidates. The combination of round and candidateNumber identifies
@@ -1007,15 +1027,39 @@ public class CandidateKeyProtocol {
 				logger.debug("Collected " + numCopied + " rounds from the match list, but only want " + numParts +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			
-			if (!extractAllCombinations)
+			if (!extractAllCombinations) {
 				logger.warn("extractAllCombinations is set to false, but collected more parts than explicitly requested. " +
 						"Will skip exploding into different possibilities of choosing rounds and only choose the first rounds.");
+			}
 			else {
 				// really need to explode the possibilities for different round numbers here
-				int[] set = new int[numCopied];
-				for (int i=0; i<numCopied; i++)
-					set[i] = initialCombination[i].round;
-				roundNumbersToUse = explodeKOutOfN(set, numParts);
+				// but restrict search space somehow, because else it would be too many
+				if (numCopied > numParts + MAX_EXPLODE_SEARCH_SPACE) {
+					logger.warn("Restricting search space: only using " + (numParts+2) +
+							" out of " + numCopied + " rounds collected from the match list, and generating keys of " +
+							numParts + " parts from it");
+					numCopied = numParts + MAX_EXPLODE_SEARCH_SPACE;
+				}
+				
+				if (numParts <= MAX_PARTS_FOR_EXPLOSION) {
+					int[] set = new int[numCopied];
+					for (int i=0; i<numCopied; i++)
+						set[i] = initialCombination[i].round;
+					roundNumbersToUse = explodeKOutOfN(set, numParts);
+				}
+				else {
+					logger.warn("Not pre-exploding with " + numParts + 
+							" parts to search to restrict search space, only shifting");
+					/* Only shift in this case, but don't use all options. This generates e.g.
+					 * for numCopied = 5, numParts = 3, with initialCombination rounds 2 4 5 6 8
+					 * a series of 2 BitSets with rounds "2 4 5", "4 5 6", and "5 6 8". */
+					roundNumbersToUse = new BitSet[numCopied - numParts + 1];
+					for (int i=0; i<roundNumbersToUse.length; i++) {
+						roundNumbersToUse[i] = new BitSet();
+						for (int j=0; j<numParts; j++)
+							roundNumbersToUse[i].set(initialCombination[j+i].round);
+					}
+				}
 			}
 		}
 		else {
