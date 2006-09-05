@@ -1034,22 +1034,25 @@ public class CandidateKeyProtocol {
 			else {
 				// really need to explode the possibilities for different round numbers here
 				// but restrict search space somehow, because else it would be too many
-				if (numCopied > numParts + MAX_EXPLODE_SEARCH_SPACE) {
+				int numUse = numCopied;
+				if (numUse > numParts + MAX_EXPLODE_SEARCH_SPACE) {
 					logger.warn("Restricting search space: only using " + (numParts+2) +
 							" out of " + numCopied + " rounds collected from the match list, and generating keys of " +
 							numParts + " parts from it");
-					numCopied = numParts + MAX_EXPLODE_SEARCH_SPACE;
+					numUse = numParts + MAX_EXPLODE_SEARCH_SPACE;
 				}
 				
 				if (numParts <= MAX_PARTS_FOR_EXPLOSION) {
-					int[] set = new int[numCopied];
-					for (int i=0; i<numCopied; i++)
-						set[i] = initialCombination[i].round;
+					int[] set = new int[numUse];
+					for (int i=0; i<numUse; i++)
+						// use the most recent parts (if not using all of them)
+						set[i] = initialCombination[i+numCopied-numUse].round;
 					roundNumbersToUse = explodeKOutOfN(set, numParts);
 				}
 				else {
 					logger.warn("Not pre-exploding with " + numParts + 
 							" parts to search to restrict search space, only shifting");
+					// this is independent of the first restriction of the search space and takes precedence
 					/* Only shift in this case, but don't use all options. This generates e.g.
 					 * for numCopied = 5, numParts = 3, with initialCombination rounds 2 4 5 6 8
 					 * a series of 2 BitSets with rounds "2 4 5", "4 5 6", and "5 6 8". */
