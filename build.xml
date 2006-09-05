@@ -177,7 +177,9 @@
 	    <mkdir dir="${reports.tests}"/>
 	    <!-- for the jvmarg to work, need to set fork=true -->
 	    <junit printsummary="on" haltonfailure="true" haltonerror="true" showoutput="false" fork="false">
+        <!-- doesn't do anything with fork=false -->
 		    <jvmarg value="-Djava.library.path=nativelib/linux" />
+		    <jvmarg value="-Xmx128m" />
 		    <classpath>
 			    <fileset refid="lib.alljars"/>
 			    <pathelement location="${jarfile.core}"/>
