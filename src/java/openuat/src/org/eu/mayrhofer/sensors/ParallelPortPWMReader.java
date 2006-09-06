@@ -12,7 +12,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
@@ -121,6 +120,10 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 			int timestampSecs = Integer.parseInt(line.substring(0, 10)); 
 			int timestampUSecs = Integer.parseInt(line.substring(11, 17));
 			timestamp = (long)timestampSecs*1000000 + timestampUSecs;
+		}
+		catch (StringIndexOutOfBoundsException e) {
+			logger.warn("Unable to decode timestamp, ignoring line");
+			return;
 		}
 		catch (NumberFormatException e) {
 			logger.warn("Unable to decode timestamp, ignoring line");
