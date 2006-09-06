@@ -996,35 +996,40 @@ public class CandidateKeyProtocol {
 			}
 			logger.debug("Trying to create key for remote '" + remoteHost + "' with hash " + 
 					new String(Hex.encodeHex(hash)) + " from " + localIndices.length + 
-					" parts with local indices " + localIndices + 
-					" and remote indices " + remoteIndices +
+					" parts with local indices " + localTmp.toString()+ 
+					" and remote indices " + remoteTmp.toString() +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		
 		// after all the prelude, finally go through the lists of index tuples to gather the parts
-		byte[][] keyParts = new byte[localIndices.length][];
+		MatchingKeyPart[] keyParts = new MatchingKeyPart[localIndices.length];
 		int keyPartsLength = 0;
 		for (int i=0; i<localIndices.length; i++) {
-			boolean found = false;
+			// sanity check
+			if (localIndices[i] == null || remoteIndices[i] == null) {
+				throw new IllegalArgumentException("Either localIndices[" + i + "] or remoteIndices[" + 
+						i + "] is null" + 
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+			}
+
+			MatchingKeyPart foundPart = null;
 			if (localIndices[i][0] >= 0 && localIndices[i][1] >= 0) {
 				// use our own index tuple
-				for (int j=0; j<matchList.parts.length && !found; j++) { 
-					if (matchList.parts[j].round == localIndices[i][0] &&
-						matchList.parts[j].candidateNumber == localIndices[i][0]) {
-						keyParts[i] = matchList.parts[j].keyPart;
-						keyPartsLength += keyParts[i].length;
-						found = true;
+				for (int j=0; j<matchList.parts.length && foundPart == null; j++) { 
+					if (matchList.parts[j] != null &&
+						matchList.parts[j].round == localIndices[i][0] &&
+						matchList.parts[j].candidateNumber == localIndices[i][1]) {
+						foundPart = matchList.parts[j];
 					}
 				}
 			}
 			else if (remoteIndices[i][0] >= 0 && remoteIndices[i][1] >= 0) {
 				// use the remote index tuple
-				for (int j=0; j<matchList.parts.length && !found; j++) { 
-					if (matchList.parts[j].remoteRound == remoteIndices[i][0] &&
-						matchList.parts[j].remoteCandidateNumber == remoteIndices[i][0]) {
-						keyParts[i] = matchList.parts[j].keyPart;
-						keyPartsLength += keyParts[i].length;
-						found = true;
+				for (int j=0; j<matchList.parts.length && foundPart == null; j++) { 
+					if (matchList.parts[j] != null &&
+						matchList.parts[j].remoteRound == remoteIndices[i][0] &&
+						matchList.parts[j].remoteCandidateNumber == remoteIndices[i][1]) {
+						foundPart = matchList.parts[j];
 					}
 				}
 			}
@@ -1034,21 +1039,39 @@ public class CandidateKeyProtocol {
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
 			}
-			
-			if (!found) {
+			if (foundPart == null) {
 				// another problem: could not find the reported numbers
 				logger.error("Unable to locate matching key part at position " + i + ". Can not construct a key" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
 			}
+
+			// check that we don't use duplicate round numbers
+			boolean found = false;
+			/* (Small) Performance optimization: can stop looking after the first match, since round
+			 * numbers in keyParts are guaranteed to be uniqeue.
+			 */
+			for (int j=0; j<i && !found; j++) {
+				if (keyParts[j].round == foundPart.round) {
+					logger.error("In round " + matchList.parts[i].round + ", reported two parts for key: " +
+							keyParts[j].candidateNumber + " and " + 
+							foundPart.candidateNumber + ". Can not construct a key" +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+					return null;
+				}
+			}
+
+			// ok, found a key part that is no duplicate in terms of round numbers, finally insert
+			keyParts[i] = foundPart;
+			keyPartsLength += keyParts[i].keyPart.length;
 		}
 		
 		// after getting all parts, assemble the key
 		byte[] assembledKey = new byte[keyPartsLength];
 		int off = 0;
 		for (int i=0; i<keyParts.length; i++) {
-			System.arraycopy(keyParts[i], 0, assembledKey, off, keyParts[i].length);
-			off += keyParts[i].length;
+			System.arraycopy(keyParts[i].keyPart, 0, assembledKey, off, keyParts[i].keyPart.length);
+			off += keyParts[i].keyPart.length;
 		}
 		
 		// sanity check - is the hash really the same?
@@ -1168,18 +1191,18 @@ public class CandidateKeyProtocol {
 			if (matchList.parts[i] != null) {
 				numMatches++;
 				boolean alreadyCopied = false;
-				/* (Small) Performance optimization: can stop looking after the first match, since round 
-				 * numbers in initialCombination are guaranteed to be uniqeue. 
+				/* (Small) Performance optimization: can stop looking after the first match, since round
+				 * numbers in initialCombination are guaranteed to be uniqeue.
 				 */
 				for (int j=0; j<numCopied && !alreadyCopied; j++) {
 					if (matchList.parts[i].round == initialCombination[j].round) {
 						alreadyCopied = true;
 						if (!extractAllCombinations) {
 							logger.warn("Round " + initialCombination[j].round + " has two matching candidates: " +
-									initialCombination[j].candidateNumber + " and " + 
+									initialCombination[j].candidateNumber + " and " +
 									matchList.parts[i].candidateNumber + ", skipping latter" +
 									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-						} 
+						}
 						else {
 							// instructed to copy all combinations, so remember duplicates
 							Integer round = new Integer(initialCombination[j].round);
@@ -1193,7 +1216,7 @@ public class CandidateKeyProtocol {
 								alternatives = (LinkedList) duplicateRounds.get(round);
 							}
 							if (logger.isDebugEnabled())
-								logger.debug("Adding candidate number " + matchList.parts[i].candidateNumber + 
+								logger.debug("Adding candidate number " + matchList.parts[i].candidateNumber +
 										" as duplicate to round " + round +
 										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							// only remember the index in matchingKeyParts, that's all we need
@@ -1458,8 +1481,8 @@ public class CandidateKeyProtocol {
 				localIndices[i][j][0] = allCombinations[i][j].round;
 				localIndices[i][j][1] = allCombinations[i][j].candidateNumber;
 				remoteIndices[i][j] = new int[2];
-				remoteIndices[i][j][0] = allCombinations[i][j].round;
-				remoteIndices[i][j][1] = allCombinations[i][j].candidateNumber;
+				remoteIndices[i][j][0] = allCombinations[i][j].remoteRound;
+				remoteIndices[i][j][1] = allCombinations[i][j].remoteCandidateNumber;
 			}
 			if (logger.isDebugEnabled()) 
 				logger.debug("Concatenated " + allCombinations[i].length + " key parts to candidate key " + i + ": " + new String(Hex.encodeHex(keyParts[i])) +
