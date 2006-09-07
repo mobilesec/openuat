@@ -13,6 +13,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
 import org.apache.commons.codec.DecoderException;
@@ -527,9 +528,11 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					InetAddress sender = (InetAddress) incomingCandKeyBuffer[i][0];
 					int numParts = ((Integer) incomingCandKeyBuffer[i][1]).intValue();
 					byte[] candKeyHash = (byte[]) incomingCandKeyBuffer[i][2];
+					int[][] localIndices = (int[][]) incomingCandKeyBuffer[i][3];
+					int[][] remoteIndices = (int[][]) incomingCandKeyBuffer[i][4];
 					numOldCandidates += numParts;
 					// the call to checkForKeyMatch already handles to send the message if successful
-					if (checkForKeyMatch(sender, numParts, candKeyHash))
+					if (checkForKeyMatch(sender, numParts, candKeyHash, localIndices, remoteIndices))
 						// and remove from the list to not match one incoming message twice
 						incomingCandKeyBuffer[i] = null;
 				}
@@ -631,7 +634,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				statisticsLogger.info("sk sending candidate key of " + candKey.numParts + " parts");
 				String candKeyPacket = Protocol_CandidateKey + candKey.numParts + " " +
-						new String(Hex.encodeHex(candKey.hash));
+						new String(Hex.encodeHex(candKey.hash)) + " " + 
+						CandidateKeyProtocol.CandidateKey.indexTuplesToString(candKey.localIndices) + " " +
+						CandidateKeyProtocol.CandidateKey.indexTuplesToString(candKey.remoteIndices);
 				channel.sendTo(candKeyPacket.getBytes(), remoteHost);
 			}
 			catch (InternalApplicationException e) {
@@ -652,8 +657,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
 	 * @see #addCandidates(byte[][], float)
 	 */
-	private boolean checkForKeyMatch(InetAddress remoteHost, int numParts, byte[] candKeyHash) throws InternalApplicationException, IOException {
-		CandidateKey candKey = ckp.searchKey(remoteHost.getHostAddress(), candKeyHash, numParts);
+	private boolean checkForKeyMatch(InetAddress remoteHost, int numParts, byte[] candKeyHash,
+			int[][] localIndices, int[][] remoteIndices) throws InternalApplicationException, IOException {
+		CandidateKey candKey = ckp.searchKey(remoteHost.getHostAddress(), candKeyHash, localIndices, remoteIndices);
 		
 		if (candKey != null) {
 			// this is just a sanity check
@@ -988,23 +994,37 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						checkForKeyGeneration((InetAddress) sender);
 					}
 					else if (pack.startsWith(Protocol_CandidateKey)) {
-						int off = pack.indexOf(' ', Protocol_CandidateKey.length());
-						int numParts = Integer.parseInt(pack.substring(Protocol_CandidateKey.length(), off));
-						logger.debug("Received candidate key composed of " + numParts + " parts" +
+						StringTokenizer st = new StringTokenizer(pack, " ");
+						// the first token must be the packet identifier
+						st.nextToken();
+						// then the number of parts
+						int numParts = Integer.parseInt(st.nextToken());
+						// now the key hash
+						byte[] candKeyHash = Hex.decodeHex(st.nextToken().toCharArray());
+						// and, from this host's view, the remote and local encoded indix tuples
+						int[][] remoteIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
+						int[][] localIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
+						if (logger.isDebugEnabled())
+						logger.debug("Received candidate key composed of " + numParts + " parts with hash " +
+								new String(Hex.encodeHex(candKeyHash)) + ", remote indices " + 
+								CandidateKeyProtocol.CandidateKey.indexTuplesToString(remoteIndices) + 
+								", my indices " + 
+								CandidateKeyProtocol.CandidateKey.indexTuplesToString(localIndices) +
 								(instanceId != null ? " [" + instanceId + "]" : ""));
-						byte[] candKeyHash = Hex.decodeHex(pack.substring(off+1).toCharArray());
-						
-						if (! checkForKeyMatch((InetAddress) sender, numParts, candKeyHash)) {
+
+						if (! checkForKeyMatch((InetAddress) sender, numParts, candKeyHash, localIndices, remoteIndices)) {
 							/* No match, but remember the received candidate key in case the match local 
 							 * candidates are about to be added. 
 							 */
 							logger.debug("Could not generate key with same hash as incoming candidate key, storing it in " +
 									"buffer for future reference"+ 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
-							Object[] tmp = new Object[3];
+							Object[] tmp = new Object[5];
 							tmp[0] = sender;
 							tmp[1] = new Integer(numParts);
 							tmp[2] = candKeyHash;
+							tmp[3] = localIndices;
+							tmp[4] = remoteIndices;
 							incomingCandKeyBuffer[incomingCandKeyBufferIndex++] = tmp;
 							if (incomingCandKeyBufferIndex == incomingCandKeyBuffer.length) {
 								statisticsLogger.debug("o incoming KEY messages list overflow (" + incomingCandKeyBuffer.length + ")");
@@ -1038,6 +1058,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					logger.error("Can not decode hash, ignoring whole packet" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					authenticationFailed((InetAddress) sender, true, e, "Could not decode hash");
+				} catch (NoSuchElementException e) {
+					logger.error("Invalid incoming candidate key message received, could not decode: " +e +
+							(instanceId != null ? " [" + instanceId + "]" : ""));
+					authenticationFailed((InetAddress) sender, true, e, "Could not decode message structure");
 				} catch (IOException e) {
 					logger.error("Can not send packet" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
