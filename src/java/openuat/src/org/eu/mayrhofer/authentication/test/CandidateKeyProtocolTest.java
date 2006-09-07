@@ -8,6 +8,7 @@
  */
 package org.eu.mayrhofer.authentication.test;
 
+import java.util.Arrays;
 import java.util.BitSet;
 
 import org.eu.mayrhofer.authentication.CandidateKeyProtocol;
@@ -914,6 +915,20 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1_2.key, k1_3.key));
 		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k2_1.hash, k3_1.hash));
 		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k2_1.key, k3_1.key));
+	}
+	
+	public void testIndexTupleStringEncoding() {
+		int[][] indices = new int[10][];
+		for (int i=0; i<indices.length; i++) {
+			indices[i] = new int[2];
+			indices[i][0] = 2*i;
+			indices[i][1] = 3*i;
+		}
+		
+		String coded = CandidateKeyProtocol.CandidateKey.indexTuplesToString(indices);
+		Assert.assertEquals("Invalid coding", "0/0;2/3;4/6;6/9;8/12;10/15;12/18;14/21;16/24;18/27", coded);
+		int[][] decoded = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(coded);
+		Assert.assertTrue("Invalid decoding", Arrays.deepEquals(indices, decoded));
 	}
 	
 	// this should actually be split into a helper class
