@@ -183,7 +183,22 @@ public class CandidateKeyProtocol {
 		float entropy;
 		
 		CandidateKeyPart(byte[] keyPart, int round, byte candidateNumber, float entropy) throws InternalApplicationException {
-			this.keyPart = keyPart;
+			/* Clone the byte array passed from somewhere, because we can not control what 
+			 * will happen to it in the future - it might be overwritten, so it's better
+			 * to keep a copy in here (although it costs performance and consumes more 
+			 * memory). The reason for this clone was that, when advancing a candidate key
+			 * part to a matching key part by creating a MatchingKeyPart object (and thus
+			 * calling this constructor again), only the reference got copied from the
+			 * recent parts list to the host-specific match list. This is ok, until the nice
+			 * method wipe(remoteHost) is called, which dutyfully overwrites kay material 
+			 * before removing the references. Now, since we only used the reference in the
+			 * host-specific match list, this overwrites our keyPart in the recent match list,
+			 * but does not remove the element, and thus overwrites material that can get
+			 * re-used (and is thereby invalidated). That's bad.
+			 * For that specific problem, it would be sufficient to clone() in the constructor
+			 * of MatchingKeyPart, but doing it in here is the safer approach. 
+			 */
+			this.keyPart = (byte[]) keyPart.clone();
 			this.candidateNumber = candidateNumber;
 			this.entropy = entropy;
 			this.hash = Hash.doubleSHA256(keyPart, useJSSE);
@@ -225,6 +240,13 @@ public class CandidateKeyProtocol {
 			super(candidateBase.keyPart, candidateBase.round, candidateBase.candidateNumber, candidateBase.entropy);
 			this.remoteRound = remoteRound;
 			this.remoteCandidateNumber = remoteCandidateNumber;
+			if (logger.isTraceEnabled())
+				logger.trace("Created new matching key part object out of a candidate key part for local " +
+						this.round + "/" + this.candidateNumber + ", remote "+
+						this.remoteRound + "/" + this.remoteCandidateNumber + ": " +
+						new String(Hex.encodeHex(this.keyPart)) + " with hash " +
+						new String(Hex.encodeHex(this.hash)) +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 	}
 	
