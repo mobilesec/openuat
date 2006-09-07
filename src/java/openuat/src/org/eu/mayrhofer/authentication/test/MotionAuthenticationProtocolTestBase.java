@@ -31,7 +31,7 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 	protected static final double varthreshold = 350;
 	
 	// only allow to take this much more time than the data set is long --> "soft-realtime"
-	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 10;
+	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 2;
 	
 	protected TimeSeriesAggregator aggr_a, aggr_b;
 	
@@ -62,7 +62,7 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 		classIsReadyForTests = false;
 	}
 	
-	protected void runCase(String filename) throws IOException {
+	protected void runCase(String filename) throws IOException, InterruptedException {
 		if (classIsReadyForTests) {
 			int dataSetLength = determineDataSetLength(filename);
 			System.out.println("Data set is " + dataSetLength + " seconds long");
@@ -82,13 +82,14 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 					end = true;
 				if (numFailed > 0 && numFailed > 0 )
 					end = true;
+				Thread.sleep(500);
 			}
 			reader1.stop();
 			Assert.assertTrue("Protocol did not finish within time limit", end);
 		}
 	}
 	
-	public void testSoftRealtime() throws IOException {
+	public void testSoftRealtime() throws IOException, InterruptedException {
 		runCase("tests/motionauth/negative/1.gz");
 	}
 	
