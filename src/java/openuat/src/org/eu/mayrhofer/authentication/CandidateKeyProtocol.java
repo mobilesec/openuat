@@ -1142,6 +1142,15 @@ public class CandidateKeyProtocol {
 		byte[] assembledKey = new byte[keyPartsLength];
 		int off = 0;
 		for (int i=0; i<keyParts.length; i++) {
+			if (logger.isTraceEnabled())
+				logger.trace("Assembling key: part " + i + " with " + keyParts[i].keyPart.length +
+						" bytes starting at offset " + off + ": local " +
+						keyParts[i].round + "/" + keyParts[i].candidateNumber + ", remote: " +
+						keyParts[i].remoteRound + "/" + keyParts[i].remoteCandidateNumber + ": " +
+						new String(Hex.encodeHex(keyParts[i].keyPart)) + " with hash " +
+						new String(Hex.encodeHex(keyParts[i].hash)) +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+
 			System.arraycopy(keyParts[i].keyPart, 0, assembledKey, off, keyParts[i].keyPart.length);
 			off += keyParts[i].keyPart.length;
 		}
@@ -1552,7 +1561,14 @@ public class CandidateKeyProtocol {
 			int outPos=0;
 			for (int j=0; j<numParts; j++) {
 				if (logger.isTraceEnabled())
-					logger.trace("   Part " + i + ": copying " + allCombinations[i][j].keyPart.length + " bytes to offset " + outPos);
+					logger.trace("Assembling key: part " + i + " with " + allCombinations[i][j].keyPart.length +
+							" bytes starting at offset " + outPos + ": local " +
+							allCombinations[i][j].round + "/" + allCombinations[i][j].candidateNumber + ", remote: " +
+							allCombinations[i][j].remoteRound + "/" + allCombinations[i][j].remoteCandidateNumber + ": " +
+							new String(Hex.encodeHex(allCombinations[i][j].keyPart)) + " with hash " +
+							new String(Hex.encodeHex(allCombinations[i][j].hash)) +
+							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+
 				System.arraycopy(allCombinations[i][j].keyPart, 0, keyParts[i], outPos, 
 						allCombinations[i][j].keyPart.length);
 				outPos += allCombinations[i][j].keyPart.length;

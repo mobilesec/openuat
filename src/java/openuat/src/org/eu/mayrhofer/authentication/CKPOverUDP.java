@@ -948,35 +948,37 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								handleMatchingCandidateKeyPart(round, match, (InetAddress) sender);
 							}
 							else {
-								/* No match, but remember the received key parts in case the matching local 
-								 * candidates are about to be added. 
-								 */
-								logger.debug("None of the incoming candidate key parts matches, storing it in " +
+								// no match
+								logger.debug("None of the incoming candidate key parts matches, only storing it in " +
 										"buffer for future reference"+ 
 										(instanceId != null ? " [" + instanceId + "]" : ""));
 								statisticsLogger.debug("rc- no match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
-								Object[] tmp = new Object[2];
-								tmp[0] = sender;
-								tmp[1] = keyParts;
-								incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
-								if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length) {
-									statisticsLogger.debug("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
-									incomingKeyPartsBufferIndex = 0;
-								}
-								
 								/* But since this was a mismatch, need to check if negative criteria might be fulfilled now.
 								 * This method call takes care of it.
 								 */
 								checkKeyCriteria((InetAddress) sender);
-								/* If positive criteria are fulfilled, don't care here. When the last
-								 * match was received (or the last candidate key message), no key could
-								 * be generated, so now it will not be possible either (no changes to
-								 * the "positive" match set).
-								 */
 							}
+							/* Independent of the match, remember the received key parts in case the (or 
+							 * another) matching local candidates are about to be added - classical race
+							 * condition, should be solved by this buffer. 
+							 */
+							Object[] tmp = new Object[2];
+							tmp[0] = sender;
+							tmp[1] = keyParts;
+							incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
+							if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length) {
+								statisticsLogger.debug("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
+								incomingKeyPartsBufferIndex = 0;
+							}
+								
+							/* If positive criteria are fulfilled, don't care here. When the last
+							 * match was received (or the last candidate key message), no key could
+							 * be generated, so now it will not be possible either (no changes to
+							 * the "positive" match set).
+							 */
 						}
 						else
-							logger.warn("Received candidate key parts oacket without any key parts, ignoring it" +
+							logger.warn("Received candidate key parts packet without any key parts, ignoring it" +
 									(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
 					else if (pack.startsWith(Protocol_CandidateMatch)) {
@@ -1015,6 +1017,13 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						if (! checkForKeyMatch((InetAddress) sender, numParts, candKeyHash, localIndices, remoteIndices)) {
 							/* No match, but remember the received candidate key in case the match local 
 							 * candidates are about to be added. 
+							 * Note: in contrast to storing candidate key parts in the buffer independently
+							 * of their matching status at the time of reception (CAND message handler above),
+							 * here we only store them if there was no match. The reason is that for candidate
+							 * key parts, multiple matches are to be expected, and the might be necessary
+							 * to reconstruct future keys. But with candidate keys, multiple matches are
+							 * _not_ to be expected - and if there is a matching key, then we're finished
+							 * anyway (if the other host acknowledges it).  
 							 */
 							logger.debug("Could not generate key with same hash as incoming candidate key, storing it in " +
 									"buffer for future reference"+ 
