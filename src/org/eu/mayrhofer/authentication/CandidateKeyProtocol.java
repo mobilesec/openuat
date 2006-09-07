@@ -512,8 +512,10 @@ public class CandidateKeyProtocol {
 			}
 			// and generate the candidate identifier to send to the remote host
 			ret[i] = p.extractPublicIdentifier();
-			if (logger.isDebugEnabled())
-				logger.debug("Generating local candidate identifier number " + p.candidateNumber +
+			if (logger.isTraceEnabled())
+				logger.trace("Generating local candidate identifier number " + p.candidateNumber +
+						" for part " + new String(Hex.encodeHex(p.keyPart)) + " with hash " +
+						new String(Hex.encodeHex(p.hash)) +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		}
 		
