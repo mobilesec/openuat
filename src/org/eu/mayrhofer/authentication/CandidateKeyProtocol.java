@@ -1267,13 +1267,21 @@ public class CandidateKeyProtocol {
 				 * numbers in initialCombination are guaranteed to be uniqeue.
 				 */
 				for (int j=0; j<numCopied && !alreadyCopied; j++) {
-					if (matchList.parts[i].round == initialCombination[j].round) {
+					if (matchList.parts[i].round == initialCombination[j].round ||
+						(matchList.parts[i].remoteRound != -1 && 
+						 matchList.parts[i].remoteRound == initialCombination[j].remoteRound)) {
 						alreadyCopied = true;
 						if (!extractAllCombinations) {
-							logger.warn("Round " + initialCombination[j].round + " has two matching candidates: " +
-									initialCombination[j].candidateNumber + " and " +
-									matchList.parts[i].candidateNumber + ", skipping latter" +
-									(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+							if (matchList.parts[i].round == initialCombination[j].round)
+								logger.warn("Local round " + initialCombination[j].round + " has two matching candidates: " +
+										initialCombination[j].candidateNumber + " and " +
+										matchList.parts[i].candidateNumber + ", skipping latter" +
+										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+							else
+								logger.warn("Remote round " + initialCombination[j].remoteRound + " has two matching candidates: " +
+										initialCombination[j].remoteCandidateNumber + " and " +
+										matchList.parts[i].remoteCandidateNumber + ", skipping latter" +
+										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						}
 						else {
 							// instructed to copy all combinations, so remember duplicates
@@ -1289,7 +1297,7 @@ public class CandidateKeyProtocol {
 							}
 							if (logger.isDebugEnabled())
 								logger.debug("Adding candidate number " + matchList.parts[i].candidateNumber +
-										" as duplicate to round " + round +
+										" as duplicate to local round " + round +
 										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							// only remember the index in matchingKeyParts, that's all we need
 							alternatives.add(new Integer(i));
