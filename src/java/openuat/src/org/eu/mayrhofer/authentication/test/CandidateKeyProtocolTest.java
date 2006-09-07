@@ -696,13 +696,13 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNotNull(k1);
 		Assert.assertNotNull(k2);
 		
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
 		
 		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.numParts);
 		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.numParts);
 
-		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
@@ -731,14 +731,14 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNotNull(k1);
 		Assert.assertNotNull(k2);
 		
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
 		
 		// now local and remote swap places (for the indices)
 		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.remoteIndices, k2.localIndices);
 		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.remoteIndices, k1.localIndices);
 
-		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
@@ -765,13 +765,13 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNotNull(k1);
 		Assert.assertNotNull(k2);
 		
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
-		
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+				
 		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.numParts);
 		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.numParts);
 
-		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
@@ -798,14 +798,14 @@ public class CandidateKeyProtocolTest extends TestCase {
 		Assert.assertNotNull(k1);
 		Assert.assertNotNull(k2);
 		
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
-		Assert.assertFalse("Generated keys should not match, but do", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
-		
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.hash, k2.hash));
+		Assert.assertTrue("Generated keys should match", SimpleKeyAgreementTest.compareByteArray(k1.key, k2.key));
+				
 		// now local and remote swap places (for the indices)
 		CandidateKeyProtocol.CandidateKey sk1 = p1.searchKey(remoteIdentifier2, k2.hash, k2.remoteIndices, k2.localIndices);
 		CandidateKeyProtocol.CandidateKey sk2 = p2.searchKey(remoteIdentifier1, k1.hash, k1.remoteIndices, k1.localIndices);
 
-		Assert.assertNull("Should not have been able to generate an equal key, because expecting 2 parts and remote should only have 1", sk1);
+		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk1);
 		Assert.assertNotNull("Should have been able to generate an equal key with just 1 part", sk2);
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.hash, k1.hash));
 		Assert.assertTrue("Generated and searched keys do not match", SimpleKeyAgreementTest.compareByteArray(sk2.key, k1.key));
