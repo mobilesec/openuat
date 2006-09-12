@@ -592,7 +592,8 @@ public class InterlockProtocol {
 				remoteLine.append((char) ch);
 			ch = fromRemote.read();
 		}
-		if (remoteLine.substring(0, command.length()+1).equals(command + " ")) {
+		if (remoteLine.length() > command.length()+1 && 
+			remoteLine.substring(0, command.length()+1).equals(command + " ")) {
 			String ret = remoteLine.substring(command.length() + 1);
 			if (logger.isDebugEnabled())
 				logger.debug("Received line from remote host: command '" + command + "', value + '" + ret + "'");
