@@ -282,7 +282,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testSplitAndReassemble_Variant1_Case2() throws InternalApplicationException {
-		for (int rounds=2; rounds<=40; rounds+=3) {
+		for (int rounds=2; rounds<=40; rounds++) {
 			// TODO: would rather like to run that up to 128 or 256, but for some reason the ant junit task will abort with out of memory if it's higher
 			for (int messageBytes=17; messageBytes<=64; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
@@ -324,7 +324,7 @@ public class InterlockProtocolTest extends TestCase {
 	}
 
 	public void testSplitAndReassemble_Variant2_Case2() throws InternalApplicationException {
-		for (int rounds=2; rounds<=40; rounds+=3) {
+		for (int rounds=2; rounds<=40; rounds++) {
 			// TODO: would rather like to run that up to 128 or 256, but for some reason the ant junit task will abort with out of memory if it's higher
 			for (int messageBytes=17; messageBytes<=64; messageBytes+=16) {
 				// test a case with only 1 bit in the last block (and thus only one byte in the last block)
@@ -453,5 +453,29 @@ public class InterlockProtocolTest extends TestCase {
 		
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(h1.myMsg, h2.remoteMsg));
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(h2.myMsg, h1.remoteMsg));
+	}
+
+	// this tries to copy the steps performed in DongleProtocolHandler
+	public void testInterlockForRelateDongleProtocol() throws InternalApplicationException {
+		final int EntropyBitsPerRound = 3;
+		final int EntropyBitsOffset = 7;
+		final int NonceByteLength = 16;
+		
+		int delta = 2;
+		
+		for (int rounds=2; rounds<=43; rounds++) {
+			InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, "test", useJSSE);
+			for (int round=0; round<rounds; round++) {
+				byte delay = (byte) (delta >> EntropyBitsOffset);
+				int curBits = (NonceByteLength * 8) - (EntropyBitsPerRound * round) % (NonceByteLength * 8) >= EntropyBitsPerRound ? 
+						EntropyBitsPerRound : 
+							(NonceByteLength * 8) - (EntropyBitsPerRound * round) % (NonceByteLength * 8);
+				Assert.assertTrue("Could not add round", interlockUs.addMessage(new byte[] {delay}, 
+						(round * EntropyBitsPerRound) % (NonceByteLength * 8), 
+						curBits, round));
+			}
+			byte[] receivedDelays = interlockUs.reassemble();
+			Assert.assertNotNull("Could not reassamble", receivedDelays);
+		}
 	}
 }
