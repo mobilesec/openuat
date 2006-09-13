@@ -147,6 +147,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 				for (int j=0; j<cand[i].length; j++)
 					candBytes[i][j] = (byte) cand[i][j];
 			}
+			// TODO: IDEA: use overlapping time windows as done by the coherence measure
 			// TODO: estimate entropy
 			try {
 				addCandidates(candBytes, 0);

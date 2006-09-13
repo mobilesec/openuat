@@ -35,7 +35,7 @@ public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProto
 	public void tearDown() {
 	}
 	
-	public void testMemoryOverflowCase() throws IOException {
+	public void testMemoryOverflowCase() throws IOException, InterruptedException {
 		runCase("tests/motionauth/specialcases/outofmemory.gz");
 	}
 	
