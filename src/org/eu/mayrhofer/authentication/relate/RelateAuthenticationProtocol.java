@@ -850,6 +850,13 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             // and wait
             while (true) Thread.sleep(1000);
         }
+        else {
+        	System.err.println("Usage: RelateAuthenticationProtocol server <port> <device type>");
+        	System.err.println("                                    client <port> <device type> <remote IP> <remote ID> <rounds>");
+        	System.err.println("                                    both <port 1> <device type 1> <port 2> <device type 2> <rounds>");
+        	System.err.println();
+        	System.err.println("Device type is 1 for dongles, 2 for bricks");
+        }
         
         // problem with the javax.comm API - doesn't release its native thread
         if (! System.getProperty("os.name").startsWith("Windows CE"))

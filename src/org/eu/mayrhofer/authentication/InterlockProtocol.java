@@ -517,7 +517,8 @@ public class InterlockProtocol {
 	 * @param offset The bit offset where this message part starts in the reassembly.
 	 * @param numBits The number of bits to take from the message array.
 	 * @param round The round number of this message. Rounds are counted from 0 to rounds-1.
-	 * @return true if added successfully, false otherwise
+	 * @return true if added successfully, false if not added. When false is returned, then
+	 *         the part for this round has already been added earlier.
 	 * @throws InternalApplicationException
 	 */
 	public boolean addMessage(byte[] message, int offset, int numBits, int round)
@@ -715,7 +716,11 @@ public class InterlockProtocol {
 	 * 
 	 * @param message The message to add.
 	 * @param round The round number of this message. Rounds are counted from 0 to rounds-1.
-	 * @return true if added successfully, false otherwise
+	 * @return true if added successfully, false if not added. When false is returned, then
+	 *         the part for this round has already been added earlier. It still returns true
+	 *         when the part was not added because the cipher text was already complete without
+	 *         it (this can only happen when the number of bits to be transmitted fits into 
+	 *         less rounds than were used).
 	 * @throws InternalApplicationException
 	 */
     public boolean addMessage(byte[] message, int round)
@@ -740,7 +745,7 @@ public class InterlockProtocol {
 			logger.info("Ignoring message part " + round + ": " + curBits + " bits. Reason: cipher text already complete.");
 			// but still set the bit to mark that it has actually been "delivered"
 			receivedRounds.set(round, true);
-			return false;
+			return true;
 		}
     }
     
