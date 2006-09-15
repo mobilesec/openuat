@@ -130,7 +130,10 @@ public class Coherence {
 		if (slices != getNumSlices(s1.length, windowsize, overlap))
 			throw new RuntimeException("Error: did not compute as many slices as expected. This should not happen.");
 
-		// no need to divide P** by the number of slices here, it would cancel itself out below
+		/* No need to divide P** by the number of slices here, it would cancel itself out below.
+		   Also no need to divide P** by the norm of the hanning window, it would also cancel itself out
+		   (the second one should be suggested by Bendat & Piersol Sec 11.5.2, according to
+		   http://mail.python.org/pipermail/python-list/2003-January/142831.html ). */ 
 
 		// this is the coherence
 		// the number of values to return - only half of the power spectrum is significant (+1 for even)
@@ -192,6 +195,6 @@ public class Coherence {
 	 * @return The coherence coefficients.
 	 */
 	public static double weightedCoherenceMean(double[] s1, double[] s2, int windowsize, int overlap) {
-		return mean(cohere(s1, s2, windowsize, overlap));
+		return mean(cohere(s1, s2, windowsize, overlap)) * Math.sqrt(getNumSlices(s1.length, windowsize, overlap));
 	}
 }
