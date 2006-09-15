@@ -178,18 +178,21 @@ public class AsciiLineReaderRunner {
 		int[] samplerates;
 		double[] windowsizeFactors;
 		double varthresholdMin, varthresholdMax, varthresholdStep;
+		int[] coherence_windowSizes; 
 		if (paramSearch_coherence) {
 			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
 			varthresholdMin = 50;
 			varthresholdMax = 1000;
 			varthresholdStep = 10;
+			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
-			windowsizeFactors = new double[] {1}; 
-			varthresholdMin = 350;
-			varthresholdMax = 350;
+			windowsizeFactors = new double[] {1/2f}; 
+			varthresholdMin = 750;
+			varthresholdMax = 750;
 			varthresholdStep = 50;
+			coherence_windowSizes = samplerates;
 		}
 		int[] quantLevels = new int[] {2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20};
 		int numCandidatesMin = 2;
@@ -214,12 +217,12 @@ public class AsciiLineReaderRunner {
 
 			for (int i2=0; i2<windowsizeFactors.length; i2++) {
 				int windowsize = (int) (samplerate*windowsizeFactors[i2]);
-				// this is not yet searched, but restrict the minimum significant segment size to 1/2s
-				int minsegmentsize = windowsize;
+				// this is not yet searched, but restrict the minimum significant segment size to 3s
+				int minsegmentsize = samplerate*3;
 				// these are the defaults when not searching for parameters
 				if (!paramSearch_coherence && !paramSearch_matches) {
 					windowsize = samplerate/2; // 1/2 second
-					minsegmentsize = windowsize; // 1/2 second
+					minsegmentsize = samplerate*3; // 3 seconds
 					i2=windowsizeFactors.length; // makes the loop exit after this run
 				}
 				
@@ -227,7 +230,7 @@ public class AsciiLineReaderRunner {
 						varthreshold+=(paramSearch_coherence ? varthresholdStep : varthresholdMax)) {
 					// these are the defaults when not searching for parameters
 					if (!paramSearch_coherence) {
-						varthreshold = 350;
+						varthreshold = 750;
 					}
 					
 					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
@@ -281,28 +284,44 @@ public class AsciiLineReaderRunner {
 						System.out.println("Using " + len + " samples for coherence computation");
 						double[] s1 = new double[len];
 						double[] s2 = new double[len];
-						for (int i=0; i<len; i++) {
-							s1[i] = SegmentSink.segs[0][i];
-							s2[i] = SegmentSink.segs[1][i];
-						}
-						
-						// disable coherence computation for now, we are searching for variant 2 parameters
-						double[] coherence = Coherence.cohere(s1, s2, windowsize, 0);
-						if (coherence != null) {
-							if (graph) {
-								XYSeries c = new XYSeries("Coefficients", false);
-								for (int i=0; i<coherence.length; i++)
-									c.add(i, coherence[i]);
-								XYDataset c1 = new XYSeriesCollection(c);
-								JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-										"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-								ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+						System.arraycopy(SegmentSink.segs[0], 0, s1, 0, len);
+						System.arraycopy(SegmentSink.segs[1], 0, s2, 0, len);
+
+						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
+							int coherence_windowSize = coherence_windowSizes[i3];
+							if (!paramSearch_coherence) {
+								coherence_windowSize = samplerate;
+								i3=coherence_windowSizes.length; // makes the loop exit after this run
 							}
-		
-							double coherenceMean = Coherence.mean(coherence);
-							System.out.println("Coherence mean: " + coherenceMean + 
-									" samplerate=" + samplerate + ", windowsize=" + windowsize + 
-									", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
+
+							for (int i4=0; i4<windowOverlapFactors.length; i4++) {
+								int windowOverlap = (int) (coherence_windowSize*windowOverlapFactors[i4]);
+								// these are the defaults when not searching for parameters
+								if (!paramSearch_coherence) {
+									windowOverlap = 0;
+									i4=windowOverlapFactors.length;
+								}
+
+								double[] coherence = Coherence.cohere(s1, s2, coherence_windowSize, windowOverlap);
+								if (coherence != null) {
+									if (graph) {
+										XYSeries c = new XYSeries("Coefficients", false);
+										for (int i=0; i<coherence.length; i++)
+											c.add(i, coherence[i]);
+										XYDataset c1 = new XYSeriesCollection(c);
+										JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+												"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+										ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+									}
+				
+									double coherenceMean = Coherence.mean(coherence);
+									System.out.println("Coherence mean: " + coherenceMean + 
+											" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
+											", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
+											", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
+											windowOverlap + ", signal_length=" + len);
+								}
+							}
 						}
 
 						/////// test 4: calculate and compare the quantized FFT power spectra coefficients of the segments from test 2
