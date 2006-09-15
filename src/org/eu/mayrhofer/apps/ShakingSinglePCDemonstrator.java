@@ -155,10 +155,10 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
 		/* 1: construct the central sensor reader object and the two segment aggregators */
-		final int samplerate = 128; // Hz
+		final int samplerate = 512; // Hz
 		final int windowsize = samplerate/2; // 1/2 second
 		final int minsegmentsize = windowsize; // 1/2 second
-		final double varthreshold = 750;
+		final double varthreshold = 350;
 
 		/* First of all, open the display so that there's feedback and so that the events can write
 		 * to an open display.
@@ -169,6 +169,7 @@ public class ShakingSinglePCDemonstrator {
 		final TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		final TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		aggr_a.setOffset(0);
+		// since the sensor value range is between 0 and 255
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
 		aggr_a.setActiveVarianceThreshold(varthreshold);
@@ -319,7 +320,8 @@ public class ShakingSinglePCDemonstrator {
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
-			super(false);
+			// samplerate/2
+			super(0.65, 256, false);
 		}
 		
 		protected void protocolSucceededHook(InetAddress remote, 
@@ -355,7 +357,7 @@ public class ShakingSinglePCDemonstrator {
 
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
-			super(numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
+			super(512, 512, 6, 4, 20, 256, 0.84f, numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {

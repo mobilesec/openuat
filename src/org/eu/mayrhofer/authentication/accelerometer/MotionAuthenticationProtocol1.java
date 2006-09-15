@@ -60,10 +60,13 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 */
 	private double[] remoteSegment = null;
 	
+	/** The window size for the coherence computation. */
+	private int windowSize;
+	
 	/** The current threshold for the coherence. If it is higher, the two segments
 	 * are considered similar enough.
 	 */
-	private double coherenceThreshold = 0.50;
+	private double coherenceThreshold;
 	
 	/** If set to true, the thread started by startVerification will not terminate
 	 * but will check continuously, only calling the hook methods in this class
@@ -102,12 +105,16 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
+	 * @param coherenceThreshold A good value is 0.65 for samplerate=512 or 0.82 for samplerate=128.
+	 * @param windowSize A good value is samplerate/2.
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public MotionAuthenticationProtocol1(boolean useJSSE) {
+	public MotionAuthenticationProtocol1(double coherenceThreshold, int windowSize, boolean useJSSE) {
 		super(TcpPort, false, null, useJSSE);
+		this.coherenceThreshold = coherenceThreshold;
+		this.windowSize = windowSize;
 	}
 	
 	/** Called by the base class when the object is reset to idle state. Resets 
@@ -183,11 +190,9 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		System.out.println("Using " + len + " samples for coherence computation");
 		double[] s1 = new double[len];
 		double[] s2 = new double[len];
-		for (int i=0; i<len; i++) {
-			s1[i] = localSegment[i];
-			s2[i] = remoteSegment[i];
-		}
-		double[] coherence = Coherence.cohere(s1, s2, 128, 0);
+		System.arraycopy(localSegment, 0, s1, 0, len);
+		System.arraycopy(remoteSegment, 0, s2, 0, len);
+		double[] coherence = Coherence.cohere(s1, s2, windowSize, 0);
 		if (coherence == null) {
 			logger.warn("Coherence not computed, no match");
 			return false;
@@ -407,8 +412,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
 		
-		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(true); 
-		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(true); 
+		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(0.82, 64, true); 
+		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(0.82, 64, true); 
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startServer();
