@@ -33,6 +33,18 @@ import org.apache.log4j.Logger;
 public class Coherence {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(Coherence.class);
+	
+	/** This is a small helper function to compute how many slices will be used. */
+	public static int getNumSlices(int signalLength, int windowsize, int overlap) {
+		if (windowsize-overlap <= 0)
+			throw new IllegalArgumentException("windowsize-overlap <= 0, can not create slices");
+		if (signalLength < 2*windowsize - overlap)
+			throw new IllegalArgumentException("Signals are too short to compute coherence. Need at least 2 sliced: " +
+					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
+					" with overlap " + overlap + ", but got only " + signalLength);
+		
+		return (signalLength-windowsize) / (windowsize-overlap) + 1;
+	}
 
 	/** Compute the coherence between two signals. Overlapping windows are
 	 * created with a length of exactly the number of FFT coefficients. The
@@ -47,10 +59,13 @@ public class Coherence {
 	 * @return The coherence coefficients.
 	 */
 	public static double[] cohere(double[] s1, double[] s2, int windowsize, int overlap) {
-		if (s1.length != s2.length) {
-			logger.error("Signals have different length");
-			return null;
-		}
+		if (s1.length != s2.length)
+			throw new IllegalArgumentException("Signals have different length");
+		if (s1.length < 2*windowsize - overlap)
+			throw new IllegalArgumentException("Signals are too short to compute coherence. Need at least 2 sliced: " +
+					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
+					" with overlap " + overlap + ", but got only " + s1.length);
+		
 		// default for windowsize
 		if (windowsize <= 0)
 			windowsize = s1.length >= 256 ? s1.length : 256;
@@ -58,13 +73,6 @@ public class Coherence {
 		if (overlap <= 0)
 			overlap = windowsize / 2;
 
-		if (s1.length < 2*windowsize - overlap) {
-			logger.error("Signals are too short to compute coherence. Need at least 2 sliced: " +
-					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
-					" with overlap " + overlap + ", but got only " + s1.length);
-			return null;
-		}
-		
 		logger.info("Computing coherence between two signals of length " + s1.length + 
 				" with a window size/number of FFT coefficients of " + windowsize + " and " +
 				overlap + " overlap");
@@ -91,8 +99,10 @@ public class Coherence {
 			Pxy[i] = new Complex(0, 0);
 		
 		// this calculates the average of the P** over all slices
+		int slices=0;
 		for (int offset=0; offset<s1.length-windowsize+1; offset+=windowsize-overlap) {
-			logger.debug("Using slice at offset " + offset);
+			logger.debug("Using slice " + slices + " at offset " + offset);
+			slices++;
 
 			// create the slices and mask them with hanning
 			Complex[] a = new Complex[windowsize];
@@ -116,15 +126,20 @@ public class Coherence {
 				Pxy[i] = Pxy[i].plus(a[i].times(b[i].conjugate()));
 			}
 		}
-		// no need to divide P** by the number of slices here, because these factors cancel when computing the coherence below
+		// sanity check
+		if (slices != getNumSlices(s1.length, windowsize, overlap))
+			throw new RuntimeException("Error: did not compute as many slices as expected. This should not happen.");
+
+		// no need to divide P** by the number of slices here, it would cancel itself out below
 
 		// this is the coherence
 		// the number of values to return - only half of the power spectrum is significant (+1 for even)
 		int retSize = windowsize%2 == 1 ? (windowsize+1) / 2 : windowsize/2 + 1;
 		double[] P = new double[retSize];
-		for (int i=0; i<retSize; i++)
+		for (int i=0; i<retSize; i++) {
 			// again: P = Pxy.*conj(Pxy)./Pxx./Pyy; gives the sqared magnitude 
 			P[i] = (Pxy[i].getRe() * Pxy[i].getRe() + Pxy[i].getIm() * Pxy[i].getIm()) / (Pxx[i] * Pyy[i]);
+		}
 			
 		return P;
 	}
@@ -163,5 +178,20 @@ public class Coherence {
 		for (int i=0; i<vector.length; i++)
 			ret += vector[i];
 		return ret / vector.length;
+	}
+	
+	/** This is a helper function that computes the average over the coherence 
+	 * values, weighted by the number of slices that were used to compute the
+	 * coherence. This weighting is necessary.
+	 * 
+	 * @param s1 Signal 1. Both signals must have equal length.
+	 * @param s2 Signal 2. Both signals must have equal length.
+	 * @param windowsize The window size to use, i.e. the number of FFT coefficients to compute. Defaults to
+	 *                   min(256, s1.length) if set to <= 0.
+	 * @param overlap The overlap of the windows to compute. Defaults to windowsize/2 when set to <= 0.
+	 * @return The coherence coefficients.
+	 */
+	public static double weightedCoherenceMean(double[] s1, double[] s2, int windowsize, int overlap) {
+		return mean(cohere(s1, s2, windowsize, overlap));
 	}
 }
