@@ -49,7 +49,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
-			super(false);
+			super(0.65, 256, false);
 		}
 		
 		protected void protocolSucceededHook(InetAddress remote, 

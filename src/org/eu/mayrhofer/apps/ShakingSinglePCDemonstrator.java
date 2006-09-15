@@ -158,7 +158,7 @@ public class ShakingSinglePCDemonstrator {
 		final int samplerate = 512; // Hz
 		final int windowsize = samplerate/2; // 1/2 second
 		final int minsegmentsize = windowsize; // 1/2 second
-		final double varthreshold = 350;
+		final double varthreshold = 750;
 
 		/* First of all, open the display so that there's feedback and so that the events can write
 		 * to an open display.
