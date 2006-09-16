@@ -207,8 +207,8 @@ public class TimeSeriesAggregator {
 		if (windowSize <= 0) {
 			throw new IllegalArgumentException("Window size must be > 0");
 		}
-		if (minSegmentSize <= 0 || minSegmentSize > windowSize) {
-			throw new IllegalArgumentException("Minimum segment size must be > 0 and <= windowSize");
+		if (minSegmentSize <= 0 /*|| minSegmentSize > windowSize*/) {
+			throw new IllegalArgumentException("Minimum segment size must be > 0"/* and <= windowSize"*/);
 		}
 		
 		this.windowSize = windowSize;
