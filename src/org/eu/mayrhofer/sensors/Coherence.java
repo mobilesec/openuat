@@ -61,10 +61,6 @@ public class Coherence {
 	public static double[] cohere(double[] s1, double[] s2, int windowsize, int overlap) {
 		if (s1.length != s2.length)
 			throw new IllegalArgumentException("Signals have different length");
-		if (s1.length < 2*windowsize - overlap)
-			throw new IllegalArgumentException("Signals are too short to compute coherence. Need at least 2 sliced: " +
-					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
-					" with overlap " + overlap + ", but got only " + s1.length);
 		
 		// default for windowsize
 		if (windowsize <= 0)
@@ -72,6 +68,13 @@ public class Coherence {
 		// default for overlap
 		if (overlap <= 0)
 			overlap = windowsize / 2;
+
+		if (s1.length < 2*windowsize - overlap) {
+			logger.error("Signals are too short to compute coherence. Need at least 2 sliced: " +
+					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
+					" with overlap " + overlap + ", but got only " + s1.length);
+			return null;
+		}
 
 		logger.info("Computing coherence between two signals of length " + s1.length + 
 				" with a window size/number of FFT coefficients of " + windowsize + " and " +
