@@ -178,12 +178,14 @@ public class Coherence {
 		return Math.sqrt(ret);
 	}
 
-	/** Helper function: calculates the mean of the vector elements. */
-	public static double mean(double[] vector) {
+	/** Helper function: calculates the mean of the vector elements, up to a maximum index 
+	 * (or the whole vector if max_ind is set to -1 or larger than the vector length). */
+	public static double mean(double[] vector, int max_ind) {
 		double ret = 0;
-		for (int i=0; i<vector.length; i++)
+		int len = (max_ind == -1 || max_ind > vector.length) ? vector.length : max_ind;
+		for (int i=0; i<len; i++)
 			ret += vector[i];
-		return ret / vector.length;
+		return ret / len;
 	}
 	
 	/** This is a helper function that computes the average over the coherence 
@@ -195,9 +197,12 @@ public class Coherence {
 	 * @param windowsize The window size to use, i.e. the number of FFT coefficients to compute. Defaults to
 	 *                   min(256, s1.length) if set to <= 0.
 	 * @param overlap The overlap of the windows to compute. Defaults to windowsize/2 when set to <= 0.
+	 * @param max_ind The maximum index of the FFT coefficient vectors to compare to. This can be used
+	 *                to only compare up to a specifiv frequency, and ignore higher frequencies. Set to
+	 *                -1 to use all coefficients.
 	 * @return The coherence coefficients.
 	 */
-	public static double weightedCoherenceMean(double[] s1, double[] s2, int windowsize, int overlap) {
-		return mean(cohere(s1, s2, windowsize, overlap)) * Math.sqrt(getNumSlices(s1.length, windowsize, overlap));
+	public static double weightedCoherenceMean(double[] s1, double[] s2, int windowsize, int overlap, int max_ind) {
+		return mean(cohere(s1, s2, windowsize, overlap), max_ind) * Math.sqrt(getNumSlices(s1.length, windowsize, overlap));
 	}
 }

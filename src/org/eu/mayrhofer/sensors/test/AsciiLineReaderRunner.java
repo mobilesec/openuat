@@ -179,6 +179,9 @@ public class AsciiLineReaderRunner {
 		double[] windowsizeFactors;
 		double varthresholdMin, varthresholdMax, varthresholdStep;
 		int[] coherence_windowSizes; 
+		int cutOffFrequencyMin = 5;
+		int cutOffFrequencyMax = 20;
+		int cutOffFrequencyStep = 5;
 		if (paramSearch_coherence) {
 			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
@@ -186,6 +189,8 @@ public class AsciiLineReaderRunner {
 			varthresholdMax = 1000;
 			varthresholdStep = 10;
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
+			cutOffFrequencyStep = 1;
+			cutOffFrequencyMax = 100;
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
@@ -198,9 +203,6 @@ public class AsciiLineReaderRunner {
 		int numCandidatesMin = 2;
 		int numCandidatesMax = 8;
 		int numCandidatesStep = 2;
-		int cutOffFrequencyMin = 5;
-		int cutOffFrequencyMax = 20;
-		int cutOffFrequencyStep = 5;
 		double[] windowOverlapFactors = new double[] {0, 1/8f, 1/4f, 1/3f, 1/2f, 2/3f, 3/4f, 7/8f}; // or just 1/2? 
 		
 		// this is ugly.....
@@ -314,13 +316,25 @@ public class AsciiLineReaderRunner {
 										ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
 									}
 				
-									double coherenceMean = Coherence.mean(coherence);
-									System.out.println("Coherence mean: " + coherenceMean + 
-											" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
-											", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
-											", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
-											windowOverlap + ", signal_length=" + len + "(" + ((float) len)/samplerate +
-											" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap));
+									for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
+									cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
+										// these are the defaults when not searching for parameters
+										if (!paramSearch_coherence) {
+											cutOffFrequency = 30; // Hz
+										}
+										// only compare until the cutoff frequency
+										int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
+										//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+										
+										double coherenceMean = Coherence.mean(coherence, max_ind);
+										System.out.println("Coherence mean: " + coherenceMean + 
+												" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
+												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
+												", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
+												windowOverlap + ", signal_length=" + len + "(" + ((float) len)/samplerate +
+												" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
+												", cutofffrequency=" + cutOffFrequency + ", max_ind=" + max_ind);
+									}
 								}
 							}
 						}
