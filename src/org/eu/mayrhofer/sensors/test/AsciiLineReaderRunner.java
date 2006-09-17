@@ -331,9 +331,9 @@ public class AsciiLineReaderRunner {
 												" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
 												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
 												", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
-												windowOverlap + ", signal_length=" + len + "(" + ((float) len)/samplerate +
+												windowOverlap + ", signal_length=" + len + " (" + ((float) len)/samplerate +
 												" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
-												", cutofffrequency=" + cutOffFrequency + ", max_ind=" + max_ind);
+												", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + ")");
 									}
 								}
 							}
