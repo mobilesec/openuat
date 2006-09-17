@@ -198,7 +198,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			return false;
 		}
 		
-		lastCoherenceMean = Coherence.mean(coherence);
+		lastCoherenceMean = Coherence.mean(coherence, -1);
 		System.out.println("Coherence mean: " + lastCoherenceMean);
 		
 		return lastCoherenceMean > coherenceThreshold;
