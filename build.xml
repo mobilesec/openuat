@@ -266,8 +266,8 @@
 	    </zip>
 	    
 	    <!-- don't forget the relate core -->
-	    <copy file="${lib}/relate-2.0-core.jar" todir="${dist.webstart}" />
-	    <copy file="${lib}/relate-2.0-apps.jar" todir="${dist.webstart}" />
+	    <copy file="${lib}/relate-2.1-core.jar" todir="${dist.webstart}" />
+	    <copy file="${lib}/relate-2.1-apps.jar" todir="${dist.webstart}" />
 	    <!-- nor the required support libraries -->
 	    <copy file="${lib}/log4j-1.2.jar" todir="${dist.webstart}" />
 	    <copy file="${lib}/kxml2-2.2.2.jar" todir="${dist.webstart}" />
