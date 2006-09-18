@@ -1,0 +1,30 @@
+This package was debianized by Christian Bayle <bayle@debian.org> on
+Wed,  2 Jul 2003 22:49:43 +0200.
+
+It was downloaded from http://sourceforge.net/projects/jfreechart/ 
+and http://www.jfree.org
+
+Upstream Authors: David Gilbert (david.gilbert@object-refinery.com) and others
+
+Thanks to the following developers who have contributed code to this
+class library:  Anthony Boulestreau, Jeremy Bowman, J. David
+Eisenberg, Paul English, Hans-Jurgen Greiner, Bill Kelemen, Achilleus
+Mantzios, Thomas Meier, Krzysztof Paz, Andrzej Porebski, Nabuo
+Tamemasa, Mark Watson and Hari.
+
+Copyright: 
+
+    2000-2006, by Object Refinery Limited and Contributors.
+
+    This package is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This package is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+On Debian systems, the complete text of the GNU Lesser General
+Public License can be found in `/usr/share/common-licenses/LGPL'.
