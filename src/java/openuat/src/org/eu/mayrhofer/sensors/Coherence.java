@@ -39,7 +39,7 @@ public class Coherence {
 		if (windowsize-overlap <= 0)
 			throw new IllegalArgumentException("windowsize-overlap <= 0, can not create slices");
 		if (signalLength < 2*windowsize - overlap)
-			throw new IllegalArgumentException("Signals are too short to compute coherence. Need at least 2 sliced: " +
+			throw new IllegalArgumentException("Signals are too short to compute coherence. Need at least 2 slices: " +
 					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
 					" with overlap " + overlap + ", but got only " + signalLength);
 		
@@ -70,7 +70,7 @@ public class Coherence {
 			overlap = windowsize / 2;
 
 		if (s1.length < 2*windowsize - overlap) {
-			logger.error("Signals are too short to compute coherence. Need at least 2 sliced: " +
+			logger.error("Signals are too short to compute coherence. Need at least 2 slices: " +
 					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
 					" with overlap " + overlap + ", but got only " + s1.length);
 			return null;

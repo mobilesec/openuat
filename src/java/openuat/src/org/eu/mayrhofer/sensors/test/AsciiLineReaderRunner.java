@@ -304,38 +304,42 @@ public class AsciiLineReaderRunner {
 									i4=windowOverlapFactors.length;
 								}
 
-								double[] coherence = Coherence.cohere(s1, s2, coherence_windowSize, windowOverlap);
-								if (coherence != null) {
-									if (graph) {
-										XYSeries c = new XYSeries("Coefficients", false);
-										for (int i=0; i<coherence.length; i++)
-											c.add(i, coherence[i]);
-										XYDataset c1 = new XYSeriesCollection(c);
-										JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-												"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-										ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
-									}
-				
-									for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
-									cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
-										// these are the defaults when not searching for parameters
-										if (!paramSearch_coherence) {
-											cutOffFrequency = 30; // Hz
+								if (s1.length >= 2*coherence_windowSize - windowOverlap) {
+									double[] coherence = Coherence.cohere(s1, s2, coherence_windowSize, windowOverlap);
+									if (coherence != null) {
+										if (graph) {
+											XYSeries c = new XYSeries("Coefficients", false);
+											for (int i=0; i<coherence.length; i++)
+												c.add(i, coherence[i]);
+											XYDataset c1 = new XYSeriesCollection(c);
+											JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+													"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+											ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
 										}
-										// only compare until the cutoff frequency
-										int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
-										//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+				
+										for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
+										cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
+											// these are the defaults when not searching for parameters
+											if (!paramSearch_coherence) {
+												cutOffFrequency = 30; // Hz
+											}
+											// only compare until the cutoff frequency
+											int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
+											//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
 										
-										double coherenceMean = Coherence.mean(coherence, max_ind);
-										System.out.println("Coherence mean: " + coherenceMean + 
-												" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
-												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
-												", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
-												windowOverlap + ", signal_length=" + len + " (" + ((float) len)/samplerate +
-												" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
-												", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + ")");
+											double coherenceMean = Coherence.mean(coherence, max_ind);
+											System.out.println("Coherence mean: " + coherenceMean + 
+													" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
+													", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
+													", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
+													windowOverlap + ", signal_length=" + len + " (" + ((float) len)/samplerate +
+													" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
+													", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + ")");
+										}
 									}
 								}
+								else
+									System.out.println("Can not compute coherence, not enough slices");
 							}
 						}
 
