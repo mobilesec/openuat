@@ -190,7 +190,7 @@ public class AsciiLineReaderRunner {
 			varthresholdStep = 10;
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 1;
-			cutOffFrequencyMax = 100;
+			cutOffFrequencyMax = 50;
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
@@ -318,7 +318,7 @@ public class AsciiLineReaderRunner {
 										}
 				
 										for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
-										cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
+										cutOffFrequency+=(paramSearch_coherence ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 											// these are the defaults when not searching for parameters
 											if (!paramSearch_coherence) {
 												cutOffFrequency = 30; // Hz
