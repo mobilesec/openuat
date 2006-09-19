@@ -442,6 +442,8 @@ public class AsciiLineReaderRunner {
 					else 
 						System.err.println("Did not get 2 significant active segments");
 
+					r2.dispose();
+					System.gc();
 				}
 			}
 		}
