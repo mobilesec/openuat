@@ -189,8 +189,8 @@ public class AsciiLineReaderRunner {
 			varthresholdMax = 1000;
 			varthresholdStep = 10;
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
-			cutOffFrequencyStep = 1;
-			cutOffFrequencyMax = 50;
+			cutOffFrequencyStep = 5;
+			cutOffFrequencyMax = 40;
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
