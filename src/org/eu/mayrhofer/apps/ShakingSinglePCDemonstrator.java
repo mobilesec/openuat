@@ -155,7 +155,7 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
 		/* 1: construct the central sensor reader object and the two segment aggregators */
-		final int samplerate = 512; // Hz
+		final int samplerate = 128; // Hz
 		final int windowsize = samplerate/2; // 1/2 second
 		final int minsegmentsize = windowsize; // 1/2 second
 		final double varthreshold = 750;
