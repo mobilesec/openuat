@@ -169,12 +169,9 @@ public class ShakingSinglePCDemonstrator {
 		final TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		final TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
 		aggr_a.setOffset(0);
-		// since the sensor value range is between 0 and 255
-		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
 		aggr_a.setActiveVarianceThreshold(varthreshold);
 		aggr_b.setOffset(0);
-		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold(varthreshold);
 		// including our listeners for the device status
@@ -206,6 +203,9 @@ public class ShakingSinglePCDemonstrator {
 			if (! device1.startsWith("port:")) {
 				// just read from the file
 				reader1 = new ParallelPortPWMReader(device1, samplerate);
+				// since the sensor value range is between 0 and 255
+				aggr_a.setMultiplicator(1/128f);
+				aggr_b.setMultiplicator(1/128f);
 
 				reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 				reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
@@ -227,6 +227,9 @@ public class ShakingSinglePCDemonstrator {
 								logger.info("Client " + sock.getRemoteSocketAddress() + " connected");
 								try {
 									reader1 = new ParallelPortPWMReader(sock.getInputStream(), samplerate);
+									// since the sensor value range is between 0 and 255
+									aggr_a.setMultiplicator(1/128f);
+									aggr_b.setMultiplicator(1/128f);
 									reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 									reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 									reader1.simulateSampling();
@@ -256,6 +259,9 @@ public class ShakingSinglePCDemonstrator {
 				((WiTiltRawReader) reader1).openBluetooth(device1, false);
 				((WiTiltRawReader) reader2).openBluetooth(device2, false);
 			}
+			// since the sensor value range is between 0 and 1023
+			aggr_a.setMultiplicator(1/512f);
+			aggr_b.setMultiplicator(1/512f);
 
 			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 			reader2.addSink(new int[] {0, 1, 2}, aggr_b.getInitialSinks());
