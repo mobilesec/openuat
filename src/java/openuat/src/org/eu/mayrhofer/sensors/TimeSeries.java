@@ -226,7 +226,8 @@ public class TimeSeries implements SamplesSink {
 	/** Helper method for computing the variance. */
 	private double getVariance(double sum, double sum2, int num) {
 		if (num > 1) {
-			return (sum2 - 2*sum*sum/num + sum*sum/num) / (num -1);
+			//return (sum2 - 2*sum*sum/num + sum*sum/num) / (num -1);
+			return (sum2 - sum*sum/num) / (num -1);
 		}
 		else
 			return 0;
