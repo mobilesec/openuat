@@ -182,6 +182,8 @@ public class AsciiLineReaderRunner {
 		int cutOffFrequencyMin = 5;
 		int cutOffFrequencyMax = 20;
 		int cutOffFrequencyStep = 5;
+		int maxSegmentLength = -1;
+		int segmentSkip = -1;
 		if (paramSearch_coherence) {
 			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
@@ -191,6 +193,8 @@ public class AsciiLineReaderRunner {
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
+			maxSegmentLength = 5; // seconds
+			segmentSkip = 5; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
@@ -284,10 +288,32 @@ public class AsciiLineReaderRunner {
 						// make sure they have similar length
 						int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
 						System.out.println("Using " + len + " samples for coherence computation");
-						double[] s1 = new double[len];
-						double[] s2 = new double[len];
-						System.arraycopy(SegmentSink.segs[0], 0, s1, 0, len);
-						System.arraycopy(SegmentSink.segs[1], 0, s2, 0, len);
+						double[][] s1;
+						double[][] s2;
+						if (maxSegmentLength != -1 && ((float) len)/samplerate > maxSegmentLength) {
+							int numSplits = (len-maxSegmentLength*samplerate) / ((maxSegmentLength-segmentSkip)*samplerate) + 1;
+							System.out.println("Segments are longer than maximum length: " +
+									(((float) len)/samplerate) + " > " + maxSegmentLength + 
+									" s, splitting into " + numSplits + " segments");
+							s1 = new double[numSplits][];
+							s2 = new double[numSplits][];
+							for (int jj=0; jj<numSplits; jj++) {
+								s1[jj] = new double[maxSegmentLength*samplerate];
+								s2[jj] = new double[maxSegmentLength*samplerate];
+								int off=(maxSegmentLength-segmentSkip)*samplerate*jj;
+								System.arraycopy(SegmentSink.segs[0], off, s1, 0, maxSegmentLength*samplerate);
+								System.arraycopy(SegmentSink.segs[1], off, s2, 0, maxSegmentLength*samplerate);
+							}
+						}
+						else {
+							// simple case: just use the whole time series
+							s1 = new double[1][];
+							s2 = new double[1][];
+							s1[0] = new double[len];
+							s2[0] = new double[len];
+							System.arraycopy(SegmentSink.segs[0], 0, s1, 0, len);
+							System.arraycopy(SegmentSink.segs[1], 0, s2, 0, len);
+						}
 
 						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
 							int coherence_windowSize = coherence_windowSizes[i3];
@@ -304,42 +330,46 @@ public class AsciiLineReaderRunner {
 									i4=windowOverlapFactors.length;
 								}
 
-								if (s1.length >= 2*coherence_windowSize - windowOverlap) {
-									double[] coherence = Coherence.cohere(s1, s2, coherence_windowSize, windowOverlap);
-									if (coherence != null) {
-										if (graph) {
-											XYSeries c = new XYSeries("Coefficients", false);
-											for (int i=0; i<coherence.length; i++)
-												c.add(i, coherence[i]);
-											XYDataset c1 = new XYSeriesCollection(c);
-											JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-													"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-											ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
-										}
-				
-										for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
-										cutOffFrequency+=(paramSearch_coherence ? cutOffFrequencyStep : cutOffFrequencyMax)) {
-											// these are the defaults when not searching for parameters
-											if (!paramSearch_coherence) {
-												cutOffFrequency = 30; // Hz
+								for (int i5=0; i5<s1.length; i5++) {
+									if (s1[i5].length >= 2*coherence_windowSize - windowOverlap) {
+										double[] coherence = Coherence.cohere(s1[i5], s2[i5], coherence_windowSize, windowOverlap);
+										if (coherence != null) {
+											if (graph) {
+												XYSeries c = new XYSeries("Coefficients", false);
+												for (int i=0; i<coherence.length; i++)
+													c.add(i, coherence[i]);
+												XYDataset c1 = new XYSeriesCollection(c);
+												JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
+														"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
+												ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
 											}
-											// only compare until the cutoff frequency
-											int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
-											//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+				
+											for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
+											cutOffFrequency+=(paramSearch_coherence ? cutOffFrequencyStep : cutOffFrequencyMax)) {
+												// these are the defaults when not searching for parameters
+												if (!paramSearch_coherence) {
+													cutOffFrequency = 30; // Hz
+												}
+												// only compare until the cutoff frequency
+												int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
+												//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
 										
-											double coherenceMean = Coherence.mean(coherence, max_ind);
-											System.out.println("Coherence mean: " + coherenceMean + 
-													" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
-													", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
-													", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
-													windowOverlap + ", signal_length=" + len + " (" + ((float) len)/samplerate +
-													" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
-													", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + ")");
+												double coherenceMean = Coherence.mean(coherence, max_ind);
+												System.out.println("Coherence mean: " + coherenceMean + 
+														" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
+														", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
+														", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
+														windowOverlap + ", signal_length=" + s1[i5].length + " (" + ((float) s1[i5].length)/samplerate +
+														" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
+														", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + "), segment=" +
+														i5 + " out of " + s1.length + " (whole signal with length=" + len +
+														" / " + ((float) len)/samplerate + " seconds)");
+											}
 										}
 									}
+									else
+										System.out.println("Can not compute coherence, not enough slices");
 								}
-								else
-									System.out.println("Can not compute coherence, not enough slices");
 							}
 						}
 
@@ -387,8 +417,8 @@ public class AsciiLineReaderRunner {
 										int numWindows=0;
 
 										for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-											double[] allCoeff1 = FFT.fftPowerSpectrum(s1, offset, fftpoints);
-											double[] allCoeff2 = FFT.fftPowerSpectrum(s2, offset, fftpoints);
+											double[] allCoeff1 = FFT.fftPowerSpectrum(s1[0], offset, fftpoints);
+											double[] allCoeff2 = FFT.fftPowerSpectrum(s2[0], offset, fftpoints);
 											
 											// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
 											double[] fftCoeff1 = new double[max_ind];
