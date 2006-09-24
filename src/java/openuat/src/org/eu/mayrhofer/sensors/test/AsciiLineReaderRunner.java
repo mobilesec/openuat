@@ -193,8 +193,8 @@ public class AsciiLineReaderRunner {
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
-			maxSegmentLength = 5; // seconds
-			segmentSkip = 5; // seconds
+			//maxSegmentLength = 5; // seconds
+			//segmentSkip = 5; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
@@ -291,7 +291,7 @@ public class AsciiLineReaderRunner {
 						double[][] s1;
 						double[][] s2;
 						if (maxSegmentLength != -1 && ((float) len)/samplerate > maxSegmentLength) {
-							int numSplits = (len-maxSegmentLength*samplerate) / ((maxSegmentLength-segmentSkip)*samplerate) + 1;
+							int numSplits = (len-maxSegmentLength*samplerate) / (segmentSkip*samplerate) + 1;
 							System.out.println("Segments are longer than maximum length: " +
 									(((float) len)/samplerate) + " > " + maxSegmentLength + 
 									" s, splitting into " + numSplits + " segments");
@@ -300,9 +300,9 @@ public class AsciiLineReaderRunner {
 							for (int jj=0; jj<numSplits; jj++) {
 								s1[jj] = new double[maxSegmentLength*samplerate];
 								s2[jj] = new double[maxSegmentLength*samplerate];
-								int off=(maxSegmentLength-segmentSkip)*samplerate*jj;
-								System.arraycopy(SegmentSink.segs[0], off, s1, 0, maxSegmentLength*samplerate);
-								System.arraycopy(SegmentSink.segs[1], off, s2, 0, maxSegmentLength*samplerate);
+								int off=segmentSkip*samplerate*jj;
+								System.arraycopy(SegmentSink.segs[0], off, s1[jj], 0, maxSegmentLength*samplerate);
+								System.arraycopy(SegmentSink.segs[1], off, s2[jj], 0, maxSegmentLength*samplerate);
 							}
 						}
 						else {
@@ -311,8 +311,8 @@ public class AsciiLineReaderRunner {
 							s2 = new double[1][];
 							s1[0] = new double[len];
 							s2[0] = new double[len];
-							System.arraycopy(SegmentSink.segs[0], 0, s1, 0, len);
-							System.arraycopy(SegmentSink.segs[1], 0, s2, 0, len);
+							System.arraycopy(SegmentSink.segs[0], 0, s1[0], 0, len);
+							System.arraycopy(SegmentSink.segs[1], 0, s2[0], 0, len);
 						}
 
 						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
@@ -416,7 +416,7 @@ public class AsciiLineReaderRunner {
 										int numMatchesVariantD=0;
 										int numWindows=0;
 
-										for (int offset=0; offset<s1.length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+										for (int offset=0; offset<s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
 											double[] allCoeff1 = FFT.fftPowerSpectrum(s1[0], offset, fftpoints);
 											double[] allCoeff2 = FFT.fftPowerSpectrum(s2[0], offset, fftpoints);
 											
