@@ -189,12 +189,12 @@ public class AsciiLineReaderRunner {
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
 			varthresholdMin = 50;
 			varthresholdMax = 1000;
-			varthresholdStep = 10;
+			varthresholdStep = 50;
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
-			//maxSegmentLength = 5; // seconds
-			//segmentSkip = 5; // seconds
+			maxSegmentLength = 5; // seconds
+			segmentSkip = 5; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
@@ -360,10 +360,11 @@ public class AsciiLineReaderRunner {
 														", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
 														", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
 														windowOverlap + ", signal_length=" + s1[i5].length + " (" + ((float) s1[i5].length)/samplerate +
-														" seconds), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
+														" s), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
 														", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + "), segment=" +
-														i5 + " out of " + s1.length + " (whole signal with length=" + len +
-														" / " + ((float) len)/samplerate + " seconds)");
+														(i5+1) + " out of " + s1.length + " (whole signal with length=" + len +
+														" / " + ((float) len)/samplerate + " s, segmentskip=" + segmentSkip + " s, offset=" 
+														+ (segmentSkip*samplerate*i5) + ")");
 											}
 										}
 									}
