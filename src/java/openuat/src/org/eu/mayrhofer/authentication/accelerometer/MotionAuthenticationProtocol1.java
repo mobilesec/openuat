@@ -396,11 +396,12 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	public static void main(String[] args) throws IOException {
 		int samplerate = 128; // Hz
 		int windowsize = samplerate/2; // 1/2 second
-		int minsegmentsize = windowsize; // 1/2 second
+		int minsegmentsize = samplerate*5; // 5 seconds
+		int maxsegmentsize = minsegmentsize; // 5 seconds
 		double varthreshold = 350;
 		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, maxsegmentsize);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, maxsegmentsize);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);

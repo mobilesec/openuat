@@ -231,8 +231,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		int minsegmentsize = windowsize; // 1/2 second
 		double varthreshold = 350;
 		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);

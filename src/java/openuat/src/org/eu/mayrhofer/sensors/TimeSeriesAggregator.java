@@ -76,19 +76,22 @@ public class TimeSeriesAggregator {
 			/* the last time series just became quiescent when at least one was active before 
 			 * --> end of active segment, forward the complete segment
 			 */
-			if (aggregatedSeries.size() > windowSize && 
-					aggregatedSeries.size()-windowSize >= minSegmentSize) {
-				
-				double[] segment = new double[aggregatedSeries.size()-windowSize];
-				for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
-					segment[i] = ((Double) aggregatedSeries.get(i)).doubleValue();
-				if (segmentsSinks != null) {
-					logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
-					for (ListIterator j = segmentsSinks.listIterator(); j.hasNext(); ) {
-						SegmentsSink s = (SegmentsSink) j.next();
-						s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
-					}				
+			if (aggregatedSeries.size() > windowSize) {
+				if (aggregatedSeries.size()-windowSize >= minSegmentSize) {
+					double[] segment = new double[aggregatedSeries.size()-windowSize];
+					for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
+						segment[i] = ((Double) aggregatedSeries.get(i)).doubleValue();
+					if (segmentsSinks != null) {
+						logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
+						for (ListIterator j = segmentsSinks.listIterator(); j.hasNext(); ) {
+							SegmentsSink s = (SegmentsSink) j.next();
+							s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
+						}				
+					}
 				}
+				else
+					logger.info("Active segment with " + aggregatedSeries.size() + 
+							" samples is too short, not forwarding");
 			}
 			else
 				logger.error("Detected segment that is smaller than the window size. This should not happen!");
@@ -139,6 +142,14 @@ public class TimeSeriesAggregator {
 						s.addSample(magnitude, numSample);
 					}			
 				}
+				
+				/* and also check if the maximum segment size has been reached */
+				if (aggregatedSeries.size() == maxSegmentSize) {
+					logger.debug("Active segment with " + aggregatedSeries.size() + 
+							" samples has reached maximum segment size, forwarding now");
+					// the first parameter is ignored by this toQuiescent implementation
+					toQuiescent(-1, numSample);
+				}
 			}
 		}
 	}
@@ -171,14 +182,19 @@ public class TimeSeriesAggregator {
 	private ArrayList aggregatedSeries = null;
 	
 	/** This window size as passed to the constructor.
-	 * @see #TimeSeriesAggregator(int, int, int)
+	 * @see #TimeSeriesAggregator(int, int, int, int)
 	 */
 	private int windowSize;
 	
 	/** The minimum segment size to use, as passed to the constructor.
-	 * @see #TimeSeriesAggregator(int, int, int)
+	 * @see #TimeSeriesAggregator(int, int, int, int)
 	 */
 	private int minSegmentSize;
+	
+	/** The maximum segment size to use, as passed to the constructor.
+	 * @see #TimeSeriesAggregator(int, int, int, int)
+	 */
+	private int maxSegmentSize;
 	
 	/** Holds all registered sinks that should receive active, aggregated, completed segments.
 	 * Elements in this list are of type SegmentsSink.
@@ -199,8 +215,15 @@ public class TimeSeriesAggregator {
 	 *                   window.
 	 * @param minSegmentSize The minimum size of an active segment to be regarded
 	 *                       significant enough to be sent to listeners.
+	 * @param maxSegmentSize If set to something other than -1, specifies the 
+	 *                       maximum size of an active segments. If an active segment
+	 *                       is longer than this number of samples, it will be sent
+	 *                       to the listeners as soon as it reaches this length. The
+	 *                       remainders of longer segments will be discarded. Set to
+	 *                       -1 to disable this functionality, otherwise must be 
+	 *                       >=minSegmentSize.
 	 */
-	public TimeSeriesAggregator(int numSeries, int windowSize, int minSegmentSize) {
+	public TimeSeriesAggregator(int numSeries, int windowSize, int minSegmentSize, int maxSegmentSize) {
 		if (numSeries <= 0) {
 			throw new IllegalArgumentException("Number of time series must be > 0");
 		}
@@ -210,9 +233,13 @@ public class TimeSeriesAggregator {
 		if (minSegmentSize <= 0 /*|| minSegmentSize > windowSize*/) {
 			throw new IllegalArgumentException("Minimum segment size must be > 0"/* and <= windowSize"*/);
 		}
+		if (maxSegmentSize != -1 && (maxSegmentSize <= 0 || maxSegmentSize < minSegmentSize)) {
+			throw new IllegalArgumentException("Maximum segment size must be > 0 and >= minimum segment size");
+		}
 		
 		this.windowSize = windowSize;
 		this.minSegmentSize = minSegmentSize;
+		this.maxSegmentSize = maxSegmentSize;
 		
 		curSample = new double[numSeries];
 		curSampleReceived = new boolean[numSeries];
