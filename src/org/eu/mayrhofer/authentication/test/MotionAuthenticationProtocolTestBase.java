@@ -40,8 +40,8 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 	protected boolean classIsReadyForTests = false;
 	
 	public void setUp() throws IOException {
-		aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
+		aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1 / 128f);
 		aggr_a.setSubtractTotalMean(true);

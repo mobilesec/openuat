@@ -159,6 +159,7 @@ public class ShakingSinglePCDemonstrator {
 		final int windowsize = samplerate/2; // 1/2 second
 		final int minsegmentsize = windowsize; // 1/2 second
 		final double varthreshold = 750;
+		final int motion1segmentlength=5*samplerate;
 
 		/* First of all, open the display so that there's feedback and so that the events can write
 		 * to an open display.
@@ -166,19 +167,29 @@ public class ShakingSinglePCDemonstrator {
 		createSShell();
 		sShell.open();
 		
-		final TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		final TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize);
-		aggr_a.setOffset(0);
-		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(varthreshold);
-		aggr_b.setOffset(0);
-		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(varthreshold);
+		// need two aggregators, because the first protocols works with 5s-slices
+		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, windowsize, motion1segmentlength, motion1segmentlength);
+		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, windowsize, motion1segmentlength, motion1segmentlength);
+		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		aggr1_a.setOffset(0);
+		aggr1_a.setSubtractTotalMean(true);
+		aggr1_a.setActiveVarianceThreshold(varthreshold);
+		aggr1_b.setOffset(0);
+		aggr1_b.setSubtractTotalMean(true);
+		aggr1_b.setActiveVarianceThreshold(varthreshold);
+		aggr2_a.setOffset(0);
+		aggr2_a.setSubtractTotalMean(true);
+		aggr2_a.setActiveVarianceThreshold(varthreshold);
+		aggr2_b.setOffset(0);
+		aggr2_b.setSubtractTotalMean(true);
+		aggr2_b.setActiveVarianceThreshold(varthreshold);
 		// including our listeners for the device status
 		devState1 = new StateListener(0);
 		devState2 = new StateListener(1);
-		aggr_a.addNextStageSamplesSink(devState1);
-		aggr_b.addNextStageSamplesSink(devState2);
+		// this uses the more "continuous" second set of aggregators
+		aggr2_a.addNextStageSamplesSink(devState1);
+		aggr2_b.addNextStageSamplesSink(devState2);
 
 		/* 2: construct the two prototol instances: two different variants, each with two sides */
 		prot1_a = new Protocol1Hooks();
@@ -188,10 +199,10 @@ public class ShakingSinglePCDemonstrator {
 		prot2_b = new Protocol2Hooks(5, 56798, 56789, "B");
 		
 		/* 3: register the protocols with the respective sides */
-		aggr_a.addNextStageSegmentsSink(prot1_a);
-		aggr_b.addNextStageSegmentsSink(prot1_b);
-		aggr_a.addNextStageSamplesSink(prot2_a);
-		aggr_b.addNextStageSamplesSink(prot2_b);
+		aggr1_a.addNextStageSegmentsSink(prot1_a);
+		aggr1_b.addNextStageSegmentsSink(prot1_b);
+		aggr2_a.addNextStageSamplesSink(prot2_a);
+		aggr2_b.addNextStageSamplesSink(prot2_b);
 		
 		/* 4: authenticate for protocol variant 1 (variant 2 doesn't need this step) */
 		prot1_a.setContinuousChecking(true);
@@ -204,11 +215,15 @@ public class ShakingSinglePCDemonstrator {
 				// just read from the file
 				reader1 = new ParallelPortPWMReader(device1, samplerate);
 				// since the sensor value range is between 0 and 255
-				aggr_a.setMultiplicator(1/128f);
-				aggr_b.setMultiplicator(1/128f);
+				aggr1_a.setMultiplicator(1/128f);
+				aggr1_b.setMultiplicator(1/128f);
+				aggr2_a.setMultiplicator(1/128f);
+				aggr2_b.setMultiplicator(1/128f);
 
-				reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
-				reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+				reader1.addSink(new int[] {0, 1, 2}, aggr1_a.getInitialSinks());
+				reader1.addSink(new int[] {4, 5, 6}, aggr1_b.getInitialSinks());
+				reader1.addSink(new int[] {0, 1, 2}, aggr2_a.getInitialSinks());
+				reader1.addSink(new int[] {4, 5, 6}, aggr2_b.getInitialSinks());
 				reader1.start();
 			}
 			else {
@@ -221,17 +236,23 @@ public class ShakingSinglePCDemonstrator {
 						try {
 							while (true) {
 								logger.info("Waiting for TCP client to connect");
-								aggr_a.reset();
-								aggr_b.reset();
+								aggr1_a.reset();
+								aggr1_b.reset();
+								aggr2_a.reset();
+								aggr2_b.reset();
 								Socket sock = serv.accept();
 								logger.info("Client " + sock.getRemoteSocketAddress() + " connected");
 								try {
 									reader1 = new ParallelPortPWMReader(sock.getInputStream(), samplerate);
 									// since the sensor value range is between 0 and 255
-									aggr_a.setMultiplicator(1/128f);
-									aggr_b.setMultiplicator(1/128f);
-									reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
-									reader1.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+									aggr1_a.setMultiplicator(1/128f);
+									aggr1_b.setMultiplicator(1/128f);
+									aggr2_a.setMultiplicator(1/128f);
+									aggr2_b.setMultiplicator(1/128f);
+									reader1.addSink(new int[] {0, 1, 2}, aggr1_a.getInitialSinks());
+									reader1.addSink(new int[] {4, 5, 6}, aggr1_b.getInitialSinks());
+									reader1.addSink(new int[] {0, 1, 2}, aggr2_a.getInitialSinks());
+									reader1.addSink(new int[] {4, 5, 6}, aggr2_b.getInitialSinks());
 									reader1.simulateSampling();
 								}
 								catch (IOException e) {
@@ -260,11 +281,15 @@ public class ShakingSinglePCDemonstrator {
 				((WiTiltRawReader) reader2).openBluetooth(device2, false);
 			}
 			// since the sensor value range is between 0 and 1023
-			aggr_a.setMultiplicator(1/512f);
-			aggr_b.setMultiplicator(1/512f);
+			aggr1_a.setMultiplicator(1/512f);
+			aggr1_b.setMultiplicator(1/512f);
+			aggr2_a.setMultiplicator(1/512f);
+			aggr2_b.setMultiplicator(1/512f);
 
-			reader1.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
-			reader2.addSink(new int[] {0, 1, 2}, aggr_b.getInitialSinks());
+			reader1.addSink(new int[] {0, 1, 2}, aggr1_a.getInitialSinks());
+			reader2.addSink(new int[] {0, 1, 2}, aggr1_b.getInitialSinks());
+			reader1.addSink(new int[] {0, 1, 2}, aggr2_a.getInitialSinks());
+			reader2.addSink(new int[] {0, 1, 2}, aggr2_b.getInitialSinks());
 			reader1.start();
 			reader2.start();
 		}
