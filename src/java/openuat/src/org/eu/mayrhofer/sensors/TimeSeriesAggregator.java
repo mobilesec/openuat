@@ -76,7 +76,7 @@ public class TimeSeriesAggregator {
 			/* the last time series just became quiescent when at least one was active before 
 			 * --> end of active segment, forward the complete segment
 			 */
-			if (aggregatedSeries.size() > windowSize) {
+			if (aggregatedSeries != null && aggregatedSeries.size() > windowSize) {
 				if (aggregatedSeries.size()-windowSize >= minSegmentSize) {
 					double[] segment = new double[aggregatedSeries.size()-windowSize];
 					for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
@@ -144,7 +144,8 @@ public class TimeSeriesAggregator {
 				}
 				
 				/* and also check if the maximum segment size has been reached */
-				if (aggregatedSeries.size() == maxSegmentSize) {
+				// need to subtract windowSize, because the segment will be shortened in toQuiescent
+				if (aggregatedSeries.size()-windowSize == maxSegmentSize) {
 					logger.debug("Active segment with " + aggregatedSeries.size() + 
 							" samples has reached maximum segment size, forwarding now");
 					// the first parameter is ignored by this toQuiescent implementation
