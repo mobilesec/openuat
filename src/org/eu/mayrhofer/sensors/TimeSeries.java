@@ -153,7 +153,8 @@ public class TimeSeries implements SamplesSink {
 			nextStageSample -= getTotalMean();
 		// and then apply optional linear transformation
 		nextStageSample = nextStageSample * multiplicator + offset;
-		logger.debug("Pushing value " + nextStageSample + " to next stage");
+		if (logger.isTraceEnabled())
+			logger.trace("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
     		for (ListIterator j = nextStageSinks.listIterator(); j.hasNext(); ) {
     			SamplesSink s = (SamplesSink) j.next();
