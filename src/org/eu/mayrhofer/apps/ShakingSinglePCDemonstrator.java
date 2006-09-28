@@ -22,6 +22,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 
+import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol2;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
@@ -155,12 +156,8 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
 		/* 1: construct the central sensor reader object and the two segment aggregators */
-		final int samplerate = 128; // Hz
-		final int windowsize = samplerate/2; // 1/2 second
-		final int minsegmentsize = windowsize; // 1/2 second
-		final double varthreshold = 750;
-		final int motion1segmentlength=5*samplerate; // 5 seconds
-
+		final int motion1segmentlength = 5*MotionAuthenticationParameters.samplerate;
+		
 		/* First of all, open the display so that there's feedback and so that the events can write
 		 * to an open display.
 		 */
@@ -168,22 +165,22 @@ public class ShakingSinglePCDemonstrator {
 		sShell.open();
 		
 		// need two aggregators, because the first protocols works with 5s-slices
-		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, windowsize, motion1segmentlength, motion1segmentlength);
-		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, windowsize, motion1segmentlength, motion1segmentlength);
-		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
-		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, motion1segmentlength, motion1segmentlength);
+		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, motion1segmentlength, motion1segmentlength);
+		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		aggr1_a.setOffset(0);
 		aggr1_a.setSubtractTotalMean(true);
-		aggr1_a.setActiveVarianceThreshold(varthreshold);
+		aggr1_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr1_b.setOffset(0);
 		aggr1_b.setSubtractTotalMean(true);
-		aggr1_b.setActiveVarianceThreshold(varthreshold);
+		aggr1_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr2_a.setOffset(0);
 		aggr2_a.setSubtractTotalMean(true);
-		aggr2_a.setActiveVarianceThreshold(varthreshold);
+		aggr2_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr2_b.setOffset(0);
 		aggr2_b.setSubtractTotalMean(true);
-		aggr2_b.setActiveVarianceThreshold(varthreshold);
+		aggr2_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		// including our listeners for the device status
 		devState1 = new StateListener(0);
 		devState2 = new StateListener(1);
@@ -213,7 +210,7 @@ public class ShakingSinglePCDemonstrator {
 		if (deviceType == 1) {
 			if (! device1.startsWith("port:")) {
 				// just read from the file
-				reader1 = new ParallelPortPWMReader(device1, samplerate);
+				reader1 = new ParallelPortPWMReader(device1, MotionAuthenticationParameters.samplerate);
 				// since the sensor value range is between 0 and 255
 				aggr1_a.setMultiplicator(1/128f);
 				aggr1_b.setMultiplicator(1/128f);
@@ -243,7 +240,7 @@ public class ShakingSinglePCDemonstrator {
 								Socket sock = serv.accept();
 								logger.info("Client " + sock.getRemoteSocketAddress() + " connected");
 								try {
-									reader1 = new ParallelPortPWMReader(sock.getInputStream(), samplerate);
+									reader1 = new ParallelPortPWMReader(sock.getInputStream(), MotionAuthenticationParameters.samplerate);
 									// since the sensor value range is between 0 and 255
 									aggr1_a.setMultiplicator(1/128f);
 									aggr1_b.setMultiplicator(1/128f);
@@ -352,7 +349,7 @@ public class ShakingSinglePCDemonstrator {
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
 			// samplerate/2
-			super(0.65, 256, false);
+			super(0.65, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
 		protected void protocolSucceededHook(InetAddress remote, 

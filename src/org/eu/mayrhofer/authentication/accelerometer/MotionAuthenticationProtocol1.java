@@ -192,13 +192,13 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		double[] s2 = new double[len];
 		System.arraycopy(localSegment, 0, s1, 0, len);
 		System.arraycopy(remoteSegment, 0, s2, 0, len);
-		double[] coherence = Coherence.cohere(s1, s2, windowSize, 0);
+		double[] coherence = Coherence.cohere(s1, s2, windowSize, MotionAuthenticationParameters.coherenceWindowOverlap);
 		if (coherence == null) {
 			logger.warn("Coherence not computed, no match");
 			return false;
 		}
 		
-		lastCoherenceMean = Coherence.mean(coherence, -1);
+		lastCoherenceMean = Coherence.mean(coherence, MotionAuthenticationParameters.cutOffFrequency);
 		System.out.println("Coherence mean: " + lastCoherenceMean);
 		
 		return lastCoherenceMean > coherenceThreshold;
@@ -394,27 +394,22 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/////////////////// testing code begins here ///////////////
 	public static void main(String[] args) throws IOException {
-		int samplerate = 128; // Hz
-		int windowsize = samplerate/2; // 1/2 second
-		int minsegmentsize = samplerate*5; // 5 seconds
-		int maxsegmentsize = minsegmentsize; // 5 seconds
-		double varthreshold = 350;
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, maxsegmentsize);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, maxsegmentsize);
+		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(varthreshold);
+		aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(varthreshold);
+		aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		
-		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(0.82, 64, true); 
-		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(0.82, 64, true); 
+		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
+		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startServer();

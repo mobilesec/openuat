@@ -22,5 +22,5 @@ public class MotionAuthenticationParameters {
 	
 	public final static int coherenceWindowSize = samplerate;
 	
-	public final static int coherenceWindowOverlap = 0;
+	public final static int coherenceWindowOverlap = coherenceWindowSize/2; // 50% overlap is the default
 }
