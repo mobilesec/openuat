@@ -93,8 +93,11 @@ public class TimeSeriesAggregator {
 					logger.info("Active segment with " + aggregatedSeries.size() + 
 							" samples is too short, not forwarding");
 			}
+			else if (aggregatedSeries != null)
+				logger.error("Detected segment that is smaller than the window size (" +
+						aggregatedSeries.size() + " <= " + windowSize + ". This should not happen!");
 			else
-				logger.error("Detected segment that is smaller than the window size. This should not happen!");
+				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
 			
 			logger.debug("Finished forwarding segment to sinks");
 			aggregatedSeries = null;
