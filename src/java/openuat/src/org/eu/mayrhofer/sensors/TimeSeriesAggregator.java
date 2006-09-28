@@ -87,10 +87,11 @@ public class TimeSeriesAggregator {
 							SegmentsSink s = (SegmentsSink) j.next();
 							s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
 						}				
+						logger.debug("Finished forwarding segment to sinks");
 					}
 				}
 				else
-					logger.info("Active segment with " + aggregatedSeries.size() + 
+					logger.info("Active segment with " + aggregatedSeries.size() +
 							" samples is too short, not forwarding");
 			}
 			else if (aggregatedSeries != null)
@@ -99,7 +100,6 @@ public class TimeSeriesAggregator {
 			else
 				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
 			
-			logger.debug("Finished forwarding segment to sinks");
 			aggregatedSeries = null;
 
 			// also forward this event to the sample listeners
@@ -148,8 +148,8 @@ public class TimeSeriesAggregator {
 				
 				/* and also check if the maximum segment size has been reached */
 				// need to subtract windowSize, because the segment will be shortened in toQuiescent
-				if (aggregatedSeries.size()-windowSize == maxSegmentSize) {
-					logger.debug("Active segment with " + aggregatedSeries.size() + 
+				if (maxSegmentSize != -1 && aggregatedSeries.size()-windowSize == maxSegmentSize) {
+					logger.debug("Active segment with " + aggregatedSeries.size() +
 							" samples has reached maximum segment size, forwarding now");
 					// the first parameter is ignored by this toQuiescent implementation
 					toQuiescent(-1, numSample);
@@ -219,12 +219,12 @@ public class TimeSeriesAggregator {
 	 *                   window.
 	 * @param minSegmentSize The minimum size of an active segment to be regarded
 	 *                       significant enough to be sent to listeners.
-	 * @param maxSegmentSize If set to something other than -1, specifies the 
+	 * @param maxSegmentSize If set to something other than -1, specifies the
 	 *                       maximum size of an active segments. If an active segment
 	 *                       is longer than this number of samples, it will be sent
 	 *                       to the listeners as soon as it reaches this length. The
 	 *                       remainders of longer segments will be discarded. Set to
-	 *                       -1 to disable this functionality, otherwise must be 
+	 *                       -1 to disable this functionality, otherwise must be
 	 *                       >=minSegmentSize.
 	 */
 	public TimeSeriesAggregator(int numSeries, int windowSize, int minSegmentSize, int maxSegmentSize) {
