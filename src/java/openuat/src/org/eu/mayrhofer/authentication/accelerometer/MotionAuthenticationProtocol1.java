@@ -395,8 +395,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	/////////////////// testing code begins here ///////////////
 	public static void main(String[] args) throws IOException {
 		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);

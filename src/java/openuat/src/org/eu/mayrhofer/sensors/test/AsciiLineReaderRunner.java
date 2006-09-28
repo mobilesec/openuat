@@ -194,7 +194,7 @@ public class AsciiLineReaderRunner {
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
-			maxSegmentLength = 5; // seconds
+			maxSegmentLength = MotionAuthenticationParameters.coherenceSegmentSize; // seconds
 			segmentSkip = 5; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
