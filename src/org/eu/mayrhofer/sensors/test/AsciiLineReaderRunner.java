@@ -392,6 +392,7 @@ public class AsciiLineReaderRunner {
 								// these are the defaults when not searching for parameters
 								if (!paramSearch_matches) {
 									numQuantLevels = 8;
+									i4 = quantLevels.length;
 								}
 								for (int numCandidates=numCandidatesMin; numCandidates<=numCandidatesMax; 
 									numCandidates+=(paramSearch_matches ? numCandidatesStep : numCandidatesMax)) {
