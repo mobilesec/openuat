@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.apache.log4j.Logger;
+import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
 import org.eu.mayrhofer.sensors.Coherence;
 import org.eu.mayrhofer.sensors.FFT;
@@ -198,8 +199,8 @@ public class AsciiLineReaderRunner {
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
-			varthresholdMin = 750;
-			varthresholdMax = 750;
+			varthresholdMin = MotionAuthenticationParameters.activityVarianceThreshold;
+			varthresholdMax = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdStep = 50;
 			coherence_windowSizes = samplerates;
 		}
@@ -214,7 +215,7 @@ public class AsciiLineReaderRunner {
 			int samplerate = samplerates[i1];
 			// these are the defaults when not searching for parameters
 			if (!paramSearch_coherence && !paramSearch_matches) {
-				samplerate = 128; // Hz
+				samplerate = MotionAuthenticationParameters.samplerate; // Hz
 				i1=samplerates.length; // makes the loop exit after this run
 			}
 
@@ -223,12 +224,11 @@ public class AsciiLineReaderRunner {
 
 			for (int i2=0; i2<windowsizeFactors.length; i2++) {
 				int windowsize = (int) (samplerate*windowsizeFactors[i2]);
-				// this is not yet searched, but restrict the minimum significant segment size to 3s
-				int minsegmentsize = samplerate*3;
+				// this is not yet searched, but restrict the minimum significant segment size to Xs
+				int minsegmentsize = MotionAuthenticationParameters.activityMinimumSegmentSize;
 				// these are the defaults when not searching for parameters
 				if (!paramSearch_coherence && !paramSearch_matches) {
-					windowsize = samplerate/2; // 1/2 second
-					minsegmentsize = samplerate*3; // 3 seconds
+					windowsize = MotionAuthenticationParameters.activityDetectionWindowSize;
 					i2=windowsizeFactors.length; // makes the loop exit after this run
 				}
 				
@@ -236,7 +236,7 @@ public class AsciiLineReaderRunner {
 						varthreshold+=(paramSearch_coherence ? varthresholdStep : varthresholdMax)) {
 					// these are the defaults when not searching for parameters
 					if (!paramSearch_coherence) {
-						varthreshold = 750;
+						varthreshold = MotionAuthenticationParameters.activityVarianceThreshold;
 					}
 					
 					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
@@ -318,7 +318,7 @@ public class AsciiLineReaderRunner {
 						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
 							int coherence_windowSize = coherence_windowSizes[i3];
 							if (!paramSearch_coherence) {
-								coherence_windowSize = samplerate;
+								coherence_windowSize = MotionAuthenticationParameters.coherenceWindowSize;
 								i3=coherence_windowSizes.length; // makes the loop exit after this run
 							}
 
@@ -326,7 +326,7 @@ public class AsciiLineReaderRunner {
 								int windowOverlap = (int) (coherence_windowSize*windowOverlapFactors[i4]);
 								// these are the defaults when not searching for parameters
 								if (!paramSearch_coherence) {
-									windowOverlap = 0;
+									windowOverlap = MotionAuthenticationParameters.coherenceWindowOverlap;
 									i4=windowOverlapFactors.length;
 								}
 
@@ -348,7 +348,7 @@ public class AsciiLineReaderRunner {
 											cutOffFrequency+=(paramSearch_coherence ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 												// these are the defaults when not searching for parameters
 												if (!paramSearch_coherence) {
-													cutOffFrequency = 30; // Hz
+													cutOffFrequency = MotionAuthenticationParameters.cutOffFrequency;
 												}
 												// only compare until the cutoff frequency
 												int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
