@@ -19,17 +19,13 @@ import java.util.zip.GZIPInputStream;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
+import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 
 public class MotionAuthenticationProtocolTestBase extends TestCase {
 
-	protected static final int samplerate = 128; // Hz
-	protected static final int windowsize = samplerate / 2; // 1/2 second
-	protected static final int minsegmentsize = windowsize; // 1/2 second
-	protected static final double varthreshold = 350;
-	
 	// only allow to take this much more time than the data set is long --> "soft-realtime"
 	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 2;
 	
@@ -40,16 +36,16 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 	protected boolean classIsReadyForTests = false;
 	
 	public void setUp() throws IOException {
-		aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
-		aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1 / 128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(varthreshold);
+		aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1 / 128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(varthreshold);
+		aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		
 		numSucceeded = 0;
 		numFailed = 0;
@@ -69,7 +65,7 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 			int timeout = (dataSetLength + MAX_PROTOCOL_LATENCY_SECONDS) * 1000;
 			// just read from the file
 			FileInputStream in = new FileInputStream(filename);
-			AsciiLineReaderBase reader1 = new ParallelPortPWMReader(new GZIPInputStream(in), samplerate);
+			AsciiLineReaderBase reader1 = new ParallelPortPWMReader(new GZIPInputStream(in), MotionAuthenticationParameters.samplerate);
 
 			reader1.addSink(new int[] { 0, 1, 2 }, aggr_a.getInitialSinks());
 			reader1.addSink(new int[] { 4, 5, 6 }, aggr_b.getInitialSinks());

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 
+import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol1;
 
 public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProtocolTestBase {
@@ -49,7 +50,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
-			super(0.65, 256, false);
+			super(0.65, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
 		protected void protocolSucceededHook(InetAddress remote, 
