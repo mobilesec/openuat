@@ -156,7 +156,6 @@ public class ShakingSinglePCDemonstrator {
 	 */
 	public ShakingSinglePCDemonstrator(String device1, String device2, int deviceType) throws IOException {
 		/* 1: construct the central sensor reader object and the two segment aggregators */
-		final int motion1segmentlength = 5*MotionAuthenticationParameters.samplerate;
 		
 		/* First of all, open the display so that there's feedback and so that the events can write
 		 * to an open display.
@@ -165,8 +164,8 @@ public class ShakingSinglePCDemonstrator {
 		sShell.open();
 		
 		// need two aggregators, because the first protocols works with 5s-slices
-		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, motion1segmentlength, motion1segmentlength);
-		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, motion1segmentlength, motion1segmentlength);
+		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
+		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
 		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		aggr1_a.setOffset(0);
