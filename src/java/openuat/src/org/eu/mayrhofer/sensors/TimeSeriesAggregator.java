@@ -69,9 +69,11 @@ public class TimeSeriesAggregator {
 		 * aggregated segment. It will also send the complete segment to registered listeners. 
 		 */
 		protected void toQuiescent(int lineIndex, int numSample) {
-			if (curSampleIndex-windowSize+1 != numSample)
+			// +2 because first and last samples are added - or is it? not quite sure...
+			if (curSampleIndex-windowSize+1 != numSample && curSampleIndex-windowSize+2 != numSample)
 				logger.warn("Unexpected index of segment end, got " + numSample 
-						+ ", expected " + (curSampleIndex-windowSize+1));
+						+ ", expected either " + (curSampleIndex-windowSize+1)
+						+ " or " +  + (curSampleIndex-windowSize+2));
 			
 			/* the last time series just became quiescent when at least one was active before 
 			 * --> end of active segment, forward the complete segment
@@ -95,8 +97,8 @@ public class TimeSeriesAggregator {
 							" samples is too short, not forwarding");
 			}
 			else if (aggregatedSeries != null)
-				logger.error("Detected segment that is smaller than the window size (" +
-						aggregatedSeries.size() + " <= " + windowSize + ". This should not happen!");
+				logger.info("Detected segment that is smaller than the window size (" +
+						aggregatedSeries.size() + " <= " + windowSize + ", ignoring");
 			else
 				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
 			
