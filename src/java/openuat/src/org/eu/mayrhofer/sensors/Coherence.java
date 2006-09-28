@@ -55,7 +55,7 @@ public class Coherence {
 	 * @param s2 Signal 2. Both signals must have equal length.
 	 * @param windowsize The window size to use, i.e. the number of FFT coefficients to compute. Defaults to
 	 *                   min(256, s1.length) if set to <= 0.
-	 * @param overlap The overlap of the windows to compute. Defaults to windowsize/2 when set to <= 0.
+	 * @param overlap The overlap of the windows to compute. Defaults to windowsize/2 when set to < 0.
 	 * @return The coherence coefficients.
 	 */
 	public static double[] cohere(double[] s1, double[] s2, int windowsize, int overlap) {
@@ -66,7 +66,7 @@ public class Coherence {
 		if (windowsize <= 0)
 			windowsize = s1.length >= 256 ? s1.length : 256;
 		// default for overlap
-		if (overlap <= 0)
+		if (overlap < 0)
 			overlap = windowsize / 2;
 
 		if (s1.length < 2*windowsize - overlap) {
