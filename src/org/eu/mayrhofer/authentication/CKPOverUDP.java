@@ -80,7 +80,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	protected boolean useJSSE;
 
 	/** This may be set to distinguish multiple instances running on the same machine. */
-	private String instanceId = null;
+	protected String instanceId = null;
 
 	/** The UDP multicaster/communication class used for all network communication. */
 	private UDPMulticastSocket channel;

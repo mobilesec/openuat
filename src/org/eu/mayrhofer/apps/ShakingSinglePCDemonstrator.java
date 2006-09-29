@@ -348,7 +348,7 @@ public class ShakingSinglePCDemonstrator {
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
 			// samplerate/2
-			super(0.65, MotionAuthenticationParameters.coherenceWindowSize, false);
+			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
 		protected void protocolSucceededHook(InetAddress remote, 
@@ -384,7 +384,11 @@ public class ShakingSinglePCDemonstrator {
 
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
-			super(512, 512, 6, 4, 20, 256, 0.84f, numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
+			super(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize, 
+					MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound, 
+					MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap, 
+					MotionAuthenticationParameters.fftMatchesThreshold,
+					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {

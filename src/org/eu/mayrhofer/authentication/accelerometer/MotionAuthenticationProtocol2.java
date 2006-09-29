@@ -122,12 +122,11 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 * 
 	 * This implementation immediately computes the sliding FFT windows, quantizes
 	 * the coefficients, and sends out candidate key parts. 
-	 * @throws IOException 
-	 * @throws InternalApplicationException 
 	 */
 	public void addSample(double sample, int numSample) {
 		if (curSegment == null) {
-			logger.warn("Received sample while not in active state, ignoring it");
+			logger.warn("Received sample while not in active state, ignoring it" +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
 		
@@ -144,7 +143,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 			
 			// only compare until the cutoff frequency
 			int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / sampleRate) + 1;
-			System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+			System.out.println("Only comparing the first " + max_ind + " FFT coefficients" +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			
 			double[] fftCoeff1 = FFT.fftPowerSpectrum(segment, 0, fftPoints);
 			// HACK HACK HACK: set DC components to 0
@@ -171,14 +171,17 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 			try {
 				addCandidates(candBytes, 0);
 			} catch (InternalApplicationException e) {
-				logger.error("Could not add candidates: " + e);
+				logger.error("Could not add candidates: " + e +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
 			} catch (IOException e) {
-				logger.error("Could not add candidates: " + e);
+				logger.error("Could not add candidates: " + e +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 			
 			numWindows++;
-			logger.info("Finished adding window " + numWindows + " as new candidates, now shifting");
-			
+			logger.info("Finished adding window " + numWindows + " as new candidates, now shifting" +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
+
 			// and remove the overlap from the front
 			for (int i=0; i<windowOverlap; i++)
 				curSegment.removeFirst();
@@ -187,7 +190,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	
 	public void segmentStart(int numSample) {
 		if (curSegment != null) {
-			logger.warn("Received segment start event while still in active phase, ignoring");
+			logger.warn("Received segment start event while still in active phase, ignoring" +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
 		
@@ -197,28 +201,33 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	
 	public void segmentEnd(int numSample) {
 		if (curSegment == null) {
-			logger.warn("Received segment end event while no in active phase, ignoring");
+			logger.warn("Received segment end event while no in active phase, ignoring" +
+					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
 		
 		// TODO: don't discard, do something with it?
 		curSegment = null;
 		
-		logger.info("Active segment ending now, after extracting " + numWindows + " windows");
+		logger.info("Active segment ending now, after extracting " + numWindows + " windows" +
+				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
 	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
 		logger.info("CKP succeeded with remote " + remote + " with " + matchingRoundsFraction + 
-				" matching rounds, shared key is now " + sharedSessionKey.toString());
+				" matching rounds, shared key is now " + sharedSessionKey.toString() +
+				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
 	protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
 		logger.error("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
-				" matching rounds: " + message + "/" + e);
+				" matching rounds: " + message + "/" + e +
+				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
-		logger.debug("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message);
+		logger.debug("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message +
+				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
 
