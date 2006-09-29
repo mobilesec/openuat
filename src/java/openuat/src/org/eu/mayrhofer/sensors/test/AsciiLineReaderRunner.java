@@ -348,7 +348,7 @@ public class AsciiLineReaderRunner {
 											cutOffFrequency+=(paramSearch_coherence ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 												// these are the defaults when not searching for parameters
 												if (!paramSearch_coherence) {
-													cutOffFrequency = MotionAuthenticationParameters.cutOffFrequency;
+													cutOffFrequency = MotionAuthenticationParameters.coherenceCutOffFrequency;
 												}
 												// only compare until the cutoff frequency
 												int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
@@ -391,21 +391,21 @@ public class AsciiLineReaderRunner {
 								int numQuantLevels = quantLevels[i4];
 								// these are the defaults when not searching for parameters
 								if (!paramSearch_matches) {
-									numQuantLevels = 8;
+									numQuantLevels = MotionAuthenticationParameters.fftMatchesQuantizationLevels;
 									i4 = quantLevels.length;
 								}
 								for (int numCandidates=numCandidatesMin; numCandidates<=numCandidatesMax; 
 									numCandidates+=(paramSearch_matches ? numCandidatesStep : numCandidatesMax)) {
 									// these are the defaults when not searching for parameters
 									if (!paramSearch_matches) {
-										numCandidates = 6;
+										numCandidates = MotionAuthenticationParameters.fftMatchesCandidatesPerRound;
 									}
 
 									for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
 										cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 										// these are the defaults when not searching for parameters
 										if (!paramSearch_matches) {
-											cutOffFrequency = 15; // Hz
+											cutOffFrequency = MotionAuthenticationParameters.fftMatchesCutOffFrequenecy; // Hz
 										}
 
 										// only compare until the cutoff frequency

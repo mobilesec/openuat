@@ -11,8 +11,6 @@ package org.eu.mayrhofer.authentication.accelerometer;
 public class MotionAuthenticationParameters {
 	public final static int samplerate = 128; // Hz
 	
-	public final static int cutOffFrequency = samplerate; // Hz
-	
 	public final static int activityDetectionWindowSize = samplerate/2; // 1/2 s
 	
 	// this is very robust
@@ -25,4 +23,20 @@ public class MotionAuthenticationParameters {
 	public final static int coherenceWindowOverlap = coherenceWindowSize/2; // 50% overlap is the default
 	
 	public final static int coherenceSegmentSize = 3*samplerate; // 5s
+
+	public final static int coherenceCutOffFrequency = samplerate; // Hz
+	
+	public final static float coherenceThreshold = 0.65f;
+	
+	public final static int fftMatchesWindowSize = samplerate;
+
+	public final static int fftMatchesQuantizationLevels = 6;
+	
+	public final static int fftMatchesCandidatesPerRound = 4;
+	
+	public final static int fftMatchesCutOffFrequenecy = 20; // Hz
+	
+	public final static int fftMatchesWindowOverlap = fftMatchesWindowSize/2; // 50% overlap
+	
+	public final static float fftMatchesThreshold = 0.84f;
 }
