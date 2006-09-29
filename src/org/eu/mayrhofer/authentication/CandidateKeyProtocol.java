@@ -778,7 +778,7 @@ public class CandidateKeyProtocol {
 	 * a remote host, i.e. @see MatchingKeyParts#numMatchingRounds. However, it does
 	 * some sanity checks and makes sure that other conditions are met. This method
 	 * should be called for the first match in each round, after calling 
-	 * @see #advanceCandidateToMatch.
+	 * @see #advanceCandidateToMatch
 	 * @throws InternalApplicationException 
 	 */
 	private synchronized void increaseNumMatchingRounds(Object remoteHost) throws InternalApplicationException {
@@ -811,7 +811,7 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized int getNumLocalRounds(Object remoteHost) throws InternalApplicationException {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("getNumLocalRounds called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+			logger.info("getNumLocalRounds called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return 0;
 		}
@@ -831,7 +831,7 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized int getNumTotalMatches(Object remoteHost) {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("getNumTotalMatches called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+			logger.info("getNumTotalMatches called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return 0;
 		}
@@ -854,7 +854,7 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized float getMatchingRoundsFraction(Object remoteHost) throws InternalApplicationException {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("getMatchingRoundsFraction called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+			logger.info("getMatchingRoundsFraction called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return 0;
 		}
@@ -888,7 +888,7 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized float getSumMatchEntropy(Object remoteHost) {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warn("getSumMatchEntropy called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
+			logger.info("getSumMatchEntropy called for a remote host where no match list has yet been created or it has already been pruned, returning 0" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return 0;
 		}
@@ -926,8 +926,8 @@ public class CandidateKeyProtocol {
 		Object[] keyRet = assembleKeyFromMatches(remoteHost, -1, false);
 		byte[] keyParts = ((byte[][]) keyRet[0])[0];
 		int numCopied = ((Integer) keyRet[1]).intValue();
-		int[][] localIndices = (int[][]) ((int[][][]) keyRet[2])[0];
-		int[][] remoteIndices = (int[][]) ((int[][][]) keyRet[3])[0];
+		int[][] localIndices = ((int[][][]) keyRet[2])[0];
+		int[][] remoteIndices = ((int[][][]) keyRet[3])[0];
 		if (statisticsLogger.isInfoEnabled())
 			statisticsLogger.info("g generated key for " + remoteHost + " out of " + numCopied + 
 					" matching parts; lastRound=" + lastRound + "; numMatches=" + 
