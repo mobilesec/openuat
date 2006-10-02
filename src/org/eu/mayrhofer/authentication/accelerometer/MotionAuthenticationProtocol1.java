@@ -21,6 +21,7 @@ import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.DHOverTCPWithVerification;
 import org.eu.mayrhofer.authentication.InterlockProtocol;
 import org.eu.mayrhofer.features.Coherence;
+import org.eu.mayrhofer.features.TimeSeriesUtil;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.SegmentsSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
@@ -185,14 +186,9 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		if (localSegment == null || remoteSegment == null) {
 			throw new RuntimeException("Did not yet receive both segments, skipping comparing for now");
 		}
-		
-		int len = localSegment.length <= remoteSegment.length ? localSegment.length : remoteSegment.length;
-		System.out.println("Using " + len + " samples for coherence computation");
-		double[] s1 = new double[len];
-		double[] s2 = new double[len];
-		System.arraycopy(localSegment, 0, s1, 0, len);
-		System.arraycopy(remoteSegment, 0, s2, 0, len);
-		double[] coherence = Coherence.cohere(s1, s2, windowSize, MotionAuthenticationParameters.coherenceWindowOverlap);
+
+		double[][] equalizedSeries = TimeSeriesUtil.cutSegmentsToEqualLength(localSegment, remoteSegment);
+		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, MotionAuthenticationParameters.coherenceWindowOverlap);
 		if (coherence == null) {
 			logger.warn("Coherence not computed, no match");
 			return false;
