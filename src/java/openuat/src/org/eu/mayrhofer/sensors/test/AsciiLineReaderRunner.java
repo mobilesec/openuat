@@ -15,8 +15,7 @@ import java.util.ArrayList;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
 import org.eu.mayrhofer.features.Coherence;
-import org.eu.mayrhofer.features.FFT;
-import org.eu.mayrhofer.features.Quantizer;
+import org.eu.mayrhofer.features.QuantizedFFTCoefficients;
 import org.eu.mayrhofer.features.TimeSeriesUtil;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
@@ -88,64 +87,6 @@ public class AsciiLineReaderRunner {
 		}
 	}
 
-	// just a helper function for comparing
-	private static boolean compareQuantizedVectors(int[][] cand1, int[][] cand2, int max_ind) {
-		for (int i=0; i<cand1.length; i++) {
-			for (int j=0; j<cand2.length; j++) {
-				boolean equal = true;
-				for (int k=0; k<max_ind && equal; k++) {
-					if (cand1[i][k] != cand2[j][k])
-						equal = false;
-				}
-				if (equal) {
-					//System.out.println("Match at i=" + i + ", j=" + j);
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static boolean[] quantizeAndCompare(double[] vector1, double[] vector2, 
-			int numQuantLevels, int numCandidates, int max_ind) {
-		boolean[] ret = new boolean[2];
-		double max1 = Quantizer.max(vector1);
-		double max2 = Quantizer.max(vector2);
-		int cand1[][] = Quantizer.generateCandidates(vector1, 0, max1, numQuantLevels, false, numCandidates, false);
-		int cand2[][] = Quantizer.generateCandidates(vector2, 0, max2, numQuantLevels, false, numCandidates, false);
-		ret[0] = compareQuantizedVectors(cand1, cand2, max_ind);
-		cand1 = Quantizer.generateCandidates(vector1, 0, max1, numQuantLevels, true, numCandidates, false);
-		cand2 = Quantizer.generateCandidates(vector2, 0, max2, numQuantLevels, true, numCandidates, false);
-		ret[1] = compareQuantizedVectors(cand1, cand2, max_ind);
-		return ret;
-	}
-	
-	private static double[][] prepareFFTCoefficients(double[] s1, double[] s2, int offset, int numFftPoints, int max_ind) {
-		double[] allCoeff1 = FFT.fftPowerSpectrum(s1, offset, numFftPoints);
-		double[] allCoeff2 = FFT.fftPowerSpectrum(s2, offset, numFftPoints);
-		
-		// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
-		double[] fftCoeff1 = new double[max_ind];
-		double[] fftCoeff2 = new double[max_ind];
-		System.arraycopy(allCoeff1, 0, fftCoeff1, 0, max_ind);
-		System.arraycopy(allCoeff2, 0, fftCoeff2, 0, max_ind);
-		
-		// HACK HACK HACK: set DC components to 0
-		fftCoeff1[0] = 0;
-		fftCoeff2[0] = 0;
-		
-		return new double[][] {allCoeff1, allCoeff2, fftCoeff1, fftCoeff2};
-	}
-	
-	private static double[] addPairwise(double[] s, int max_ind) {
-		double sums[] = new double[max_ind];
-		for (int k=0; k<max_ind; k++) {
-			sums[k] = s[k] + s[k+1];
-			//System.out.println("k=" + k + ": sum1=" + sums1[k] + " sum2=" + sums2[k]);
-		}
-		return sums;
-	}
-	
 	private static int getMaxInd(int numFftPoints, int samplerate, int cutOffFrequency) {
 		// only compare until the cutoff frequency
 		int max_ind = (int) (((float) (numFftPoints * cutOffFrequency)) / samplerate) + 1;
@@ -417,24 +358,17 @@ public class AsciiLineReaderRunner {
 										int numWindows=0;
 
 										for (int offset=0; offset<s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-											double[][] coeff = prepareFFTCoefficients(s1[0], s2[0], offset, fftpoints, getMaxInd(fftpoints, samplerate, cutOffFrequency));
+											boolean matches[] = QuantizedFFTCoefficients.quantizeAndCompare(s1[0], s2[0], offset, 
+													getMaxInd(fftpoints, samplerate, cutOffFrequency), fftpoints, numQuantLevels,
+													numCandidates);
 											
-											// variants a and c: compare the quantized FFT coefficients directly
-											boolean[] matches = quantizeAndCompare(coeff[2],coeff[3], 
-													numQuantLevels, numCandidates, getMaxInd(fftpoints, samplerate, cutOffFrequency));
 											if (matches[0])
 												numMatchesVariantA++;
 											if (matches[1])
 												numMatchesVariantC++;
-											
-											// variants b and d: compare the quantized pairwise neighboring sums of the coefficients
-											double[] sums1 = addPairwise(coeff[0], getMaxInd(fftpoints, samplerate, cutOffFrequency));
-											double[] sums2 = addPairwise(coeff[1], getMaxInd(fftpoints, samplerate, cutOffFrequency));
-											matches = quantizeAndCompare(sums1, sums2,
-													numQuantLevels, numCandidates, getMaxInd(fftpoints, samplerate, cutOffFrequency));
-											if (matches[0])
+											if (matches[2])
 												numMatchesVariantB++;
-											if (matches[1])
+											if (matches[3])
 												numMatchesVariantD++;
 											
 											numWindows++;
