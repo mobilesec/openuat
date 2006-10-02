@@ -17,6 +17,7 @@ import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParamet
 import org.eu.mayrhofer.features.Coherence;
 import org.eu.mayrhofer.features.FFT;
 import org.eu.mayrhofer.features.Quantizer;
+import org.eu.mayrhofer.features.TimeSeriesUtil;
 import org.eu.mayrhofer.sensors.AsciiLineReaderBase;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.SamplesSink;
@@ -116,44 +117,6 @@ public class AsciiLineReaderRunner {
 		cand1 = Quantizer.generateCandidates(vector1, 0, max1, numQuantLevels, true, numCandidates, false);
 		cand2 = Quantizer.generateCandidates(vector2, 0, max2, numQuantLevels, true, numCandidates, false);
 		ret[1] = compareQuantizedVectors(cand1, cand2, max_ind);
-		return ret;
-	}
-	
-	// I hate Java
-	private static class TmpReturn {
-		double[][] s1;
-		double[][] s2;
-		int len;
-	}
-	private static TmpReturn cutSegmentsToEqualLength(double[] seg1, double[] seg2, int samplerate, int maxSegmentLength, int segmentSkip) {
-		TmpReturn ret = new TmpReturn();
-		ret.len = seg1.length <= seg2.length ? seg1.length : seg2.length;
-		System.out.println("Using " + ret.len + " samples for coherence computation");
-		
-		if (maxSegmentLength != -1 && ((float) ret.len)/samplerate > maxSegmentLength) {
-			int numSplits = (ret.len-maxSegmentLength*samplerate) / (segmentSkip*samplerate) + 1;
-			System.out.println("Segments are longer than maximum length: " +
-					(((float) ret.len)/samplerate) + " > " + maxSegmentLength + 
-					" s, splitting into " + numSplits + " segments");
-			ret.s1 = new double[numSplits][];
-			ret.s2 = new double[numSplits][];
-			for (int jj=0; jj<numSplits; jj++) {
-				ret.s1[jj] = new double[maxSegmentLength*samplerate];
-				ret.s2[jj] = new double[maxSegmentLength*samplerate];
-				int off=segmentSkip*samplerate*jj;
-				System.arraycopy(SegmentSink.segs[0], off, ret.s1[jj], 0, maxSegmentLength*samplerate);
-				System.arraycopy(SegmentSink.segs[1], off, ret.s2[jj], 0, maxSegmentLength*samplerate);
-			}
-		}
-		else {
-			// simple case: just use the whole time series
-			ret.s1 = new double[1][];
-			ret.s2 = new double[1][];
-			ret.s1[0] = new double[ret.len];
-			ret.s2[0] = new double[ret.len];
-			System.arraycopy(SegmentSink.segs[0], 0, ret.s1[0], 0, ret.len);
-			System.arraycopy(SegmentSink.segs[1], 0, ret.s2[0], 0, ret.len);
-		}
 		return ret;
 	}
 	
@@ -356,7 +319,10 @@ public class AsciiLineReaderRunner {
 
 						/////// test 3: calculate and plot the coherence between the segments from test 2
 						// make sure they have similar length
-						TmpReturn split = cutSegmentsToEqualLength(SegmentSink.segs[0], SegmentSink.segs[1], samplerate, maxSegmentLength, segmentSkip);
+						double[][] splits = TimeSeriesUtil.cutSegmentsToEqualLength(SegmentSink.segs[0], SegmentSink.segs[1]);
+						int len = splits[0].length;
+						double[][] s1 = TimeSeriesUtil.slice(splits[0], samplerate*maxSegmentLength, samplerate*segmentSkip);
+						double[][] s2 = TimeSeriesUtil.slice(splits[1], samplerate*maxSegmentLength, samplerate*segmentSkip);
 
 						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
 							int coherence_windowSize = coherence_windowSizes[i3];
@@ -373,9 +339,9 @@ public class AsciiLineReaderRunner {
 									i4=windowOverlapFactors.length;
 								}
 
-								for (int i5=0; i5<split.s1.length; i5++) {
-									if (split.s1[i5].length >= 2*coherence_windowSize - windowOverlap) {
-										double[] coherence = Coherence.cohere(split.s1[i5], split.s2[i5], coherence_windowSize, windowOverlap);
+								for (int i5=0; i5<s1.length; i5++) {
+									if (s1[i5].length >= 2*coherence_windowSize - windowOverlap) {
+										double[] coherence = Coherence.cohere(s1[i5], s2[i5], coherence_windowSize, windowOverlap);
 										if (coherence != null) {
 											if (graph) {
 												createGraph(coherence, "Coefficients", "", "Coherence", "Sample", "/tmp/coherence.jpg");
@@ -396,11 +362,11 @@ public class AsciiLineReaderRunner {
 														" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
 														", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
 														", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
-														windowOverlap + ", signal_length=" + split.s1[i5].length + " (" + ((float) split.s1[i5].length)/samplerate +
-														" s), slices=" + Coherence.getNumSlices(split.len, coherence_windowSize, windowOverlap) +
+														windowOverlap + ", signal_length=" + s1[i5].length + " (" + ((float) s1[i5].length)/samplerate +
+														" s), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
 														", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + "), segment=" +
-														(i5+1) + " out of " + split.s1.length + " (whole signal with length=" + split.len +
-														" / " + ((float) split.len)/samplerate + " s, segmentskip=" + segmentSkip + " s, offset=" 
+														(i5+1) + " out of " + s1.length + " (whole signal with length=" + len +
+														" / " + ((float) len)/samplerate + " s, segmentskip=" + segmentSkip + " s, offset=" 
 														+ (segmentSkip*samplerate*i5) + ")");
 											}
 										}
@@ -451,8 +417,8 @@ public class AsciiLineReaderRunner {
 										int numMatchesVariantD=0;
 										int numWindows=0;
 
-										for (int offset=0; offset<split.s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-											double[][] coeff = prepareFFTCoefficients(split.s1[0], split.s2[0], offset, fftpoints, getMaxInd(fftpoints, samplerate, cutOffFrequency));
+										for (int offset=0; offset<s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+											double[][] coeff = prepareFFTCoefficients(s1[0], s2[0], offset, fftpoints, getMaxInd(fftpoints, samplerate, cutOffFrequency));
 											
 											// variants a and c: compare the quantized FFT coefficients directly
 											boolean[] matches = quantizeAndCompare(coeff[2],coeff[3], 
