@@ -384,9 +384,9 @@ public class ShakingSinglePCDemonstrator {
 
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
-			super(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize, 
-					MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound, 
-					MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap, 
+			super(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
+					MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+					MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
 					MotionAuthenticationParameters.fftMatchesThreshold,
 					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
