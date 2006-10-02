@@ -138,7 +138,6 @@ public class AsciiLineReaderRunner {
 	}
 	
 	private static double[] addPairwise(double[] s, int max_ind) {
-
 		double sums[] = new double[max_ind];
 		for (int k=0; k<max_ind; k++) {
 			sums[k] = s[k] + s[k+1];
