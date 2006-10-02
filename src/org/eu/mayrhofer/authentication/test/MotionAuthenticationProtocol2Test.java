@@ -10,6 +10,7 @@ package org.eu.mayrhofer.authentication.test;
 
 import java.io.IOException;
 
+import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationProtocol2;
 
 public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProtocolTestBase {
@@ -41,7 +42,11 @@ public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProto
 	
 	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
-			super(512, 512, 6, 4, 20, 256, 0.84f, numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
+			super(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
+					MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+					MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
+					MotionAuthenticationParameters.fftMatchesThreshold,
+					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
