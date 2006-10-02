@@ -119,6 +119,55 @@ public class AsciiLineReaderRunner {
 		return ret;
 	}
 	
+	// I hate Java
+	private static class TmpReturn {
+		double[][] s1;
+		double[][] s2;
+		int len;
+	}
+	private static TmpReturn cutSegmentsToEqualLength(double[] seg1, double[] seg2, int samplerate, int maxSegmentLength, int segmentSkip) {
+		TmpReturn ret = new TmpReturn();
+		ret.len = seg1.length <= seg2.length ? seg1.length : seg2.length;
+		System.out.println("Using " + ret.len + " samples for coherence computation");
+		
+		if (maxSegmentLength != -1 && ((float) ret.len)/samplerate > maxSegmentLength) {
+			int numSplits = (ret.len-maxSegmentLength*samplerate) / (segmentSkip*samplerate) + 1;
+			System.out.println("Segments are longer than maximum length: " +
+					(((float) ret.len)/samplerate) + " > " + maxSegmentLength + 
+					" s, splitting into " + numSplits + " segments");
+			ret.s1 = new double[numSplits][];
+			ret.s2 = new double[numSplits][];
+			for (int jj=0; jj<numSplits; jj++) {
+				ret.s1[jj] = new double[maxSegmentLength*samplerate];
+				ret.s2[jj] = new double[maxSegmentLength*samplerate];
+				int off=segmentSkip*samplerate*jj;
+				System.arraycopy(SegmentSink.segs[0], off, ret.s1[jj], 0, maxSegmentLength*samplerate);
+				System.arraycopy(SegmentSink.segs[1], off, ret.s2[jj], 0, maxSegmentLength*samplerate);
+			}
+		}
+		else {
+			// simple case: just use the whole time series
+			ret.s1 = new double[1][];
+			ret.s2 = new double[1][];
+			ret.s1[0] = new double[ret.len];
+			ret.s2[0] = new double[ret.len];
+			System.arraycopy(SegmentSink.segs[0], 0, ret.s1[0], 0, ret.len);
+			System.arraycopy(SegmentSink.segs[1], 0, ret.s2[0], 0, ret.len);
+		}
+		return ret;
+	}
+
+	// a helper function for creating a graph of a time series
+	private static void createGraph(double[] series, String seriesName, String xName, String yName, String graphTitle, String outFile) throws IOException {
+		XYSeries s = new XYSeries(seriesName, false);
+		for (int i=0; i<series.length; i++)
+			s.add(i, series[i]);
+		XYDataset s1 = new XYSeriesCollection(s);
+		JFreeChart s2 = ChartFactory.createXYLineChart(yName, xName, 
+				graphTitle, s1, PlotOrientation.VERTICAL, true, true, false);
+		ChartUtilities.saveChartAsJPEG(new File(outFile), s2, 500, 300);
+}
+	
 	public static void mainRunner(String runClassName, String[] args) throws IOException {
 		String filename = args[0];
 		
@@ -267,53 +316,13 @@ public class AsciiLineReaderRunner {
 
 					if (SegmentSink.segs[0] != null && SegmentSink.segs[1] != null) {
 						if (graph) {
-							XYSeries seg1 = new XYSeries("Segment 1", false);
-							for (int i=0; i<SegmentSink.segs[0].length; i++)
-								seg1.add(i, SegmentSink.segs[0][i]);
-							XYDataset dat1 = new XYSeriesCollection(seg1);
-							JFreeChart chart1 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-									"Sample", dat1, PlotOrientation.VERTICAL, true, true, false);
-							ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrA.jpg"), chart1, 500, 300);
-
-							XYSeries seg2 = new XYSeries("Segment 2", false);
-							for (int i=0; i<SegmentSink.segs[1].length; i++)
-								seg2.add(i, SegmentSink.segs[1][i]);
-							XYDataset dat2 = new XYSeriesCollection(seg2);
-							JFreeChart chart2 = ChartFactory.createXYLineChart("Aggregated samples", "Number [100Hz]", 
-									"Sample", dat2, PlotOrientation.VERTICAL, true, true, false);
-							ChartUtilities.saveChartAsJPEG(new File("/tmp/aggrB.jpg"), chart2, 500, 300);
+							createGraph(SegmentSink.segs[0], "Segment 1", "Number [100Hz]", "Aggregated samples", "Sample", "/tmp/aggrA.jpg");
+							createGraph(SegmentSink.segs[1], "Segment 2", "Number [100Hz]", "Aggregated samples", "Sample", "/tmp/aggrB.jpg");
 						}
 
 						/////// test 3: calculate and plot the coherence between the segments from test 2
 						// make sure they have similar length
-						int len = SegmentSink.segs[0].length <= SegmentSink.segs[1].length ? SegmentSink.segs[0].length : SegmentSink.segs[1].length;
-						System.out.println("Using " + len + " samples for coherence computation");
-						double[][] s1;
-						double[][] s2;
-						if (maxSegmentLength != -1 && ((float) len)/samplerate > maxSegmentLength) {
-							int numSplits = (len-maxSegmentLength*samplerate) / (segmentSkip*samplerate) + 1;
-							System.out.println("Segments are longer than maximum length: " +
-									(((float) len)/samplerate) + " > " + maxSegmentLength + 
-									" s, splitting into " + numSplits + " segments");
-							s1 = new double[numSplits][];
-							s2 = new double[numSplits][];
-							for (int jj=0; jj<numSplits; jj++) {
-								s1[jj] = new double[maxSegmentLength*samplerate];
-								s2[jj] = new double[maxSegmentLength*samplerate];
-								int off=segmentSkip*samplerate*jj;
-								System.arraycopy(SegmentSink.segs[0], off, s1[jj], 0, maxSegmentLength*samplerate);
-								System.arraycopy(SegmentSink.segs[1], off, s2[jj], 0, maxSegmentLength*samplerate);
-							}
-						}
-						else {
-							// simple case: just use the whole time series
-							s1 = new double[1][];
-							s2 = new double[1][];
-							s1[0] = new double[len];
-							s2[0] = new double[len];
-							System.arraycopy(SegmentSink.segs[0], 0, s1[0], 0, len);
-							System.arraycopy(SegmentSink.segs[1], 0, s2[0], 0, len);
-						}
+						TmpReturn split = cutSegmentsToEqualLength(SegmentSink.segs[0], SegmentSink.segs[1], samplerate, maxSegmentLength, segmentSkip);
 
 						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
 							int coherence_windowSize = coherence_windowSizes[i3];
@@ -330,18 +339,12 @@ public class AsciiLineReaderRunner {
 									i4=windowOverlapFactors.length;
 								}
 
-								for (int i5=0; i5<s1.length; i5++) {
-									if (s1[i5].length >= 2*coherence_windowSize - windowOverlap) {
-										double[] coherence = Coherence.cohere(s1[i5], s2[i5], coherence_windowSize, windowOverlap);
+								for (int i5=0; i5<split.s1.length; i5++) {
+									if (split.s1[i5].length >= 2*coherence_windowSize - windowOverlap) {
+										double[] coherence = Coherence.cohere(split.s1[i5], split.s2[i5], coherence_windowSize, windowOverlap);
 										if (coherence != null) {
 											if (graph) {
-												XYSeries c = new XYSeries("Coefficients", false);
-												for (int i=0; i<coherence.length; i++)
-													c.add(i, coherence[i]);
-												XYDataset c1 = new XYSeriesCollection(c);
-												JFreeChart c2 = ChartFactory.createXYLineChart("Coherence", "", 
-														"Sample", c1, PlotOrientation.VERTICAL, true, true, false);
-												ChartUtilities.saveChartAsJPEG(new File("/tmp/coherence.jpg"), c2, 500, 300);
+												createGraph(coherence, "Coefficients", "", "Coherence", "Sample", "/tmp/coherence.jpg");
 											}
 				
 											for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
@@ -359,11 +362,11 @@ public class AsciiLineReaderRunner {
 														" samplerate=" + samplerate + ", variance_windowsize=" + windowsize + 
 														", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold + 
 														", coherence_windowsize=" + coherence_windowSize + ", windowoverlap=" + 
-														windowOverlap + ", signal_length=" + s1[i5].length + " (" + ((float) s1[i5].length)/samplerate +
-														" s), slices=" + Coherence.getNumSlices(len, coherence_windowSize, windowOverlap) +
+														windowOverlap + ", signal_length=" + split.s1[i5].length + " (" + ((float) split.s1[i5].length)/samplerate +
+														" s), slices=" + Coherence.getNumSlices(split.len, coherence_windowSize, windowOverlap) +
 														", cutofffrequency=" + cutOffFrequency + " (max_ind=" + max_ind + "), segment=" +
-														(i5+1) + " out of " + s1.length + " (whole signal with length=" + len +
-														" / " + ((float) len)/samplerate + " s, segmentskip=" + segmentSkip + " s, offset=" 
+														(i5+1) + " out of " + split.s1.length + " (whole signal with length=" + split.len +
+														" / " + ((float) split.len)/samplerate + " s, segmentskip=" + segmentSkip + " s, offset=" 
 														+ (segmentSkip*samplerate*i5) + ")");
 											}
 										}
@@ -418,9 +421,9 @@ public class AsciiLineReaderRunner {
 										int numMatchesVariantD=0;
 										int numWindows=0;
 
-										for (int offset=0; offset<s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-											double[] allCoeff1 = FFT.fftPowerSpectrum(s1[0], offset, fftpoints);
-											double[] allCoeff2 = FFT.fftPowerSpectrum(s2[0], offset, fftpoints);
+										for (int offset=0; offset<split.s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+											double[] allCoeff1 = FFT.fftPowerSpectrum(split.s1[0], offset, fftpoints);
+											double[] allCoeff2 = FFT.fftPowerSpectrum(split.s2[0], offset, fftpoints);
 											
 											// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
 											double[] fftCoeff1 = new double[max_ind];
