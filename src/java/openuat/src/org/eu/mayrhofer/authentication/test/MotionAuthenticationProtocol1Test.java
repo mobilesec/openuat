@@ -50,7 +50,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
-			super(0.65, MotionAuthenticationParameters.coherenceWindowSize, false);
+			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
 		protected void protocolSucceededHook(InetAddress remote, 
