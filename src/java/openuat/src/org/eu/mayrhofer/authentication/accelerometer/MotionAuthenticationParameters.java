@@ -8,6 +8,16 @@
  */
 package org.eu.mayrhofer.authentication.accelerometer;
 
+/** This class defines constants for the motion authentication protocols. The 
+ * optimal values were found by a full parameter search over an extensive 
+ * real-world data set. See
+ *   Rene Mayrhofer, Hans Gellersen: "Generating Secret Shared Keys from 
+ *   Common Movement Patterns", Pervasive 2007
+ * for details.
+ *
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
 public class MotionAuthenticationParameters {
 	public final static int samplerate = 256; // Hz
 	
