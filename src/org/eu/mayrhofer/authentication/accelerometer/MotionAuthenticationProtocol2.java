@@ -15,9 +15,9 @@ import java.util.LinkedList;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.CKPOverUDP;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
-import org.eu.mayrhofer.sensors.FFT;
+import org.eu.mayrhofer.features.FFT;
+import org.eu.mayrhofer.features.Quantizer;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
-import org.eu.mayrhofer.sensors.Quantizer;
 import org.eu.mayrhofer.sensors.SamplesSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
 

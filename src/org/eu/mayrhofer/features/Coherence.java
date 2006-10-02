@@ -9,7 +9,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.eu.mayrhofer.sensors;
+package org.eu.mayrhofer.features;
 
 import org.apache.log4j.Logger;
 

@@ -14,7 +14,8 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.eu.mayrhofer.sensors;
+package org.eu.mayrhofer.features;
+
 
 /** Compute the FFT and inverse FFT of a length N complex sequence.
  *  Bare bones implementation that runs in O(N log N) time. Our goal
