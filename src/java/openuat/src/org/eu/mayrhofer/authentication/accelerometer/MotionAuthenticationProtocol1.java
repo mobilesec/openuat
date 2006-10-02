@@ -20,7 +20,7 @@ import java.util.StringTokenizer;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.DHOverTCPWithVerification;
 import org.eu.mayrhofer.authentication.InterlockProtocol;
-import org.eu.mayrhofer.sensors.Coherence;
+import org.eu.mayrhofer.features.Coherence;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.SegmentsSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
