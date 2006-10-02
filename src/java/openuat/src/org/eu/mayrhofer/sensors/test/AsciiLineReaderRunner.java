@@ -156,6 +156,40 @@ public class AsciiLineReaderRunner {
 		}
 		return ret;
 	}
+	
+	private static double[][] prepareFFTCoefficients(double[] s1, double[] s2, int offset, int numFftPoints, int max_ind) {
+		double[] allCoeff1 = FFT.fftPowerSpectrum(s1, offset, numFftPoints);
+		double[] allCoeff2 = FFT.fftPowerSpectrum(s2, offset, numFftPoints);
+		
+		// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
+		double[] fftCoeff1 = new double[max_ind];
+		double[] fftCoeff2 = new double[max_ind];
+		System.arraycopy(allCoeff1, 0, fftCoeff1, 0, max_ind);
+		System.arraycopy(allCoeff2, 0, fftCoeff2, 0, max_ind);
+		
+		// HACK HACK HACK: set DC components to 0
+		fftCoeff1[0] = 0;
+		fftCoeff2[0] = 0;
+		
+		return new double[][] {allCoeff1, allCoeff2, fftCoeff1, fftCoeff2};
+	}
+	
+	private static double[] addPairwise(double[] s, int max_ind) {
+
+		double sums[] = new double[max_ind];
+		for (int k=0; k<max_ind; k++) {
+			sums[k] = s[k] + s[k+1];
+			//System.out.println("k=" + k + ": sum1=" + sums1[k] + " sum2=" + sums2[k]);
+		}
+		return sums;
+	}
+	
+	private static int getMaxInd(int numFftPoints, int samplerate, int cutOffFrequency) {
+		// only compare until the cutoff frequency
+		int max_ind = (int) (((float) (numFftPoints * cutOffFrequency)) / samplerate) + 1;
+		//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+		return max_ind;
+	}
 
 	// a helper function for creating a graph of a time series
 	private static void createGraph(double[] series, String seriesName, String xName, String yName, String graphTitle, String outFile) throws IOException {
@@ -411,10 +445,6 @@ public class AsciiLineReaderRunner {
 											cutOffFrequency = MotionAuthenticationParameters.fftMatchesCutOffFrequenecy; // Hz
 										}
 
-										// only compare until the cutoff frequency
-										int max_ind = (int) (((float) (fftpoints * cutOffFrequency)) / samplerate) + 1;
-										//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
-										
 										int numMatchesVariantA=0;
 										int numMatchesVariantB=0;
 										int numMatchesVariantC=0;
@@ -422,37 +452,21 @@ public class AsciiLineReaderRunner {
 										int numWindows=0;
 
 										for (int offset=0; offset<split.s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-											double[] allCoeff1 = FFT.fftPowerSpectrum(split.s1[0], offset, fftpoints);
-											double[] allCoeff2 = FFT.fftPowerSpectrum(split.s2[0], offset, fftpoints);
-											
-											// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
-											double[] fftCoeff1 = new double[max_ind];
-											double[] fftCoeff2 = new double[max_ind];
-											System.arraycopy(allCoeff1, 0, fftCoeff1, 0, max_ind);
-											System.arraycopy(allCoeff2, 0, fftCoeff2, 0, max_ind);
-											
-											// HACK HACK HACK: set DC components to 0
-											fftCoeff1[0] = 0;
-											fftCoeff2[0] = 0;
+											double[][] coeff = prepareFFTCoefficients(split.s1[0], split.s2[0], offset, fftpoints, getMaxInd(fftpoints, samplerate, cutOffFrequency));
 											
 											// variants a and c: compare the quantized FFT coefficients directly
-											boolean[] matches = quantizeAndCompare(fftCoeff1, fftCoeff2, 
-													numQuantLevels, numCandidates, max_ind);
+											boolean[] matches = quantizeAndCompare(coeff[2],coeff[3], 
+													numQuantLevels, numCandidates, getMaxInd(fftpoints, samplerate, cutOffFrequency));
 											if (matches[0])
 												numMatchesVariantA++;
 											if (matches[1])
 												numMatchesVariantC++;
 											
 											// variants b and d: compare the quantized pairwise neighboring sums of the coefficients
-											double sums1[] = new double[max_ind];
-											double sums2[] = new double[max_ind];
-											for (int k=0; k<max_ind; k++) {
-												sums1[k] = allCoeff1[k] + allCoeff1[k+1];
-												sums2[k] = allCoeff2[k] + allCoeff2[k+1];
-												//System.out.println("k=" + k + ": sum1=" + sums1[k] + " sum2=" + sums2[k]);
-											}
+											double[] sums1 = addPairwise(coeff[0], getMaxInd(fftpoints, samplerate, cutOffFrequency));
+											double[] sums2 = addPairwise(coeff[1], getMaxInd(fftpoints, samplerate, cutOffFrequency));
 											matches = quantizeAndCompare(sums1, sums2,
-													numQuantLevels, numCandidates, max_ind);
+													numQuantLevels, numCandidates, getMaxInd(fftpoints, samplerate, cutOffFrequency));
 											if (matches[0])
 												numMatchesVariantB++;
 											if (matches[1])
@@ -468,7 +482,7 @@ public class AsciiLineReaderRunner {
 												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold +
 												", windowoverlap=" + windowOverlap + ", numquantlevels=" + numQuantLevels +
 												", numcandidates=" + numCandidates + ", cutofffrequ=" + cutOffFrequency +
-												" (" + max_ind + " FFT coefficients)");
+												" (" + getMaxInd(fftpoints, samplerate, cutOffFrequency) + " FFT coefficients)");
 									}
 								}
 							}
