@@ -155,6 +155,18 @@ public class QuantizedFFTCoefficients {
 		int[][][] cand2 = computeFFTCoefficientsCandidates(vector2, offset, 
 				len, numFFTPoints, numQuantLevels, numCandidates, 
 				true, true, true, true);
+		
+		/*for (int i=0; i<4; i++) 
+			for (int j=0; j<numCandidates; j++) {
+				System.out.print("Cand1 type" + i + " cand" + j + ": ");
+				for (int k=0; k<len; k++)
+					System.out.print(cand1[i][j][k] + " ");
+				System.out.println();
+				System.out.print("Cand2 type" + i + " cand" + j + ": ");
+				for (int k=0; k<len; k++)
+					System.out.print(cand2[i][j][k] + " ");
+				System.out.println();
+			}*/
 
 		for (int i=0; i<4; i++)
 			ret[i] = compareQuantizedVectors(cand1[i], cand2[i], len);
