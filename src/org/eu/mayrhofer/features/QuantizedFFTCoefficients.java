@@ -58,9 +58,10 @@ public class QuantizedFFTCoefficients {
 	 * needs to be computed, intermediate data will be re-used.
 	 * @param segment The segment to compute quantized FFT coefficients on.
 	 * @param offset Elements of segment will be used starting with this index.
-	 * @param len The number of elemens in segment that will be used.
 	 * @param numFFTPoints The number of FFT points for computing the 
-	 *                     coefficients.
+	 *                     coefficients. This is the number of samples used 
+	 *                     from segment.
+	 * @param numFFTCoeffCompared The number of FFT coefficients to output.
 	 * @param numQuantLevels The number of quantization levels to use.
 	 * @param numCandidates The number of candidates to generate with 
 	 *                      different quantization offsets.
@@ -80,7 +81,7 @@ public class QuantizedFFTCoefficients {
 	 *         has not been set.
 	 */
 	private static int[][][] computeFFTCoefficientsCandidates(double[] segment, 
-			int offset, int len, int numFFTPoints, int numQuantLevels, 
+			int offset, int numFFTPoints, int numFFTCoeffCompared, int numQuantLevels, 
 			int numCandidates, boolean doDirect, boolean doPairwise, 
 			boolean doLinear, boolean doExponential) {
 		double[] allCoeff = FFT.fftPowerSpectrum(segment, offset, numFFTPoints);
@@ -88,8 +89,8 @@ public class QuantizedFFTCoefficients {
 		double[][] toQuantize = new double[2][];
 		if (doDirect) {
 			// for better performance, only use the first max_ind coefficients since the others will not be compared anyway
-			toQuantize[0] = new double[len];
-			System.arraycopy(allCoeff, 0, toQuantize[0], 0, len);
+			toQuantize[0] = new double[numFFTCoeffCompared];
+			System.arraycopy(allCoeff, 0, toQuantize[0], 0, numFFTCoeffCompared);
 			
 			// HACK HACK HACK: set DC components to 0
 			toQuantize[0][0] = 0;
@@ -97,7 +98,7 @@ public class QuantizedFFTCoefficients {
 		if (doPairwise) {
 			// TODO: also need the hack here?
 			
-			toQuantize[1] = addPairwise(allCoeff, len);
+			toQuantize[1] = addPairwise(allCoeff, numFFTCoeffCompared);
 		}
 		
 		int[][][] ret = new int[4][][];
@@ -117,9 +118,10 @@ public class QuantizedFFTCoefficients {
 	 * offsets.
 	 * @param segment The segment to compute quantized FFT coefficients on.
 	 * @param offset Elements of segment will be used starting with this index.
-	 * @param len The number of elemens in segment that will be used.
 	 * @param numFFTPoints The number of FFT points for computing the 
-	 *                     coefficients.
+	 *                     coefficients. This is the number of samples used 
+	 *                     from segment.
+	 * @param numFFTCoeffCompared The number of FFT coefficients to output.
 	 * @param numQuantLevels The number of quantization levels to use.
 	 * @param numCandidates The number of candidates to generate with 
 	 *                      different quantization offsets.
@@ -132,10 +134,10 @@ public class QuantizedFFTCoefficients {
 	 *         numCandidates elements, which are arrays of len integers.
 	 */
 	public static int[][] computeFFTCoefficientsCandidates(double[] segment, 
-			int offset, int len, int numFFTPoints, int numQuantLevels, 
+			int offset, int numFFTPoints, int numFFTCoeffCompared, int numQuantLevels, 
 			int numCandidates, boolean addPairwise, boolean exponentialBands) {
 		int retInd = (addPairwise ? 2 : 0) + (exponentialBands ? 1 : 0);  
-		return computeFFTCoefficientsCandidates(segment, offset, len, 
+		return computeFFTCoefficientsCandidates(segment, offset, numFFTCoeffCompared, 
 				numFFTPoints, numQuantLevels, numCandidates, 
 				!addPairwise, addPairwise, 
 				!exponentialBands, exponentialBands)[retInd];
