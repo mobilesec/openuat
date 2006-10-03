@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.zip.GZIPInputStream;
 
@@ -382,7 +383,7 @@ public class AsciiLineReaderRunner {
 	private static void estimateEntropy(String runClassName, String subdir) throws IOException {
 		HashMap[][][] vectorsPerSubjPerHandPerDev = new HashMap[51][][];
 		for (int i=0; i<vectorsPerSubjPerHandPerDev.length; i++) {
-			vectorsPerSubjPerHandPerDev[i] = new HashMap[2][];
+			vectorsPerSubjPerHandPerDev[i] = new HashMap[3][];
 			for (int j=0; j<vectorsPerSubjPerHandPerDev[i].length; j++) { 
 				vectorsPerSubjPerHandPerDev[i][j] = new HashMap[2];
 				for (int k=0; k<vectorsPerSubjPerHandPerDev[i][j].length; k++) 
@@ -400,13 +401,14 @@ public class AsciiLineReaderRunner {
 				for (int k=0; k<hands.length; k++) {
 					// and finally for each try
 					for (int l=0; l<5; l++) {
-						String filename = String.format(subdir + "/%s-%s-subj%03d-try%03d.log.bz2", 
+						String filename = String.format(subdir + "/%s-%s-subj%03d-try%03d.log.gz", 
 								new Object[] {settings[j], hands[k], new Integer(i+1), new Integer(l+1)});
 						System.out.println("Reading from file " + filename);
+						FileInputStream is = new FileInputStream(filename);
 						
 						AsciiLineReaderBase r = null;
 						if (runClassName.equals("ParallelPortPWMReader"))
-							r = new ParallelPortPWMReader(new GZIPInputStream(new FileInputStream(filename)), 
+							r = new ParallelPortPWMReader(new GZIPInputStream(is), 
 									MotionAuthenticationParameters.samplerate);
 						else {
 							System.err.println("Unknown derived class name or not supported for WiTilt right now!");
@@ -428,6 +430,7 @@ public class AsciiLineReaderRunner {
 						aggr_b.setSubtractTotalMean(true);
 						aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 						r.simulateSampling();
+						is.close();
 
 						int fftpoints = MotionAuthenticationParameters.fftMatchesWindowSize; 
 						int windowOverlap = MotionAuthenticationParameters.fftMatchesWindowOverlap;
@@ -440,9 +443,16 @@ public class AsciiLineReaderRunner {
 										MotionAuthenticationParameters.fftMatchesQuantizationLevels,
 										MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
 										true, true);
-								
+								for (int m=0; m<cand.length; m++)
+									vectorsPerSubjPerHandPerDev[i][k][device].put(
+											new Integer(Arrays.hashCode(cand[m])), cand[m]);
 							}
 						}
+						System.out.println("Now " + 
+								vectorsPerSubjPerHandPerDev[i][k][0].size() + " (dev1) / " +
+								vectorsPerSubjPerHandPerDev[i][k][1].size() + 
+								" (dev2) different vectors for subj " + i + 
+								" hand " + hands[k]);
 					}
 				}
 			}
