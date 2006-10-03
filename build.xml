@@ -190,8 +190,8 @@
 	    haltonerror="true" showoutput="false" fork="true" forkmode="perTest">
         <!-- doesn't do anything with fork=false -->
 		    <jvmarg value="-Djava.library.path=nativelib/linux" />
-		    <jvmarg value="-Xmx256m" />
-		    <jvmarg value="-Xms256m" />
+		    <jvmarg value="-Xmx512m" />
+		    <jvmarg value="-Xms512m" />
 		    <classpath>
 			    <fileset refid="lib.alljars"/>
 			    <pathelement location="${jarfile.core}"/>
@@ -204,8 +204,12 @@
 		    <batchtest todir="${reports.tests}">
 			    <fileset dir="${src}">
 				    <include name="**/*Test*.java"/>
+				    <exclude name="**/MotionAuthenticationProtocol1Test.java"/>
+				    <exclude name="**/MotionAuthenticationProtocol2Test.java"/>
 			    </fileset>
 		    </batchtest>
+		    <!--<test name="org.eu.mayrhofer.authentication.test.MotionAuthenticationProtocol1Test" todir="${reports.tests}"/>-->
+		    <!--<test name="org.eu.mayrhofer.authentication.test.MotionAuthenticationProtocol2Test" todir="${reports.tests}"/>-->
 	    </junit>
     </target>
     
