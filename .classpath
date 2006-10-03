@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="thirdparty/apache-bzip2"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-core-deps"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-openssl-deps"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-x509-deps"/>
@@ -14,5 +15,6 @@
 	<classpathentry kind="lib" path="lib/avetanaBT.jar"/>
 	<classpathentry kind="lib" path="lib/relate-2.1-apps.jar"/>
 	<classpathentry kind="lib" path="lib/relate-2.1-core.jar"/>
+	<classpathentry kind="lib" path="lib/jcommon-1.0.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
