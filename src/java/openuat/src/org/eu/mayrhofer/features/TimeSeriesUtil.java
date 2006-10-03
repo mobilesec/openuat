@@ -39,7 +39,7 @@ public class TimeSeriesUtil {
 		ret[0] = new double[len];
 		ret[1] = new double[len];
 		System.arraycopy(segment1, 0, ret[0], 0, len);
-		System.arraycopy(segment1, 0, ret[1], 0, len);
+		System.arraycopy(segment2, 0, ret[1], 0, len);
 		
 		return ret;
 	}
@@ -53,7 +53,7 @@ public class TimeSeriesUtil {
 	 *        slice. Slices will overlap by (maxSegmentLength-segmentSkip)
 	 *        samples.
 	 * @return An array of slices generated from the time series. If segment
-	 *         is <=maxSegmentLength or maxSegmentLength is -1, then no slicing
+	 *         is <=maxSegmentLength or maxSegmentLength is <=0, then no slicing
 	 *         will be done and the original time series passed in segment will
 	 *         be returned as the first and only element in this array. 
 	 *         Otherwise, all elements of the returned array will have the same
@@ -65,7 +65,7 @@ public class TimeSeriesUtil {
 	public static double[][] slice(double[] segment, int maxSegmentLength, int segmentSkip) {
 		double[][] ret;
 		
-		if (maxSegmentLength != -1 && segment.length > maxSegmentLength) {
+		if (maxSegmentLength > 0 && segment.length > maxSegmentLength) {
 			int numSplits = (segment.length-maxSegmentLength) / (segmentSkip) + 1;
 			logger.debug("Segments are longer than maximum length: " +
 					segment.length + " > " + maxSegmentLength + 
@@ -83,5 +83,15 @@ public class TimeSeriesUtil {
 			ret[0] = segment;
 		}
 		return ret;
+	}
+
+	/** Compute the maximum index of a vector of FFT coefficients that needs to
+	 * considered when using them only up to the specified cut-off frequency.
+	 */
+	public static int getMaxInd(int numFftPoints, int samplerate, int cutOffFrequency) {
+		// only compare until the cutoff frequency
+		int max_ind = (int) (((float) (numFftPoints * cutOffFrequency)) / samplerate) + 1;
+		//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+		return max_ind;
 	}
 }
