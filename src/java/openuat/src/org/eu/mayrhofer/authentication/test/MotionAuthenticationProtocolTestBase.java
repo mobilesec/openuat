@@ -81,6 +81,8 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 				Thread.sleep(500);
 			}
 			reader1.stop();
+			in.close();
+			System.gc();
 			Assert.assertTrue("Protocol did not finish within time limit", end);
 		}
 	}

@@ -26,6 +26,10 @@ public class InterlockProtocolTest extends TestCase {
 	public InterlockProtocolTest(String s) {
 		super(s);
 	}
+	
+	public void tearDown() {
+		System.gc();
+	}
 
 	public void testAddPart() throws InternalApplicationException {
 		byte[] dest = new byte[8];
