@@ -87,13 +87,6 @@ public class AsciiLineReaderRunner {
 		}
 	}
 
-	private static int getMaxInd(int numFftPoints, int samplerate, int cutOffFrequency) {
-		// only compare until the cutoff frequency
-		int max_ind = (int) (((float) (numFftPoints * cutOffFrequency)) / samplerate) + 1;
-		//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
-		return max_ind;
-	}
-
 	// a helper function for creating a graph of a time series
 	private static void createGraph(double[] series, String seriesName, String xName, String yName, String graphTitle, String outFile) throws IOException {
 		XYSeries s = new XYSeries(seriesName, false);
@@ -184,7 +177,7 @@ public class AsciiLineReaderRunner {
 			segmentSkip = maxSegmentLength; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
-			windowsizeFactors = new double[] {1/2f}; 
+			windowsizeFactors = new double[] {1}; 
 			varthresholdMin = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdMax = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdStep = 50;
@@ -211,7 +204,7 @@ public class AsciiLineReaderRunner {
 			for (int i2=0; i2<windowsizeFactors.length; i2++) {
 				int windowsize = (int) (samplerate*windowsizeFactors[i2]);
 				// this is not yet searched, but restrict the minimum significant segment size to Xs
-				int minsegmentsize = MotionAuthenticationParameters.activityMinimumSegmentSize;
+				int minsegmentsize = windowsize; //3*samplerate; //MotionAuthenticationParameters.activityMinimumSegmentSize;
 				// these are the defaults when not searching for parameters
 				if (!paramSearch_coherence && !paramSearch_matches) {
 					windowsize = MotionAuthenticationParameters.activityDetectionWindowSize;
@@ -222,7 +215,7 @@ public class AsciiLineReaderRunner {
 						varthreshold+=(paramSearch_coherence ? varthresholdStep : varthresholdMax)) {
 					// these are the defaults when not searching for parameters
 					if (!paramSearch_coherence) {
-						varthreshold = MotionAuthenticationParameters.activityVarianceThreshold;
+						varthreshold = 350; //MotionAuthenticationParameters.activityVarianceThreshold;
 					}
 					
 					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
@@ -293,9 +286,7 @@ public class AsciiLineReaderRunner {
 												if (!paramSearch_coherence) {
 													cutOffFrequency = MotionAuthenticationParameters.coherenceCutOffFrequency;
 												}
-												// only compare until the cutoff frequency
-												int max_ind = (int) (((float) (coherence_windowSize * cutOffFrequency)) / samplerate) + 1;
-												//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
+												int max_ind = TimeSeriesUtil.getMaxInd(coherence_windowSize, samplerate, cutOffFrequency);
 										
 												double coherenceMean = Coherence.mean(coherence, max_ind);
 												System.out.println("Coherence mean: " + coherenceMean + 
@@ -359,7 +350,7 @@ public class AsciiLineReaderRunner {
 
 										for (int offset=0; offset<s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
 											boolean matches[] = QuantizedFFTCoefficients.quantizeAndCompare(s1[0], s2[0], offset, 
-													getMaxInd(fftpoints, samplerate, cutOffFrequency), fftpoints, numQuantLevels,
+													TimeSeriesUtil.getMaxInd(fftpoints, samplerate, cutOffFrequency), fftpoints, numQuantLevels,
 													numCandidates);
 											
 											if (matches[0])
@@ -381,7 +372,7 @@ public class AsciiLineReaderRunner {
 												", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold +
 												", windowoverlap=" + windowOverlap + ", numquantlevels=" + numQuantLevels +
 												", numcandidates=" + numCandidates + ", cutofffrequ=" + cutOffFrequency +
-												" (" + getMaxInd(fftpoints, samplerate, cutOffFrequency) + " FFT coefficients)");
+												" (" + TimeSeriesUtil.getMaxInd(fftpoints, samplerate, cutOffFrequency) + " FFT coefficients)");
 									}
 								}
 							}
