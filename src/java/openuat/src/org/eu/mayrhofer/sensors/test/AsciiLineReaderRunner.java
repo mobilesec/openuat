@@ -9,8 +9,11 @@
 package org.eu.mayrhofer.sensors.test;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.accelerometer.MotionAuthenticationParameters;
@@ -96,66 +99,52 @@ public class AsciiLineReaderRunner {
 		JFreeChart s2 = ChartFactory.createXYLineChart(yName, xName, 
 				graphTitle, s1, PlotOrientation.VERTICAL, true, true, false);
 		ChartUtilities.saveChartAsJPEG(new File(outFile), s2, 500, 300);
-}
+	}
 	
-	public static void mainRunner(String runClassName, String[] args) throws IOException {
-		String filename = args[0];
-		
-		boolean graph = false;
-		boolean paramSearch_coherence = false;
-		boolean paramSearch_matches = false;
-		if (args.length > 1 && args[1].equals("dographs"))
-			graph = true;
-		if (args.length > 1 && args[1].equals("paramsearch_coherence"))
-			paramSearch_coherence = true;
-		if (args.length > 1 && args[1].equals("paramsearch_matches"))
-			paramSearch_matches = true;
-		
-		/////// test 1: just plot all time series
-		if (graph) {
-			AsciiLineReaderBase r = null;
-			if (runClassName.equals("ParallelPortPWMReader"))
-				r = new ParallelPortPWMReader(filename, 100);
-			else if (runClassName.equals("WiTiltRawReader")) {
-				r = new WiTiltRawReader();
-				((WiTiltRawReader) r).openSerial(filename, false);
-			} else {
-				System.err.println("Unknown derived class name!");
-				System.exit(200);
-			}
-			
-			TimeSeries[] t = new TimeSeries[r.getMaxNumLines()];
-			XYSink[] s = new XYSink[r.getMaxNumLines()];
-			int[] linesToAdd = new int[r.getMaxNumLines()];
-			for (int i=0; i<r.getMaxNumLines(); i++) {
-				t[i] = new TimeSeries(50);
-				t[i].setOffset(0);
-				t[i].setMultiplicator(1/128f);
-				t[i].setSubtractTotalMean(true);
-				t[i].setActiveVarianceThreshold(350);
-				s[i] = new XYSink();
-				t[i].addNextStageSink(s[i]);
-				
-				linesToAdd[i] = i;
-			}
-			r.addSink(linesToAdd, t);
-			r.simulateSampling();
-		
-			for (int i=0; i<r.getMaxNumLines(); i++) {
-				XYDataset data = new XYSeriesCollection(s[i].series);
-				JFreeChart chart = ChartFactory.createXYLineChart("Line " + i, "Number [100Hz]", 
-						"Sample", data, PlotOrientation.VERTICAL, true, true, false);
-				ChartUtilities.saveChartAsJPEG(new File("/tmp/line" + i + ".jpg"), chart, 500, 300);
-
-				XYDataset segData = new XYSeriesCollection(s[i].firstActiveSegment);
-				JFreeChart segChart = ChartFactory.createXYLineChart("Segment at line " + i, "Number [100Hz]", 
-						"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
-				ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
-			}
+	private static void plotTimeSeries(String runClassName, String filename) throws IOException {
+		AsciiLineReaderBase r = null;
+		if (runClassName.equals("ParallelPortPWMReader"))
+			r = new ParallelPortPWMReader(filename, 100);
+		else if (runClassName.equals("WiTiltRawReader")) {
+			r = new WiTiltRawReader();
+			((WiTiltRawReader) r).openSerial(filename, false);
+		} else {
+			System.err.println("Unknown derived class name!");
+			System.exit(200);
 		}
 		
-		/////// test 2: plot the 2 extracted segments from the first and the second device
-		int[] samplerates;
+		TimeSeries[] t = new TimeSeries[r.getMaxNumLines()];
+		XYSink[] s = new XYSink[r.getMaxNumLines()];
+		int[] linesToAdd = new int[r.getMaxNumLines()];
+		for (int i=0; i<r.getMaxNumLines(); i++) {
+			t[i] = new TimeSeries(50);
+			t[i].setOffset(0);
+			t[i].setMultiplicator(1/128f);
+			t[i].setSubtractTotalMean(true);
+			t[i].setActiveVarianceThreshold(350);
+			s[i] = new XYSink();
+			t[i].addNextStageSink(s[i]);
+			
+			linesToAdd[i] = i;
+		}
+		r.addSink(linesToAdd, t);
+		r.simulateSampling();
+	
+		for (int i=0; i<r.getMaxNumLines(); i++) {
+			XYDataset data = new XYSeriesCollection(s[i].series);
+			JFreeChart chart = ChartFactory.createXYLineChart("Line " + i, "Number [100Hz]", 
+					"Sample", data, PlotOrientation.VERTICAL, true, true, false);
+			ChartUtilities.saveChartAsJPEG(new File("/tmp/line" + i + ".jpg"), chart, 500, 300);
+
+			XYDataset segData = new XYSeriesCollection(s[i].firstActiveSegment);
+			JFreeChart segChart = ChartFactory.createXYLineChart("Segment at line " + i, "Number [100Hz]", 
+					"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
+			ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
+		}
+	}
+	
+	private static void computeSimilarityMeasures(String runClassName, String filename, 
+			boolean paramSearch_coherence, boolean paramSearch_matches, boolean graph) throws IOException {
 		double[] windowsizeFactors;
 		double varthresholdMin, varthresholdMax, varthresholdStep;
 		int[] coherence_windowSizes; 
@@ -164,6 +153,7 @@ public class AsciiLineReaderRunner {
 		int cutOffFrequencyStep = 5;
 		int maxSegmentLength = -1;
 		int segmentSkip = -1;
+		int[] samplerates;
 		if (paramSearch_coherence) {
 			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
@@ -350,8 +340,9 @@ public class AsciiLineReaderRunner {
 
 										for (int offset=0; offset<s1[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
 											boolean matches[] = QuantizedFFTCoefficients.quantizeAndCompare(s1[0], s2[0], offset, 
-													TimeSeriesUtil.getMaxInd(fftpoints, samplerate, cutOffFrequency), fftpoints, numQuantLevels,
-													numCandidates);
+													fftpoints, 
+													TimeSeriesUtil.getMaxInd(fftpoints, samplerate, cutOffFrequency), 
+													numQuantLevels, numCandidates);
 											
 											if (matches[0])
 												numMatchesVariantA++;
@@ -386,5 +377,103 @@ public class AsciiLineReaderRunner {
 				}
 			}
 		}
+	}
+
+	private static void estimateEntropy(String runClassName, String subdir) throws IOException {
+		HashMap[][][] vectorsPerSubjPerHandPerDev = new HashMap[51][][];
+		for (int i=0; i<vectorsPerSubjPerHandPerDev.length; i++) {
+			vectorsPerSubjPerHandPerDev[i] = new HashMap[2][];
+			for (int j=0; j<vectorsPerSubjPerHandPerDev[i].length; j++) { 
+				vectorsPerSubjPerHandPerDev[i][j] = new HashMap[2];
+				for (int k=0; k<vectorsPerSubjPerHandPerDev[i][j].length; k++) 
+					vectorsPerSubjPerHandPerDev[i][j][k] = new HashMap();
+			}
+		}
+		
+		// and starting reading from the logs: for each subject
+		for (int i=0; i<vectorsPerSubjPerHandPerDev.length; i++) {
+			// for each setting
+			String[] settings = {"sitting", "standing"};
+			for (int j=0; j<settings.length; j++) {
+				// for each combination of hands
+				String[] hands = {"left", "right", "both"};
+				for (int k=0; k<hands.length; k++) {
+					// and finally for each try
+					for (int l=0; l<5; l++) {
+						String filename = String.format(subdir + "/%s-%s-subj%03d-try%03d.log.bz2", 
+								new Object[] {settings[j], hands[k], new Integer(i+1), new Integer(l+1)});
+						System.out.println("Reading from file " + filename);
+						
+						AsciiLineReaderBase r = null;
+						if (runClassName.equals("ParallelPortPWMReader"))
+							r = new ParallelPortPWMReader(new GZIPInputStream(new FileInputStream(filename)), 
+									MotionAuthenticationParameters.samplerate);
+						else {
+							System.err.println("Unknown derived class name or not supported for WiTilt right now!");
+							System.exit(200);
+						}
+
+						TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+						TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+						r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+						r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+						aggr_a.addNextStageSegmentsSink(new SegmentSink(0));
+						aggr_b.addNextStageSegmentsSink(new SegmentSink(1));
+						aggr_a.setOffset(0);
+						aggr_a.setMultiplicator(1/128f);
+						aggr_a.setSubtractTotalMean(true);
+						aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+						aggr_b.setOffset(0);
+						aggr_b.setMultiplicator(1/128f);
+						aggr_b.setSubtractTotalMean(true);
+						aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+						r.simulateSampling();
+
+						int fftpoints = MotionAuthenticationParameters.fftMatchesWindowSize; 
+						int windowOverlap = MotionAuthenticationParameters.fftMatchesWindowOverlap;
+						for (int offset=0; offset<SegmentSink.segs[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+							for (int device=0; device<2; device++) {
+								int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(
+										SegmentSink.segs[device], offset, 
+										TimeSeriesUtil.getMaxInd(fftpoints, MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesCutOffFrequenecy),
+										MotionAuthenticationParameters.fftMatchesWindowSize,
+										MotionAuthenticationParameters.fftMatchesQuantizationLevels,
+										MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+										true, true);
+								
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	public static void mainRunner(String runClassName, String[] args) throws IOException {
+		String filename = args[0];
+		
+		boolean graph = false;
+		boolean paramSearch_coherence = false;
+		boolean paramSearch_matches = false;
+		boolean estimateEntropy = false;
+		if (args.length > 1 && args[1].equals("dographs"))
+			graph = true;
+		if (args.length > 1 && args[1].equals("paramsearch_coherence"))
+			paramSearch_coherence = true;
+		if (args.length > 1 && args[1].equals("paramsearch_matches"))
+			paramSearch_matches = true;
+		if (args.length > 1 && args[1].equals("estimate_entropy"))
+			estimateEntropy = true;
+		
+		/////// test 1: just plot all time series
+		if (graph) {
+			plotTimeSeries(runClassName, filename);
+		}
+		
+		/////// test 2: plot the 2 extracted segments from the first and the second device		int[] samplerates;
+		if (!estimateEntropy)
+			computeSimilarityMeasures(runClassName, filename, paramSearch_coherence, paramSearch_matches, graph);
+		else
+			estimateEntropy(runClassName, filename);
 	}
 }
