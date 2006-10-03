@@ -177,7 +177,7 @@ public class AsciiLineReaderRunner {
 			segmentSkip = maxSegmentLength; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
-			windowsizeFactors = new double[] {1}; 
+			windowsizeFactors = new double[] {1/2f}; 
 			varthresholdMin = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdMax = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdStep = 50;
@@ -204,7 +204,7 @@ public class AsciiLineReaderRunner {
 			for (int i2=0; i2<windowsizeFactors.length; i2++) {
 				int windowsize = (int) (samplerate*windowsizeFactors[i2]);
 				// this is not yet searched, but restrict the minimum significant segment size to Xs
-				int minsegmentsize = windowsize; //3*samplerate; //MotionAuthenticationParameters.activityMinimumSegmentSize;
+				int minsegmentsize = 3*samplerate; //MotionAuthenticationParameters.activityMinimumSegmentSize;
 				// these are the defaults when not searching for parameters
 				if (!paramSearch_coherence && !paramSearch_matches) {
 					windowsize = MotionAuthenticationParameters.activityDetectionWindowSize;
@@ -215,7 +215,7 @@ public class AsciiLineReaderRunner {
 						varthreshold+=(paramSearch_coherence ? varthresholdStep : varthresholdMax)) {
 					// these are the defaults when not searching for parameters
 					if (!paramSearch_coherence) {
-						varthreshold = 350; //MotionAuthenticationParameters.activityVarianceThreshold;
+						varthreshold = MotionAuthenticationParameters.activityVarianceThreshold;
 					}
 					
 					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
