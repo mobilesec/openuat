@@ -147,15 +147,15 @@ public class QuantizedFFTCoefficients {
 	 * @return An boolean array of 4 elements, true when the respective
 	 *         type contains at least one match among the candidates.
 	 */
-	public static boolean[] quantizeAndCompare(double[] vector1, double[] vector2, int offset, int len, int numFFTPoints,
-			int numQuantLevels, int numCandidates) {
+	public static boolean[] quantizeAndCompare(double[] vector1, double[] vector2, int offset, int numFFTPoints,
+			int numFFTCoeffCompared, int numQuantLevels, int numCandidates) {
 		boolean[] ret = new boolean[4];
 		
 		int[][][] cand1 = computeFFTCoefficientsCandidates(vector1, offset, 
-				len, numFFTPoints, numQuantLevels, numCandidates, 
+				numFFTPoints, numFFTCoeffCompared, numQuantLevels, numCandidates, 
 				true, true, true, true);
 		int[][][] cand2 = computeFFTCoefficientsCandidates(vector2, offset, 
-				len, numFFTPoints, numQuantLevels, numCandidates, 
+				numFFTPoints, numFFTCoeffCompared, numQuantLevels, numCandidates, 
 				true, true, true, true);
 		
 		/*for (int i=0; i<4; i++) 
@@ -171,7 +171,7 @@ public class QuantizedFFTCoefficients {
 			}*/
 
 		for (int i=0; i<4; i++)
-			ret[i] = compareQuantizedVectors(cand1[i], cand2[i], len);
+			ret[i] = compareQuantizedVectors(cand1[i], cand2[i], numFFTCoeffCompared);
 		return ret;
 	}
 }
