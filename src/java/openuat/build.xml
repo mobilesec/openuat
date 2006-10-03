@@ -27,6 +27,8 @@
     <property name="bin-BC-x509" location="${build}/bin-bouncycastle-x509"/>
     <property name="thirdparty-BC-openssl" location="${thirdparty}/bouncycastle-openssl-deps"/>
     <property name="bin-BC-openssl" location="${build}/bin-bouncycastle-openssl"/>
+    <property name="thirdparty-apache-bzip2" location="${thirdparty}/apache-bzip2"/>
+    <property name="bin-apache-bzip2" location="${build}/bin-apache-bzip2"/>
     <property name="compile.debug" value="true"/>
 
     <!-- these are the target JARs -->
@@ -36,7 +38,7 @@
 	 between hosts and the Relate authentication protocol. It has only 
 	 minor dependencies on crypto classes. -->
     <property name="jarfile.core" location="${dist}/${ant.project.name}-core.jar"/>
-    <property name="dependencies.core" value="${thirdparty-BC-core}"/>
+    <property name="dependencies.core" value="${thirdparty-BC-core}:${thirdparty-apache-bzip2}"/>
     <!-- This one includes the secure channels package and the available
 	 implementations for secure channels. Since the IPSec secure 
 	 channel implementations can support X.509 certificates, this
@@ -88,7 +90,8 @@
 	    <fileset refid="lib.alljars"/>
 	    <pathelement location="${bin-BC-core}"/>
 	    <pathelement location="${bin-BC-x509}"/>
-	    <pathelement location="${bin-BC-openssel}"/>
+	    <pathelement location="${bin-BC-openssl}"/>
+	    <pathelement location="${bin-apache-bzip2}"/>
 	    <!-- We also need SWT to compile, but can't include it in the
            distribution JAR because there are multiple OS versions.
            Therefore, include it only in this class path but not in
@@ -101,6 +104,7 @@
 	<mkdir dir="${bin-BC-core}"/>
 	<mkdir dir="${bin-BC-x509}"/>
 	<mkdir dir="${bin-BC-openssl}"/>
+	<mkdir dir="${bin-apache-bzip2}"/>
 	
 	<!-- Compile the BC core dependencies -->
 	<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
@@ -113,7 +117,11 @@
 	<!-- Compile the BC openssl interoperability dependencies -->
 	<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
 	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.2" source="1.2" />
-	
+
+	<!-- Compile the Apache BZIP2 stream dependencies -->
+	<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
+	       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
+
 	<!-- Compile our own classes... -->
     <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
@@ -141,8 +149,9 @@
         <jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 	    <fileset dir="${bin}"
-             includes="org/eu/mayrhofer/authentication/**/*.class org/eu/mayrhofer/sensors/**/*.class org/eu/mayrhofer/util/**/*.class" />
+             includes="org/eu/mayrhofer/authentication/**/*.class org/eu/mayrhofer/sensors/**/*.class org/eu/mayrhofer/features/**/*.class org/eu/mayrhofer/util/**/*.class" />
             <fileset dir="${bin-BC-core}" />
+            <fileset dir="${bin-apache-bzip2}" />
 	    <fileset dir="${src}" includes="*.properties" />
         </jar>
     
@@ -166,6 +175,7 @@
  		<fileset dir="${bin-BC-core}" />
 		<fileset dir="${bin-BC-x509}" />
 		<fileset dir="${bin-BC-openssl}" />
+		<fileset dir="${bin-apache-bzip2}" />
 		<fileset dir="${src}" includes="*.properties" />
 		<!-- Merge library jars into final jar file -->
 		<zipgroupfileset refid="lib.bundleinclude-jars" />
@@ -176,10 +186,12 @@
     <target name="junit" depends="jar" description="Run unit tests">
 	    <mkdir dir="${reports.tests}"/>
 	    <!-- for the jvmarg to work, need to set fork=true -->
-	    <junit printsummary="on" haltonfailure="true" haltonerror="true" showoutput="false" fork="false">
+	    <junit printsummary="on" haltonfailure="true"
+	    haltonerror="true" showoutput="false" fork="true" forkmode="perTest">
         <!-- doesn't do anything with fork=false -->
 		    <jvmarg value="-Djava.library.path=nativelib/linux" />
-		    <jvmarg value="-Xmx128m" />
+		    <jvmarg value="-Xmx256m" />
+		    <jvmarg value="-Xms256m" />
 		    <classpath>
 			    <fileset refid="lib.alljars"/>
 			    <pathelement location="${jarfile.core}"/>
@@ -188,6 +200,7 @@
           <!-- to also use the log4.properties file -->
           <pathelement location="${src}"/>
 		    </classpath>
+		    <formatter type="plain" usefile="true"/>
 		    <batchtest todir="${reports.tests}">
 			    <fileset dir="${src}">
 				    <include name="**/*Test*.java"/>
