@@ -15,8 +15,8 @@ import java.util.LinkedList;
 import org.apache.log4j.Logger;
 import org.eu.mayrhofer.authentication.CKPOverUDP;
 import org.eu.mayrhofer.authentication.exceptions.InternalApplicationException;
-import org.eu.mayrhofer.features.FFT;
-import org.eu.mayrhofer.features.Quantizer;
+import org.eu.mayrhofer.features.QuantizedFFTCoefficients;
+import org.eu.mayrhofer.features.TimeSeriesUtil;
 import org.eu.mayrhofer.sensors.ParallelPortPWMReader;
 import org.eu.mayrhofer.sensors.SamplesSink;
 import org.eu.mayrhofer.sensors.TimeSeriesAggregator;
@@ -36,13 +36,13 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	public static final int UdpPort = 54322;
 	
 	public static final String MulticastGroup = "228.10.10.1";
-
-	private int sampleRate;
+	
+	private int sampleRate; // Hz
 	private int fftPoints;
 	private int numQuantLevels;
 	private int numCandidates;
 	private int cutOffFrequency; // in Hz
-	private int windowOverlap;
+	private int windowOverlap; 
 	
 	public final static int MinimumNumberOfRoundsForAction = 5;
 	
@@ -76,23 +76,22 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 *                Lightweight API classes will be used.
 	 * @throws IOException 
 	 */
-	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates, 
-			int cutOffFrequency, int windowOverlap, float matchThreshold, 
+	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
+			int cutOffFrequency, int windowOverlap, float matchThreshold,
 			int minMatchingParts, boolean useJSSE) throws IOException {
 		this(sampleRate, fftPoints, numQuantLevels, numCandidates, cutOffFrequency, windowOverlap, 
-				matchThreshold, minMatchingParts, useJSSE, UdpPort, UdpPort, MulticastGroup, 
-				null);
+				matchThreshold, minMatchingParts, useJSSE, UdpPort, UdpPort, MulticastGroup, null);
 	}
 	
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
-	 * @param sampleRate A good value is 512.
-	 * @param fftPoints A good value is 512.
-	 * @param numQuantLevels A good value is 6.
-	 * @param numCandidates A good value is 4.
-	 * @param cutOffFrequency A good value is 20.
-	 * @param windowOverlap A good value is fftPoints/2.
-	 * @param matchThreshold A good value is 0.84. 
+	 * @param sampleRate A good value is @see MotionAuthenticationParameters.samplerate
+	 * @param fftPoints A good value is @see MotionAuthenticationParameters.fftMatchesWindowSize
+	 * @param numQuantLevels A good value is @see MotionAuthenticationParameters.fftMatchesQuantizationLevels
+	 * @param numCandidates A good value is @see MotionAuthenticationParameters.fftMatchesCandidatesPerRound
+	 * @param cutOffFrequency A good value is @see MotionAuthenticationParameters.fftMatchesCutOffFrequenecy
+	 * @param windowOverlap A good value is @see MotionAuthenticationParameters.fftMatchesWindowOverlap
+	 * @param matchThreshold A good value is @see MotionAuthenticationParameters.fftMatchesThreshold
 	 * @param minMatchingParts
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
@@ -102,8 +101,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 * @param sendAddress The (multicast or unicast) IP address to send UDP packets to.
 	 * @throws IOException 
 	 */
-	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates, 
-			int cutOffFrequency, int windowOverlap, float matchThreshold, 
+	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
+			int cutOffFrequency, int windowOverlap, float matchThreshold,
 			int minMatchingParts, boolean useJSSE, 
 			int udpRecvPort, int udpSendPort, String sendAddress, String instanceId) throws IOException {
 		// TODO: set minimum entropy
@@ -115,6 +114,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		this.numCandidates = numCandidates;
 		this.cutOffFrequency = cutOffFrequency;
 		this.windowOverlap = windowOverlap;
+		
 	}
 
 	/** The implementation of SamplesSink.addSegment. It will be called for all 
@@ -142,23 +142,12 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 				segment[i] = ((Double) iter.next()).doubleValue();
 			
 			// only compare until the cutoff frequency
-			int max_ind = (int) (((float) (fftPoints * cutOffFrequency)) / sampleRate) + 1;
-			System.out.println("Only comparing the first " + max_ind + " FFT coefficients" +
-					(instanceId != null ? " [" + instanceId + "]" : ""));
-			
-			double[] fftCoeff1 = FFT.fftPowerSpectrum(segment, 0, fftPoints);
-			// HACK HACK HACK: set DC components to 0
-			fftCoeff1[0] = 0;
-			// and take only the relevant coefficients
-			/*double[] fftCoeff2 = new double[max_ind];
-			System.arraycopy(fftCoeff1, 0, fftCoeff2, 0, max_ind);*/
-			
+			int max_ind = TimeSeriesUtil.getMaxInd(fftPoints, sampleRate, cutOffFrequency); 
+
 			// compute the type 4 match: pairwise sums of exponentially quantized FFT-coefficients
-			double pairwiseSum[] = new double[max_ind];
-			for (int i=0; i<max_ind; i++) {
-				pairwiseSum[i] = fftCoeff1[i] + fftCoeff1[i+1];
-			}
-			int[][] cand = Quantizer.generateCandidates(pairwiseSum, 0, Quantizer.max(pairwiseSum), numQuantLevels, true, numCandidates, false);
+			int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(segment,
+					0, max_ind, fftPoints, numQuantLevels, numCandidates, false, false);
+			
 			// and transform to byte array - we certainly use less than 256 quantization stages, so just byte-cast
 			byte[][] candBytes = new byte[numCandidates][];
 			for (int i=0; i<numCandidates; i++) {
@@ -166,7 +155,6 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 				for (int j=0; j<cand[i].length; j++)
 					candBytes[i][j] = (byte) cand[i][j];
 			}
-			// TODO: IDEA: use overlapping time windows as done by the coherence measure
 			// TODO: estimate entropy
 			try {
 				addCandidates(candBytes, 0);
@@ -235,26 +223,30 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	public static void main(String[] args) throws IOException {
 		int minmatchingparts = 8;
 		
-		int samplerate = 512; // Hz
-		int windowsize = samplerate/2; // 1/2 second
-		int minsegmentsize = windowsize; // 1/2 second
-		double varthreshold = 350;
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
+		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(varthreshold);
+		aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(varthreshold);
+		aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 		
-		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(512, 512, 6, 4, 20, 256, 0.84f, minmatchingparts, true); 
-		MotionAuthenticationProtocol2 ma2 = new MotionAuthenticationProtocol2(512, 512, 6, 4, 20, 256, 0.84f, minmatchingparts, true); 
+		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
+				MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+				MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
+				MotionAuthenticationParameters.fftMatchesThreshold,
+				minmatchingparts, true); 
+		MotionAuthenticationProtocol2 ma2 = new MotionAuthenticationProtocol2(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
+				MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+				MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
+				MotionAuthenticationParameters.fftMatchesThreshold,
+				minmatchingparts, true); 
 		aggr_a.addNextStageSamplesSink(ma1);
 		aggr_b.addNextStageSamplesSink(ma2);
 		
