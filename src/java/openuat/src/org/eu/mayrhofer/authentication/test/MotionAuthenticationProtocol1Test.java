@@ -41,7 +41,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		prot1_a.startServer();
 		prot1_b.startAuthentication("localhost");
 
-		//classIsReadyForTests = true;
+		classIsReadyForTests = true;
 	}
 	
 	public void tearDown() {

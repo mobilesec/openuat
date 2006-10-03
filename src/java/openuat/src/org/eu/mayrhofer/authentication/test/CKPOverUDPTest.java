@@ -169,6 +169,7 @@ public class CKPOverUDPTest extends TestCase {
 		System.gc();
 	}
 	
+	// TODO: enable again
 /*	public void testCompleteRun_SymmetricNoSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);

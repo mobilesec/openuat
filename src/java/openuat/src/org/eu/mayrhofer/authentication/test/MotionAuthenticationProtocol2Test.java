@@ -30,12 +30,13 @@ public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProto
 		aggr_a.addNextStageSamplesSink(prot2_a);
 		aggr_b.addNextStageSamplesSink(prot2_b);
 	
-		//classIsReadyForTests = true;
+		classIsReadyForTests = true;
 	}
 	
 	public void tearDown() {
 	}
 	
+	// TODO: activate me again
 	public void testMemoryOverflowCase() throws IOException, InterruptedException {
 		runCase("tests/motionauth/specialcases/outofmemory.gz");
 	}
