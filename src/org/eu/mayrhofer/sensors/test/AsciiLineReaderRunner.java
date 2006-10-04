@@ -443,9 +443,11 @@ public class AsciiLineReaderRunner {
 										MotionAuthenticationParameters.fftMatchesQuantizationLevels,
 										MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
 										true, true);
-								for (int m=0; m<cand.length; m++)
+								for (int m=0; m<cand.length; m++) {
 									vectorsPerSubjPerHandPerDev[i][k][device].put(
 											new Integer(Arrays.hashCode(cand[m])), cand[m]);
+									System.out.println(i + " " + j + " " + k + " " + l + " " + offset + " " + device + " " + m + ": " + Arrays.toString(cand[m]));
+								}
 							}
 						}
 						System.out.println("Now " + 
