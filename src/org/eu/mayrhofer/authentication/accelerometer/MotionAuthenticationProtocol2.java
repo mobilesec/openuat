@@ -145,9 +145,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 			int max_ind = TimeSeriesUtil.getMaxInd(fftPoints, sampleRate, cutOffFrequency); 
 
 			// compute the type 4 match: pairwise sums of exponentially quantized FFT-coefficients
-			// TODO: this is now type 1, switch to type 4!
 			int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(segment,
-					0, fftPoints, max_ind, numQuantLevels, numCandidates, false, false);
+					0, fftPoints, max_ind, numQuantLevels, numCandidates, true, true);
 			
 			// and transform to byte array - we certainly use less than 256 quantization stages, so just byte-cast
 			byte[][] candBytes = new byte[numCandidates][];
