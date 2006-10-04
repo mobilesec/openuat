@@ -137,8 +137,8 @@ public class QuantizedFFTCoefficients {
 			int offset, int numFFTPoints, int numFFTCoeffCompared, int numQuantLevels, 
 			int numCandidates, boolean addPairwise, boolean exponentialBands) {
 		int retInd = (addPairwise ? 2 : 0) + (exponentialBands ? 1 : 0);  
-		return computeFFTCoefficientsCandidates(segment, offset, numFFTCoeffCompared, 
-				numFFTPoints, numQuantLevels, numCandidates, 
+		return computeFFTCoefficientsCandidates(segment, offset, numFFTPoints, 
+				numFFTCoeffCompared, numQuantLevels, numCandidates, 
 				!addPairwise, addPairwise, 
 				!exponentialBands, exponentialBands)[retInd];
 	}
