@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.log4j.Logger;
@@ -381,6 +382,9 @@ public class AsciiLineReaderRunner {
 	}
 
 	private static void estimateEntropy(String runClassName, String subdir) throws IOException {
+		String[] settings = {"sitting", "standing"};
+		String[] hands = {"left", "right", "both"};
+
 		HashMap[][][] vectorsPerSubjPerHandPerDev = new HashMap[51][][];
 		for (int i=0; i<vectorsPerSubjPerHandPerDev.length; i++) {
 			vectorsPerSubjPerHandPerDev[i] = new HashMap[3][];
@@ -394,10 +398,8 @@ public class AsciiLineReaderRunner {
 		// and starting reading from the logs: for each subject
 		for (int i=0; i<vectorsPerSubjPerHandPerDev.length; i++) {
 			// for each setting
-			String[] settings = {"sitting", "standing"};
 			for (int j=0; j<settings.length; j++) {
 				// for each combination of hands
-				String[] hands = {"left", "right", "both"};
 				for (int k=0; k<hands.length; k++) {
 					// and finally for each try
 					for (int l=0; l<5; l++) {
@@ -415,6 +417,7 @@ public class AsciiLineReaderRunner {
 							System.exit(200);
 						}
 
+						SegmentSink.segs = new double[2][];
 						TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 						TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 						r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
@@ -434,21 +437,27 @@ public class AsciiLineReaderRunner {
 
 						int fftpoints = MotionAuthenticationParameters.fftMatchesWindowSize; 
 						int windowOverlap = MotionAuthenticationParameters.fftMatchesWindowOverlap;
-						for (int offset=0; offset<SegmentSink.segs[0].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
-							for (int device=0; device<2; device++) {
-								int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(
-										SegmentSink.segs[device], offset, 
-										TimeSeriesUtil.getMaxInd(fftpoints, MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesCutOffFrequenecy),
-										MotionAuthenticationParameters.fftMatchesWindowSize,
-										MotionAuthenticationParameters.fftMatchesQuantizationLevels,
-										MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
-										true, true);
-								for (int m=0; m<cand.length; m++) {
-									vectorsPerSubjPerHandPerDev[i][k][device].put(
-											new Integer(Arrays.hashCode(cand[m])), cand[m]);
-									System.out.println(i + " " + j + " " + k + " " + l + " " + offset + " " + device + " " + m + ": " + Arrays.toString(cand[m]));
+						for (int device=0; device<2; device++) {
+							if (SegmentSink.segs[device] != null) {
+								for (int offset=0; offset<SegmentSink.segs[device].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
+									int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(
+											SegmentSink.segs[device], offset, 
+											MotionAuthenticationParameters.fftMatchesWindowSize,
+											TimeSeriesUtil.getMaxInd(fftpoints, MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesCutOffFrequenecy),
+											MotionAuthenticationParameters.fftMatchesQuantizationLevels,
+											MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+											true, true);
+									for (int m=0; m<cand.length; m++) {
+										vectorsPerSubjPerHandPerDev[i][k][device].put(
+												new Integer(Arrays.hashCode(cand[m])), cand[m]);
+										//System.out.println(i + " " + j + " " + k + " " + l + " " + offset + " " + device + " " + m + ": " + Arrays.toString(cand[m]));
+									}
 								}
 							}
+							else
+								logger.warn("Could not get active segment for subject " +
+										i + " " + settings[j] + " " + hands[k] + " try " +
+										k + " device " + device);
 						}
 						System.out.println("Now " + 
 								vectorsPerSubjPerHandPerDev[i][k][0].size() + " (dev1) / " +
@@ -459,6 +468,44 @@ public class AsciiLineReaderRunner {
 				}
 			}
 		}
+		
+		// compute the aggregates
+		HashMap[] vectorsPerSubj = new HashMap[vectorsPerSubjPerHandPerDev.length];
+		HashMap[] vectorsPerHand = new HashMap[3];
+		HashMap[] vectorsPerDev = new HashMap[2];
+		for (int i=0; i<vectorsPerSubj.length; i++)
+			vectorsPerSubj[i] = new HashMap();
+		for (int i=0; i<vectorsPerHand.length; i++)
+			vectorsPerHand[i] = new HashMap();
+		for (int i=0; i<vectorsPerDev.length; i++)
+			vectorsPerDev[i] = new HashMap();
+		HashMap allVectors = new HashMap();
+		
+		for (int i=0; i<vectorsPerSubjPerHandPerDev.length; i++) {
+			for (int j=0; j<vectorsPerSubjPerHandPerDev[i].length; j++) {
+				for (int k=0; k<vectorsPerSubjPerHandPerDev[i][j].length; k++) {
+					Iterator l = vectorsPerSubjPerHandPerDev[i][j][k].values().iterator();
+					while (l.hasNext()) {
+						int[] cand = (int[]) l.next();
+						vectorsPerSubj[i].put(new Integer(Arrays.hashCode(cand)), cand);
+						vectorsPerHand[j].put(new Integer(Arrays.hashCode(cand)), cand);
+						vectorsPerDev[k].put(new Integer(Arrays.hashCode(cand)), cand);
+						allVectors.put(new Integer(Arrays.hashCode(cand)), cand);
+					}
+				}
+			}
+		}
+		
+		System.out.println("Different feature vectors per subject:");
+		for (int i=0; i<vectorsPerSubj.length; i++)
+			System.out.println("    Subject " + i + ": " + vectorsPerSubj[i].size());
+		System.out.println("Different feature vectors per hand:");
+		for (int i=0; i<vectorsPerHand.length; i++)
+			System.out.println("    Hand " + hands[i] + ": " + vectorsPerHand[i].size());
+		System.out.println("Different feature vectors per device:");
+		for (int i=0; i<vectorsPerDev.length; i++)
+			System.out.println("    Device " + i + ": " + vectorsPerDev[i].size());
+		System.out.println("Different feature vectors overall: " + allVectors.size());
 	}
 	
 	public static void mainRunner(String runClassName, String[] args) throws IOException {
