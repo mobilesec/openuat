@@ -8,7 +8,7 @@ while [ $r -le 34 ]; do
     echo -------------------------------------------------
     echo "Rounds: $r Try: $i"
     if [ ! -e "/tmp/exp_${r}_${i}" ]; then
-      time ./scripts/runme.sh both $r
+      time ./scripts/run-relateauth-demo.sh both /dev/ttyUSB0 2 /dev/ttyUSB1 2 $r
       ret=$?
       sleep 2s
       # only mark the run as done for either error or success, but else retry
