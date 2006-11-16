@@ -52,7 +52,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** The number of authentication steps, not including the rounds of the dongles. */
 	public static final int AuthenticationStages = 3;
 
-	/** MAGIC VALUE NUMBER 1: Give a maximum of 10 seconds between receiving the authentication 
+	/** MAGIC VALUE NUMBER 1: Give a maximum of 20 seconds between receiving the authentication 
 	 * messages of two consecutive rounds between from the dongle. If it takes longer, this most
 	 * probably means that the dongle is stuck and will therefore be reset. The authentication
 	 * will then fail with a timeout.
@@ -60,7 +60,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * 
 	 * @see #handleDongleCommunication
 	 */
-	private final static int MAGIC_1 = 10000;
+	private final static int MAGIC_1 = 20000;
 	
 	/** The remote relate id to perform the authentication with. */
 	private int remoteRelateId;
@@ -372,10 +372,10 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
    		logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
    		logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
     		
-   		InterlockProtocol interlockRf = new InterlockProtocol(sharedKey, rounds, nonce.length*8, serialPort, useJSSE);
+   		InterlockProtocol interlockRf = new InterlockProtocol(sharedKey, rounds, nonce.length*8, "RF at " + serialPort, useJSSE);
    		byte[] rfMessage = interlockRf.encrypt(nonce);
    		// this instance is only used for assembling the plain-text nonce received via US
-   		InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, serialPort, useJSSE);
+   		InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, "US at " + serialPort, useJSSE);
 		
 		if (rfMessage.length != NonceByteLength) {
 			logger.error("Encryption went wrong, got "
