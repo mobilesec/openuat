@@ -311,7 +311,7 @@
 		     access="protected"
 		     version="true" author="true" source="1.5">
 		    <bottom><![CDATA[<i>2005-2006, Rene Mayrhofer.</i>]]></bottom>
-		    <link href="www.mayrhofer.eu.org"/>
+		    <link href="www.openuat.org"/>
 	    </javadoc>
 	    
 	    <!-- and also zip it up -->
@@ -323,7 +323,7 @@
     <target name="dist-source" description="Create source distribution">
 	    <zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 		    <fileset dir="." 
-			     includes="build.xml,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/keystore,dist/*.jnlp,thirdparty/bouncycastle/**/*"/>
+		    	     includes="build.xml,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/*.jnlp,thirdparty/bouncycastle-*-deps/**/*,thirdparty/avetanabt/**/*,thirdparty/ipsec2k.1.1/**/*,thirdparty/apache-bzip2/**/*,nativelib/**/*"/>
 	    </zip>
     </target>
     

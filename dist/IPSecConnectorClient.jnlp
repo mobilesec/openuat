@@ -1,11 +1,11 @@
 <?xmlversion="1.0" encoding="utf-8"?>
-   <jnlp spec="1.0+" codebase="http://www.mayrhofer.eu.org/downloads/projects/authentication/webstart/" href="IPSecConnectorClient.jnlp">
+   <jnlp spec="1.0+" codebase="http://www.openuat.org/spatial-ipsec-proxy/webstart/" href="IPSecConnectorClient.jnlp">
        <information>
-               <title>IPSec Connector Client</title>
+               <title>IPSecME Client</title>
                <vendor>Rene Mayrhofer</vendor>
-               <homepage href="http://www.mayrhofer.eu.org/authentication"/>
-               <description>IPSec Connector demo application, client part</description>
-               <description kind="short">Client part of the IPSec Connector demo application</description>
+               <homepage href="http://www.openuat.org/spatial-ipsec-proxy"/>
+               <description>IPSecME demo application, client part</description>
+               <description kind="short">Client part of the IPSecME demo application</description>
                <offline-allowed/>
                <icon kind="splash" href="IPSecConnectorClient-splash.gif"/>
                <icon href="IPSecConnectorClient-icon.gif"/>
@@ -15,10 +15,10 @@
        </security>
        <resources>
                 <j2se version="1.4+"/>
-                <jar href="spatial-authentication-apps.jar"/>
-                <jar href="spatial-authentication-channels.jar"/>
-                <jar href="spatial-authentication-core.jar"/>
-                <jar href="relatecore.jar"/>
+                <jar href="openuat-apps.jar"/>
+                <jar href="openuat-channels.jar"/>
+                <jar href="openuat-core.jar"/>
+                <jar href="relate-2.1-core.jar"/>
                 <jar href="log4j-1.2.jar"/>
                 <jar href="kxml2-2.2.2.jar"/>
         </resources>
