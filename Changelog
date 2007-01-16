@@ -1,0 +1,43 @@
+Version 0.8, released 2006-12-04
+
+  This is the first public release and includes basic infrastructure classes,
+  interfaces for event-based authentication protocols, and a first 
+  implementation for spatial authentication based on ultrasound pulses. The
+  code currently uses the Java class hierarchie under 
+  org.eu.mayrhofer.authentication.
+
+  Interfaces:
+  * authentication.AuthenticationProgressHandler
+  * authentication.MessageListener
+  * channel.SecureChannel
+  * channel.IPSecConnection
+
+  Low-level crpytographic primitives:
+  * util.Hash
+  * included, select Bouncycastle classes for J2ME support
+
+  Basic protocols:
+  * authentication.SimpleKeyAgreement
+  * authentication.InterlockProtocol
+  * authentication.DHOverTCPWithVerification
+  * channel.IPSecConnection_Factory
+
+  Context authentication protocols:
+  * authentication.relate.RelateAuthenticationProtocol
+
+  Utility classes:
+  * authentication.SafetyBeltTimer
+  * authentication.AuthenticationEventSender
+  * authentication.HostServerSocket
+  * channel.Helper
+  * channel.Command
+  * channel.X509CertificateGenerator
+  * apps.BinaryBlockStreamer
+
+  Applications:
+  * apps.IPSecConnectorAdmin
+  * apps.IPSecConnectorClient
+
+  Location: http://www.openuat.org/downloads/releases/0.8/openuat-0.8-src.zip
+
+--- Rene Mayrhofer <rene@mayrhofer.eu.org>
