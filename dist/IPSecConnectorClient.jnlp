@@ -38,5 +38,5 @@
                 <nativelib href="swt-3.1-native_macosx.jar"/>
                 <nativelib href="rxtx-2.1-native_macosx.jar"/>
         </resources>
-        <application-desc main-class="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
+        <application-desc main-class="org.openuat.apps.IPSecConnectorClient"/>
 </jnlp>

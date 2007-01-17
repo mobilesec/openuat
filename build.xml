@@ -33,7 +33,7 @@
 
     <!-- these are the target JARs -->
     <property name="dist.mainclass" value="no-main-class-at-the-moment"/>
-    <property name="dist.mainclass.ipsecclient" value="org.eu.mayrhofer.apps.IPSecConnectorClient"/>
+    <property name="dist.mainclass.ipsecclient" value="org.openuat.apps.IPSecConnectorClient"/>
     <!-- This is just the core JAR file, implementing basic key agreement
 	 between hosts and the Relate authentication protocol. It has only 
 	 minor dependencies on crypto classes. -->
@@ -149,7 +149,7 @@
         <jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 	    <fileset dir="${bin}"
-             includes="org/eu/mayrhofer/authentication/**/*.class org/eu/mayrhofer/sensors/**/*.class org/eu/mayrhofer/features/**/*.class org/eu/mayrhofer/util/**/*.class" />
+             includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class org/openuat/features/**/*.class org/openuat/util/**/*.class" />
             <fileset dir="${bin-BC-core}" />
             <fileset dir="${bin-apache-bzip2}" />
 	    <fileset dir="${src}" includes="*.properties" />
@@ -158,14 +158,14 @@
 	<jar jarfile="${jarfile.channels}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 		<fileset dir="${bin}"
-			 includes="org/eu/mayrhofer/channel/**/*.class" />
+			 includes="org/openuat/channel/**/*.class" />
 		<fileset dir="${bin-BC-x509}" />
 	</jar>
     
 	<jar jarfile="${jarfile.apps}" manifest="${src}/Manifest"
 	     update="false" duplicate="fail" index="true">
 		<fileset dir="${bin}"
-			 includes="org/eu/mayrhofer/apps/**/*.class" />
+			 includes="org/openuat/apps/**/*.class" />
 		<fileset dir="${bin-BC-openssl}" />
 	</jar>
     
@@ -208,8 +208,8 @@
 				    <exclude name="**/MotionAuthenticationProtocol2Test.java"/>
 			    </fileset>
 		    </batchtest>
-		    <!--<test name="org.eu.mayrhofer.authentication.test.MotionAuthenticationProtocol1Test" todir="${reports.tests}"/>-->
-		    <!--<test name="org.eu.mayrhofer.authentication.test.MotionAuthenticationProtocol2Test" todir="${reports.tests}"/>-->
+		    <!--<test name="org.openuat.authentication.test.MotionAuthenticationProtocol1Test" todir="${reports.tests}"/>-->
+		    <!--<test name="org.openuat.authentication.test.MotionAuthenticationProtocol2Test" todir="${reports.tests}"/>-->
 	    </junit>
     </target>
     
@@ -306,7 +306,7 @@
     <target name="dist-javadoc" description="Create distribution files for the documentation (Javadoc)">
 	    <mkdir dir="${dist.javadoc}"/>
 	    <javadoc sourcepath="${src}" destdir="${dist.javadoc}" 
-		     packagenames="org.eu.mayrhofer.*"
+		     packagenames="org.openuat.*"
 		     classpathref="lib.path.all"
 		     access="protected"
 		     version="true" author="true" source="1.5">
