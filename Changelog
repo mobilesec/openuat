@@ -1,9 +1,29 @@
+Version 0.9, released 2007-01-
+
+  This is a major new features release, adding infrastructure for dealing with
+  time series data on resource limited devices and a new context 
+  authentication protocol based on accelerometers. This release also uses a 
+  new package hierarchy: org.openuat.
+
+  New interfaces:
+
+  New basic protocols:
+
+  New context authentication protocols:
+
+  New utility classes:
+
+  Location:
+
+--- Rene Mayrhofer <rene@mayrhofer.eu.org>
+
+
 Version 0.8, released 2006-12-04
 
   This is the first public release and includes basic infrastructure classes,
   interfaces for event-based authentication protocols, and a first 
   implementation for spatial authentication based on ultrasound pulses. The
-  code currently uses the Java class hierarchie under 
+  code currently uses the Java package hierarchie under 
   org.eu.mayrhofer.authentication.
 
   Interfaces:
