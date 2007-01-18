@@ -323,7 +323,7 @@
     <target name="dist-source" description="Create source distribution">
 	    <zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 		    <fileset dir="." 
-		    	     includes="build.xml,Changelog,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/*.jnlp,thirdparty/bouncycastle-*-deps/**/*,thirdparty/avetanabt/**/*,thirdparty/ipsec2k.1.1/**/*,thirdparty/apache-bzip2/**/*,nativelib/**/*"/>
+		    	     includes="build.xml,Changelog,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/*.jnlp,thirdparty/bouncycastle-*-deps/**/*,thirdparty/avetanabt/**/*,thirdparty/ipsec2k.1.1/**/*.h,thirdparty/ipsec2k.1.1/**/*.cpp,thirdparty/ipsec2k.1.1/**/wstring,thirdparty/ipsec2k.1.1/**/buffer,thirdparty/ipsec2k.1.1/**/*.vcproj,thirdparty/ipsec2k.1.1/**/*.sln,thirdparty/ipsec2k.1.1/**/*.txt,thirdparty/apache-bzip2/**/*,nativelib/**/*"/>
 	    </zip>
     </target>
     
