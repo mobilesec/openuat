@@ -14,7 +14,7 @@ if [ x"$1" = x"autorun-once" ]; then
 
   echo "Using devices $dev1 and $dev2"
   echo
-  params="both /dev/$dev1 2 /dev/$dev2 2 10"
+  params="both /dev/$dev1 2 /dev/$dev2 2 5"
 else
   params=$@
 fi

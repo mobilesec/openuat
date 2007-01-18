@@ -547,7 +547,7 @@ public class InterlockProtocol {
 
 		// check if we already got that round - only use the first packet so to ignore any ack-only packets
 		if (receivedRounds.get(round)) {
-			logger.warn("Ignoring message part " + round + ". Reason: already received this round." + 
+			logger.info("Ignoring message part " + round + ". Reason: already received this round." + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 			return false;
 		}		
