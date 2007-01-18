@@ -61,7 +61,12 @@
     <property name="preverified" location="bin-preverified"/>
     <property name="midp_home" value="/opt/j2me/WTK2.2" />
     <property name="midp_libs" value="${midp_home}/lib/midpapi20.jar:${midp_home}/lib/cldcapi11.jar" />
-
+	
+	<!-- These classes need at least Java 5 to compile -->
+	<property name="java5-files" value="" />
+	<!-- These classes need at least Java 6 to compile -->
+	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
+	
     <!-- this can be used in a refid for filesets -->
     <fileset id="lib.alljars" dir="${lib}">
         <include name="**/*.jar"/>
@@ -99,39 +104,79 @@
 	    <pathelement location="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar"/>
     </path>
 
-    <target name="compile" description="Compile code">
-        <mkdir dir="${bin}"/>
-	<mkdir dir="${bin-BC-core}"/>
-	<mkdir dir="${bin-BC-x509}"/>
-	<mkdir dir="${bin-BC-openssl}"/>
-	<mkdir dir="${bin-apache-bzip2}"/>
+   	
+	<!--                                                                           -->
+	<!-- Starting from here, it's build rules that shouldn't need any modification -->
+	<!--                                                                           -->
+
+    <!-- Figure out the Java compiler version -->
+	<available classname="java.awt.SystemTray" property="haveJava6"/>
+	<available classname="java.lang.annotation.Annotation" property="haveJava5"/>
+	<!-- This is really ugly, only for the echo to be nice... -->
+	<condition property="haveJava6.echo" value="true" else="false">
+		<isset property="${haveJava6}"/>
+	</condition>
+	<condition property="haveJava5.echo" value="true" else="false">
+		<isset property="${haveJava5}"/>
+	</condition>
 	
-	<!-- Compile the BC core dependencies -->
-	<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
+	<target name="compile" description="Compile code">
+        <mkdir dir="${bin}"/>
+		<mkdir dir="${bin-BC-core}"/>
+		<mkdir dir="${bin-BC-x509}"/>
+		<mkdir dir="${bin-BC-openssl}"/>
+		<mkdir dir="${bin-apache-bzip2}"/>
+	
+		<!-- Keep track of the build number -->
+		<buildnumber/>
+		<echo message="Compiling OpenUAT build number ${build.number} (detected Java5: ${haveJava5.echo}, Java6: ${haveJava6.echo})${line.separator}" level="info"/>
+	
+		<!-- Compile the BC core dependencies -->
+		<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
 	       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
 	
-	<!-- Compile the BC X.509 dependencies -->
-	<javac srcdir="${thirdparty-BC-x509}" destdir="${bin-BC-x509}" includeAntRuntime="no"
+		<!-- Compile the BC X.509 dependencies -->
+		<javac srcdir="${thirdparty-BC-x509}" destdir="${bin-BC-x509}" includeAntRuntime="no"
 	       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="1.2" source="1.2" />
 	
-	<!-- Compile the BC openssl interoperability dependencies -->
-	<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
+		<!-- Compile the BC openssl interoperability dependencies -->
+		<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
 	       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.2" source="1.2" />
 
-	<!-- Compile the Apache BZIP2 stream dependencies -->
-	<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
+		<!-- Compile the Apache BZIP2 stream dependencies -->
+		<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
 	       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
 
-	<!-- Compile our own classes... -->
-    <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<!-- Compile our own classes... -->
+    	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
-     </javac>
+			<exclude name="${java5-files}" />
+			<exclude name="${java6-files}" />
+     	</javac>
+		
+		<!-- And call the targets for compiling code that requires Java levels higher than 2 -->
+		<antcall target="compile-java5"/>
+		<antcall target="compile-java6"/>
     </target>
+	
+	<target name="compile-java5" description="Compile code that needs Java5" if="haveJava5">
+    	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
+			<include name="${java5-files}" />
+     	</javac>
+	</target>
 
+	<target name="compile-java6" description="Compile code that needs Java6" if="haveJava6">
+    	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
+			<include name="${java6-files}" />
+     	</javac>
+	</target>
+	
     <target name="compile-midp" description="Compile special classes for MIDP2.0">
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
                classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
-        <!-- TODO: missing, include midp jars in classpath -->
+        <!-- TODO: missing, include midp jars in classpath and exclude standard runtime libs?-->
         </javac>
     </target>
 
