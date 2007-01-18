@@ -1,2 +1,23 @@
+#!/bin/bash
+if [ x"$1" = x"autorun-once" ]; then
+  # detect relate devices and take the first two
+  dev1=""
+  dev2=""
+  for id in `grep "FT232R USB UART" /sys/bus/usb/drivers/usb/*/product | awk -F'/' '{print $7}'`; do
+    dev=`basename /sys/bus/usb/drivers/ftdi_sio/$id:1.0/ttyUSB*`
+    if [ -z "$dev1" ]; then dev1=$dev
+    elif [ -z "$dev2" ]; then dev2=$dev
+    # ignore others
+    else echo "Ignoring device $dev"
+    fi
+  done
+
+  echo "Using devices $dev1 and $dev2"
+  echo
+  params="both /dev/$dev1 2 /dev/$dev2 2 10"
+else
+  params=$@
+fi
+
 # classpath . is just so that log4j.properties is found
-java -cp .:dist/openuat-distbundle.jar:lib/relate-2.1-core.jar:lib/relate-2.1-apps.jar:lib/swt-3.1.jar:lib/log4j-1.2.jar -Djava.library.path=../relate/thirdparty/nativelib/linux org.openuat.authentication.relate.RelateAuthenticationProtocol $@
+java -cp .:dist/openuat-distbundle.jar:lib/relate-2.1-core.jar:lib/relate-2.1-apps.jar:lib/swt-3.1.jar:lib/log4j-1.2.jar -Djava.library.path=../relate/thirdparty/nativelib/linux org.openuat.authentication.relate.RelateAuthenticationProtocol $params
