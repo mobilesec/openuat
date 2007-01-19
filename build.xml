@@ -57,10 +57,12 @@
     <!-- the source tree, excluding files which can't be redistributed because of their license -->
     <property name="zipfile.source" location="${dist}/${ant.project.name}-src.zip" />
     
-    <!-- for MIDP builds -->
-    <property name="preverified" location="bin-preverified"/>
-    <property name="midp_home" value="/opt/j2me/WTK2.2" />
+    <!-- Set to the corrent paths for MIDP builds -->
+    <property name="midp_home" value="/opt/WTK2.2" />
     <property name="midp_libs" value="${midp_home}/lib/midpapi20.jar:${midp_home}/lib/cldcapi11.jar" />
+    <!-- These classes can only be compiled with J2ME MIDP class libraries -->
+    <property name="midp-only-files" value="org/openuat/apps/j2me/**/*.java" />
+    <property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
 	<property name="java5-files" value="" />
@@ -75,7 +77,7 @@
     <fileset id="lib.bundleinclude-jars" dir="${lib}">
 	    <include name="log4j-1.2.jar"/>
 	    <include name="kxml2-2.2.2.jar"/>
-		<include name="RXTXcomm.jar"/>
+	    <include name="RXTXcomm.jar"/>
     </fileset>
     
     <!-- these can be used in a refid for classpaths -->
@@ -104,7 +106,14 @@
 	    <pathelement location="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar"/>
     </path>
 
-   	
+    <path id="lib.path.midp">
+	    <pathelement location="${midp_home}/lib/midpapi20.jar"/>
+	    <pathelement location="${midp_home}/lib/cldcapi11.jar"/>
+    </path>
+	
+    <!-- Include the Antenna tasks for building J2ME packages -->
+    <taskdef resource="antenna.properties" classpath="${lib}/antenna-bin-0.9.14.jar"/>
+    
 	<!--                                                                           -->
 	<!-- Starting from here, it's build rules that shouldn't need any modification -->
 	<!--                                                                           -->
@@ -114,10 +123,10 @@
 	<available classname="java.lang.annotation.Annotation" property="haveJava5"/>
 	<!-- This is really ugly, only for the echo to be nice... -->
 	<condition property="haveJava6.echo" value="true" else="false">
-		<isset property="${haveJava6}"/>
+		<isset property="haveJava6"/>
 	</condition>
 	<condition property="haveJava5.echo" value="true" else="false">
-		<isset property="${haveJava5}"/>
+		<isset property="haveJava5"/>
 	</condition>
 	
 	<target name="compile" description="Compile code">
@@ -152,11 +161,13 @@
 	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
 			<exclude name="${java5-files}" />
 			<exclude name="${java6-files}" />
+			<exclude name="${midp-only-files}" />
      	</javac>
 		
-		<!-- And call the targets for compiling code that requires Java levels higher than 2 -->
+		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
 		<antcall target="compile-java5"/>
 		<antcall target="compile-java6"/>
+		<antcall target="compile-midp"/>
     </target>
 	
 	<target name="compile-java5" description="Compile code that needs Java5" if="haveJava5">
@@ -175,8 +186,9 @@
 	
     <target name="compile-midp" description="Compile special classes for MIDP2.0">
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
-               classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
-        <!-- TODO: missing, include midp jars in classpath and exclude standard runtime libs?-->
+               classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
+	       includeJavaRuntime="no">
+			<include name="${midp-only-files}" />
         </javac>
     </target>
 
