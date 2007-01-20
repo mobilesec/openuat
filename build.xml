@@ -57,9 +57,13 @@
     <!-- the source tree, excluding files which can't be redistributed because of their license -->
     <property name="zipfile.source" location="${dist}/${ant.project.name}-src.zip" />
     
-    <!-- Set to the corrent paths for MIDP builds -->
-    <property name="midp_home" value="/opt/WTK2.2" />
-    <property name="midp_libs" value="${midp_home}/lib/midpapi20.jar:${midp_home}/lib/cldcapi11.jar" />
+    <!-- Set to the correct paths for MIDP builds -->
+    <property name="wtk.home" value="/opt/WTK2.2" />
+    <property name="wtk.cldc.version" value="1.1" />
+    <property name="wtk.midp.version" value="2.0" />
+    <property name="wtk.bluetooth.enabled" value="true" />
+    <property name="wtk.proguard.home" value="${lib}/proguard.jar" />
+    <property name="midp_libs" value="${wtk.home}/lib/midpapi20.jar:${wtk.home}/lib/cldcapi11.jar" />
     <!-- These classes can only be compiled with J2ME MIDP class libraries -->
     <property name="midp-only-files" value="org/openuat/apps/j2me/**/*.java" />
     <property name="preverified" location="${build}/bin-preverified"/>
@@ -106,19 +110,19 @@
 	    <pathelement location="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar"/>
     </path>
 
-    <path id="lib.path.midp">
-	    <pathelement location="${midp_home}/lib/midpapi20.jar"/>
-	    <pathelement location="${midp_home}/lib/cldcapi11.jar"/>
-    </path>
+	<path id="lib.path.midp">
+		<pathelement location="${wtk.home}/lib/midpapi20.jar"/>
+		<pathelement location="${wtk.home}/lib/cldcapi11.jar"/>
+	</path>
 	
-    <!-- Include the Antenna tasks for building J2ME packages -->
-    <taskdef resource="antenna.properties" classpath="${lib}/antenna-bin-0.9.14.jar"/>
-    
+	<!-- Include the Antenna tasks for building J2ME packages -->
+	<taskdef resource="antenna.properties" classpath="${lib}/antenna-bin-0.9.14.jar"/>
+
 	<!--                                                                           -->
 	<!-- Starting from here, it's build rules that shouldn't need any modification -->
 	<!--                                                                           -->
 
-    <!-- Figure out the Java compiler version -->
+	<!-- Figure out the Java compiler version -->
 	<available classname="java.awt.SystemTray" property="haveJava6"/>
 	<available classname="java.lang.annotation.Annotation" property="haveJava5"/>
 	<!-- This is really ugly, only for the echo to be nice... -->
@@ -127,6 +131,20 @@
 	</condition>
 	<condition property="haveJava5.echo" value="true" else="false">
 		<isset property="haveJava5"/>
+	</condition>
+	
+	<!-- Figure out if we have a usable WTK for compiling and preverifying J2ME MIDP code -->
+	<condition property="haveWTK">
+		<and>
+			<available file="preverify" type="file" filepath="${wtk.home}/bin"/>
+			<available classname="javax.microedition.io.SecureConnection" classpathref="lib.path.midp"/>
+			<available classname="javax.microedition.pki.Certificate" classpathref="lib.path.midp"/>
+			<available classname="javax.microedition.lcdui.Display" classpathref="lib.path.midp"/>
+			<available classname="com.sun.cldc.io.ConsoleOutputStream" classpathref="lib.path.midp"/>
+		</and>
+	</condition>
+	<condition property="haveWTK.echo" value="true" else="false">
+		<isset property="haveWTK"/>
 	</condition>
 	
 	<target name="compile" description="Compile code">
@@ -138,7 +156,10 @@
 	
 		<!-- Keep track of the build number -->
 		<buildnumber/>
-		<echo message="Compiling OpenUAT build number ${build.number} (detected Java5: ${haveJava5.echo}, Java6: ${haveJava6.echo})${line.separator}" level="info"/>
+		<echo message="Compiling OpenUAT build number ${build.number}, detected:" level="info"/>
+		<echo message="    Java5: ${haveJava5.echo}" level="info"/>
+		<echo message="    Java6: ${haveJava6.echo}" level="info"/>
+		<echo message="    WTK with MIDP2.0 and CLDC1.1: ${haveWTK.echo}" level="info"/>
 	
 		<!-- Compile the BC core dependencies -->
 		<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
@@ -184,22 +205,25 @@
      	</javac>
 	</target>
 	
-    <target name="compile-midp" description="Compile special classes for MIDP2.0">
+    <!-- This is a special target for compiling J2ME MIDP-only classes, the 
+	 other "common" classes are compiled in the standard compile target for
+	 Java language level 1.2. -->
+    <target name="compile-midp" description="Compile special classes for MIDP2.0" if="haveWTK">
         <javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
                classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 	       includeJavaRuntime="no">
 			<include name="${midp-only-files}" />
         </javac>
     </target>
-
-    <target name="preverify" depends="compile">
+    
+<!--    <target name="preverify" depends="compile">
         <mkdir dir="${preverified}" />
         <exec executable="${midp_home}/bin/preverify">
 	    <arg line="-classpath ${midp_libs}"/>
 	    <arg line="-d ${preverified}"/>
 	    <arg line="${bin}"/>
 	</exec>
-    </target>
+    </target>-->
 
     <target name="jar" depends="compile" description="Build jar">
         <mkdir dir="${dist}"/>
@@ -238,6 +262,31 @@
 		<zipgroupfileset refid="lib.bundleinclude-jars" />
 		<fileset dir="${lib}" includes="*-copyright" />
 	</jar>
+    </target>
+
+    <target name="jar-midp" depends="compile" description="Build packages for J2ME MIDP" if="haveWTK">
+	<!-- create JAD files -->
+	<wtkjad jadfile="${build}/HelloProperty.jad"
+		jarfile="HelloProperty.jar"
+		name="MyHelloProperty"
+		vendor="Rene Mayrhofer"
+		version="0.0.1"
+		update="true">
+		<midlet name="MyHelloProperty" class="org.openuat.apps.j2me.HelloProperty"/>
+	</wtkjad>
+	
+	<!-- and package and preverify -->
+	<!-- TODO: specify required libraries that should be put into the package with the libclasspath property or nested FileSet or ZipFileSet or ZipGroupFileSet elements -->
+	<!-- TODO: set obfuscate=true -->
+	<wtkpackage jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad" preverify="false" obfuscate="false">
+		<fileset dir="${bin}" includes="org/openuat/apps/j2me/**/*.class"/>
+	</wtkpackage>
+	
+	<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>
+    </target>
+    
+    <target name="run-midp" depends="jar-midp" description="Run the J2ME MIDP applications in the simulator" if="haveWTK">
+	    <wtkrun jadfile="${build}/HelloProperty.jad"/>
     </target>
 
     <target name="junit" depends="jar" description="Run unit tests">
