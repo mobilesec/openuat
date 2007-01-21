@@ -30,6 +30,7 @@ import org.openuat.features.Coherence;
 import org.openuat.features.QuantizedFFTCoefficients;
 import org.openuat.features.TimeSeriesUtil;
 import org.openuat.sensors.AsciiLineReaderBase;
+import org.openuat.sensors.MainboardAccelerometerReaderFactory;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.SegmentsSink;
@@ -110,7 +111,10 @@ public class AsciiLineReaderRunner {
 		else if (runClassName.equals("WiTiltRawReader")) {
 			r = new WiTiltRawReader();
 			((WiTiltRawReader) r).openSerial(filename, false);
-		} else {
+		} 
+		else if (runClassName.equals("MainboardAccelerometerReader"))
+			r = MainboardAccelerometerReaderFactory.createInstance(100);
+		else {
 			System.err.println("Unknown derived class name!");
 			System.exit(200);
 		}
@@ -530,9 +534,9 @@ public class AsciiLineReaderRunner {
 		}
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device		int[] samplerates;
-		if (!estimateEntropy)
+		/*if (!estimateEntropy)
 			computeSimilarityMeasures(runClassName, filename, paramSearch_coherence, paramSearch_matches, graph);
 		else
-			estimateEntropy(runClassName, filename);
+			estimateEntropy(runClassName, filename);*/
 	}
 }

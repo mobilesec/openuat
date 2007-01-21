@@ -55,7 +55,7 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 	 */
 	public ParallelPortPWMReader(String filename, int samplerate) throws FileNotFoundException {
 		// the maximum number of data lines to read from the port - obviously 8
-		super(filename, 8); 
+		super(filename, 8, 0); 
 
 		this.sampleWidth = 1000000 / samplerate;
 		this.curSample = new ArrayList[maxNumLines];

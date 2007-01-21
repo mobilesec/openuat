@@ -79,11 +79,37 @@ public abstract class AsciiLineReaderBase {
 	 */
 	private Thread samplingThread = null;
 	
+	/** The time to sleep between two reads from the file in milliseconds.
+	 * @see RunHelper#run()
+	 * @see #simulateSampling()
+	 */
+	private int sleepBetweenReads = 0;
+	
 	/** Used to signal the sampling thread to terminate itself.
 	 * @see #stop()
 	 * @see RunHelper#run()
 	 */
 	boolean alive = true;
+	
+	/** Initializes the reader base object. It only saves the
+	 * passed parameters, but the member variable @see {@link #port} needs to
+	 * be initialized separately before starting and sampling.
+	 * 
+	 * @param filename The log to read from. This may either be a normal log file
+	 *                 when simulation is intended or it can be a FIFO/pipe to read
+	 *                 online data.
+	 * @param maxNumLines The maximum number of data lines to read from the device - 
+	 *                    depends on the sensor.
+	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
+	 *                          reads from filename. Set to 0 to do blocking reads
+	 *                          (i.e. as fast as the file can give something back).
+	 */
+	protected AsciiLineReaderBase(int maxNumLines, int sleepBetweenReads) {
+		this.sinks = new LinkedList();
+		this.numSamples = 0;
+		this.maxNumLines = maxNumLines;
+		this.sleepBetweenReads = sleepBetweenReads;
+	}
 	
 	/** Initializes the reader base object. It only saves the
 	 * passed parameters and opens the InputStream to read from the specified
@@ -94,12 +120,13 @@ public abstract class AsciiLineReaderBase {
 	 *                 online data.
 	 * @param maxNumLines The maximum number of data lines to read from the device - 
 	 *                    depends on the sensor.
+	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
+	 *                          reads from filename. Set to 0 to do blocking reads
+	 *                          (i.e. as fast as the file can give something back).
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	protected AsciiLineReaderBase(String filename, int maxNumLines) throws FileNotFoundException {
-		this.sinks = new LinkedList();
-		this.numSamples = 0;
-		this.maxNumLines = maxNumLines;
+	protected AsciiLineReaderBase(String filename, int maxNumLines, int sleepBetweenReads) throws FileNotFoundException {
+		this(maxNumLines, sleepBetweenReads);
 		
 		logger.info("Reading from " + filename);
 		
@@ -116,10 +143,7 @@ public abstract class AsciiLineReaderBase {
 	 *                    depends on the sensor.
 	 */
 	protected AsciiLineReaderBase(InputStream stream, int maxNumLines) {
-		this.sinks = new LinkedList();
-		this.numSamples = 0;
-		this.maxNumLines = maxNumLines;
-		this.port = stream;
+		this(maxNumLines, 0);
 		
 		logger.info("Reading from input stream");
 	}
@@ -222,6 +246,12 @@ public abstract class AsciiLineReaderBase {
 		String line = r.readLine();
 		while (line != null) {
 			parseLine(line);
+
+			try {
+				if (sleepBetweenReads > 0)
+					Thread.sleep(sleepBetweenReads);
+			} catch (InterruptedException e) {}
+			
 			try {
 				line = r.readLine();
 			}
@@ -268,6 +298,12 @@ public abstract class AsciiLineReaderBase {
 				String line = r.readLine();
 				while (alive && line != null) {
 					parseLine(line);
+					
+					try {
+						if (sleepBetweenReads > 0)
+							Thread.sleep(sleepBetweenReads);
+					} catch (InterruptedException e) {}
+					
 					try {
 						line = r.readLine();
 					}
