@@ -85,6 +85,8 @@ public abstract class AsciiLineReaderBase {
 	 */
 	private int sleepBetweenReads = 0;
 	
+	private boolean resetBeforeRead = false;
+	
 	/** Used to signal the sampling thread to terminate itself.
 	 * @see #stop()
 	 * @see RunHelper#run()
@@ -103,12 +105,18 @@ public abstract class AsciiLineReaderBase {
 	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
 	 *                          reads from filename. Set to 0 to do blocking reads
 	 *                          (i.e. as fast as the file can give something back).
+	 * @param resetBeforeRead Set to true if the input file/stream should be reset
+	 *                        before reading each new line (which might be equivalent
+	 *                        with reading each new sample). This can be useful with
+	 *                        pseudo-files, e.g. under Linux with the /sys filesystem.
+	 *                        Set to false if you don't know what this is.
 	 */
-	protected AsciiLineReaderBase(int maxNumLines, int sleepBetweenReads) {
+	protected AsciiLineReaderBase(int maxNumLines, int sleepBetweenReads, boolean resetBeforeRead) {
 		this.sinks = new LinkedList();
 		this.numSamples = 0;
 		this.maxNumLines = maxNumLines;
 		this.sleepBetweenReads = sleepBetweenReads;
+		this.resetBeforeRead = resetBeforeRead;
 	}
 	
 	/** Initializes the reader base object. It only saves the
@@ -123,10 +131,15 @@ public abstract class AsciiLineReaderBase {
 	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
 	 *                          reads from filename. Set to 0 to do blocking reads
 	 *                          (i.e. as fast as the file can give something back).
+	 * @param resetBeforeRead Set to true if the input file/stream should be reset
+	 *                        before reading each new line (which might be equivalent
+	 *                        with reading each new sample). This can be useful with
+	 *                        pseudo-files, e.g. under Linux with the /sys filesystem.
+	 *                        Set to false if you don't know what this is.
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	protected AsciiLineReaderBase(String filename, int maxNumLines, int sleepBetweenReads) throws FileNotFoundException {
-		this(maxNumLines, sleepBetweenReads);
+	protected AsciiLineReaderBase(String filename, int maxNumLines, int sleepBetweenReads, boolean resetBeforeRead) throws FileNotFoundException {
+		this(maxNumLines, sleepBetweenReads, resetBeforeRead);
 		
 		logger.info("Reading from " + filename);
 		
@@ -143,7 +156,7 @@ public abstract class AsciiLineReaderBase {
 	 *                    depends on the sensor.
 	 */
 	protected AsciiLineReaderBase(InputStream stream, int maxNumLines) {
-		this(maxNumLines, 0);
+		this(maxNumLines, 0, false);
 		
 		logger.info("Reading from input stream");
 	}
@@ -253,6 +266,8 @@ public abstract class AsciiLineReaderBase {
 			} catch (InterruptedException e) {}
 			
 			try {
+				if (resetBeforeRead)
+					r.reset();
 				line = r.readLine();
 			}
 			catch (IOException e) {
@@ -305,6 +320,8 @@ public abstract class AsciiLineReaderBase {
 					} catch (InterruptedException e) {}
 					
 					try {
+						if (resetBeforeRead)
+							r.reset();
 						line = r.readLine();
 					}
 					catch (IOException e) {

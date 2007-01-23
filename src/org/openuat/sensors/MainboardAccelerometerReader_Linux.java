@@ -40,7 +40,7 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
 	public MainboardAccelerometerReader_Linux(int samplerate) throws FileNotFoundException {
-		super(3, (int) (1000/samplerate));
+		super(3, (int) (1000/samplerate), true);
 		
 		if (! System.getProperty("os.name").startsWith("Linux")) {
 			logger.error("Not running on Linux (os.name='" + System.getProperty("os.name") + "'), can not initialize!");
