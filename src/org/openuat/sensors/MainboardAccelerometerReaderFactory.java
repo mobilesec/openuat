@@ -1,6 +1,7 @@
 package org.openuat.sensors;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 
 import org.apache.log4j.Logger;
 
@@ -18,5 +19,11 @@ public class MainboardAccelerometerReaderFactory {
 					System.getProperty("os.name") + "'");
 			return null;
 		}
+	}
+
+
+	/////////////////////////// test code begins here //////////////////////////////
+	public static void main(String[] args) throws IOException {
+		org.openuat.sensors.test.AsciiLineReaderRunner.mainRunner("MainboardAccelerometerReader", args);
 	}
 }

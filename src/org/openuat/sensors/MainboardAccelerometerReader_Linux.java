@@ -50,14 +50,14 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 		String filename;
 		if (new File(applesmcSensorFile).canRead()) {
 			filename = applesmcSensorFile;
-			port = new FileInputStream(new File(filename));
 		} else if (new File(hdapsSensorFile).canRead()) {
 			filename = hdapsSensorFile;
-			port = new FileInputStream(new File(filename));
 		} else {
 			logger.error("Detected neither hdaps nor applesmc sensor, maybe the kernel modules need to be loaded? Can not initialize!");
 			throw new FileNotFoundException("Could not detect any supported sensor");
 		}
+		reopenStreamFrom = new File(filename);
+		port = new FileInputStream(reopenStreamFrom);
 		
 		logger.info("Reading from " + filename + " with sample rate of " + samplerate + " Hz, sleeping for " + 
 				((int) (1000/samplerate)) + " ms between reads");
@@ -78,11 +78,5 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 		for (int i=0; i<3; i++)
 			sample[i] = Integer.parseInt(st.nextToken());
 		emitSample(sample);
-	}
-
-
-	/////////////////////////// test code begins here //////////////////////////////
-	public static void main(String[] args) throws IOException {
-		org.openuat.sensors.test.AsciiLineReaderRunner.mainRunner("MainboardAccelerometerReader", args);
 	}
 }

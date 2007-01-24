@@ -1,5 +1,4 @@
-/* Copyright Rene Mayrhofer
- * File created 2006-06-07
+ /* File created 2006-06-07
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -85,7 +84,22 @@ public abstract class AsciiLineReaderBase {
 	 */
 	private int sleepBetweenReads = 0;
 	
-	private boolean resetBeforeRead = false;
+	/** Set to true when the InputStream should be reopened from the file 
+	 * before every read. If set to true, reopenStreamFrom <b>must</b> be set.
+	 * @see #reopenStreamFrom
+	 * @see RunHelper#run()
+	 * @see #simulateSampling()
+	 */
+	private boolean reopenBeforeRead = false;
+
+	/** The file to reopen the stream from. This is only used when 
+	 * reopenBeforeRead is set to true, but in this case it must be
+	 * initialized.
+	 * @see #reopenBeforeRead
+	 * @see RunHelper#run()
+	 * @see #simulateSampling()
+	 */
+	protected File reopenStreamFrom = null;
 	
 	/** Used to signal the sampling thread to terminate itself.
 	 * @see #stop()
@@ -105,18 +119,25 @@ public abstract class AsciiLineReaderBase {
 	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
 	 *                          reads from filename. Set to 0 to do blocking reads
 	 *                          (i.e. as fast as the file can give something back).
-	 * @param resetBeforeRead Set to true if the input file/stream should be reset
+	 * @param reopenBeforeRead Set to true if the input stream should be re-opened
 	 *                        before reading each new line (which might be equivalent
 	 *                        with reading each new sample). This can be useful with
 	 *                        pseudo-files, e.g. under Linux with the /sys filesystem.
+	 *                        When set to true, the derived class <b>must</b> set the
+	 *                        reopenStreamFrom member.
 	 *                        Set to false if you don't know what this is.
 	 */
-	protected AsciiLineReaderBase(int maxNumLines, int sleepBetweenReads, boolean resetBeforeRead) {
+	protected AsciiLineReaderBase(int maxNumLines, int sleepBetweenReads, boolean reopenBeforeRead) {
 		this.sinks = new LinkedList();
 		this.numSamples = 0;
 		this.maxNumLines = maxNumLines;
 		this.sleepBetweenReads = sleepBetweenReads;
-		this.resetBeforeRead = resetBeforeRead;
+		this.reopenBeforeRead = reopenBeforeRead;
+
+		logger.info("Initializing for " + maxNumLines + 
+				" sampling lines, sleeping for " + this.sleepBetweenReads + 
+				" ms between reads" +
+				(this.reopenBeforeRead ? " and reopening before each read": ""));
 	}
 	
 	/** Initializes the reader base object. It only saves the
@@ -266,8 +287,10 @@ public abstract class AsciiLineReaderBase {
 			} catch (InterruptedException e) {}
 			
 			try {
-				if (resetBeforeRead)
-					r.reset();
+				if (reopenBeforeRead) {
+					port = new FileInputStream(reopenStreamFrom);
+					r = new BufferedReader(new InputStreamReader(port));
+				}
 				line = r.readLine();
 			}
 			catch (IOException e) {
@@ -320,8 +343,10 @@ public abstract class AsciiLineReaderBase {
 					} catch (InterruptedException e) {}
 					
 					try {
-						if (resetBeforeRead)
-							r.reset();
+						if (reopenBeforeRead) {
+							port = new FileInputStream(reopenStreamFrom);
+							r = new BufferedReader(new InputStreamReader(port));
+						}
 						line = r.readLine();
 					}
 					catch (IOException e) {
