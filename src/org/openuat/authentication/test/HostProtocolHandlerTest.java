@@ -13,6 +13,7 @@ import java.io.*;
 
 import org.openuat.authentication.*;
 import org.openuat.authentication.exceptions.*;
+import org.openuat.util.HostServerSocket;
 
 import junit.framework.*;
 

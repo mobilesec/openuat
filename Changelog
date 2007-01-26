@@ -1,3 +1,45 @@
+Version 0.10, released
+
+  This is a minor new feature release, adding support for new accelerometer
+  sensors available on some recent laptop mainboards and Bluetooth RFCOMM
+  communication. It is also the first release to include J2ME applets with
+  automatic building from the standard build.xml.
+  A new concept introduced with this release is the concept of roles: a device
+  or side of the authentication can hold one or multiple roles. Initial
+  implementations include the two sides of the Resurrecting Duckling protocol.
+  
+  New interfaces:
+  
+  New abstraction: roles:
+  * roles.Duckling
+  * roles.MotherDuck
+  
+  New sensor data classes:
+  * sensors.MainboardAccelerometerReaderFactory with implementations for 
+    Linux and MacOS/X
+  
+  New utility classes for communication:
+  * util.BluetoothRFCOMMServer
+  * util.BluetoothPeerManager
+  * util.BluetoothInitializer with support for the avetanaBT stack
+  
+  New utility classes for user interaction:
+  * apps.util.TrayIconHelper
+  
+  Moved communication classes from org.openuat.authentication and
+  org.openuat.sensors to org.openuat.util:
+  * SafetyBeltTimer
+  * MessageListener
+  * UDPMulticastSocket
+  * HostServerSocket
+  * BluetoothRFCOMMChannel
+  
+  New applications:
+  * (J2ME) apps.j2me.HelloProporty
+
+--- Rene Mayrhofer <rene@mayrhofer.eu.org>
+
+
 Version 0.9, released 2007-01-18
 
   This is a major new features release, adding infrastructure for dealing with

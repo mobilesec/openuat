@@ -6,10 +6,11 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.openuat.authentication.test;
+package org.openuat.util.test;
 
 import org.openuat.authentication.*;
 import org.openuat.authentication.exceptions.*;
+import org.openuat.util.HostServerSocket;
 
 import java.net.*;
 import java.io.*;

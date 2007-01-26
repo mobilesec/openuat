@@ -22,6 +22,8 @@ import org.apache.log4j.Logger;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKey;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKeyPartIdentifier;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.util.MessageListener;
+import org.openuat.util.UDPMulticastSocket;
 
 /** This is an abstract class that implements the basics of all protocols
  * based on running a candidate key protocol over UDP. Man-in-the-middle

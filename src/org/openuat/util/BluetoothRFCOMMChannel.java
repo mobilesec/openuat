@@ -6,7 +6,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.openuat.sensors;
+package org.openuat.util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -210,7 +210,45 @@ public class BluetoothRFCOMMChannel {
 	     }
 
 	   }*/
-	  
+
+	
+/*
+// let's name our variables
+
+StreamConnectionNotifier notifier = null;
+StreamConnection con = null;
+LocalDevice localdevice = null;
+ServiceRecord servicerecord = null;
+InputStream input;
+OutputStream output;
+
+// let's create a URL that contains a UUID that 
+// has a very low chance of conflicting with anything
+String url = 
+  "btspp://localhost:00112233445566778899AABBCCDDEEFF;name=serialconn";
+// let's open the connection with the url and
+// cast it into a StreamConnectionNotifier
+notifier = (StreamConnectionNotifier)Connector.open(url);
+
+// block the current thread until a client responds
+con = notifier.acceptAndOpen();
+
+// the client has responded, so open some streams
+input = con.openInputStream();
+output = con.openOutputStream();
+
+// now that the streams are open, send and
+// receive some data */
+	
+/*
+ * StreamConnection con =(StreamConnection)Connector.open(url);
+ * 
+ * String connectionURL = serviceRecord.getConnectionURL(0, false);
+StreamConnection con =(StreamConnection)Connector.open(connectionURL);
+
+btspp://0001234567AB:3
+ */
+	
 	  public static void main(String[] args) throws IOException, NumberFormatException {
 		  BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
 		  c.open();

@@ -6,7 +6,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.openuat.authentication;
+package org.openuat.util;
 
 /** This is a very simple interface to listen to incoming messages
  * for connectionless protocols, e.g. UDP.

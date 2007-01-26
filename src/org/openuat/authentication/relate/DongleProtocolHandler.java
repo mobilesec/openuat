@@ -11,8 +11,8 @@ package org.openuat.authentication.relate;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.InterlockProtocol;
-import org.openuat.authentication.SafetyBeltTimer;
 import org.openuat.authentication.exceptions.*;
+import org.openuat.util.SafetyBeltTimer;
 
 import java.security.SecureRandom;
 

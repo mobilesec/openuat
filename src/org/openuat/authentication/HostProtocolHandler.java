@@ -104,7 +104,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-    HostProtocolHandler(Socket soc, boolean keepSocketConnected, boolean useJSSE) 
+    public HostProtocolHandler(Socket soc, boolean keepSocketConnected, boolean useJSSE) 
 	{
 		this.socket = soc;
 		this.keepSocketConnected = keepSocketConnected;
@@ -218,7 +218,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *         that might have been decoded.
 	 * @throws IOException
 	 */
-    private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, InetAddress remote) throws IOException
+    private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, InetAddress remote)
     {
     	if (paramLine == null)
     		return null;
@@ -405,7 +405,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * request. Should only be called by HostServerSocket after accepting a new
 	 * connection.
 	 */
-	void startIncomingAuthenticationThread() {
+	public void startIncomingAuthenticationThread() {
 		logger.debug("Starting incoming authentication thread handler");
 		new Thread(new AsynchronousCallHelper(this) {
 			public void run() {

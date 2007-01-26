@@ -6,7 +6,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.openuat.authentication.test;
+package org.openuat.util.test;
 
 import java.io.IOException;
 import java.net.Inet6Address;
@@ -18,8 +18,9 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import org.openuat.authentication.MessageListener;
-import org.openuat.authentication.UDPMulticastSocket;
+import org.openuat.authentication.test.SimpleKeyAgreementTest;
+import org.openuat.util.MessageListener;
+import org.openuat.util.UDPMulticastSocket;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
