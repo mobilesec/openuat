@@ -127,7 +127,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	}
 
 	public void newDevicesFound() {
-/*		RemoteDevice[] devices = peerManager.getPeers();
+		RemoteDevice[] devices = peerManager.getPeers();
 
 		for (int x = 0; x < devices.length; x++)
 			try {
@@ -137,7 +137,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 				display.setCurrent(dev_list);
 			} catch (Exception e) {
 				do_alert("Error in adding devices", 4000);
-			}*/
+			}
 	}
 
 	public void serviceListFound(RemoteDevice remoteDevice, Vector services) {

@@ -75,7 +75,7 @@ public class BluetoothPeerManager {
 		synchronized(foundDevices) {
 			RemoteDevice[] ret = new RemoteDevice[foundDevices.size()];
 			for (int i=0; i<foundDevices.size(); i++)
-				ret[i] = (RemoteDevice) foundDevices.get(i);
+				ret[i] = (RemoteDevice) foundDevices.elementAt(i);
 			return ret;
 		}
 	}
@@ -132,12 +132,8 @@ public class BluetoothPeerManager {
 			switch (param) {
 			case DiscoveryListener.INQUIRY_COMPLETED: //Inquiry completed normally
 				
-				// TODO: this one too... - must be something with the listeners Vector
-				((PeerEventsListener) listeners.get(0)).newDevicesFound();
-				
-//				for (int i=0; i<listeners.size(); i++)
-					// TODO TODO TODO: this line make the J2ME application crash on the phone!
-//					/*((PeerEventsListener)*/ listeners.get(i)/*).newDevicesFound()*/;
+				for (int i=0; i<listeners.size(); i++)
+					((PeerEventsListener) listeners.elementAt(i)).newDevicesFound();
 				break;
 			case DiscoveryListener.INQUIRY_ERROR: // Error during inquiry
 				logger.error("Inqury error");
@@ -170,7 +166,7 @@ public class BluetoothPeerManager {
 					return;
 
 				for (int i=0; i<listeners.size(); i++)
-					((PeerEventsListener) listeners.get(i)).serviceListFound(currentRemoteDevice, services);
+					((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
 				
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_DEVICE_NOT_REACHABLE:
