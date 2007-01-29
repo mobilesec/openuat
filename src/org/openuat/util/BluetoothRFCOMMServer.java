@@ -1,6 +1,35 @@
 package org.openuat.util;
 
 public class BluetoothRFCOMMServer {
+	/*
+// assuming the service UID has been retrieved
+String serviceURL =
+    "btspp://localhost:"+serviceUID.toString());
+// more explicitly:
+String ServiceURL =
+    "btspp://localhost:10203040607040A1B1C1DE100;name=SPP 
+        Server1";
+try {
+    // create a server connection
+    StreamConnectionNotifier notifier =
+       (StreamConnectionNotifier) Connector.open(serviceURL);
+    // accept client connections
+    StreamConnection connection = notifier.acceptAndOpen();
+    // prepare to send/receive data
+    byte buffer[] = new byte[100];
+    String msg = "hello there, client";
+    InputStream is = connection.openInputStream();
+    OutputStream os = connection.openOutputStream();
+    // send data to the client
+    os.write(msg.getBytes());
+    // read data from client
+    is.read(buffer);
+    connection.close();
+} catch(IOException e) {
+  e.printStackTrace();
+}
+...	 */
+	
 /*
 // lets name our variables
 StreamConnectionNotifier notifier = null;

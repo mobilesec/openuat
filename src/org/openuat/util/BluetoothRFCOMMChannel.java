@@ -28,11 +28,6 @@ public class BluetoothRFCOMMChannel {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(BluetoothRFCOMMChannel.class);
 
-	/** Represents our local device and is currently only used to print the local
-	 * Bluetooth MAC address.
-	 */
-	private static LocalDevice localDevice = null;
-	
 	/** The remote device address string, as passed to the constructor. */
 	private String remoteDeviceAddress;
 	/** The remote RFCOMM channel number (SDP number), as passed to the 
@@ -54,21 +49,6 @@ public class BluetoothRFCOMMChannel {
 	 */
 	private OutputStream toRemote = null;
 	
-	static {
-		logger.debug("Initializing Avetana JSR82 implementation");
-		// Initialize the java stack.
-		try {
-			de.avetana.bluetooth.stack.BluetoothStack.init(new de.avetana.bluetooth.stack.AvetanaBTStack());
-			localDevice = LocalDevice.getLocalDevice();
-			logger.info("Initialized Bluetooth stack successfully, local device has address " +
-					localDevice.getBluetoothAddress() + " with friendly name '" +
-					localDevice.getFriendlyName() + "'");
-		} catch (Exception e) {
-			logger.error("Could not initialize local Bluetooth stack. RFCOMM channels will not work");
-			e.printStackTrace();
-		}
-	}
-
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
 	 * @param remoteDeviceAddress The Bluetooth MAC address to connect to, in format
@@ -78,7 +58,7 @@ public class BluetoothRFCOMMChannel {
 	 * @throws IOException When the local Bluetooth stack was not initialized properly.
 	 */
 	public BluetoothRFCOMMChannel(String remoteDeviceAddress, int remoteChannelNumber) throws IOException {
-		if (localDevice == null) {
+		if (! BluetoothSupport.init()) {
 			throw new IOException("Local Bluetooth stack was not initialized properly, can not construct channel objects");
 		}
 		
@@ -91,6 +71,66 @@ public class BluetoothRFCOMMChannel {
 		serviceURL = "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
 			";authenticate=false;master=true;encrypt=false";
 	}
+	
+/*
+btl2cap://hostname:[PSM | UUID];parameters
+
+   
+  
+The URL format for an RFCOMMStreamConnection:
+btspp://hostname:[CN | UUID];parameters
+
+   
+  
+Where:
+btl2cap is the URL scheme for an L2CAPConnection.
+btspp is the URL scheme for an RFCOMM StreamConnection.
+hostname is either localhost to set up a server connection, or the Bluetooth address to create a client connection.
+PSMis the Protocol/Service Multiplexer value, used by a clientconnecting to a server. This is similar in concept to a TCP/IP port.
+CN is the Channel Number value, used by a client connecting to a server – also similar in concept to a TCP/IP port.
+UUID is the UUID value used when setting up a service on a server.
+parameters include name to describe the service name, and the security parameters authenticate, authorize, and encrypt. 
+*/
+/*
+btspp://hostname:[CN | UUID];authenticate=true;authorize=true;encrypt=true
+
+   
+  
+Where:
+authenticate verifies the identity of a connecting device.
+authorize verifies whether access is granted by a connecting (identified) device.
+encrypt specifies that the connection must be encrypted.
+You've already seen that a client wishing to connect to a service can retrieve the service's connection URL by calling the method ServiceRecord.getConnectionURL(). One of this method's arguments, requiredSecurity, specifies whether the returned connection URL should include the optional authenticate and encrypt security parameters. The valid values for requiredSecurity are: 
+ServiceRecord.NOAUTHENTICATE_NOENCRYPTindicates authenticate=false; encrypt=false.
+ServiceRecord.AUTHENTICATE_NOENCRYPT indicates authenticate=true; encrypt=false.
+ServiceRecord.AUTHENTICATE_ENCRYPTindicates authenticate=true; encrypt=true. 
+*/
+	
+	/*
+...
+// (assuming we have the service record)
+// use record to retrieve a connection URL
+String url =
+    record.getConnectionURL(
+        record.NOAUTHENTICATE_NOENCRYPT, false);
+// open a connection to the server
+StreamConnection connection =
+    (StreamConnection) Connector.open(url);
+// Send/receive data
+try {
+    byte buffer[] = new byte[100];
+    String msg = "hello there, server";
+    InputStream is = connection.openInputStream();
+    OutputStream os = connection.openOutputStream();
+    // send data to the server
+    os.write(msg.getBytes);
+    // read data from the server
+    is.read(buffer);
+    connection.close();
+} catch(IOException e) {
+  e.printStackTrace();
+}
+...	 */
 	
 	/** Opens a channel to the endpoint given to the constructor.
 	 * @throws IOException On Bluetooth errors.

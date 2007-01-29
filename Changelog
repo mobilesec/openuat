@@ -21,7 +21,7 @@ Version 0.10, released
   New utility classes for communication:
   * util.BluetoothRFCOMMServer
   * util.BluetoothPeerManager
-  * util.BluetoothInitializer with support for the avetanaBT stack
+  * util.BluetoothSupport with support for the avetanaBT stack
   
   New utility classes for user interaction:
   * apps.util.TrayIconHelper

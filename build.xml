@@ -62,6 +62,9 @@
     <property name="wtk.cldc.version" value="1.1" />
     <property name="wtk.midp.version" value="2.0" />
     <property name="wtk.bluetooth.enabled" value="true" />
+    <property name="wtk.locationservices.enabled" value="true" />
+    <property name="wtk.satsa.enabled" value="true" />
+    <property name="wtk.sipapi.enabled" value="true" />
     <property name="wtk.proguard.home" value="${lib}/proguard.jar" />
     <property name="midp_libs" value="${wtk.home}/lib/midpapi20.jar:${wtk.home}/lib/cldcapi11.jar" />
     <!-- These classes can only be compiled with J2ME MIDP class libraries -->
@@ -113,6 +116,7 @@
 	<path id="lib.path.midp">
 		<pathelement location="${wtk.home}/lib/midpapi20.jar"/>
 		<pathelement location="${wtk.home}/lib/cldcapi11.jar"/>
+		<pathelement location="${wtk.home}/lib/jsr082.jar"/>
 	</path>
 	
 	<!-- Include the Antenna tasks for building J2ME packages -->
@@ -228,67 +232,92 @@
     <target name="jar" depends="compile" description="Build jar">
         <mkdir dir="${dist}"/>
         <jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
-	     update="false" duplicate="fail" index="true">
-	    <fileset dir="${bin}"
-             includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class org/openuat/features/**/*.class org/openuat/util/**/*.class" />
-            <fileset dir="${bin-BC-core}" />
+		     update="false" duplicate="fail" index="true">
+		    <fileset dir="${bin}"
+        	     includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class org/openuat/features/**/*.class org/openuat/util/**/*.class" />
+           	<fileset dir="${bin-BC-core}" />
             <fileset dir="${bin-apache-bzip2}" />
-	    <fileset dir="${src}" includes="*.properties" />
+		    <fileset dir="${src}" includes="*.properties" />
         </jar>
     
-	<jar jarfile="${jarfile.channels}" manifest="${src}/Manifest"
-	     update="false" duplicate="fail" index="true">
-		<fileset dir="${bin}"
-			 includes="org/openuat/channel/**/*.class" />
-		<fileset dir="${bin-BC-x509}" />
-	</jar>
+		<jar jarfile="${jarfile.channels}" manifest="${src}/Manifest"
+	    	 update="false" duplicate="fail" index="true">
+			<fileset dir="${bin}"
+				 includes="org/openuat/channel/**/*.class" />
+			<fileset dir="${bin-BC-x509}" />
+		</jar>
+	    
+		<jar jarfile="${jarfile.apps}" manifest="${src}/Manifest"
+		     update="false" duplicate="fail" index="true">
+			<fileset dir="${bin}"
+				 includes="org/openuat/apps/**/*.class" />
+			<fileset dir="${bin-BC-openssl}" />
+		</jar>
     
-	<jar jarfile="${jarfile.apps}" manifest="${src}/Manifest"
-	     update="false" duplicate="fail" index="true">
-		<fileset dir="${bin}"
-			 includes="org/openuat/apps/**/*.class" />
-		<fileset dir="${bin-BC-openssl}" />
-	</jar>
-    
-	<jar jarfile="${jarfile.distbundle}" manifest="${src}/Manifest"
-	     update="false" duplicate="fail" index="true">
-		<fileset dir="${bin}" />
- 		<fileset dir="${bin-BC-core}" />
-		<fileset dir="${bin-BC-x509}" />
-		<fileset dir="${bin-BC-openssl}" />
-		<fileset dir="${bin-apache-bzip2}" />
-		<fileset dir="${src}" includes="*.properties" />
-		<!-- Merge library jars into final jar file -->
-		<zipgroupfileset refid="lib.bundleinclude-jars" />
-		<fileset dir="${lib}" includes="*-copyright" />
-	</jar>
+		<jar jarfile="${jarfile.distbundle}" manifest="${src}/Manifest"
+		     update="false" duplicate="fail" index="true">
+			<fileset dir="${bin}" />
+	 		<fileset dir="${bin-BC-core}" />
+			<fileset dir="${bin-BC-x509}" />
+			<fileset dir="${bin-BC-openssl}" />
+			<fileset dir="${bin-apache-bzip2}" />
+			<fileset dir="${src}" includes="*.properties" />
+			<!-- Merge library jars into final jar file -->
+			<zipgroupfileset refid="lib.bundleinclude-jars" />
+			<fileset dir="${lib}" includes="*-copyright" />
+		</jar>
+
+		<!-- And call the targets for creating MIDP JARs -->
+		<antcall target="jar-midp"/>
     </target>
 
     <target name="jar-midp" depends="compile" description="Build packages for J2ME MIDP" if="haveWTK">
-	<!-- create JAD files -->
-	<wtkjad jadfile="${build}/HelloProperty.jad"
-		jarfile="HelloProperty.jar"
-		name="MyHelloProperty"
-		vendor="Rene Mayrhofer"
-		version="0.0.1"
-		update="true">
-		<midlet name="MyHelloProperty" class="org.openuat.apps.j2me.HelloProperty"/>
-	</wtkjad>
+		<!-- create JAD files -->
+		<wtkjad jadfile="${build}/HelloProperty.jad"
+			jarfile="HelloProperty.jar"
+			name="MyHelloProperty"
+			vendor="Rene Mayrhofer"
+			version="0.0.1"
+			update="true">
+			<midlet name="MyHelloProperty" class="org.openuat.apps.j2me.HelloProperty"/>
+		</wtkjad>
+		<wtkjad jadfile="${build}/BluetoothDemo.jad"
+			jarfile="BluetoothDemo.jar"
+			name="MyBluetoothDemo"
+			vendor="Rene Mayrhofer"
+			version="0.0.1"
+			update="true">
+			<midlet name="MyBluetoothDemo" class="org.openuat.apps.j2me.BluetoothDemo"/>
+		</wtkjad>
+    	
+		<!-- and package and preverify -->
+		<!-- TODO: specify required libraries that should be put into the package with the libclasspath property or nested FileSet or ZipFileSet or ZipGroupFileSet elements -->
+		<!-- TODO: set obfuscate=true -->
+		<wtkpackage jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad" preverify="false" obfuscate="false">
+			<fileset dir="${bin}" includes="org/openuat/apps/j2me/HelloProperty.class"/>
+		</wtkpackage>
+		<wtkpackage jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad" preverify="false" obfuscate="false">
+			<fileset dir="${bin}" includes="org/openuat/apps/j2me/BluetoothDemo.class org/openuat/util/Bluetooth*.class"/>
+			<fileset dir="${thirdparty}/log4jNoop" includes="org/apache/log4j/**/*.class"/>
+			<!-- nope, doesn't work with CLDC -->
+			<!--<zipfileset src="${lib}/log4jMini.jar" />-->
+		</wtkpackage>
+    	
+		<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>
+		<wtkpreverify jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad"/>
+	</target>
 	
-	<!-- and package and preverify -->
-	<!-- TODO: specify required libraries that should be put into the package with the libclasspath property or nested FileSet or ZipFileSet or ZipGroupFileSet elements -->
-	<!-- TODO: set obfuscate=true -->
-	<wtkpackage jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad" preverify="false" obfuscate="false">
-		<fileset dir="${bin}" includes="org/openuat/apps/j2me/**/*.class"/>
-	</wtkpackage>
-	
-	<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>
-    </target>
-    
     <target name="run-midp" depends="jar-midp" description="Run the J2ME MIDP applications in the simulator" if="haveWTK">
 	    <wtkrun jadfile="${build}/HelloProperty.jad"/>
     </target>
 
+	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
+        <exec executable="obexftp">
+	    <arg line="-b 00:18:0F:A3:A1:D4"/>
+	    <arg line="-p ${build}/BluetoothDemo.jar"/>
+	</exec>
+	</target>
+    
     <target name="junit" depends="jar" description="Run unit tests">
 	    <mkdir dir="${reports.tests}"/>
 	    <!-- for the jvmarg to work, need to set fork=true -->
@@ -429,7 +458,7 @@
     <target name="dist-source" description="Create source distribution">
 	    <zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 		    <fileset dir="." 
-		    	     includes="build.xml,Changelog,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/*.jnlp,thirdparty/bouncycastle-*-deps/**/*,thirdparty/avetanabt/**/*,thirdparty/ipsec2k.1.1/**/*.h,thirdparty/ipsec2k.1.1/**/*.cpp,thirdparty/ipsec2k.1.1/**/wstring,thirdparty/ipsec2k.1.1/**/buffer,thirdparty/ipsec2k.1.1/**/*.vcproj,thirdparty/ipsec2k.1.1/**/*.sln,thirdparty/ipsec2k.1.1/**/*.txt,thirdparty/apache-bzip2/**/*,nativelib/**/*"/>
+		    	     includes="build.xml,Changelog,.classpath,.project,src/**/*,lib/**/*,doc/**/*,dist/*.jnlp,thirdparty/bouncycastle-*-deps/**/*,thirdparty/avetanabt/**/*,thirdparty/ipsec2k.1.1/**/*.h,thirdparty/ipsec2k.1.1/**/*.cpp,thirdparty/ipsec2k.1.1/**/wstring,thirdparty/ipsec2k.1.1/**/buffer,thirdparty/ipsec2k.1.1/**/*.vcproj,thirdparty/ipsec2k.1.1/**/*.sln,thirdparty/ipsec2k.1.1/**/*.txt,thirdparty/apache-bzip2/**/*,thirdparty/log4jMini/**/*,nativelib/**/*"/>
 	    </zip>
     </target>
     
