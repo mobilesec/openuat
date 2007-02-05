@@ -54,6 +54,11 @@ public class BluetoothPeerManager {
 	 */
 	private boolean automaticServiceDiscovery = false;
 	
+	/** Can be set to a specific service UUID to restrict the automatic service
+	 * search.
+	 */
+	private UUID automaticServiceDiscoveryUUID = null;
+	
 	/** The events handler used for the main inquiry. */
 	private DiscoveryEventsHandler eventsHandler = new DiscoveryEventsHandler(null);
 	
@@ -95,7 +100,7 @@ public class BluetoothPeerManager {
 		return automaticServiceDiscovery;
 	}
 	
-	/** Sets the state of automatic service discovery. his may be changed even 
+	/** Sets the state of automatic service discovery. This may be changed even 
 	 * while a backgound inquiry is running.
 	 * @see #automaticServiceDiscovery
 	 * @param automaticServiceDiscovery Set to true if services should be 
@@ -106,6 +111,27 @@ public class BluetoothPeerManager {
 		this.automaticServiceDiscovery = automaticServiceDiscovery;
 	}
 	
+	/** Returns the UUID used for automatically discovering only specific
+	 * service UUID.
+	 * @see #automaticServiceDiscoveryUUID
+	 * @return The service UUID used for automatic service discovery.
+	 */
+	public UUID getAutomaticServiceDiscoveryUUID() {
+		return automaticServiceDiscoveryUUID;
+	}
+
+	/** Sets the UUID used for automatically discovering only specific
+	 * service UUID. This may be changed even while a backgound inquiry is 
+	 * running.
+	 * @see #automaticServiceDiscoveryUUID
+	 * @param uuid The service UUID used for automatic service discovery. Set
+	 *             to null to not restrict the discovery but search for all
+	 *             available services.
+	 */
+	public void setAutomaticServiceDiscoveryUUID(UUID uuid) {
+		automaticServiceDiscoveryUUID = uuid;
+	}
+
 	/** Starts a Bluetooth inquiry.
 	 * @param continuousBackground If set to true, this start a continuous
 	 *                             inquiry in the background, with the time
@@ -164,6 +190,21 @@ public class BluetoothPeerManager {
 			return false;
 	}
 	
+	/** Start to search for the list of services on a remote device. This 
+	 * should not be done when automaticServiceDiscovery=true for performance
+	 * reasons (but does not hurt if it is called). Calling this method empties
+	 * the services list for the given device before the new search to get rid
+	 * of potentially stale (changed) service entries.
+	 * @param device The remote device to get the service list from.
+	 * @param specificService The UUID of a specific service to search for. If
+	 *                        set to null, arbitrary services are returned.
+	 *                        The UUID 0x0100 (for L2CAP support) is always 
+	 *                        included in the search, because we only support
+	 *                        L2CAP connections anyway (no SCO).
+	 * @return true if the service search could be started, false otherwise
+	 *         (most probably due to Bluetooth state issue like an already
+	 *         running inquiry or too many concurrent service searches).
+	 */
 	public boolean startServiceSearch(RemoteDevice device, UUID specificService) {
 		// TODO: make me configurable?
 		/* query for the following attributes:
@@ -185,6 +226,14 @@ public class BluetoothPeerManager {
 			uuids = new UUID[2];
 			uuids[0] = new UUID(0x0100);
 			uuids[1] = specificService;
+		}
+		synchronized(foundDevices) {
+			if (! foundDevices.containsKey(device)) {
+				logger.error("Remote device has not been discovered before, don't have a service list yet. This is not yet supported!");
+				return false;
+			}
+			Vector services = ((RemoteDeviceDetail) foundDevices.get(device)).services;
+			services.clear();
 		}
 		
 		try {
@@ -267,6 +316,7 @@ public class BluetoothPeerManager {
 		public boolean newlyDiscovered = true;
 		public long lastSeen = System.currentTimeMillis();
 		public Vector services = new Vector();
+		public boolean serviceSearchFinished = false;
 	}
 	
 	/** This is an internal helper class for reacting to Bluetooth events. */
@@ -319,30 +369,34 @@ public class BluetoothPeerManager {
 			}
 
 			switch (param) {
-			case DiscoveryListener.INQUIRY_COMPLETED: //Inquiry completed normally
+			case DiscoveryListener.INQUIRY_COMPLETED: 
 				// find out which of the devices are new
 				Vector newDevices = new Vector();
 				synchronized (foundDevices) {
 					for (Enumeration devices = foundDevices.keys(); devices.hasMoreElements(); ) {
 						RemoteDevice device = (RemoteDevice) devices.nextElement();
 						RemoteDeviceDetail entry = (RemoteDeviceDetail) foundDevices.get(device);
+						// if this device has been discovered in the current inquiry run, report it
 						if (entry.newlyDiscovered) {
 							entry.newlyDiscovered = false;
 							newDevices.addElement(device);
-							if (automaticServiceDiscovery) {
-								// TODO: start service discovery
-							}
+							// and start service discovery if requested
+							if (automaticServiceDiscovery)
+								startServiceSearch(device, automaticServiceDiscoveryUUID);
 						}
+						// also need to check if service discovery needs to be re-started because of a previous error
+						if (!entry.serviceSearchFinished && automaticServiceDiscovery)
+							startServiceSearch(device, automaticServiceDiscoveryUUID);
 					}
 				}
 				
 				for (int i=0; i<listeners.size(); i++)
 					((PeerEventsListener) listeners.elementAt(i)).inquiryCompleted(newDevices);
 				break;
-			case DiscoveryListener.INQUIRY_ERROR: // Error during inquiry
+			case DiscoveryListener.INQUIRY_ERROR:
 				logger.error("Inquiry error");
 				break;
-			case DiscoveryListener.INQUIRY_TERMINATED: // Inquiry terminated by agent.cancelInquiry()
+			case DiscoveryListener.INQUIRY_TERMINATED: // inquiry terminated by agent.cancelInquiry()
 				logger.error("Inquiry cancelled");
 				break;
 			}
@@ -362,14 +416,16 @@ public class BluetoothPeerManager {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
 			}
-			
+
+			Vector services;
 			synchronized(foundDevices) {
 				if (! foundDevices.containsKey(currentRemoteDevice)) {
 					logger.error("Internal error: Remote device set and discovered services, but no device entry. This should not happen, ignoring services!");
 					return;
 				}
-				Vector services = ((RemoteDeviceDetail) foundDevices.get(currentRemoteDevice)).services; 
-					
+				services = ((RemoteDeviceDetail) foundDevices.get(currentRemoteDevice)).services; 
+			}
+			synchronized (services) {	
 				for (int x = 0; x < serviceRecord.length; x++)
 					services.addElement(serviceRecord[x]);
 			}
@@ -380,33 +436,42 @@ public class BluetoothPeerManager {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
 			}
-
+			RemoteDeviceDetail device;
+			synchronized(foundDevices) {
+				if (! foundDevices.containsKey(currentRemoteDevice)) {
+					logger.error("Internal error: Remote device set and discovered services, but no device entry. This should not happen, ignoring services!");
+					return;
+				}
+				device = (RemoteDeviceDetail) foundDevices.get(currentRemoteDevice);
+			}
+			
 			switch (respCode) {
 			case DiscoveryListener.SERVICE_SEARCH_COMPLETED:
-				Vector services;
-				synchronized(foundDevices) {
-					if (! foundDevices.containsKey(currentRemoteDevice)) {
-						logger.error("Internal error: Remote device set and discovered services, but no device entry. This should not happen, ignoring services!");
-						return;
-					}
-					services = ((RemoteDeviceDetail) foundDevices.get(currentRemoteDevice)).services; 
-				}
+				device.serviceSearchFinished = true;
 
-				for (int i=0; i<listeners.size(); i++)
-					((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
+				Vector services = device.services;
+				synchronized (services) { 
+					for (int i=0; i<listeners.size(); i++)
+						((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
+				}
 				
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_DEVICE_NOT_REACHABLE:
-				logger.error("Device not Reachable");
+				logger.error("Device not reachable while trying to perform service discovery");
+				device.serviceSearchFinished = false;
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
 				logger.error("Service serch error");
+				device.serviceSearchFinished = false;
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
 				logger.error("No records returned");
+				// in this case, service search was actually finished correctly (even if we didn't get any records)
+				device.serviceSearchFinished = true;
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
-				logger.error("Inqury Cancled");
+				logger.error("Inquiry cancelled");
+				device.serviceSearchFinished = false;
 				break;
 			}
 		}
@@ -489,7 +554,7 @@ public class BluetoothPeerManager {
 			for (int x = 0; x < services.size(); x++) {
 				DataElement ser_de = ((ServiceRecord) services.elementAt(x)).getAttributeValue(0x100);
 				String name = (String) ser_de.getValue();
-				System.out.println("Found service for devices " + resolveName(remoteDevice) + ": " + name);
+				System.out.println("Found service for device " + resolveName(remoteDevice) + ": " + name);
 			}
 		}
 	}
