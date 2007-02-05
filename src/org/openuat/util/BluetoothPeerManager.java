@@ -49,6 +49,11 @@ public class BluetoothPeerManager {
 	/** The sleep time between two inquiry runs in milliseconds. */
 	private int sleepBetweenInquiries = DEFAULT_SLEEP_TIME;
 	
+	/** If set to true, then services will automatically be discovered for 
+	 * newly found devices.
+	 */
+	private boolean automaticServiceDiscovery = false;
+	
 	/** The events handler used for the main inquiry. */
 	private DiscoveryEventsHandler eventsHandler = new DiscoveryEventsHandler(null);
 	
@@ -64,6 +69,7 @@ public class BluetoothPeerManager {
 	
 	/** Returns the time to sleep in between two retries when startInquiry is 
 	 * called with continuousBackground=true.
+	 * @see #sleepBetweenInquiries
 	 * @return The sleep time in ms.
 	 */
 	public int getSleepBetweenInquiriesTime() {
@@ -71,45 +77,79 @@ public class BluetoothPeerManager {
 	}
 	
 	/** Sets the time to sleep in between two retries when startInquiry is 
-	 * called with continuousBackground=true.
+	 * called with continuousBackground=true. This may be changed even while
+	 * a backgound inquiry is running.
+	 * @see #sleepBetweenInquiries
 	 * @param milliseconds The sleep time in ms.
 	 */
 	public void setSleepBetweenInquiriesTime(int milliseconds) {
 		this.sleepBetweenInquiries = milliseconds;
 	}
 	
-	// TODO: use the arguments...
-	public boolean startInquiry(boolean continuousBackground, boolean automaticServiceDiscovery) {
-			if (! continuousBackground) {
-				// OK, one-shot inquiry
-				return startInquiry();
-			}
-			else {
-				if (inquiryThread != null) {
-					logger.warn("Background inquiry already running, can not start another instance.");
-					return false;
-				}
-					
-				inquiryThread = new Thread(new Runnable() { public void run() {
-					while (inquiryThread != null) {
-						if (!startInquiry())
-							return;
-						try {
-							// before starting the next inquire run, wait for this one to finish
-							synchronized (eventsHandler) {
-								while (eventsHandler.isInquiryRunning())
-									eventsHandler.wait();
-							}
-							// and sleep
-							Thread.sleep(sleepBetweenInquiries);
-						} catch (InterruptedException e) { }
-					}
-				}});
-				inquiryThread.start();
-				return true;
-			}
+	/** Returns the state of automatic service discovery.
+	 * @see #automaticServiceDiscovery
+	 * @return true if services are discocered automatically for newly found
+	 *         devices.
+	 */
+	public boolean getAutomaticServiceDiscovery() {
+		return automaticServiceDiscovery;
 	}
 	
+	/** Sets the state of automatic service discovery. his may be changed even 
+	 * while a backgound inquiry is running.
+	 * @see #automaticServiceDiscovery
+	 * @param automaticServiceDiscovery Set to true if services should be 
+	 *                                  discocered automatically for newly found
+	 *                                  devices.
+	 */
+	public void setAutomaticServiceDiscovery(boolean automaticServiceDiscovery) {
+		this.automaticServiceDiscovery = automaticServiceDiscovery;
+	}
+	
+	/** Starts a Bluetooth inquiry.
+	 * @param continuousBackground If set to true, this start a continuous
+	 *                             inquiry in the background, with the time
+	 *                             set by setSleepBetweenInquiriesTime between
+	 *                             two inquiries. If set to false, it just
+	 *                             starts a one-shot inquiry.
+	 * @return true if the inquiry could be started, false otherwise (either
+	 *         when another inquiry is already active or due to a Bluetooth
+	 *         error).
+	 */
+	public boolean startInquiry(boolean continuousBackground) {
+		if (inquiryThread != null) {
+			logger.warn("Background inquiry already running, can not start another instance.");
+			return false;
+		}
+		if (! continuousBackground) {
+			// OK, one-shot inquiry
+			return startInquiry();
+		}
+		else {
+			inquiryThread = new Thread(new Runnable() { public void run() {
+				while (inquiryThread != null) {
+					if (!startInquiry())
+						return;
+					try {
+						// before starting the next inquire run, wait for this one to finish
+						synchronized (eventsHandler) {
+							while (eventsHandler.isInquiryRunning())
+								eventsHandler.wait();
+						}
+						// and sleep
+						Thread.sleep(sleepBetweenInquiries);
+					} catch (InterruptedException e) { }
+				}
+			}});
+			inquiryThread.start();
+			return true;
+		}
+	}
+
+	/** Stops a background inquiry.
+	 * @return true it stopped successfully, false if no background inquiry
+	 *         was running.
+	 */
 	public boolean stopInquiry() {
 		if (inquiryThread != null) {
 			Thread tmp = inquiryThread;
@@ -208,6 +248,7 @@ public class BluetoothPeerManager {
 		public Vector services = new Vector();
 	}
 	
+	/** This is an internal helper class for reacting to Bluetooth events. */
 	private class DiscoveryEventsHandler implements DiscoveryListener {
 		/** true if inquiry has finished, false otherwise. */
 		private boolean isFinished = true;
@@ -219,7 +260,7 @@ public class BluetoothPeerManager {
 		 *                      remote device object for service discovery.
 		 */
 		public DiscoveryEventsHandler(RemoteDevice forDevice) {
-			currentRemoteDevice = forDevice;
+			this.currentRemoteDevice = forDevice;
 		}
 		
 		/** Resets the object to its "active" state, meaning that inquiry is currently running. */
@@ -238,13 +279,9 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			try {
-				logger.info("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
-						" named '" + remoteDevice.getFriendlyName(true) + "' of class " + 
-						deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
-			} catch (IOException e) {
-				// just ignore
-			}
+			logger.info("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
+					" named '" + resolveName(remoteDevice) + "' of class " + 
+					deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
 			synchronized(foundDevices) {
 				// remember the device by adding an empty service list with its key (if not already found before)
 				if (!foundDevices.containsKey(remoteDevice)) {
@@ -271,6 +308,9 @@ public class BluetoothPeerManager {
 						if (entry.newlyDiscovered) {
 							entry.newlyDiscovered = false;
 							newDevices.addElement(device);
+							if (automaticServiceDiscovery) {
+								// TODO: start service discovery
+							}
 						}
 					}
 				}
@@ -279,10 +319,10 @@ public class BluetoothPeerManager {
 					((PeerEventsListener) listeners.elementAt(i)).inquiryCompleted(newDevices);
 				break;
 			case DiscoveryListener.INQUIRY_ERROR: // Error during inquiry
-				logger.error("Inqury error");
+				logger.error("Inquiry error");
 				break;
 			case DiscoveryListener.INQUIRY_TERMINATED: // Inquiry terminated by agent.cancelInquiry()
-				logger.error("Inqury Canceled");
+				logger.error("Inquiry cancelled");
 				break;
 			}
 			synchronized (this) {
@@ -373,56 +413,36 @@ public class BluetoothPeerManager {
 		}
 	}
 	
-	/*
- LocalDevice localdevice = LocalDevice.getLocalDevice(); 
-DiscoveryAgent discoveryagent = localdevice.getDiscoveryAgent();
- */
+	/** This is a helper function for resolving a remote device name. If the
+	 * name can not be queried or is empty, then the Bluetooth (MAC) address 
+	 * will be returned instead. This method takes care of the Bluetooth
+	 * exception that can occur when trying to resolve the name and will always
+	 * return a valid string object.
+	 * @param device The remote device to resolve the name for.
+	 */
+	public static String resolveName(RemoteDevice device) {
+		String name;
+		try {
+			name = device.getFriendlyName(false);
 
+		} catch (IOException ioe) {
+			name = device.getBluetoothAddress();
+		}
+		if (name.length() == 0)
+			name = device.getBluetoothAddress();
+		return name;
+	}
+	
 	/*
 	 * String connectionURL = servRecord[i].getConnectionURL(0, false);
 	 */
 	
-	/*public void startApp() {
-		 startServer();
-		 }
-		 private void startServer() { 
-		 if (mServer !=null)
-		 return;
-		 //start the server and receiver
-		 mServer = new Thread(this);
-		 mServer.start(); 
-		 }
-		 
-		 
-		 Procedure run() {
-		 if (deviceVector == null) deviceVector = new Vector();
-		 if (agent == null) agent = local.getDiscoveryAgent();
-		 
-		 /* Retrieve PREKNOWN devices and add them to our Vector */
-		 
+	 	 /* Retrieve PREKNOWN devices and add them to our Vector */
 /*		 RemoteDevice[] devices = agent.retrieveDevices(DiscoveryAgent.PREKNOWN);*/
 		 /* 
 		 * Synchronize on vector to obtain object lock before loop.
 		 * Else, object lock will be obtained every iteration.
 		 */
-/*		 synchronized(deviceVector) {
-		 
-		 for (int i = devices.length-1;i >=0;i--) {
-		 deviceVector.addElement(devices[i]);
-		 
-		 try {
-		 name = devices[i].getFriendlyName(false);
-		 
-		 }catch (IOException ioe) {
-		 name = devices[i].getBluetoothAddress();
-		 }
-		 if (name.equals("")) name = devices[i].getBluetoothAddress();
-		 knownDevices.insert(0,name,null);
-		 }
-		 } //End synchronized
-		 }
-		 }*/
-	
 	/*
 	 * repeating the in the above code each time will obviously extend the time
 	 *  devices = agent.retrieveDevices(DiscoveryAgent.PREKNOWN);
@@ -439,32 +459,20 @@ DiscoveryAgent discoveryagent = localdevice.getDiscoveryAgent();
 		public void inquiryCompleted(Vector newDevices) {
 			System.out.println("Inquiry completed, new devices: ");
 			for (int i=0; i<newDevices.size(); i++)
-				try {
-					System.out.println("    " + ((RemoteDevice) newDevices.elementAt(i)).getFriendlyName(false));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				System.out.println("    " + resolveName((RemoteDevice) newDevices.elementAt(i)));
 			
 			System.out.println("List of all devices discovered so far: ");
 			RemoteDevice[] allDevices = man.getPeers();
 			for (int i=0; i<allDevices.length; i++) {
-				try {
-					System.out.println("    " + allDevices[i].getFriendlyName(false));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				System.out.println("    " + resolveName(allDevices[i]));
 			}
 		}
 
 		public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
 			for (int x = 0; x < services.size(); x++) {
-				try {
-					DataElement ser_de = ((ServiceRecord) services.elementAt(x)).getAttributeValue(0x100);
-					String name = (String) ser_de.getValue();
-					System.out.println("Found service for devices " + remoteDevice.getFriendlyName(false) + ": " + name);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				DataElement ser_de = ((ServiceRecord) services.elementAt(x)).getAttributeValue(0x100);
+				String name = (String) ser_de.getValue();
+				System.out.println("Found service for devices " + resolveName(remoteDevice) + ": " + name);
 			}
 		}
 	}
@@ -475,7 +483,8 @@ DiscoveryAgent discoveryagent = localdevice.getDiscoveryAgent();
 		l.man = m;
 		m.addListener(l);
 		System.out.println("Starting inquiry");
-		m.startInquiry(true, true);
+		m.setAutomaticServiceDiscovery(true);
+		m.startInquiry(true);
 		System.out.println("Press any key to stop background inquiry");
 		System.in.read();
 		m.stopInquiry();

@@ -103,7 +103,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	}
 
 	public void FindDevices() {
-		if (!peerManager.startInquiry(false, false)) {
+		if (!peerManager.startInquiry(false)) {
 			this.do_alert("Erron in initiating search", 4000);
 		}
 	}
@@ -135,14 +135,11 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	}
 
 	public void inquiryCompleted(Vector newDevices) {
-		for (int i=0; i<newDevices.size(); i++)
-			try {
-				String device_name = ((RemoteDevice) newDevices.elementAt(i)).getFriendlyName(false);
-				this.dev_list.append(device_name, null);
-				display.setCurrent(dev_list);
-			} catch (Exception e) {
-				do_alert("Error in adding devices", 4000);
-			}
+		for (int i=0; i<newDevices.size(); i++) {
+			String device_name = BluetoothPeerManager.resolveName((RemoteDevice) newDevices.elementAt(i));
+			this.dev_list.append(device_name, null);
+			display.setCurrent(dev_list);
+		}
 	}
 
 	public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
