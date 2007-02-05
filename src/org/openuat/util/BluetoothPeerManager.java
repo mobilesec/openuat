@@ -232,7 +232,10 @@ public class BluetoothPeerManager {
 				logger.error("Remote device has not been discovered before, don't have a service list yet. This is not yet supported!");
 				return false;
 			}
-			Vector services = ((RemoteDeviceDetail) foundDevices.get(device)).services;
+			RemoteDeviceDetail dev = (RemoteDeviceDetail) foundDevices.get(device);
+			// when requested to start a new search, we certainly aren't finished...
+			dev.serviceSearchFinished = false;
+			Vector services = dev.services;
 			services.clear();
 		}
 		
