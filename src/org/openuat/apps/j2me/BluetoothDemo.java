@@ -134,13 +134,10 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	public void destroyApp(boolean unconditional) {
 	}
 
-	public void newDevicesFound() {
-		RemoteDevice[] devices = peerManager.getPeers();
-
-		for (int x = 0; x < devices.length; x++)
+	public void inquiryCompleted(Vector newDevices) {
+		for (int i=0; i<newDevices.size(); i++)
 			try {
-				String device_name = ((RemoteDevice) devices[x])
-						.getFriendlyName(false);
+				String device_name = ((RemoteDevice) newDevices.elementAt(i)).getFriendlyName(false);
 				this.dev_list.append(device_name, null);
 				display.setCurrent(dev_list);
 			} catch (Exception e) {
