@@ -299,6 +299,7 @@
 		<wtkpackage jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad" preverify="false" obfuscate="false">
 			<fileset dir="${bin}" includes="org/openuat/apps/j2me/BluetoothDemo.class org/openuat/util/Bluetooth*.class"/>
 			<fileset dir="${thirdparty}/log4jNoop" includes="org/apache/log4j/**/*.class"/>
+			<fileset dir="${thirdparty}/avetanaNoop" includes="de/avetana/bluetooth/stack/**/*.class"/>
 			<!-- nope, doesn't work with CLDC -->
 			<!--<zipfileset src="${lib}/log4jMini.jar" />-->
 		</wtkpackage>
