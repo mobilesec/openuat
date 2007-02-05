@@ -78,7 +78,9 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		if (com == List.SELECT_COMMAND) {
 			if (dis == main_list) { //select triggered from the main from
 				if (main_list.getSelectedIndex() >= 0) { //find devices
-					FindDevices();
+					if (!peerManager.startInquiry(false)) {
+						this.do_alert("Error in initiating search", 4000);
+					}
 					do_alert("Searching for devices...", Alert.FOREVER);
 				}
 			}
@@ -86,10 +88,11 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 				if (dev_list.getSelectedIndex() >= 0) { //find services
 					RemoteDevice[] devices = peerManager.getPeers();
 					
-					int[] attributes = { 0x100 }; //the name of the service
-					UUID[] uuids = new UUID[1];
-					uuids[0] = new UUID(0x1002); //browsable services
-					FindServices(attributes, uuids, devices[dev_list.getSelectedIndex()]);
+					serv_list.deleteAll(); //empty the list of services in case user has pressed back
+					UUID uuid = new UUID(0x1002); // publicly browsable services
+					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
+						this.do_alert("Error in initiating search", 4000);
+					}
 					do_alert("Inquiring device for services...", Alert.FOREVER);
 				}
 			}
@@ -100,20 +103,6 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			}
 		}
 
-	}
-
-	public void FindDevices() {
-		if (!peerManager.startInquiry(false)) {
-			this.do_alert("Erron in initiating search", 4000);
-		}
-	}
-
-	public void FindServices(int[] attributes, UUID[] uuids, RemoteDevice device) {
-		serv_list.deleteAll(); //empty the list of services
-		//in case user has pressed back
-		if (!peerManager.startServiceSearch(attributes, uuids, device)) {
-			this.do_alert("Erron in initiating search", 4000);
-		}
 	}
 
 	public void do_alert(String msg, int time_out) {

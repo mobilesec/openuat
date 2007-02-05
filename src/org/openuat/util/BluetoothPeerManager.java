@@ -164,8 +164,29 @@ public class BluetoothPeerManager {
 			return false;
 	}
 	
-	// TODO: this interface needs to be changed
-	public boolean startServiceSearch(int[] attributes, UUID[] uuids, RemoteDevice device) {
+	public boolean startServiceSearch(RemoteDevice device, UUID specificService) {
+		// TODO: make me configurable?
+		/* query for the following attributes:
+		 *     - 0x0000: ServiceRecordHandle
+		 *     - 0x0001: ServiceClassIDList
+		 *     - 0x0002: ServiceRecordState
+		 *     - 0x0003: ServiceID
+		 *     - 0x0004: ProtocolDescriptorList
+		 *     - 0x0100: service name
+		 */
+		int[] attributes = new int[] {0x0000, 0x0001, 0x0002, 0x0003, 0x004, 0x0100};
+		UUID[] uuids;
+		if (specificService == null) {
+			uuids = new UUID[1];
+			uuids[0] = new UUID(0x0100); // always search for services that support L2CAP (no SCO)
+			// another option would be to search for service UUID 0x0003 (RFCOMM)
+		}
+		else {
+			uuids = new UUID[2];
+			uuids[0] = new UUID(0x0100);
+			uuids[1] = specificService;
+		}
+		
 		try {
 			agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
 			return true;
@@ -439,10 +460,6 @@ public class BluetoothPeerManager {
 	
 	 	 /* Retrieve PREKNOWN devices and add them to our Vector */
 /*		 RemoteDevice[] devices = agent.retrieveDevices(DiscoveryAgent.PREKNOWN);*/
-		 /* 
-		 * Synchronize on vector to obtain object lock before loop.
-		 * Else, object lock will be obtained every iteration.
-		 */
 	/*
 	 * repeating the in the above code each time will obviously extend the time
 	 *  devices = agent.retrieveDevices(DiscoveryAgent.PREKNOWN);

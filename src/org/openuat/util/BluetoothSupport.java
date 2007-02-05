@@ -37,7 +37,12 @@ public class BluetoothSupport {
 			return initAvetana();
 		}
 		else if (System.getProperty( "microedition.platform") != null) {
-			// running on J2ME: TODO: check if we have JSR82 support
+			// running on J2ME, but need to check if we have JSR82 support
+			// TODO: this doesn't return anything on the Nokia 5500
+			/*if (System.getProperty("bluetooth.api.version") == null) {
+				logger.error("No JSR82 support detected, property bluetooth.api.version not set");
+				return false;
+			}*/
 			initialized = true;
 			return true;
 		}
@@ -45,7 +50,6 @@ public class BluetoothSupport {
 		return false;
 	}
 	
-	// TODO: how to disable this selectively for J2ME when we have no reflection? doh
 	private static boolean initAvetana() {
 		logger.debug("Trying to initializing Avetana JSR82 implementation");
 		// Initialize the java stack.

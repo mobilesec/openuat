@@ -26,15 +26,39 @@ public class HelloProperty extends MIDlet implements CommandListener {
                    + System.getProperty( "microedition.configuration") + "\n");
          form.append("Supported profiles: "
                    + System.getProperty( "microedition.profiles")+ "\n");
+         form.append("Bluetooth API version: "
+                 + System.getProperty( "bluetooth.api.version")+ "\n");
+         form.append("Bluetooth receiveMTU max: "
+                 + System.getProperty( "bluetooth.l2cap.reveiveMTU.max")+ "\n");
+         form.append("Bluetooth max connected dev: "
+                 + System.getProperty( "bluetooth.connected.devices.max")+ "\n");
+         form.append("Bluetooth inquiry during connection: "
+                 + System.getProperty( "bluetooth.connected.inquiry")+ "\n");
+         form.append("Bluetooth page during connection: "
+                 + System.getProperty( "bluetooth.connected.page")+ "\n");
+         form.append("Bluetooth inquiry scan during connection: "
+                 + System.getProperty( "bluetooth.connected.inquiry.scan")+ "\n");
+         form.append("Bluetooth page scan during connection: "
+                 + System.getProperty( "bluetooth.connected.page.scan")+ "\n");
+         form.append("Bluetooth master/slave switch: "
+                 + System.getProperty( "bluetooth.master.switch")+ "\n");
+         form.append("Bluetooth max concurrent service disc: "
+                 + System.getProperty( "bluetooth.sd.trans.max")+ "\n");
+         form.append("Bluetooth max service attr: "
+                 + System.getProperty( "bluetooth.sd.attr.retrievable.max")+ "\n");
      }
 
      protected void startApp() {
          Display.getDisplay(this).setCurrent(form);
      }
 
-     protected void pauseApp() {}
+     protected void pauseApp() {
+    	 // don't need to implement
+     }
 
-     protected void destroyApp(boolean bool) {}
+     protected void destroyApp(boolean bool) {
+    	 // don't need to implement
+     }
 
      public void commandAction(Command cmd, Displayable disp) {
          if (cmd == exitCommand) {
