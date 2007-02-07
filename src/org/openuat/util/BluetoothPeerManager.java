@@ -26,7 +26,20 @@ import javax.bluetooth.UUID;
 import org.apache.log4j.Logger;
 
 /** This class implements a Bluetooth peer device manager that handles 
- * automatic background discovery.
+ * automatic background discovery. Users of this class should implement the
+ * BluetoothPeerManager.DiscoveryEventsHandler interface and register itself
+ * with addListener/removeListener to react to events.
+ * 
+ * Parameters for automatic background discovery can be set with
+ * setSleepBetweenInquiriesTime, setAutomaticServiceDiscovery, and 
+ * setAutomaticServiceDiscoveryUUID. The whole inquiry process is started by
+ * calling startInquiry, which can either be a one-shot operation or be started
+ * as a continuous background thread (which can be stopped with stopInquiry). 
+ * Services of discovered devices can be found by either calling 
+ * startServiceSearch directly or setting automaticServiceDiscovery to true.
+ * 
+ * There are two ways of querying the discovered information: either explicitly
+ * via getPeers and getServices, or by using the arguments passed to events.
  */ 
 public class BluetoothPeerManager {
 	/** The default sleep time between two inquiry runs in milliseconds. */
@@ -229,14 +242,14 @@ public class BluetoothPeerManager {
 		}
 		synchronized(foundDevices) {
 			if (! foundDevices.containsKey(device)) {
-				logger.error("Remote device has not been discovered before, don't have a service list yet. This is not yet supported!");
+				logger.error("Remote device " + device.getBluetoothAddress() + 
+					" has not been discovered before, don't have a service list yet. This is not yet supported!");
 				return false;
 			}
 			RemoteDeviceDetail dev = (RemoteDeviceDetail) foundDevices.get(device);
 			// when requested to start a new search, we certainly aren't finished...
 			dev.serviceSearchFinished = false;
-			Vector services = dev.services;
-			services.clear();
+			dev.services.removeAllElements();
 		}
 		
 		try {
@@ -253,6 +266,10 @@ public class BluetoothPeerManager {
 		}
 	}
 	
+	/** Returns the list of devices that have been discovered until now.
+	 * @return The list of devices. If no devices have been discovered yet, the
+	 *         returned array will be valid, but empty. 
+	 */
 	// TODO: optionally restrict to device classes
 	public RemoteDevice[] getPeers() {
 		synchronized(foundDevices) {
@@ -260,6 +277,42 @@ public class BluetoothPeerManager {
 			int i = 0;
 			for (Enumeration devices = foundDevices.keys(); devices.hasMoreElements(); )
 				ret[i++] = (RemoteDevice) devices.nextElement();
+			return ret;
+		}
+	}
+	
+	/** Returns the list of services that have been discovered for a device.
+	 * @param device The device for which the services should be returned. 
+	 *               This device must have been discovered before, i.e. it must
+	 *               be in the list of devices returned by getPeers.
+	 * @return The list of services found for the given device. When the device
+	 *         is valid but not services have been found, the returned array 
+	 *         will be valid but empty. When the device has not been discovered
+	 *         yet or service discovery for it is still in progress, null is
+	 *         returned.
+	 */
+	public ServiceRecord[] getServices(RemoteDevice device) {
+		Vector services;
+		synchronized(foundDevices) {
+			if (! foundDevices.containsKey(device)) {
+				logger.warn("Remote device " + device.getBluetoothAddress() + 
+						" has not been discovered before, don't have a service list yet.");
+				return null;
+			}
+			RemoteDeviceDetail dev = (RemoteDeviceDetail) foundDevices.get(device);
+			
+			if (!dev.serviceSearchFinished) {
+				logger.warn("Service search for remote device " + device.getBluetoothAddress() +
+						" has not finished yet, don't have a service list.");
+				return null;
+			}
+			
+			services = dev.services;
+		}
+		synchronized(services) {
+			ServiceRecord[] ret = new ServiceRecord[services.size()];
+			for (int i=0; i<services.size(); i++)
+				ret[i] = (ServiceRecord) services.elementAt(i);
 			return ret;
 		}
 	}
