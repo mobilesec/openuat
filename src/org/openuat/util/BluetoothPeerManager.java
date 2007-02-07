@@ -59,7 +59,9 @@ public class BluetoothPeerManager {
 	/** The list of registered listeners. */
 	private Vector listeners = new Vector();
 	
-	/** The sleep time between two inquiry runs in milliseconds. */
+	/** The sleep time between two inquiry runs in milliseconds. Note that the
+	 * actual sleep time will be up to 20% randomly off this time to prevent
+	 * continuous collisions between two devices doing the same. */
 	private int sleepBetweenInquiries = DEFAULT_SLEEP_TIME;
 	
 	/** If set to true, then services will automatically be discovered for 
@@ -95,8 +97,10 @@ public class BluetoothPeerManager {
 	}
 	
 	/** Sets the time to sleep in between two retries when startInquiry is 
-	 * called with continuousBackground=true. This may be changed even while
-	 * a backgound inquiry is running.
+	 * called with continuousBackground=true.  Note that the actual sleep time 
+	 * will be up to 20% randomly off this time to prevent continuous 
+	 * collisions between two devices doing the same. This may be changed even 
+	 * while a backgound inquiry is running. 
 	 * @see #sleepBetweenInquiries
 	 * @param milliseconds The sleep time in ms.
 	 */
@@ -176,7 +180,7 @@ public class BluetoothPeerManager {
 								eventsHandler.wait();
 						}
 						// and sleep
-						Thread.sleep(sleepBetweenInquiries);
+						Thread.sleep((int) (sleepBetweenInquiries * (0.8 + Math.random() * 0.4)));
 					} catch (InterruptedException e) { }
 				}
 			}});
