@@ -36,6 +36,10 @@ Version 0.10, released
   
   New applications:
   * (J2ME) apps.j2me.HelloProporty
+  
+  Changed applications:
+  * IPSecME client and server applications: now use Swing and are
+    generally nicer
 
 --- Rene Mayrhofer <rene@mayrhofer.eu.org>
 
