@@ -316,7 +316,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 				HostInfoManager manager, Model model) {
 			// force the GUI to display the authentication menu entry even if 
 			// it does not locally use it
-			super(true, config, manager, model);
+			super(false, config, manager, model);
 		}
 
 		private void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) throws UnknownHostException, IOException {	

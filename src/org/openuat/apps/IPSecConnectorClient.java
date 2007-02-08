@@ -60,23 +60,14 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	
 	private CAEventsHandler guiHandler=null;
 	
-
-	
-	protected IPSecConnectorClient(boolean adminEnd, Configuration relateConf, MeasurementManager mm) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
-		super(adminEnd, relateConf, mm);
-	}
-
-	
-	
 	public IPSecConnectorClient(Configuration relateConf, MeasurementManager man) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		super(false, relateConf, man);
 	}
 
-
 	/**
 	 * dialog to set up the dongle configuration.
 	 */
-	 private static Configuration configureDialog(String[] ports, String[] sides, String[] types) {
+/*	 private static Configuration configureDialog(String[] ports, String[] sides, String[] types) {
 		JTextField username = new JTextField();
 		JComboBox cport = new JComboBox(ports);
 		JComboBox csides = new JComboBox(sides);
@@ -100,17 +91,22 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		config.setDeviceType(Configuration.DEVICE_TYPE_DONGLE);
 		logger.debug(config);
 		return config;
-	}
+	}*/
 	
 	public static void main (String[] agrs) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException{
-//		 TODO Auto-generated method stub
 		/* Before this is run, be sure to set up the launch configuration (Arguments->VM Arguments)
 		 * for the correct SWT library path in order to run with the SWT dlls. 
 		 * The dlls are located in the SWT plugin jar.  
 		 * For example, on Windows the Eclipse SWT 3.1 plugin jar is:
 		 *       installation_directory\plugins\org.eclipse.swt.win32_3.1.0.jar
 		 */
-	    Configuration relateConf = configureDialog(Configuration.getDevicePorts(), Configuration.SIDE_NAMES, Configuration.TYPES);
+		// TODO: this should be detected instead of hard-coded
+//	    Configuration relateConf = configureDialog(Configuration.getDevicePorts(), Configuration.SIDE_NAMES, Configuration.TYPES);
+		
+		Configuration relateConf = new Configuration("COM4");
+		relateConf.setSide(Configuration.BACK);
+		relateConf.setDeviceType(Configuration.DEVICE_TYPE_DONGLE);
+		
 	    SerialConnector connector = SerialConnector.getSerialConnector(relateConf.getDevicePortName(), relateConf.getDeviceType());
     	connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
         // this will start the SerialConnector thread and start listening for incoming measurements
@@ -182,7 +178,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		
 		public CAEventsHandler(Configuration config, 
 				HostInfoManager manager, Model model) {
-			super(true, false, config, manager, model);
+			super(false, false, config, manager, model);
 			side =-1;
 			remoteId=null;
 			

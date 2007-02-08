@@ -426,6 +426,7 @@
 	    <!-- nor the required support libraries -->
 	    <copy file="${lib}/log4j-1.2.jar" todir="${dist.webstart}" />
 	    <copy file="${lib}/kxml2-2.2.2.jar" todir="${dist.webstart}" />
+	    <copy file="${lib}/RXTXcomm.jar" todir="${dist.webstart}" />
 	    
 	    <!-- and the spatial authentication distribution itself, including the JNLP file -->
 	    <copy file="${jarfile.core}" todir="${dist.webstart}" />

@@ -22,6 +22,7 @@
                 <jar href="relate-2.2-apps.jar"/>
                 <jar href="log4j-1.2.jar"/>
                 <jar href="kxml2-2.2.2.jar"/>
+                <jar href="RXTXcomm.jar"/>
         </resources>
         <resources os="Windows"> 
 <!--                <jar href="swt-3.1_win32.x86.jar"/>
