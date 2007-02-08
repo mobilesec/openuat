@@ -1,11 +1,11 @@
 <?xmlversion="1.0" encoding="utf-8"?>
-   <jnlp spec="1.0+" codebase="http://www.openuat.org/spatial-ipsec-proxy/webstart/" href="IPSecConnectorClient.jnlp">
+   <jnlp spec="1.0+" codebase="http://10.20.30.1/ipsecme/webstart/" href="IPSecConnectorClient.jnlp">
        <information>
                <title>IPSecME Client</title>
-               <vendor>Rene Mayrhofer</vendor>
+               <vendor>OpenUAT with Relate authentication</vendor>
                <homepage href="http://www.openuat.org/spatial-ipsec-proxy"/>
-               <description>IPSecME demo application, client part</description>
-               <description kind="short">Client part of the IPSecME demo application</description>
+               <description>IPSecME client</description>
+               <description kind="short">Client part of the IPSecME authentication application</description>
                <offline-allowed/>
                <icon kind="splash" href="IPSecConnectorClient-splash.gif"/>
                <icon href="IPSecConnectorClient-icon.gif"/>
@@ -18,24 +18,25 @@
                 <jar href="openuat-apps.jar"/>
                 <jar href="openuat-channels.jar"/>
                 <jar href="openuat-core.jar"/>
-                <jar href="relate-2.1-core.jar"/>
+                <jar href="relate-2.2-core.jar"/>
+                <jar href="relate-2.2-apps.jar"/>
                 <jar href="log4j-1.2.jar"/>
                 <jar href="kxml2-2.2.2.jar"/>
         </resources>
         <resources os="Windows"> 
-                <jar href="swt-3.1_win32.x86.jar"/>
-                <nativelib href="swt-3.1-native_win32.x86.jar"/>
+<!--                <jar href="swt-3.1_win32.x86.jar"/>
+                <nativelib href="swt-3.1-native_win32.x86.jar"/>-->
                 <nativelib href="rxtx-2.1-native_win32.x86.jar"/>
                 <nativelib href="ipsec-1.0-native_win32.x86.jar"/>
         </resources>
         <resources os="Linux"> 
-                <jar href="swt-3.1_gtk.linux.x86.jar"/>
-                <nativelib href="swt-3.1-native_gtk.linux.x86.jar"/>
+<!--                <jar href="swt-3.1_gtk.linux.x86.jar"/>
+                <nativelib href="swt-3.1-native_gtk.linux.x86.jar"/>-->
                 <nativelib href="rxtx-2.1-native_linux.x86.jar"/>
         </resources>
         <resources os="MacOSX"> 
-                <jar href="swt-3.1-native_macosx.jar"/>
-                <nativelib href="swt-3.1-native_macosx.jar"/>
+<!--                <jar href="swt-3.1-native_macosx.jar"/>
+                <nativelib href="swt-3.1-native_macosx.jar"/>-->
                 <nativelib href="rxtx-2.1-native_macosx.jar"/>
         </resources>
         <application-desc main-class="org.openuat.apps.IPSecConnectorClient"/>
