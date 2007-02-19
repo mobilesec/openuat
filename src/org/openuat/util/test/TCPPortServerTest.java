@@ -10,26 +10,27 @@ package org.openuat.util.test;
 
 import org.openuat.authentication.*;
 import org.openuat.authentication.exceptions.*;
-import org.openuat.util.HostServerSocket;
+import org.openuat.util.HostServerBase;
+import org.openuat.util.TCPPortServer;
 
 import java.net.*;
 import java.io.*;
 
 import junit.framework.*;
 
-public class HostServerSocketTest extends TestCase {
+public class TCPPortServerTest extends TestCase {
 	public static final int PORT = 23456;
 
-	private HostServerSocket server = null;
+	private HostServerBase server = null;
 
 	private Socket client = null;
 
-	public HostServerSocketTest(String s) {
+	public TCPPortServerTest(String s) {
 		super(s);
 	}
 
 	public void setUp() throws IOException {
-		server = new HostServerSocket(PORT, false, true);
+		server = new TCPPortServer(PORT, false, true);
 		server.startListening();
 	}
 

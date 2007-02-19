@@ -1,5 +1,5 @@
 /* Copyright Rene Mayrhofer
- * File created 2007-01-25
+ * File created 2007-02-18
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -9,44 +9,38 @@
 package org.openuat.util;
 
 import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.util.ListIterator;
-
-import javax.bluetooth.UUID;
-import javax.microedition.io.StreamConnection;
-import javax.microedition.io.StreamConnectionNotifier;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
-import de.avetana.bluetooth.connection.Connector;
-
-/** This class represents an RFCOMM service which responds to incoming authentication requests by delegating any incoming
- * connection to the HostProtocolHandler class. More specifically, for each incoming RFCOMM connection, the 
- * HostProtocolHandler.startIncomingAuthenticationThread is invoked with the connected RFCOMM stream connection.
+/** This class represents a listener on a TCP port which responds to incoming authentication requests by delegating any incoming
+ * connection to the HostProtocolHandler class. More specifically, for each incoming TCP connection, the 
+ * HostProtocolHandler.startIncomingAuthenticationThread is invoked with the connected TCP socket.
  * 
- * Listening is done in a background thread using blocking accept() calls. After constructing a BluetoothRFCOMMServer object for
- * a specific channel, startListening() needs to be called to start accepting incoming connection. Authentication and encryption
- * as well as authorization on Bluetooth level are deactivated.
+ * Listening is done in a background thread using blocking accept() calls. After constructing a HostServerSocket object for
+ * a specific port, startListening() needs to be called to start accepting incoming connection.
  *  
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class BluetoothRFCOMMServer extends HostServerBase {
+public class TCPPortServer extends HostServerBase {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMServer" /*BluetoothRFCOMMServer.class*/);
-	
-	/** This notifier is used to accept new RFCOMM connection. */
-	private StreamConnectionNotifier listener;
+	private static Logger logger = Logger.getLogger(TCPPortServer.class);
+
+	/** This is the (bound but unconnected) TCP socket for listening for incoming connections. */
+	private ServerSocket listener;
 
     // We use a pseudo-singleton pattern here: for each port, only one instance can exist. This map holds the known instances.
 	//private static HashMap instances;
 
-	/** Initializes the listener by creating the RFCOMM service.
-	 * @param channel The RFCOMM channel to use.
-	 * @param serviceUUID The Bluetooth service UUID to register.
-	 * @param serviceName The name to announce via SDP.
+	/** Initializes the listener by creating the TCP server socket.
+	 * @param port The TCP port to bind to.. 
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
@@ -55,22 +49,15 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	 *                           reused for additional communication after the first authentication
 	 *                           protocol has been completed.
 	 */
-	public BluetoothRFCOMMServer(int channel, UUID serviceUUID, String serviceName, boolean keepConnected, boolean useJSSE) throws IOException {
+	public TCPPortServer(int port, boolean keepConnected, boolean useJSSE) throws IOException {
 		super(keepConnected, useJSSE);
-		
-		// construct the Bluetooth service URL
-		String serviceURL = "btspp://localhost:" + serviceUUID + ":" + channel + ";name=" + 
-			serviceName + ";authenticate=false;encrypt=false;authorize=false";
-
-		// and create the RFCOMM service
-		this.listener = (StreamConnectionNotifier) Connector.open(serviceURL);
+		this.listener = new ServerSocket(port);
 	}
 	
 	/** Need to override the stopListening method to properly close the TCP server socket. 
 	 * @throws InternalApplicationException */
 	public void stopListening() throws InternalApplicationException {
 		try {
-			// this causes the service record to be removed from the SDDB 
 			listener.close();
 		} catch (IOException e) {
 			throw new InternalApplicationException(
@@ -79,21 +66,30 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		}
 		super.stopListening();
 	}
-	
-	/** This actually implements the listening for new RFCOMM channels. */
+
+	/** Does the actual listening for incoming connections by calling the blocking accept() on the listening socket in a loop.
+	 * For each incoming connection, a new HostProtocolHandler object is created and its startIncomingAuthenticationThread is
+	 * used to start a thread that handles the new connection.
+	 */
 	public void run() {
-		logger.debug("Listening thread for RFCOMM service now running");
+		logger.debug("Listening thread for server socket now running port " + listener.getLocalPort());
 		try {
 			while (running) {
 				//System.out.println("Listening thread for server socket waiting for connection");
-				StreamConnection connection = listener.acceptAndOpen();
+				Socket s = listener.accept();
 				
-				HostProtocolHandler h = new HostProtocolHandler(new BluetoothRFCOMMChannel(connection), keepConnected, useJSSE);
+				HostProtocolHandler h = new HostProtocolHandler(new RemoteTCPConnection(s), keepConnected, useJSSE);
 				// before starting the background thread, register all our own listeners with this new event sender
     			for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
     				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
     			h.startIncomingAuthenticationThread();
 			}
+		} catch(SocketException e) {
+			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 
+			if (running)
+				logger.error("Error in listening thread: " + e);
+			else
+				logger.debug("Listening socket was forcibly closed, exiting listening thread now.");
 		} catch (IOException e) {
 			logger.error("Error in listening thread: " + e);
 		}

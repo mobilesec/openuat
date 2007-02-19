@@ -3,7 +3,11 @@ Version 0.10, released
   This is a minor new feature release, adding support for new accelerometer
   sensors available on some recent laptop mainboards and Bluetooth RFCOMM
   communication. It is also the first release to include J2ME applets with
-  automatic building from the standard build.xml.
+  automatic building from the standard build.xml. Stream-oriented connections
+  are now represented by the new RemoteConnection interface so that classes 
+  like HostProtocolHandler and the DHWithVerification protocol can 
+  transparently use different connection types, e.g. TCP or Bluetooth RFCOMM.
+  
   A new concept introduced with this release is the concept of roles: a device
   or side of the authentication can hold one or multiple roles. Initial
   implementations include the two sides of the Resurrecting Duckling protocol.
@@ -31,11 +35,23 @@ Version 0.10, released
   * SafetyBeltTimer
   * MessageListener
   * UDPMulticastSocket
-  * HostServerSocket
   * BluetoothRFCOMMChannel
   
+  Restructured some base communication classes to remove their dependency on 
+  TCP and allow different underlying stream-oriented connections (such as
+  Bluetooth RFCOMM):
+  * util.RemoteConnection: encapsulates stream connections
+  * util.RemoteTCPConnection: an implementation for TCP (with underlying 
+    Socket encapsulation)
+  * util.HostServerBase: only connection-type independent code
+  * util.TCPPortServer: the previously called HostServerSocket implementation
+  All classes that previously dealt directly with Socket/InetAddress objects
+  have now been changed to use the RemoteConnection interface instead, where
+  applicable.
+    
   New applications:
   * (J2ME) apps.j2me.HelloProporty
+  * (J2ME) apps.j2me.
   
   Changed applications:
   * IPSecME client and server applications: now use Swing and are

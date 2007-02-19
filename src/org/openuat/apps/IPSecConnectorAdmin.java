@@ -26,6 +26,8 @@ import org.openuat.apps.IPSecConfigHandler;
 import org.openuat.authentication.exceptions.ConfigurationErrorException;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.X509CertificateGenerator;
+import org.openuat.util.RemoteConnection;
+import org.openuat.util.RemoteTCPConnection;
 
 import uk.ac.lancs.relate.apps.RelateGridDemo;
 import uk.ac.lancs.relate.core.Configuration;
@@ -45,7 +47,6 @@ import uk.ac.lancs.relate.gui.swing.widget.RelateMenuItem;
 import uk.ac.lancs.relate.ip.HostInfoManager;
 import uk.ac.lancs.relate.model.Model;
 import uk.ac.lancs.relate.model.NLRAlgorithm;
-
 
 public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 	
@@ -89,12 +90,10 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 	/** Remembers the TCP socket to the remote host, as passed in the authentication
 	 * success message.
 	 */
-	private Socket toRemote = null;
-
-	
-	
+	private RemoteConnection toRemote = null;
 	
 	private AuthenticationEventsHandler guiHandler=null;
+	
 	public IPSecConnectorAdmin(Configuration relateConf, String caFile, String caPassword, String caAlias, 
 			String configFilename, MeasurementManager mm) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
 		super(true, relateConf, mm);
@@ -163,7 +162,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		
 		// since we use RelateAuthenticationProtocol with keepSocketConnected=true, ...
 		sharedKey = (byte[]) ((Object[] ) result)[0];
-		toRemote = (Socket) ((Object[] ) result)[1];
+		toRemote = (RemoteConnection) ((Object[] ) result)[1];
 		if (guiHandler.adminconfig!=null){
 			guiHandler.adminconfig.enableButton();
 		}
@@ -329,9 +328,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			super.success(serialPort, remoteHost, remoteRelateId, numRounds, sharedSecret, socketToRemote);
 			// remember the shared key and the socket
 			sharedKey = sharedSecret;
-			toRemote = socketToRemote;
-
-			
+			toRemote = new RemoteTCPConnection(socketToRemote);
 		}
 
 		public void progress(String serialPort, String remoteHost, int remoteRelateId, int cur, int max, String msg) {
@@ -446,12 +443,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 					String text= "Certificate generation thread was not started properly, can not continue";
 					logger.error(text);
 					guiHandler.showErrorMessageBox(text, "Waiting for Certificate Creation");
-					try {
-						toRemote.close();
-					}
-					catch (IOException e) {
-						logger.warn("Could not close socket to remote host, ignoring");
-					}
+					toRemote.close();
 					return;
 				} 
 				else {
@@ -470,12 +462,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 						String text = "Certificate generation failed: " + certificateFilename;
 						logger.error(text);
 						guiHandler.showErrorMessageBox(text, "Certificate Generation Failed");
-						try {
-							toRemote.close();
-						}
-						catch (IOException e) {
-							logger.warn("Could not close socket to remote host, ignoring");
-						}
+						toRemote.close();
 						return;
 					}
 				}
@@ -491,12 +478,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 				String text ="Could not open output stream to remote host: ";
 				logger.error(text + e);
 				guiHandler.showErrorMessageBox(text+ "\n"+e, " OutputStream to Remote Host ");
-				try {
-					toRemote.close();
-				}
-				catch (IOException e1) {
-					logger.warn("Could not close socket to remote host, ignoring");
-				}
+				toRemote.close();
 				return;
 			}
 			try {
@@ -525,12 +507,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			}
 			finally {
 				// and be sure to close the socket properly
-				try {
-					toRemote.close();
-				}
-				catch (IOException e) {
-					logger.warn("Could not close socket to remote host, ignoring");
-				}
+				toRemote.close();
 			}
 			guiHandler.setPaintingToFreeze(false);
 		}
@@ -621,11 +598,5 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		private void informAdminPanelofSuccess(int relateId) {
 			authDevices.add(new Integer(relateId));
 		}
-		
-		
 	}
-	
-	
-	
-	
 }

@@ -11,15 +11,15 @@ package org.openuat.authentication;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.DongleProtocolHandler;
-import org.openuat.util.HostServerSocket;
+import org.openuat.util.HostServerBase;
+import org.openuat.util.RemoteConnection;
+import org.openuat.util.TCPPortServer;
 
 /** This is an abstract class that implements the basics of all protocols
  * based on Diffie-Hellman key exchange over TCP with subsequent verification
@@ -56,7 +56,8 @@ import org.openuat.util.HostServerSocket;
  * Generally, events will be emitted by this class to all registered listeners.
  * 
  * @author Rene Mayrhofer
- * @version 1.0
+ * @version 1.1, changes to 1.0: replaced InetAddress and Socket objects passed 
+ *               to events with String and RemoteConnection objects.
  */
 public abstract class DHOverTCPWithVerification extends AuthenticationEventSender {
 	/** Our log4j logger. */
@@ -103,13 +104,13 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	/** This message is sent via the TCP channel to the remote upon authentication failure. */
 	private final static String Protocol_Failure = "NACK ";
 
-	/** If set to true, the TCP socket to the remote host will not be closed after a successful 
+	/** If set to true, the connection to the remote host will not be closed after a successful 
 	 * authentication, but will be passed as a parameter to the success event. This allows re-use for
 	 * additional communication. It will still be closed on authentication failures.
 	 * If set to false, it will also be closed on authentication success.
-	 * @see #socketToRemote
+	 * @see #connectionToRemote
 	 */
-	private boolean keepSocketConnected;
+	private boolean keepConnected;
 	
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
@@ -119,20 +120,20 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 */
 	private byte[] sharedKey = null;
 
-	/** If the state is STATE_DONGLE_AUTH_RUNNING, this contains a socket that is still
+	/** If the state is one of STATE_*_RUNNING, this contains a socket that is still
 	 * connected to the remote side and which is used for transmitting success or failure
 	 * messages from the dongle authentication protocol (i.e. the second stage).
 	 * It is set by HostAuthenticationEventHandler.AuthenticationSuccess.
 	 * @see HostAuthenticationEventHandler#AuthenticationSuccess
 	 */
-	private Socket socketToRemote = null;
+	private RemoteConnection connectionToRemote = null;
 
 	/** This is only a helper member for keeping the HostServerSocket object that is created by
 	 * startServer, so that it can be freed by stopServer.
 	 * @see #startServer
 	 * @see #stopServer
 	 */
-	private HostServerSocket serverSocket = null;
+	private HostServerBase serverSocket = null;
 	
 	/** This may be set to distinguish multiple instances running on the same machine. */
 	private String instanceId = null;
@@ -143,8 +144,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
-	 * @param keepSocketConnected
-	 *            If set to true, the opened client socket soc is passed to the
+	 * @param keepConnected
+	 *            If set to true, the opened client connection is passed to the
 	 *            authentication success event (in the results parameter) for 
 	 *            further re-use of the connection (e.g. passing additional 
 	 *            information about further protocol steps). If set to false, the
@@ -155,10 +156,10 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 *                   this class running on the same machine. It will be used in logging
 	 *                   and error messages. May be set to null.
 	 */
-	protected DHOverTCPWithVerification(int tcpPort, boolean keepSocketConnected,
+	protected DHOverTCPWithVerification(int tcpPort, boolean keepConnected,
 			String instanceId, boolean useJSSE) {
 		this.tcpPort = tcpPort;
-		this.keepSocketConnected = keepSocketConnected;
+		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
 		this.instanceId = instanceId;
 	}
@@ -216,7 +217,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
 		try {
-			HostProtocolHandler.startAuthenticationWith(remoteHost, tcpPort, 
+			HostProtocolHandler.startAuthenticationWithTCP(remoteHost, tcpPort, 
 					new HostAuthenticationEventHandler(), 
 					true, param, useJSSE);
 		} 
@@ -238,7 +239,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 * authentication protocol runs are again possible. 
 	 */
 	private void reset() {
-		socketToRemote = null;
+		connectionToRemote = null;
 		
 		// also allow derived classes to do more specific resets
 		resetHook();
@@ -251,11 +252,11 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
 	 * 
-	 * @param remote The remote device (either InetAddress or Integer for the host address or relate id) with which the authentication failed.
+	 * @param remote The remote device (either the host address or relate id) with which the authentication failed.
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */ 
-	private void authenticationFailed(InetAddress remote, 
+	private void authenticationFailed(String remote, 
 			Object optionalRemoteId, Exception e, String message) {
 		state = STATE_FAILED;
 		// be sure to wipe the shared key if it has already been set
@@ -269,8 +270,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		// also allow derived classes to do special failure handling
 		protocolFailedHook(remote, optionalRemoteId, e, message);
 		
-		// no need to keep the socket around in any case - close it properly
-		closeSocket();
+		// no need to keep the connection around in any case - close it properly
+		closeConnection();
 		
 		reset();
 	}
@@ -283,7 +284,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 			Object optionalRemoteId) {
 		try {
     		// this enables auto-flush
-    		PrintWriter toRemote = new PrintWriter(socketToRemote.getOutputStream(), true);
+    		PrintWriter toRemote = new PrintWriter(connectionToRemote.getOutputStream(), true);
 	    	logger.debug("Sending status to remote: '" + reportToRemote + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		toRemote.println(reportToRemote);
@@ -293,7 +294,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 			/* do not use a BufferedReader here because that would potentially mess up
 			 * the stream for other users of the socket (by consuming too many bytes)
 			 */
-    		InputStream fromRemote = socketToRemote.getInputStream();
+    		InputStream fromRemote = connectionToRemote.getInputStream();
     		String remoteStatus = "";
     		int ch = fromRemote.read();
     		while (ch != -1 && ch != '\n') {
@@ -308,7 +309,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     		if (remoteStatus.length() == 0) {
     			logger.error("Could not get status message from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId,
+    			authenticationFailed(connectionToRemote.getRemoteName(), optionalRemoteId,
     					null, "Could not get status message from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			return null;
@@ -319,7 +320,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
         catch (IOException e) {
         	logger.error("Could not report success to remote host or get status message from remote host: " + e + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-        	authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, 
+        	authenticationFailed(connectionToRemote.getRemoteName(), optionalRemoteId, 
         			e, "Could not report success to remote host or get status message from remote host" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	return null;
@@ -327,18 +328,12 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	}
 	
 	/** Just a small helper to ignore an IOException when closing the socket (we are finished anyway). */
-	private void closeSocket() {
-		try {
-			if (socketToRemote != null)
-				socketToRemote.close();
-			else
-				logger.error("socketToRemote is null, but shouldn't be" + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-		}
-		catch (IOException e) {
-			logger.error("Could not close socket to remote host properly, but ignoring it: " + e + 
+	private void closeConnection() {
+		if (connectionToRemote != null)
+			connectionToRemote.close();
+		else
+			logger.error("socketToRemote is null, but shouldn't be" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-		}
 	}
 
 	/** This method should be called by derived classes after key verification has
@@ -365,33 +360,32 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 
 		        state = STATE_SUCCEEDED;
 		        /* for sending the success events, first figure out both aspects of the remote host
-		           (i.e. the IP address and the optional remote ID) */
-		        InetAddress remoteAddrPart = socketToRemote.getInetAddress();
-		        Object[] remoteParam = new Object[] {remoteAddrPart, optionalRemoteId};
+		           (i.e. the remote host name and the optional remote ID) */
+		        Object[] remoteParam = new Object[] {connectionToRemote.getRemoteName(), optionalRemoteId};
 
 		        // this string can be null if no optional parameter has been received from the remote host
 		        String optionalParameterFromRemote = remoteStatus.substring(Protocol_Success.length());
 		        
-		        if (!keepSocketConnected) {
+		        if (!keepConnected) {
 			        // first also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, null);
+			        protocolSucceededHook(connectionToRemote.getRemoteName(), optionalRemoteId, optionalParameterFromRemote, sharedKey, null);
 			        /* our result object is here the secret key that is shared (host authentication) 
 			           and now spatially authenticated (dongle authentication) */
 		        	raiseAuthenticationSuccessEvent(remoteParam, sharedKey);
 		        }
 		        else {
 			        // first also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(remoteAddrPart, optionalRemoteId, optionalParameterFromRemote, sharedKey, socketToRemote);
+			        protocolSucceededHook(connectionToRemote.getRemoteName(), optionalRemoteId, optionalParameterFromRemote, sharedKey, connectionToRemote);
 		        	/* It has been requested that the socket be kept open, so pass it over
 		        	 * in addition to the shared secret key.
 		        	 * As we need to pass two parameters in this case, again use an array...
 		        	 */
-		        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, socketToRemote});
+		        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, connectionToRemote});
 		        }
 		        		
 				// if the socket is not going to be re-used, don't forget to close it properly
-				if (!keepSocketConnected)
-					closeSocket();
+				if (!keepConnected)
+					closeConnection();
 
 				// and finally reset (in failure cases, the authenticationFailed helper will call reset)
 		        reset();
@@ -399,13 +393,13 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     		else if (remoteStatus.startsWith(Protocol_Failure)) {
     			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, null, "Received authentication failure status from remote host" + 
+    			authenticationFailed(connectionToRemote.getRemoteName(), optionalRemoteId, null, "Received authentication failure status from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else {
     			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    			authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, null, "Unkown status from remote host (was '" + remoteStatus + "')" + 
+    			authenticationFailed(connectionToRemote.getRemoteName(), optionalRemoteId, null, "Unkown status from remote host (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
@@ -442,7 +436,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		}
 
-    		authenticationFailed(socketToRemote.getInetAddress(), optionalRemoteId, e, msg);
+    		authenticationFailed(connectionToRemote.getRemoteName(), optionalRemoteId, e, msg);
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
 	}
 	
@@ -452,7 +446,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 */
 	public void startServer() throws IOException {
 		if (serverSocket == null) {
-			serverSocket = new HostServerSocket(tcpPort, true, useJSSE);
+			serverSocket = new TCPPortServer(tcpPort, true, useJSSE);
 			HostAuthenticationEventHandler hostServerHandler = new HostAuthenticationEventHandler();
     		serverSocket.addAuthenticationProgressHandler(hostServerHandler);
     		serverSocket.startListening();
@@ -501,8 +495,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	    		return;
 	    	}
 			
-	    	InetAddress remoteHost = (InetAddress) remote;
-	        logger.info("Received host authentication success event with " + remoteHost + 
+	        logger.info("Received host authentication success event with " + remote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        Object[] res = (Object[]) result;
 	        // remember the secret key shared with the other device
@@ -519,11 +512,11 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	        /* TODO: this could need some error handling, but at the moment we depend on it being set
 	         * (it should be, since we set keepSocketConnected=true for HostProtocolHandler)
 	         */
-	        socketToRemote = (Socket) res[3];
+	        connectionToRemote = (RemoteConnection) res[3];
 
 	        // finally change state and fire off the key verification
         	state = STATE_VERIFICATION_RUNNING;
-	        startVerification(authKey, remoteHost, param, socketToRemote);
+	        startVerification(authKey, (String) remote, param, connectionToRemote);
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
@@ -533,9 +526,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		state = STATE_HOST_AUTH_RUNNING;
 	    	}
-	    	InetAddress remoteHost = (InetAddress) remote;
 	    	if (state != STATE_HOST_AUTH_RUNNING) {
-	    		logger.error("Received host authentication failure event with remote host " + remoteHost + 
+	    		logger.error("Received host authentication failure event with remote host " + remote + 
 	    				" while not expecting one! This event will be ignored." + 
 						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return;
@@ -548,7 +540,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	        if (msg != null)
 	            logger.info("Message: " + msg);
 	        // this will also call the derived classes hook
-	        authenticationFailed(remoteHost, null, e, msg);
+	        authenticationFailed((String) remote, null, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
@@ -572,7 +564,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages,
 	        		msg);
 	        // also call the hook of derived classes
-	        protocolProgressHook((InetAddress) remote, null, cur, max, msg);
+	        protocolProgressHook((String) remote, null, cur, max, msg);
 	    }
 	}
 
@@ -596,7 +588,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 *                       or failure of the whole authentication protocol.
 	 */
 	protected abstract void startVerification(byte[] sharedAuthenticationKey, 
-			InetAddress remote, String param, Socket socketToRemote);
+			String remote, String param, RemoteConnection connectionToRemote);
 	
 	/** This hook will be called when the object is reset to its "idle" state,
 	 * i.e. so that subsequent authentications can be performed. Derived classes
@@ -622,9 +614,9 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 *                 should stay connected, it will be passed in this parameter.
 	 *                 May be null.
 	 */
-	protected abstract void protocolSucceededHook(InetAddress remote, 
+	protected abstract void protocolSucceededHook(String remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey, Socket toRemote);
+			byte[] sharedSessionKey, RemoteConnection toRemote);
 	
 	/** This hook will be called when the whole authentication protocol has
 	 * failed. Derived classes should implement it to react to this failure.
@@ -634,7 +626,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */
-	protected abstract void protocolFailedHook(InetAddress remote, 
+	protected abstract void protocolFailedHook(String remote, 
 			Object optionalRemoteId, Exception e, String message);
 
 	/** This hook will be called when the whole authentication protocol has
@@ -647,6 +639,6 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 * @param max @see AuthenticationProgressHandler#AuthenticationProgress
 	 * @param message @see AuthenticationProgressHandler#AuthenticationProgress
 	 */
-	protected abstract void protocolProgressHook(InetAddress remote, 
+	protected abstract void protocolProgressHook(String remote, 
 			Object optionalRemoteId, int cur, int max, String message);
 }

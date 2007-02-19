@@ -13,8 +13,8 @@
 	<classpathentry kind="lib" path="lib/RXTXcomm.jar"/>
 	<classpathentry kind="lib" path="lib/linux/swt-3.1.1_gtk.linux.x86.jar"/>
 	<classpathentry kind="lib" path="lib/avetanaBT.jar"/>
-	<classpathentry kind="lib" path="lib/relate-2.1-apps.jar"/>
-	<classpathentry kind="lib" path="lib/relate-2.1-core.jar"/>
 	<classpathentry kind="lib" path="lib/jcommon-1.0.5.jar"/>
+	<classpathentry kind="lib" path="lib/relate-2.2-apps.jar"/>
+	<classpathentry kind="lib" path="lib/relate-2.2-core.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

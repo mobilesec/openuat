@@ -9,14 +9,13 @@
 package org.openuat.authentication.test;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.openuat.authentication.DHOverTCPWithVerification;
+import org.openuat.util.RemoteConnection;
 
 /** There are no _BCAPI and _Mixed variants because DHOverTCPWithVerification only uses the crypto embedded into
  * SimpleKeyAgreement and InterlockProtocol, and those are tested with _BCAPI and _Mixed.
@@ -25,8 +24,8 @@ import org.openuat.authentication.DHOverTCPWithVerification;
  */
 public class DHOverTCPWithVerificationTest extends TestCase {
 	private class TestHelper extends DHOverTCPWithVerification {
-		protected TestHelper(int tcpPort, boolean keepSocketConnected, String instanceId, boolean useJSSE, boolean succeed) {
-			super(tcpPort, keepSocketConnected, instanceId, useJSSE);
+		protected TestHelper(int tcpPort, boolean keepConnected, String instanceId, boolean useJSSE, boolean succeed) {
+			super(tcpPort, keepConnected, instanceId, useJSSE);
 			this.succeed = succeed;
 		}
 
@@ -42,7 +41,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		Object optRemoteIdIn = null, optRemoteIdOut = null;
 		String optParamIn = null, optParamOut = null;
 		
-		protected void startVerification(byte[] sharedAuthenticationKey, InetAddress remote, String param, Socket socketToRemote) {
+		protected void startVerification(byte[] sharedAuthenticationKey, String remote, String param, RemoteConnection socketToRemote) {
 			this.param = param;
 			this.sharedAuthKey = sharedAuthenticationKey;
 			
@@ -56,7 +55,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			numResetHookCalled++;
 		}
 
-		protected void protocolSucceededHook(InetAddress remote, Object optionalRemoteId, String optionalParameterFromRemote, byte[] sharedSessionKey, Socket toRemote) {
+		protected void protocolSucceededHook(String remote, Object optionalRemoteId, String optionalParameterFromRemote, byte[] sharedSessionKey, RemoteConnection toRemote) {
 			System.out.println("-----------------------------------------------------------------------------------------");
 			numSucceededHookCalled++;
 			this.optRemoteIdOut = optionalRemoteId;
@@ -64,12 +63,12 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			this.sharedSessKey = sharedSessionKey;
 		}
 
-		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, Exception e, String message) {
+		protected void protocolFailedHook(String remote, Object optionalRemoteId, Exception e, String message) {
 			numFailedHookCalled++;
 			this.optRemoteIdOut = optionalRemoteId;
 		}
 
-		protected void protocolProgressHook(InetAddress remote, Object optionalRemoteId, int cur, int max, String message) {
+		protected void protocolProgressHook(String remote, Object optionalRemoteId, int cur, int max, String message) {
 			numProgressHookCalled++;
 			this.optRemoteIdOut = optionalRemoteId;
 		}

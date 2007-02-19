@@ -30,7 +30,7 @@ public interface AuthenticationProgressHandler {
 	 * e.g. be a shared key or a set of keys or can even be null if the authentication
 	 * event is enough to signal successful authentication.
 	 */
-	public void AuthenticationSuccess(Object sender, Object remoteHost, Object result);
+	public void AuthenticationSuccess(Object sender, Object remote, Object result);
 
 	/**
 	 Upon authentication failure, an exception might have been thrown and a

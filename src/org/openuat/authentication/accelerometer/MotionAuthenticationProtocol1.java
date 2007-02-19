@@ -9,8 +9,6 @@
 package org.openuat.authentication.accelerometer;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -25,6 +23,7 @@ import org.openuat.features.TimeSeriesUtil;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.TimeSeriesAggregator;
+import org.openuat.util.RemoteConnection;
 
 /** This is the first variant of the motion authentication protocol. It
  * uses Diffie-Hellman key agreement with verification that the shared keys
@@ -82,19 +81,12 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 */
 	protected double lastCoherenceMean = 0;
 	
-	/** This variable is only used for passing the socket from startVerification to the
+	/** This variable is only used for passing the connection from startVerification to the
 	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
 	 * @see #startVerification(byte[], InetAddress, String, Socket)
 	 * @see AsyncInterlockHelper#run
 	 */
-	private InetAddress remote = null;
-	
-	/** This variable is only used for passing the socket from startVerification to the
-	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
-	 * @see #startVerification(byte[], InetAddress, String, Socket)
-	 * @see AsyncInterlockHelper#run
-	 */
-	private Socket socketToRemote = null;
+	private RemoteConnection connectionToRemote = null;
 	
 	/** Holds the thread object that is used to run the interlock protocol asynchronously.
 	 * It is initialized and started by startVerification, and executes 
@@ -128,9 +120,9 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the whole authentication protocol succeeded. 
 	 * Does nothing. */
-	protected void protocolSucceededHook(InetAddress remote, 
+	protected void protocolSucceededHook(String remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey, Socket toRemote) {
+			byte[] sharedSessionKey, RemoteConnection toRemote) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
 		System.out.println("SUCCESS");
@@ -138,7 +130,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the whole authentication protocol failed. 
 	 * Does nothing. */
-	protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
+	protected void protocolFailedHook(String remote, Object optionalRemoteId, 
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolFailedHook called");
@@ -147,7 +139,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the whole authentication protocol shows progress. 
 	 * Does nothing. */
-	protected void protocolProgressHook(InetAddress remote, 
+	protected void protocolProgressHook(String remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolProgressHook called");
@@ -160,12 +152,11 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * @see AsyncInterlockHelper
 	 */
 	protected void startVerification(byte[] sharedAuthenticationKey, 
-			InetAddress remote, String param, Socket socketToRemote) {
+			String remote, String param, RemoteConnection connectionToRemote) {
 		logger.info("startVerification hook called with " + remote + ", param " + param);
 	
 		if (interlockRunner == null) {
-			this.remote = remote;
-			this.socketToRemote = socketToRemote;
+			this.connectionToRemote = connectionToRemote;
 			interlockRunner = new Thread(new AsyncInterlockHelper(sharedAuthenticationKey));
 			interlockRunner.start();
 		}
@@ -329,7 +320,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 			
 					// exchange with the remote host
 					byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
-							socketToRemote.getInputStream(), socketToRemote.getOutputStream(), 
+							connectionToRemote.getInputStream(), connectionToRemote.getOutputStream(), 
 							sharedAuthenticationKey, rounds, false, 0, useJSSE);
 					if (remotePlainText == null) {
 						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
@@ -340,7 +331,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 						}
 						else {
 							// in case of checking continously, just call or own hook (for derived classes)
-							protocolFailedHook(remote, null, null, "Interlock protocol failed");
+							protocolFailedHook(connectionToRemote.getRemoteName(), null, null, "Interlock protocol failed");
 							localSegment = remoteSegment = null;
 							continue;
 						}
@@ -365,13 +356,13 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 						if (! continuousChecking)
 							verificationSuccess(null, Double.toString(lastCoherenceMean));
 						else
-							protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null, null);
+							protocolSucceededHook(connectionToRemote.getRemoteName(), null, Double.toString(lastCoherenceMean), null, null);
 					}
 					else {
 						if (! continuousChecking)
 							verificationFailure(null, null, null, "Coherence is below threshold, time series are not similar enough");
 						else
-							protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
+							protocolFailedHook(connectionToRemote.getRemoteName(), null, null, "Coherence is below threshold, time series are not similar enough");
 					}
 
 					localSegment = remoteSegment = null;

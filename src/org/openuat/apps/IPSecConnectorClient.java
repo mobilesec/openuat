@@ -9,10 +9,8 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.Socket;
 
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
@@ -25,6 +23,7 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.IPSecConnection;
 import org.openuat.channel.IPSecConnection_Factory;
 import org.openuat.channel.X509CertificateGenerator;
+import org.openuat.util.RemoteConnection;
 
 import uk.ac.lancs.relate.apps.RelateGridDemo;
 import uk.ac.lancs.relate.core.Configuration;
@@ -227,11 +226,10 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		logger.debug("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
 		logger.info("SUCCESS");
 		
-		
 		guiHandler.setPaintingToFreeze(false);
 		// since we use RelateAuthenticationProtocol with keepSocketConnected=true, ...
 		sharedKey = (byte[]) ((Object[] ) result)[0];
-		Socket toRemote = (Socket) ((Object[] ) result)[1];
+		RemoteConnection toRemote = (RemoteConnection) ((Object[] ) result)[1];
 		
 		byte[] certificate = null;
 		// open our "binary block" channel to the server
@@ -299,12 +297,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		}
 		finally {
 			// and be sure to close the socket properly
-			try {
-				toRemote.close();
-			}
-			catch (IOException e) {
-				logger.warn("Could not close socket to remote host, ignoring");
-			}
+			toRemote.close();
 		}
 
 		// create a new temporary file for the certificate
@@ -381,7 +374,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 
 
 
-	private BinaryBlockStreamer openBinaryBlockChannel(Socket toRemote ) {
+	private BinaryBlockStreamer openBinaryBlockChannel(RemoteConnection toRemote) {
 		BinaryBlockStreamer s=null;
 		try {
 			s = new BinaryBlockStreamer(toRemote.getInputStream(), null);
@@ -390,12 +383,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			String text ="Could not open input stream to remote host: ";
 			logger.error( text+ e);
 			guiHandler.showErrorMessageBox(text, "Receving Certificate block");
-			try {
-				toRemote.close();
-			}
-			catch (IOException e1) {
-				logger.warn("Could not close socket to remote host, ignoring");
-			}
+			toRemote.close();
 			return null;
 		}
 		return s;

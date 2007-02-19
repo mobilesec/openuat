@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.bluetooth.LocalDevice;
+import javax.bluetooth.RemoteDevice;
 import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 
@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class BluetoothRFCOMMChannel {
+public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(BluetoothRFCOMMChannel.class);
 
@@ -70,6 +70,21 @@ public class BluetoothRFCOMMChannel {
 		
 		serviceURL = "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
 			";authenticate=false;master=true;encrypt=false";
+	}
+
+	/** Construct a Bluetooth RFCOMM channel object from a StreamConnection 
+	 * that is already connected (this is used for server side). The channel
+	 * can not be re-openend by calling open() after close() has been called.
+	 * @throws IOException On Bluetooth errors.
+	 */
+	BluetoothRFCOMMChannel(StreamConnection connection) throws IOException {
+		this.remoteDeviceAddress = null;
+		this.remoteChannelNumber = -1;
+		logger.debug("Opening streams in already connectd RFCOMM channel");
+		
+		this.connection = connection;
+		fromRemote = connection.openInputStream();
+		toRemote = connection.openOutputStream();
 	}
 	
 /*
@@ -140,6 +155,11 @@ try {
 		if (connection != null) {
 			throw new IOException("Channel has already been opened");
 		}
+		if (remoteDeviceAddress == null || remoteChannelNumber < 0) {
+			throw new IOException("Channel can not be opened to remote device '" + 
+					remoteDeviceAddress + "' and channel " + remoteChannelNumber +
+					", parameters invalid");
+		}
 		logger.debug("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber);
 		
@@ -150,25 +170,35 @@ try {
 	
 	/** Closes the channel to the endpoint given to the constructor. It may be
 	 * re-opened with another call to @see #open.
+	 * It is also an mplementation of RemoteConnection.close.
+	 * @see RemoteConnection.close
 	 * @throws IOException On Bluetooth errors.
 	 * @throws IOException When the channel has not yet been opened.
 	 */
-	public void close() throws IOException {
+	public void close() {
 		if (connection == null || toRemote == null || fromRemote == null) {
-			throw new IOException("RFCOMM channel has not yet been openend propely");
+			logger.error("RFCOMM channel has not yet been openend properly, can not close");
+			return;
 		}
 		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber);
 		
-		fromRemote.close();
-		toRemote.close();
-		connection.close();
+    	try {
+    		fromRemote.close();
+    		toRemote.close();
+    		connection.close();
+		}
+		catch (IOException e) {
+			throw new RuntimeException("Unable to close socket cleanly", e);
+		}
 		fromRemote = null;
 		toRemote = null;
 		connection = null;
 	}
 	
 	/** Returns the InputStream object for reading from the remote Bluetooth device.
+	 * It is also an mplementation of RemoteConnection.getInputStream.
+	 * @see RemoteConnection.getInputStream
 	 * @return The InputStream object openend in @see #open.
 	 * @throws IOException When the channel has not yet been opened.
 	 */
@@ -181,6 +211,8 @@ try {
 	}
 
 	/** Returns the OutputStream object for writing to the remote Bluetooth device.
+	 * It is also an mplementation of RemoteConnection.getOutputStream.
+	 * @see RemoteConnection.getOutputStream
 	 * @return The OutputStream object openend in @see #open.
 	 * @throws IOException When the channel has not yet been opened.
 	 */
@@ -190,6 +222,21 @@ try {
 		}
 		
 		return toRemote;
+	}
+
+	/** Implementation of RemoteConnection.getRemoteAddress.
+	 * @see RemoteConnection.getRemoteAddress
+	 * @return A RemoteDevice object representing the Bluetooth device.
+	 */
+	public Object getRemoteAddress() throws IOException {
+		return new RemoteDevice(remoteDeviceAddress);
+	}
+
+	/** Implementation of RemoteConnection.getRemoteName.
+	 * @see RemoteConnection.getRemoteName
+	 */
+	public String getRemoteName() {
+		return BluetoothPeerManager.resolveName(new RemoteDevice(remoteDeviceAddress));
 	}
 
 	   /**
@@ -251,34 +298,6 @@ try {
 
 	   }*/
 
-	
-/*
-// let's name our variables
-
-StreamConnectionNotifier notifier = null;
-StreamConnection con = null;
-LocalDevice localdevice = null;
-ServiceRecord servicerecord = null;
-InputStream input;
-OutputStream output;
-
-// let's create a URL that contains a UUID that 
-// has a very low chance of conflicting with anything
-String url = 
-  "btspp://localhost:00112233445566778899AABBCCDDEEFF;name=serialconn";
-// let's open the connection with the url and
-// cast it into a StreamConnectionNotifier
-notifier = (StreamConnectionNotifier)Connector.open(url);
-
-// block the current thread until a client responds
-con = notifier.acceptAndOpen();
-
-// the client has responded, so open some streams
-input = con.openInputStream();
-output = con.openOutputStream();
-
-// now that the streams are open, send and
-// receive some data */
 	
 /*
  * StreamConnection con =(StreamConnection)Connector.open(url);
