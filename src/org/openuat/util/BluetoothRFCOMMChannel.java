@@ -26,7 +26,7 @@ import org.apache.log4j.Logger;
  */
 public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(BluetoothRFCOMMChannel.class);
+	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMChannel" /*BluetoothRFCOMMChannel.class*/);
 
 	/** The remote device address string, as passed to the constructor. */
 	private String remoteDeviceAddress;

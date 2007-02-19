@@ -9,7 +9,6 @@
 package org.openuat.apps;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -30,6 +29,7 @@ import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.WiTiltRawReader;
+import org.openuat.util.RemoteConnection;
 
 /** This is a simple demonstrator for the shaking authentication. It
  * shows both protocol variants with a simple GUI.
@@ -351,10 +351,10 @@ public class ShakingSinglePCDemonstrator {
 			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
-		protected void protocolSucceededHook(InetAddress remote, 
+		protected void protocolSucceededHook(String remote, 
 				Object optionalRemoteId, String optionalParameterFromRemote, 
-				byte[] sharedSessionKey, Socket toRemote) {
-			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote.getHostAddress() : "null") + 
+				byte[] sharedSessionKey, RemoteConnection toRemote) {
+			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote : "null") + 
 					": shared key is " + (sharedSessionKey != null ? sharedSessionKey.toString() : "null"));
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
@@ -364,9 +364,9 @@ public class ShakingSinglePCDemonstrator {
 			});
 		}		
 
-		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
+		protected void protocolFailedHook(String remote, Object optionalRemoteId, 
 				Exception e, String message) {
-			logger.info("Protocol variant 1 failed with " + remote.getHostAddress()  + ": " + e + ", " + message); 
+			logger.info("Protocol variant 1 failed with " + remote  + ": " + e + ", " + message); 
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
 					coherenceField.setBackground(new Color(Display.getDefault(), 255, 0, 0));
@@ -375,9 +375,9 @@ public class ShakingSinglePCDemonstrator {
 			});
 		}
 		
-		protected void protocolProgressHook(InetAddress remote, 
+		protected void protocolProgressHook(String remote, 
 				Object optionalRemoteId, int cur, int max, String message) {
-			logger.debug("Protocol variant 1 progress with " + remote.getHostAddress() +
+			logger.debug("Protocol variant 1 progress with " + remote +
 					" " + cur + " of " + max + ": " + message); 
 		}		
 	}

@@ -8,6 +8,10 @@
  */
 package org.openuat.util;
 
+import org.apache.log4j.Logger;
+
 public class BluetoothOpportunisticConnector {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(/*BluetoothOpportunisticConnector.class*/ "org.openuat.util.BluetoothOpportunisticConnector");
 
 }

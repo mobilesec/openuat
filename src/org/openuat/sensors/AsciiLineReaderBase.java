@@ -152,15 +152,17 @@ public abstract class AsciiLineReaderBase {
 	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
 	 *                          reads from filename. Set to 0 to do blocking reads
 	 *                          (i.e. as fast as the file can give something back).
-	 * @param resetBeforeRead Set to true if the input file/stream should be reset
+	 * @param reopenBeforeRead Set to true if the input stream should be re-opened
 	 *                        before reading each new line (which might be equivalent
 	 *                        with reading each new sample). This can be useful with
 	 *                        pseudo-files, e.g. under Linux with the /sys filesystem.
+	 *                        When set to true, the derived class <b>must</b> set the
+	 *                        reopenStreamFrom member.
 	 *                        Set to false if you don't know what this is.
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
-	protected AsciiLineReaderBase(String filename, int maxNumLines, int sleepBetweenReads, boolean resetBeforeRead) throws FileNotFoundException {
-		this(maxNumLines, sleepBetweenReads, resetBeforeRead);
+	protected AsciiLineReaderBase(String filename, int maxNumLines, int sleepBetweenReads, boolean reopenBeforeRead) throws FileNotFoundException {
+		this(maxNumLines, sleepBetweenReads, reopenBeforeRead);
 		
 		logger.info("Reading from " + filename);
 		
@@ -169,7 +171,7 @@ public abstract class AsciiLineReaderBase {
 	
 	/** Initializes the reader base object. It only saves the
 	 * passed parameters. This is an alternative version to
-	 * @see #AsciiLineReaderBase(String, int) and should only be used
+	 * @see #AsciiLineReaderBase(String, int, int, boolean) and should only be used
 	 * in special cases. 
 	 * 
 	 * @param stream Specifies the InputStream to read from.
@@ -180,6 +182,7 @@ public abstract class AsciiLineReaderBase {
 		this(maxNumLines, 0, false);
 		
 		logger.info("Reading from input stream");
+		port = stream;
 	}
 	
 	/** Initializes the reader base object. It only saves the
@@ -188,9 +191,7 @@ public abstract class AsciiLineReaderBase {
 	 * <b>must</b> initialize port before calling any other method.
 	 */
 	protected AsciiLineReaderBase(int maxNumLines) {
-		this.sinks = new LinkedList();
-		this.numSamples = 0;
-		this.maxNumLines = maxNumLines;
+		this(maxNumLines, 0, false);
 	}
 
 	/** Registers a sink, which will receive all new values as they are sampled.

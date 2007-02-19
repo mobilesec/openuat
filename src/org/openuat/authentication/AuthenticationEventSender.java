@@ -23,7 +23,7 @@ import org.apache.log4j.Logger;
  */
 public abstract class AuthenticationEventSender {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(AuthenticationEventSender.class);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.AuthenticationEventSender" /*AuthenticationEventSender.class*/);
 
 	/** The list of listeners that are notified of authentication events. */
     protected LinkedList eventsHandlers = new LinkedList();
