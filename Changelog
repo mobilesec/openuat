@@ -57,6 +57,10 @@ Version 0.10, released
   * IPSecME client and server applications: now use Swing and are
     generally nicer
 
+  The build script now integrates:
+  * Cobertura for generating coverage reports.
+  * Sun WTK with Ant Antenna plugins to create J2ME MIDlets.
+
 --- Rene Mayrhofer <rene@mayrhofer.eu.org>
 
 
