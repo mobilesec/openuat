@@ -135,11 +135,15 @@ public class X509CertificateGeneratorTest extends TestCase {
 		caKs.load(new FileInputStream(tempCa), caExportPw.toCharArray());
 		X509Certificate caCert = (X509Certificate) caKs.getCertificate(caExportAlias);
 		Assert.assertNotNull("Could not load certificate from new CA file", caCert);
+		// self-verify the CA-cert
+		caCert.verify(caCert.getPublicKey());
+
 		KeyStore certKs = KeyStore.getInstance("PKCS12");
 		certKs.load(new FileInputStream(tempCert), certExportPw.toCharArray());
 		// OK, we just need to know that because the KeyStore API doesn't allow introspection of PKCS12 files....
 		X509Certificate newCert = (X509Certificate) certKs.getCertificate(X509CertificateGenerator.KeyExportFriendlyName);
 		Assert.assertNotNull("Could not load certificate from new cert file", newCert);
+		// and verify the cert with the CA
 		newCert.verify(caCert.getPublicKey());
 	}
 }

@@ -156,15 +156,25 @@ public class X509CertificateGenerator {
 	 *               the matching private key, and the complete certificate chain up to the self-signed
 	 *               root CA.
 	 * @param inPassword The password needed to decrypt the PKCS12 encoded input file.
-	 * @param inAlias The friendly name of the certificate in the PKCS12 encoded input file.
 	 * @param outCertFile The output certificate in PEM format. If null, it will not be created.
 	 * @param outKeyFile The output private key in PEM format. If null, it will not be created.
 	 * @param outCertChainFile The output certificate chain in PEM format. If null, it will not be created.
+	 * @param useBCAPI Set to true if the Bouncycastle lightweight API should be used for cryptographical
+	 *                 operations. If set to false, the JCE infrastructure with the configured default provider
+	 *                 will be used. JCE may be faster depending on the provider implementation, but it might
+	 *                 not be available on embedded platforms, i.e. J2ME.
 	 * @return true if all requested parts could be exported successfully, false otherwise.
 	 */
-	public static boolean convertPKCS12toPEM(String inFile, String inPassword, String inAlias, 
-			String outCertFile, String outKeyFile, String outCertChainFile) {
-		// TODO: implement me
+	public static boolean convertPKCS12toPEM(String inFile, String inPassword, 
+			String outCertFile, String outKeyFile, String outCertChainFile, boolean useBCAPI) {
+		if (inFile == null || inPassword == null || 
+				outCertFile == null || outKeyFile == null || outCertChainFile == null) {
+			throw new IllegalArgumentException("Can not work with null parameter");
+		}
+		
+		/*logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "' with "
+				+ (useBCAPI ? "Bouncycastle lightweight API" : "JCE API"));*/
+
 		return false;
 	}
 
@@ -214,41 +224,19 @@ public class X509CertificateGenerator {
 		logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "' with "
 				+ (this.useBCAPI ? "Bouncycastle lightweight API" : "JCE API"));
 
-		Object caKs;
-		Key key;
-		if (!useBCAPI) {
-			caKs = java.security.KeyStore.getInstance("PKCS12");
-			((java.security.KeyStore) caKs).load(new FileInputStream(new File(caFile)), caPassword.toCharArray());
-		
-			// load the key entry from the keystore
-			key = ((java.security.KeyStore) caKs).getKey(caAlias, caPassword.toCharArray());
-		}
-		else {
-			caKs = new JDKPKCS12KeyStore(null);
-			((JDKPKCS12KeyStore) caKs).engineLoad(new FileInputStream(new File(caFile)), caPassword.toCharArray());
-			key = ((JDKPKCS12KeyStore) caKs).engineGetKey(caAlias, caPassword.toCharArray());
-		}
-		
-		if (key == null) {
+		PKCS12Content content = loadFromKeyStore(new FileInputStream(new File(caFile)), caPassword, caAlias, useBCAPI);
+		if (content.privateKeys == null || content.privateKeys[0] == null) {
+			logger.error("Got null private key from keystore, initialization failed");
 			throw new RuntimeException("Got null key from keystore!"); 
 		}
-		RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) key;
-		caPrivateKey = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
-				privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
-		
-		// and get the certificate
-		if (!useBCAPI) {
-			caCert = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(caAlias);
-		}
-		else {
-			caCert = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(caAlias);
-		}
-
-		if (caCert == null) {
+		if (content.certificates == null || content.certificates[0] == null) {
 			logger.error("Got null certificate from keystore, initialization failed");
 			throw new RuntimeException("Got null cert from keystore!"); 
 		}
-		
+
+		caPrivateKey = content.privateKeys[0];
+		caCert = content.certificates[0];
+
 		logger.debug("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
 		caCert.verify(caCert.getPublicKey());
 		logger.debug("Successfully verified CA certificate with its own public key.");
@@ -520,37 +508,58 @@ public class X509CertificateGenerator {
 		extensionsOrder.addElement(extId);
     }
 	
-	/** This is a helper function for loading a certificate from a PKCS12 file.
+	private static class PKCS12Content {
+		X509Certificate[] certificates;
+		String[] certificateAliases;
+		RSAPrivateCrtKeyParameters[] privateKeys;
+		String[] privateKeyAliases;
+	}
+	
+	/** This is a helper function for loading from a PKCS12 file.
 	 * 
 	 * @param keystore The keystore/PKCS12 file to load from.
 	 * @param password The password used to encrypt the keystore/PKCS12 file.
-	 * @param alias The alias used to store the certificate in the keystore/PKCS12 file.
+	 * @param aliasStartsWith If not null, then only those elements of the file/keystore
+	 *                        whose alias starts with this string will be returned. 
 	 * @param useBCAPI Set to true if the Bouncycastle API should be used instead of JCE.
-	 * @return The certificate if it could be successfully loaded, null otherwise.
-	 * @throws IOException 
+	 * @return The elements if they could be successfully loaded, null otherwise.
 	 */
-	private static X509Certificate loadCertificateFromKeyStore(InputStream keystore,
-			String password, String alias, boolean useBCAPI) {
-		X509Certificate cert;
-
+	private static PKCS12Content loadFromKeyStore(InputStream keystore, 
+			String password, String aliasStartsWith, boolean useBCAPI) {
+		PKCS12Content ret = new PKCS12Content();
+		
 		try {
+			Object caKs;
+			Key key;
 			if (!useBCAPI) {
-				java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
-				ks.load(keystore, password.toCharArray());
-				cert = (X509Certificate) ks.getCertificate(alias);
+				caKs = java.security.KeyStore.getInstance("PKCS12");
+				((java.security.KeyStore) caKs).load(keystore, password.toCharArray());
+		
+				// load the key entry from the keystore
+				key = ((java.security.KeyStore) caKs).getKey(aliasStartsWith, password.toCharArray());
 			}
 			else {
-				JDKPKCS12KeyStore ks = new JDKPKCS12KeyStore(null);
-				ks.engineLoad(keystore, password.toCharArray());
-				cert = (X509Certificate) ks.engineGetCertificate(alias);
+				caKs = new JDKPKCS12KeyStore(null);
+				((JDKPKCS12KeyStore) caKs).engineLoad(keystore, password.toCharArray());
+				key = ((JDKPKCS12KeyStore) caKs).engineGetKey(aliasStartsWith, password.toCharArray());
 			}
-
-			if (cert == null) {
-				logger.error("Got null certificate from keystore, can not load");
-				return null;
+		
+			if (key != null) {
+				RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) key;
+				ret.privateKeys = new RSAPrivateCrtKeyParameters[1];
+				ret.privateKeys[0] = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
+						privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
 			}
-			
-			return cert;
+		
+			// and get the certificate
+			ret.certificates = new X509Certificate[1];
+			if (!useBCAPI) {
+				ret.certificates[0] = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(aliasStartsWith);
+			}
+			else {
+				ret.certificates[0] = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(aliasStartsWith);
+			}
+			return ret;
 		} 
 		catch (IOException e) {
 			logger.error("Could not load from key store: " + e);
@@ -562,6 +571,9 @@ public class X509CertificateGenerator {
 			logger.error("Could not load from key store: " + e);
 			return null;
 		} catch (CertificateException e) {
+			logger.error("Could not load from key store: " + e);
+			return null;
+		} catch (UnrecoverableKeyException e) {
 			logger.error("Could not load from key store: " + e);
 			return null;
 		}
@@ -577,10 +589,10 @@ public class X509CertificateGenerator {
 	 */
 	public static String getCertificateDistinguishedName(InputStream keystore,
 			String password, String alias, boolean useBCAPI) {
-		X509Certificate cert = loadCertificateFromKeyStore(keystore, password, alias, useBCAPI);
-		if (cert == null)
+		PKCS12Content content = loadFromKeyStore(keystore, password, alias, useBCAPI);
+		if (content == null || content.certificates == null || content.certificates[0] == null)
 			return null;
-		return cert.getSubjectDN().toString();
+		return content.certificates[0].getSubjectDN().toString();
 	}
 
 	/** This is a helper function for fetching the validity from a certificate.
@@ -594,10 +606,10 @@ public class X509CertificateGenerator {
 	 */
 	public static int getCertificateValidity(InputStream keystore,
 			String password, String alias, boolean useBCAPI) {
-		X509Certificate cert = loadCertificateFromKeyStore(keystore, password, alias, useBCAPI);
-		if (cert == null)
+		PKCS12Content content = loadFromKeyStore(keystore, password, alias, useBCAPI);
+		if (content == null || content.certificates == null || content.certificates[0] == null)
 			return -1;
-		return (int) ((cert.getNotAfter().getTime() - System.currentTimeMillis()) / 1000 / 3600 / 24);
+		return (int) ((content.certificates[0].getNotAfter().getTime() - System.currentTimeMillis()) / 1000 / 3600 / 24);
 	}
 	
 
