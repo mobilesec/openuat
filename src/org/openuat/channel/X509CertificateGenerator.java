@@ -41,6 +41,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Vector;
+import java.util.Enumeration;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
@@ -516,7 +517,6 @@ public class X509CertificateGenerator {
 	}
 	
 	/** This is a helper function for loading from a PKCS12 file.
-	 * 
 	 * @param keystore The keystore/PKCS12 file to load from.
 	 * @param password The password used to encrypt the keystore/PKCS12 file.
 	 * @param aliasStartsWith If not null, then only those elements of the file/keystore
@@ -530,35 +530,119 @@ public class X509CertificateGenerator {
 		
 		try {
 			Object caKs;
-			Key key;
+			String[] aliases;
+			X509Certificate[] certificates;
+			Key[] keys;
+			int numKeys = 0, numCertificates = 0, numEntries;
+			
 			if (!useBCAPI) {
 				caKs = java.security.KeyStore.getInstance("PKCS12");
 				((java.security.KeyStore) caKs).load(keystore, password.toCharArray());
-		
-				// load the key entry from the keystore
-				key = ((java.security.KeyStore) caKs).getKey(aliasStartsWith, password.toCharArray());
+				
+				// extract all known aliases and remember if they are keys or certificates
+				Enumeration entries = ((java.security.KeyStore) caKs).aliases();
+				numEntries = ((java.security.KeyStore) caKs).size();
+				logger.debug("Key store contains " + numEntries + " entries");
+				aliases = new String[numEntries];
+				certificates = new X509Certificate[numEntries];
+				keys = new Key[numEntries];
+				for (int i=0; i<numEntries; i++) {
+					aliases[i] = (String) entries.nextElement();
+					if (aliasStartsWith != null && aliases[i].startsWith(aliasStartsWith)) {
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + 
+								"' skipped, does not start with '" + aliasStartsWith + "'"); 
+						continue;
+					}
+						
+					if (((java.security.KeyStore) caKs).isCertificateEntry(aliases[i])) {
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a certificate");
+						certificates[i] = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(aliases[i]);
+						numCertificates++;
+					}
+					else if (((java.security.KeyStore) caKs).isKeyEntry(aliases[i])) {
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a private key");
+						keys[i] = ((java.security.KeyStore) caKs).getKey(aliases[i], password.toCharArray()); 
+						numKeys++;
+						// this is a dirty hack - when an entry is marked as a key, it may also have a certificate with the same alias
+						certificates[i] = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(aliases[i]);
+						if (certificates[i] != null) {
+							logger.debug("Entry " + i + " with alias '" + aliases[i] + "' also has a certificate");
+							numCertificates++;
+						}
+					}
+					else {
+						logger.warn("Entry " + i + " with alias '" + aliases[i] + 
+								"' is neither certificate nor private key, ignoring!");
+					}
+				}
 			}
 			else {
 				caKs = new JDKPKCS12KeyStore(null);
 				((JDKPKCS12KeyStore) caKs).engineLoad(keystore, password.toCharArray());
-				key = ((JDKPKCS12KeyStore) caKs).engineGetKey(aliasStartsWith, password.toCharArray());
+				
+				// extract all known aliases and remember if they are keys or certificates
+				Enumeration entries = ((JDKPKCS12KeyStore) caKs).engineAliases();
+				numEntries = ((JDKPKCS12KeyStore) caKs).engineSize();
+				logger.debug("Key store contains " + numEntries + " entries");
+				aliases = new String[numEntries];
+				certificates = new X509Certificate[numEntries];
+				keys = new Key[numEntries];
+				for (int i=0; i<numEntries; i++) {
+					aliases[i] = (String) entries.nextElement();
+					if (aliasStartsWith != null && aliases[i].startsWith(aliasStartsWith)) {
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + 
+								"' skipped, does not start with '" + aliasStartsWith + "'"); 
+						continue;
+					}
+
+					if (((JDKPKCS12KeyStore) caKs).engineIsCertificateEntry(aliases[i])) {
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a certificate");
+						certificates[i] = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(aliases[i]);
+						numCertificates++;
+					}
+					else if (((JDKPKCS12KeyStore) caKs).engineIsKeyEntry(aliases[i])) {
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a private key");
+						keys[i] = ((JDKPKCS12KeyStore) caKs).engineGetKey(aliases[i], password.toCharArray()); 
+						numKeys++;
+						// this is a dirty hack - when an entry is marked as a key, it may also have a certificate with the same alias
+						certificates[i] = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(aliases[i]);
+						if (certificates[i] != null) {
+							logger.debug("Entry " + i + " with alias '" + aliases[i] + "' also has a certificate");
+							numCertificates++;
+						}
+					}
+					else {
+						logger.warn("Entry " + i + " with alias '" + aliases[i] + 
+								"' is neither certificate nor private key, ignoring!");
+					}
+				}
+			}
+			
+			logger.debug("Finished reading from key store, found " + numCertificates +
+					" certificates and " + numKeys + " keys with matching aliases");
+			// now that we know how many elements we have, initialize
+			ret.certificates = new X509Certificate[numCertificates];
+			ret.privateKeys = new RSAPrivateCrtKeyParameters[numKeys];
+			ret.certificateAliases = new String[numCertificates];
+			ret.privateKeyAliases = new String[numKeys];
+			// and copy
+			int outCertInd = 0;
+			for (int i=0; i<numEntries; i++) {
+				if (certificates[i] != null) {
+					ret.certificates[outCertInd] = certificates[i];
+					ret.certificateAliases[outCertInd++] = aliases[i];
+				}
+			}
+			int outKeyInd = 0;
+			for (int i=0; i<numCertificates; i++) {
+				if (keys[i] != null) {
+					RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) keys[i];
+					ret.privateKeys[outKeyInd] = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
+							privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
+					ret.privateKeyAliases[outKeyInd++] = aliases[i];
+				}
 			}
 		
-			if (key != null) {
-				RSAPrivateCrtKey privKey = (RSAPrivateCrtKey) key;
-				ret.privateKeys = new RSAPrivateCrtKeyParameters[1];
-				ret.privateKeys[0] = new RSAPrivateCrtKeyParameters(privKey.getModulus(), privKey.getPublicExponent(), privKey.getPrivateExponent(),
-						privKey.getPrimeP(), privKey.getPrimeQ(), privKey.getPrimeExponentP(), privKey.getPrimeExponentQ(), privKey.getCrtCoefficient());
-			}
-		
-			// and get the certificate
-			ret.certificates = new X509Certificate[1];
-			if (!useBCAPI) {
-				ret.certificates[0] = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(aliasStartsWith);
-			}
-			else {
-				ret.certificates[0] = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(aliasStartsWith);
-			}
 			return ret;
 		} 
 		catch (IOException e) {
