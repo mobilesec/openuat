@@ -145,5 +145,14 @@ public class X509CertificateGeneratorTest extends TestCase {
 		Assert.assertNotNull("Could not load certificate from new cert file", newCert);
 		// and verify the cert with the CA
 		newCert.verify(caCert.getPublicKey());
+		
+		// and finally load the generated PKCS12 file and convert to PEM
+		File tempCertPem = File.createTempFile("testCert-", ".pem");
+		File tempCaCertPem = File.createTempFile("testCaCert-", ".pem");
+		File tempKeyPem = File.createTempFile("testKey-", ".pem");
+		Assert.assertTrue(X509CertificateGenerator.convertPKCS12toPEM(tempCert.getAbsolutePath(), certExportPw, 
+				tempCertPem.getAbsolutePath(), tempKeyPem.getAbsolutePath(), tempCaCertPem.getAbsolutePath(), 
+				useBCAPI));
+		// TODO: check the PEM format certificates, e.g. with openssl
 	}
 }

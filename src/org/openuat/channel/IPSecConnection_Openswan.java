@@ -368,6 +368,8 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 * TODO: implement me
 	 */
 	public int importCertificate(String file, String password, boolean overwriteExisting) {
+		// http://forum.java.sun.com/thread.jspa?threadID=562738&messageID=2769554
+		// http://forum.java.sun.com/thread.jspa?threadID=663553&messageID=3888999
 		/** echo "test" | openssl pkcs12 -nodes -passin stdin -in test.p12 -out /etc/ipsec.d/cacerts/ca-test.pem -nokeys
 		 * echo "test" | openssl pkcs12 -nodes -passin stdin -in test.p12 -out /etc/ipsec.d/private/ca-test.key -nocerts
 		 * 
