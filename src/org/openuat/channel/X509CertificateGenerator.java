@@ -173,6 +173,10 @@ public class X509CertificateGenerator {
 			throw new IllegalArgumentException("Can not work with null parameter");
 		}
 		
+		// echo "test" | openssl pkcs12 -in test.p12 -passin stdin -nodes -clcerts -nokeys > /tmp/gateway.pem
+		// echo "test" | openssl pkcs12 -in test.p12 -passin stdin -nodes -cacerts -nokeys > /tmp/ipsecca.pem
+		// echo "test" | openssl pkcs12 -in test.p12 -passin stdin -nodes -nocerts > /tmp/gatewayKey.pem
+		
 		/*logger.info("Loading CA certificate and private key from file '" + caFile + "', using alias '" + caAlias + "' with "
 				+ (useBCAPI ? "Bouncycastle lightweight API" : "JCE API"));*/
 
@@ -589,7 +593,7 @@ public class X509CertificateGenerator {
 				keys = new Key[numEntries];
 				for (int i=0; i<numEntries; i++) {
 					aliases[i] = (String) entries.nextElement();
-					if (aliasStartsWith != null && aliases[i].startsWith(aliasStartsWith)) {
+					if (aliasStartsWith != null && ! aliases[i].startsWith(aliasStartsWith)) {
 						logger.debug("Entry " + i + " with alias '" + aliases[i] + 
 								"' skipped, does not start with '" + aliasStartsWith + "'"); 
 						continue;
@@ -718,10 +722,16 @@ public class X509CertificateGenerator {
 			PropertyConfigurator.configure("log4j.properties");
 		}
 
-		if (args.length > 0 && args[0].equals("newca"))
-		System.out.println(X509CertificateGenerator.createNewCa("My Test CA", 365, "ca.p12", "test password", "Test CA", true));
+		if (args.length > 0 && args[0].equals("newca")) {
+			System.out.println(X509CertificateGenerator.createNewCa("My Test CA", 365, "ca.p12", "test password", "Test CA", true));
+			return;
+		}
+
+		String cn = "Test CN";
+		if (args.length > 0)
+			cn = args[0];
 		
-		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA", true).createCertificate("Test CN", 30, "test.p12", "test"));
+		System.out.println(new X509CertificateGenerator("ca.p12", "test password", "Test CA", true).createCertificate(cn, 180, "test.p12", "test"));
 	}
 }
 
