@@ -78,9 +78,11 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 * @throws IOException On Bluetooth errors.
 	 */
 	BluetoothRFCOMMChannel(StreamConnection connection) throws IOException {
-		this.remoteDeviceAddress = null;
+		// also get the remote device information
+		RemoteDevice remote = RemoteDevice.getRemoteDevice(connection);
+		this.remoteDeviceAddress = remote.getBluetoothAddress();
 		this.remoteChannelNumber = -1;
-		logger.debug("Opening streams in already connectd RFCOMM channel");
+		logger.debug("Opening streams in already connected RFCOMM channel");
 		
 		this.connection = connection;
 		fromRemote = connection.openInputStream();

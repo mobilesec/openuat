@@ -35,7 +35,7 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 	}
 
 	public void setUp() throws IOException {
-		server = new BluetoothRFCOMMServer(CHANNEL, SERVICE_UUID, SERVICE_NAME, false, true);
+		server = new BluetoothRFCOMMServer(/*CHANNEL, */SERVICE_UUID, SERVICE_NAME, false, true);
 		server.startListening();
 	}
 

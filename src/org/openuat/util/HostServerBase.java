@@ -73,7 +73,9 @@ public abstract class HostServerBase extends AuthenticationEventSender implement
 		// this is not nice, but will throw an exception in the listener thread
 		// and thus allow it to exit by itself
 		try {
+			System.out.println("------------------- before");
 			listenerThread.join();
+			System.out.println("------------------- after");
 			listenerThread = null;
 		} catch (InterruptedException e) {
 			throw new InternalApplicationException(

@@ -50,7 +50,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	private static Logger logger = Logger.getLogger(HostProtocolHandler.class);
 	
 	/** These are the messages of the ASCII authentication protocol. */
-    public static final String Protocol_Hello = "HELO RelateAuthentication";
+    public static final String Protocol_Hello = "HELO OpenUAT Authentication";
     /** @see #Protocol_Hello */
     public static final String Protocol_AuthenticationRequest = "AUTHREQ ";
     /** This is an optional field in the authentication request line, where the
