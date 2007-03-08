@@ -394,15 +394,27 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * Starts a background thread for handling an incoming authentication
 	 * request. Should only be called by HostServerSocket after accepting a new
 	 * connection.
+	 * @param asynchronousCall When set to true, this method will perform the
+	 *                         protocol asynchronously an return immediately to the
+	 *                         caller (firing events later on from the other thread). 
+	 *                         When set to false, this method will block until the 
+	 *                         authentication protocol has been completed (events will 
+	 *                         be fired from within the thread of the caller)
 	 */
-	public void startIncomingAuthenticationThread() {
+	public void startIncomingAuthenticationThread(boolean asynchronousCall) {
 		logger.debug("Starting incoming authentication thread handler");
-		new Thread(new AsynchronousCallHelper(this) {
-			public void run() {
-				outer.performAuthenticationProtocol(true);
-			}
-		}).start();
-		logger.debug("Started incoming authentication thread handler");
+		if (asynchronousCall) {
+			new Thread(new AsynchronousCallHelper(this) {
+				public void run() {
+					outer.performAuthenticationProtocol(true);
+				}
+			}).start();
+			logger.debug("Started incoming authentication thread handler");
+		}
+		else {
+			performAuthenticationProtocol(true);
+			logger.debug("Exiting incoming authentication thread handler");
+		}
 	}
 
     /**

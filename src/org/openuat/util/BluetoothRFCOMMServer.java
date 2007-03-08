@@ -8,7 +8,6 @@
  */
 package org.openuat.util;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ListIterator;
 
@@ -102,45 +101,51 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		logger.debug("Listening thread for RFCOMM service now running");
 		try {
 			while (running) {
-				System.out.println("111111111111111111");
 				//System.out.println("Listening thread for server socket waiting for connection");
 				StreamConnection connection = listener.acceptAndOpen();
-				System.out.println("2222222222222222222");
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
 				logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 						channel.getRemoteName() + "'");
 				
-/*				HostProtocolHandler h = new HostProtocolHandler(channel, keepConnected, useJSSE);
+				HostProtocolHandler h = new HostProtocolHandler(channel, keepConnected, useJSSE);
 				// before starting the background thread, register all our own listeners with this new event sender
     			for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
     				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
-    			h.startIncomingAuthenticationThread();*/
+    			/* Call the protocol sychronously, because at least avetanaBT does not seem
+    			 * to support calling acceptAndOpen while a connection is still open. This is bad bad bad!
+    			 */ 
+    			// TODO: special care needs to be taken when keepConnected is true!
+    			h.startIncomingAuthenticationThread(false);
+    			
+    			/* Actually, it should work this way, and (at least some) J2ME devices seem to support it.
+    			 * From http://fivedots.coe.psu.ac.th/~ad/jg/blue1/:
+    			 *   public void run()
+    			 *   // Wait for client connections, creating a handler for each one
+    			 *   {
+    			 *   	isRunning = true;
+    			 *   	try {
+    			 *   		while (isRunning) {
+    			 *   			StreamConnection conn = server.acceptAndOpen(); 
+    			 *   			ThreadedEchoHandler hand = new ThreadedEchoHandler(conn, ecm);  
+    			 *   	        handlers.addElement(hand);
+    			 *   			hand.start();
+    			 *   		}
+    			 *   	}
+    			 *   	catch (IOException e) 
+    			 *   	{  System.out.println(e);  }
+    			 *   }  // run()
+    			 *   which is exactly what I'm trying to do here.
+    			 */
 				
-				DataInputStream in = connection.openDataInputStream();
-				try {
-					in.read();
-					// when we get to here, i.e. when the next exception does _not_ catch, then most probably the next acceptAndConnect will no longer work. this sucks
-				} catch (IOException e) {//ignore: connection closed by other side
-					System.out.println("3333333333333333333333333");
-					e.printStackTrace();
-				}
-				try {
-					in.close();
-				} catch (IOException e) {//ignore
-					System.out.println("5555555555555555555555555555");
-					e.printStackTrace();
-				}
-				try {
-					connection.close();
-				} catch (IOException e) {//ignore
-					System.out.println("444444444444444444444444444");
-					e.printStackTrace();
-				}
+    			/* It turns out that we need to add a sleep before starting the 
+    			 * next acceptAndOpen after finishing the previous connection, or
+    			 * it will simply stop accepting new connections after some time. 
+    			 * Maybe also an avetana weirdness.
+    			 */ 
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
-					// TODO Automatisch erstellter Catch-Block
-					e.printStackTrace();
+					// ignore this silently
 				}
 			}
 		} catch (IOException e) {

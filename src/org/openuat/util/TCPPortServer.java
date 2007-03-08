@@ -82,7 +82,8 @@ public class TCPPortServer extends HostServerBase {
 				// before starting the background thread, register all our own listeners with this new event sender
     			for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
     				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
-    			h.startIncomingAuthenticationThread();
+    			// call the protocol asynchronously
+    			h.startIncomingAuthenticationThread(true);
 			}
 		} catch(SocketException e) {
 			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 
