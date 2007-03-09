@@ -12,13 +12,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.Socket;
-import java.net.UnknownHostException;
 
 import org.openuat.authentication.exceptions.*;
-import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -449,17 +445,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-    static public void startAuthenticationWithTCP(String remoteAddress,
-			int remotePort, AuthenticationProgressHandler eventHandler,
+    static public void startAuthenticationWith(RemoteConnection remote,
+			AuthenticationProgressHandler eventHandler,
 			boolean keepConnected, String optionalParameter,
-			boolean useJSSE) throws UnknownHostException, IOException {
-		logger.info("Starting authentication with " + remoteAddress);
+			boolean useJSSE) throws IOException {
+    	if (logger.isInfoEnabled())
+    		logger.info("Starting authentication with " + 
+    				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 
-		Socket clientSocket = new Socket(remoteAddress, remotePort);
-
-		logger.info("Connected successfully to " + remoteAddress);
-    	
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(new RemoteTCPConnection(clientSocket), keepConnected, useJSSE);
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(remote, keepConnected, useJSSE);
 		tmpProtocolHandler.useJSSE = useJSSE;
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
@@ -473,30 +467,4 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			}
 		}).start();
 	}
-    
-    static public void startAuthenticationWithBluetooth(String remoteAddress,
-    		int remoteChannel, AuthenticationProgressHandler eventHandler,
-			boolean keepConnected, String optionalParameter,
-			boolean useJSSE) throws IOException {
-		logger.info("Starting authentication with " + remoteAddress);
-
-		BluetoothRFCOMMChannel rfcomm = new BluetoothRFCOMMChannel(remoteAddress, remoteChannel);
-    	rfcomm.open();
-    	
-		logger.info("Connected successfully to " + remoteAddress);
-
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(rfcomm, keepConnected, useJSSE);
-		tmpProtocolHandler.useJSSE = useJSSE;
-		if (eventHandler != null)
-			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
-		tmpProtocolHandler.optionalParameter = optionalParameter;
-		
-		// start the authentication protocol in the background
-		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
-				tmpProtocolHandler) {
-			public void run() {
-				outer.performAuthenticationProtocol(false);
-			}
-		}).start();
-}
 }

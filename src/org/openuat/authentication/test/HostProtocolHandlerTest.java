@@ -84,7 +84,8 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWithTCP("127.0.0.1", PORT, h, false, "", useJSSEClient);
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -107,7 +108,8 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWithTCP("127.0.0.1", PORT, h, false, "TEST_PARAMETER", useJSSEClient);
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, false, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -133,7 +135,8 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        HostProtocolHandler.startAuthenticationWithTCP("127.0.0.1", PORT, h, true, "TEST_PARAMETER", useJSSEClient);
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, true, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;

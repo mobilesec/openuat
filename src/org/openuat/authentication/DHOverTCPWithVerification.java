@@ -11,6 +11,7 @@ package org.openuat.authentication;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.apache.commons.codec.binary.Hex;
@@ -19,6 +20,7 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.DongleProtocolHandler;
 import org.openuat.util.HostServerBase;
 import org.openuat.util.RemoteConnection;
+import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
 /** This is an abstract class that implements the basics of all protocols
@@ -217,7 +219,8 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
 		try {
-			HostProtocolHandler.startAuthenticationWithTCP(remoteHost, tcpPort, 
+			Socket socket = new Socket(remoteHost, tcpPort);
+			HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), 
 					new HostAuthenticationEventHandler(), 
 					true, param, useJSSE);
 		} 
@@ -465,6 +468,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 				serverSocket.stopListening();
 			}
 			catch (InternalApplicationException e) {
+				// ignore this case - we are shutting down anyway, just free resources
 			}
 			serverSocket = null;
 		}
@@ -588,7 +592,7 @@ public abstract class DHOverTCPWithVerification extends AuthenticationEventSende
 	 *                       or failure of the whole authentication protocol.
 	 */
 	protected abstract void startVerification(byte[] sharedAuthenticationKey, 
-			String remote, String param, RemoteConnection connectionToRemote);
+			String remoteName, String param, RemoteConnection toRemote);
 	
 	/** This hook will be called when the object is reset to its "idle" state,
 	 * i.e. so that subsequent authentications can be performed. Derived classes

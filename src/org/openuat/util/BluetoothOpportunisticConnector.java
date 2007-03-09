@@ -56,6 +56,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	/** The Bluetooth service will be advertised under this friendly name. */
 	public static String serviceName = "OpenUAT Opportunistic Authentication";
 	
+	// TODO: make me configurable - maybe with setters/getters?
+	public static boolean keepConnected = true;
+	public static boolean useJSSE = false;
+	public static String optionalParameter = null;
+	
 	/** The singleton instance of this class, created when getInstance() is
 	 * called for the first time.
 	 */
@@ -117,8 +122,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	 */
 	public void start() throws IOException {
 		logger.debug("Starting RFCOMM service and background inquiries");
-		// TODO: make keepConnected and useJSSE configurable!
-		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, true, false);
+		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, keepConnected, useJSSE);
 		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
 		service.startListening();
 		manager.startInquiry(true);
@@ -144,41 +148,56 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 
 		public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
 			if (logger.isInfoEnabled())
-				logger.info("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
+				logger.debug("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
 					"/'" + BluetoothPeerManager.resolveName(remoteDevice) + "' with " +
 					services.size() + " matching authentication services");
 			
 			for (int i=0; i<services.size(); i++) {
-				ServiceRecord service = (ServiceRecord) services.elementAt(i); 
+				ServiceRecord sr = (ServiceRecord) services.elementAt(i); 
 				// this is a sanity check
-				DataElement ser_de = service.getAttributeValue(0x100);
+				DataElement ser_de = sr.getAttributeValue(0x100);
 				String name = (String) ser_de.getValue();
 				if (! name.equals(serviceName)) {
 					logger.debug("Ignoring discovered service with name '" + name +
 							"', expected '" + serviceName + "'");
 				}
 				else {
-					/*BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(service.getConnectionURL(arg0, arg1));
-					HostProtocolHandler.startAuthenticationWithBluetooth(remoteAddress, remoteChannel, eventHandler, keepConnected, optionalParameter, useJSSE)*/
+					BluetoothRFCOMMChannel channel;
+					try {
+						channel = new BluetoothRFCOMMChannel(
+								sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+						HostProtocolHandler.startAuthenticationWith(channel, 
+								new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
+						logger.info("Started authentication attempt with remote device " + 
+								remoteDevice.getBluetoothAddress() + "/'" + 
+								BluetoothPeerManager.resolveName(remoteDevice) + "'");
+					} catch (IOException e) {
+						logger.warn("Could not connect to remote service, will retry in " +
+								"XXXXX" + " ms");
+						// TODO: schedule for retry
+					}
 				}
 			}
 		}
 	}
 	
 	protected class AuthenticationEventsHandler implements AuthenticationProgressHandler {
-		private boolean incoming;
+		public boolean incoming;
 		
 		protected AuthenticationEventsHandler(boolean incoming) {
 			this.incoming = incoming;
 		}
 		
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+			raiseAuthenticationFailureEvent(remote, e, msg);
 		}
 
 		public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+			raiseAuthenticationProgressEvent(remote, cur, max, msg);
 		}
 
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+			raiseAuthenticationSuccessEvent(remote, result);
 		}
 	}
 }

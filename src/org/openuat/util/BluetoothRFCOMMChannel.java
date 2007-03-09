@@ -37,7 +37,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** This service URL gets constructed from remoteDeviceAddress and remoteChannelNumber
 	 * in the constructor and is used in @see #open;
 	 */
-	private String serviceURL;
+	private String serviceURL = null;
 	
 	/** After a call to @see #open, this will hold the connection object.
 	 */
@@ -51,6 +51,21 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
+	 * @param connectionURL The complete Bluetooth service URL, as returned e.g.
+	 *                      by a service search.
+	 * @throws IOException When the local Bluetooth stack was not initialized properly.
+	 */
+	public BluetoothRFCOMMChannel(String connectionURL) throws IOException {
+		if (! BluetoothSupport.init()) {
+			throw new IOException("Local Bluetooth stack was not initialized properly, can not construct channel objects");
+		}
+
+		// remember the parameter
+		serviceURL = connectionURL;
+	}
+	
+	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
+	 * This does not yet open the channel, @see open needs to be called for that.
 	 * @param remoteDeviceAddress The Bluetooth MAC address to connect to, in format
 	 *                            "AABBCCDDEEFF".
 	 * @param remoteChannelNumber The SDP RFCOMM channel number to connect to, usually between
@@ -58,18 +73,14 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 * @throws IOException When the local Bluetooth stack was not initialized properly.
 	 */
 	public BluetoothRFCOMMChannel(String remoteDeviceAddress, int remoteChannelNumber) throws IOException {
-		if (! BluetoothSupport.init()) {
-			throw new IOException("Local Bluetooth stack was not initialized properly, can not construct channel objects");
-		}
+		this("btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
+			";authenticate=false;master=true;encrypt=false");
 		
 		// just remember the parameters
 		this.remoteDeviceAddress = remoteDeviceAddress;
 		this.remoteChannelNumber = remoteChannelNumber;
-		logger.debug("Creating RFCOMM channel object to remote device '" + this.remoteDeviceAddress +
+		logger.debug("Created RFCOMM channel object to remote device '" + this.remoteDeviceAddress +
 				"' to SDP port "+ this.remoteChannelNumber);
-		
-		serviceURL = "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
-			";authenticate=false;master=true;encrypt=false";
 	}
 
 	/** Construct a Bluetooth RFCOMM channel object from a StreamConnection 
@@ -157,13 +168,11 @@ try {
 		if (connection != null) {
 			throw new IOException("Channel has already been opened");
 		}
-		if (remoteDeviceAddress == null || remoteChannelNumber < 0) {
-			throw new IOException("Channel can not be opened to remote device '" + 
-					remoteDeviceAddress + "' and channel " + remoteChannelNumber +
-					", parameters invalid");
+		if (serviceURL == null) {
+			throw new IOException("Channel can not be opened, URL has not been set");
 		}
 		logger.debug("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
-				"' with port " + remoteChannelNumber);
+				"' with port " + remoteChannelNumber + " with URL '" + serviceURL + "'");
 		
 		connection = (StreamConnection) Connector.open(serviceURL);
 		fromRemote = connection.openInputStream();
