@@ -9,6 +9,8 @@
 package org.openuat.util.test;
 
 import java.io.IOException;
+
+import javax.bluetooth.LocalDevice;
 import javax.bluetooth.UUID;
 
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -35,7 +37,7 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 	}
 
 	public void setUp() throws IOException {
-		server = new BluetoothRFCOMMServer(/*CHANNEL, */SERVICE_UUID, SERVICE_NAME, false, true);
+		server = new BluetoothRFCOMMServer(new Integer(CHANNEL), SERVICE_UUID, SERVICE_NAME, false, true);
 		server.startListening();
 	}
 
@@ -47,8 +49,9 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 	}
 
 	public void testCreateConnection() throws IOException {
-		client = new BluetoothRFCOMMChannel("localhost", CHANNEL);
-//		Assert.assertNotNull("Can't connect to server channel", client.getInputStream());
-//		Assert.assertNotNull("Can't connect to server channel", client.getOutputStream());
+		// TODO: loopback connections seem not to work, hmm - need to find some was to test
+		client = new BluetoothRFCOMMChannel(LocalDevice.getLocalDevice().getBluetoothAddress(), CHANNEL);
+/*		Assert.assertNotNull("Can't connect to server channel", client.getInputStream());
+		Assert.assertNotNull("Can't connect to server channel", client.getOutputStream());*/
 	}
 }

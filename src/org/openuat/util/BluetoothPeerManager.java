@@ -87,7 +87,7 @@ public class BluetoothPeerManager {
 		agent = LocalDevice.getLocalDevice().getDiscoveryAgent();
 	}
 	
-	/** Returns the time to sleep in between two retries when startInquiry is 
+	/** Returns the time to sleep in between two inquiries when startInquiry is 
 	 * called with continuousBackground=true.
 	 * @see #sleepBetweenInquiries
 	 * @return The sleep time in ms.
@@ -96,7 +96,7 @@ public class BluetoothPeerManager {
 		return sleepBetweenInquiries;
 	}
 	
-	/** Sets the time to sleep in between two retries when startInquiry is 
+	/** Sets the time to sleep in between two inquiries when startInquiry is 
 	 * called with continuousBackground=true.  Note that the actual sleep time 
 	 * will be up to 20% randomly off this time to prevent continuous 
 	 * collisions between two devices doing the same. This may be changed even 

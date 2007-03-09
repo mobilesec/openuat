@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.ListIterator;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
@@ -80,8 +79,8 @@ public class TCPPortServer extends HostServerBase {
 				
 				HostProtocolHandler h = new HostProtocolHandler(new RemoteTCPConnection(s), keepConnected, useJSSE);
 				// before starting the background thread, register all our own listeners with this new event sender
-    			for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
+    			for (int i=0; i<eventsHandlers.size(); i++)
+    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) eventsHandlers.elementAt(i));
     			// call the protocol asynchronously
     			h.startIncomingAuthenticationThread(true);
 			}

@@ -79,7 +79,7 @@ public class HostProtocolHandlerTest extends TestCase {
         sw.flush();
     }
 
-    public void testCompleteAuthentication() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
+    public void testCompleteAuthentication() throws UnknownHostException, IOException, InterruptedException
     {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
@@ -102,7 +102,7 @@ public class HostProtocolHandlerTest extends TestCase {
         h.shutdownSocketsCleanly();
     }
 
-    public void testCompleteAuthenticationWithParam() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
+    public void testCompleteAuthenticationWithParam() throws UnknownHostException, IOException, InterruptedException
     {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
@@ -128,7 +128,7 @@ public class HostProtocolHandlerTest extends TestCase {
         h.shutdownSocketsCleanly();
     }
 
-    public void testCompleteAuthenticationWithParamAndOpenSockets() throws UnknownHostException, IOException, InternalApplicationException, InterruptedException
+    public void testCompleteAuthenticationWithParamAndOpenSockets() throws UnknownHostException, IOException, InterruptedException
     {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events

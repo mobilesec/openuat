@@ -9,7 +9,6 @@
 package org.openuat.util;
 
 import java.io.IOException;
-import java.util.ListIterator;
 
 import javax.bluetooth.DiscoveryAgent;
 import javax.bluetooth.LocalDevice;
@@ -49,7 +48,8 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	//private static HashMap instances;
 
 	/** Initializes the listener by creating the RFCOMM service.
-	 * @param channel The RFCOMM channel to use.
+	 * @param channel The RFCOMM channel to use, or unspecified (dynamically
+	 *                use a free channel) when null.
 	 * @param serviceUUID The Bluetooth service UUID to register.
 	 * @param serviceName The name to announce via SDP.
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
@@ -60,7 +60,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	 *                           reused for additional communication after the first authentication
 	 *                           protocol has been completed.
 	 */
-	public BluetoothRFCOMMServer(/*int channel, */UUID serviceUUID, String serviceName, boolean keepConnected, boolean useJSSE) throws IOException {
+	public BluetoothRFCOMMServer(Integer channel, UUID serviceUUID, String serviceName, boolean keepConnected, boolean useJSSE) throws IOException {
 		super(keepConnected, useJSSE);
 
 		if (! BluetoothSupport.init()) {
@@ -68,8 +68,9 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		}
 
 		// construct the Bluetooth service URL
-		serviceURL = "btspp://localhost:" + serviceUUID /*+ ":" + channel*/ + ";name=" + 
-			serviceName + ";authenticate=false;encrypt=false;authorize=false;master=false";
+		serviceURL = "btspp://localhost:" + serviceUUID + 
+			(channel != null ? ":" + channel : "") + ";name=" + serviceName + 
+			";authenticate=false;encrypt=false;authorize=false;master=false";
 
 		// and create the RFCOMM service
 		this.listener = (StreamConnectionNotifier) Connector.open(serviceURL);
@@ -109,8 +110,8 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				
 				HostProtocolHandler h = new HostProtocolHandler(channel, keepConnected, useJSSE);
 				// before starting the background thread, register all our own listeners with this new event sender
-    			for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); )
-    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) i.next());
+    			for (int i=0; i<eventsHandlers.size(); i++)
+    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) eventsHandlers.elementAt(i));
     			/* Call the protocol sychronously, because at least avetanaBT does not seem
     			 * to support calling acceptAndOpen while a connection is still open. This is bad bad bad!
     			 */ 
@@ -166,7 +167,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	
 	////////////////////// test code begins here ////////////////
 	public static void main(String[] args) throws NullPointerException, IllegalArgumentException, IOException, InternalApplicationException {
-		BluetoothRFCOMMServer s = new BluetoothRFCOMMServer(new UUID("1089a94a47044480adc9576fd41a04b2", false), "Test Service", false, false);
+		BluetoothRFCOMMServer s = new BluetoothRFCOMMServer(null, new UUID("1089a94a47044480adc9576fd41a04b2", false), "Test Service", false, false);
 		// for the test, make sure to be discoverable
 		LocalDevice.getLocalDevice().setDiscoverable(DiscoveryAgent.GIAC);
 		s.startListening();

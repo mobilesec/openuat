@@ -8,8 +8,7 @@
  */
 package org.openuat.authentication;
 
-import java.util.LinkedList;
-import java.util.ListIterator;
+import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
@@ -26,12 +25,12 @@ public abstract class AuthenticationEventSender {
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.AuthenticationEventSender" /*AuthenticationEventSender.class*/);
 
 	/** The list of listeners that are notified of authentication events. */
-    protected LinkedList eventsHandlers = new LinkedList();
+    protected Vector eventsHandlers = new Vector();
 
     /** Register a listener for receiving events. */
     public void addAuthenticationProgressHandler(AuthenticationProgressHandler h) {
     	if (! eventsHandlers.contains(h))
-    		eventsHandlers.add(h);
+    		eventsHandlers.addElement(h);
     }
 
     /** De-register a listener for receiving events. */
@@ -42,8 +41,8 @@ public abstract class AuthenticationEventSender {
     /** Helper method for sending an AuthenticationSuccess event to all registered listeners (if any). */
     protected void raiseAuthenticationSuccessEvent(Object remote, Object result) {
     	if (eventsHandlers != null)
-    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); ) {
-    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) i.next(); 
+    		for (int i = 0; i < eventsHandlers.size(); i++) {
+    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) eventsHandlers.elementAt(i); 
     			try {
     				h.AuthenticationSuccess(this, remote, result);
     			}
@@ -62,8 +61,8 @@ public abstract class AuthenticationEventSender {
     /** Helper method for sending an AuthenticationFailure event to all registered listeners (if any). */
     protected void raiseAuthenticationFailureEvent(Object remote, Exception e, String msg) {
     	if (eventsHandlers != null)
-    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); ) {
-    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) i.next(); 
+    		for (int i = 0; i < eventsHandlers.size(); i++) {
+    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) eventsHandlers.elementAt(i); 
     			try {
     				h.AuthenticationFailure(this, remote, e, msg);
     			}
@@ -82,8 +81,8 @@ public abstract class AuthenticationEventSender {
     /** Helper method for sending an AuthenticationProgress event to all registered listeners (if any). */
     protected void raiseAuthenticationProgressEvent(Object remote, int cur, int max, String msg) {
     	if (eventsHandlers != null)
-    		for (ListIterator i = eventsHandlers.listIterator(); i.hasNext(); ) {
-    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) i.next(); 
+    		for (int i = 0; i < eventsHandlers.size(); i++) {
+    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) eventsHandlers.elementAt(i); 
     			try {
     				h.AuthenticationProgress(this, remote, cur, max, msg);
     			}

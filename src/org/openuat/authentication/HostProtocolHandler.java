@@ -25,7 +25,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 
 /**
- * This class handles the key agreement protocol between two hosts on the TCP/IP
+ * This class handles the key agreement protocol between two hosts on a stream
  * level. It implements both sides of the protocol, allowing to handle incoming
  * connections (i.e. incoming authentication requests) as well as initiating
  * outgoing connections (i.e. outgoing authentication requests). Events are
@@ -416,7 +416,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			logger.debug("Exiting incoming authentication thread handler");
 		}
 	}
-
+	
     /**
 	 * Outgoing authentication connections are done asynchronously just like the
 	 * incoming connections. This method starts a new thread that tries to
@@ -484,5 +484,19 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	rfcomm.open();
     	
 		logger.info("Connected successfully to " + remoteAddress);
-    }
+
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(rfcomm, keepConnected, useJSSE);
+		tmpProtocolHandler.useJSSE = useJSSE;
+		if (eventHandler != null)
+			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
+		tmpProtocolHandler.optionalParameter = optionalParameter;
+		
+		// start the authentication protocol in the background
+		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
+				tmpProtocolHandler) {
+			public void run() {
+				outer.performAuthenticationProtocol(false);
+			}
+		}).start();
+}
 }
