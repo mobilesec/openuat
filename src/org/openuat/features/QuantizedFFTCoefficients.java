@@ -1,5 +1,6 @@
 /* Copyright Rene Mayrhofer
  * File created 2006-10-02
+ * Initial public release 2007-03-29
  * 
  * This implementation is based on the "cohere", "pwelch", "hanning", 
  * and "conj" functions in Octave and Octave Forge.

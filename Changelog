@@ -64,7 +64,7 @@ Version 0.10, released
 --- Rene Mayrhofer <rene@mayrhofer.eu.org>
 
 
-Version 0.9, released 2007-01-18
+Version 0.9, packaged 2007-01-18, released 2007-03-29
 
   This is a major new features release, adding infrastructure for dealing with
   time series data on resource limited devices and a new context 

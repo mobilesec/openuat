@@ -1,5 +1,6 @@
 /* Copyright Rene Mayrhofer
  * File created 2006-05-16
+ * Initial public release 2007-03-29
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
