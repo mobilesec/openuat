@@ -15,7 +15,9 @@ import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
 import javax.bluetooth.*;
 
+import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
+import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 
 public class BluetoothDemo extends MIDlet implements CommandListener,
@@ -34,22 +36,43 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	
 	BluetoothPeerManager peerManager;
 	
+	BluetoothRFCOMMServer rfcommServer;
+	
 	public BluetoothDemo() {
+		display = Display.getDisplay(this);
+
 		if (! BluetoothSupport.init()) {
 			do_alert("Could not initialize Bluetooth API", Alert.FOREVER);
 			return;
 		}
-		
+
+		try {
+			do_alert("1", 1000);
+			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", false, false);
+			do_alert("2", 1000);
+			rfcommServer.startListening();
+			do_alert("Registered SDP service at " + rfcommServer.getRegisteredServiceURL(), Alert.FOREVER);
+			try {
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+			}
+		} catch (IOException e) {
+			do_alert("Error initializing BlutoothRFCOMMServer: " + e, Alert.FOREVER);
+		}
+
 		try {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(this);
+		} catch (IOException e) {
+			do_alert("Error initializing BlutoothPeerManager: " + e, Alert.FOREVER);
+			return;
+		}
 
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
 			dev_list = new List("Select Device", Choice.IMPLICIT); //the list of devices
 			serv_list = new List("Available Services", Choice.IMPLICIT); //the list of services
 			exit = new Command("Exit", Command.EXIT, 1);
 			back = new Command("Back", Command.BACK, 1);
-			display = Display.getDisplay(this);
 
 			main_list.addCommand(exit);
 			main_list.setCommandListener(this);
@@ -60,10 +83,6 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			serv_list.setCommandListener(this);
 
 			main_list.append("Find Devices", null);
-		} catch (IOException e) {
-			do_alert("Error initializing BlutoothPeerManager: " + e, Alert.FOREVER);
-			display=null;
-		}
 	}
 
 	public void startApp() {
@@ -72,6 +91,12 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 
 	public void commandAction(Command com, Displayable dis) {
 		if (com == exit) { //exit triggered from the main form
+			if (rfcommServer != null)
+				try {
+					rfcommServer.stopListening();
+				} catch (InternalApplicationException e) {
+					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
+				}
 			destroyApp(false);
 			notifyDestroyed();
 		}

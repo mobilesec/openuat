@@ -10,10 +10,12 @@ package org.openuat.util;
 
 import java.io.IOException;
 
+import javax.bluetooth.BluetoothStateException;
 import javax.bluetooth.DiscoveryAgent;
 import javax.bluetooth.LocalDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
+import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 import javax.microedition.io.StreamConnectionNotifier;
 
@@ -21,8 +23,6 @@ import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
-
-import de.avetana.bluetooth.connection.Connector;
 
 /** This class represents an RFCOMM service which responds to incoming authentication requests by delegating any incoming
  * connection to the HostProtocolHandler class. More specifically, for each incoming RFCOMM connection, the 
@@ -43,6 +43,8 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	private StreamConnectionNotifier listener = null;
 	
 	private String serviceURL;
+	
+	private String registeredURL;
 	
     // We use a pseudo-singleton pattern here: for each port, only one instance can exist. This map holds the known instances.
 	//private static HashMap instances;
@@ -71,15 +73,34 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		serviceURL = "btspp://localhost:" + serviceUUID + 
 			(channel != null ? ":" + channel : "") + ";name=" + serviceName + 
 			";authenticate=false;encrypt=false;authorize=false;master=false";
-
-		// and create the RFCOMM service
-		this.listener = (StreamConnectionNotifier) Connector.open(serviceURL);
-		
-		// we can query and modify our local service description
-		ServiceRecord service = LocalDevice.getLocalDevice().getRecord(listener);
-		logger.info("Registered local service with URL " + service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+		// the service itself will be created later when calling startListening
 	}
-	
+
+	/** Need to override the startListening method to register the SDP service. 
+	 * @throws InternalApplicationException */
+	public void startListening() throws IOException {
+		if (listener == null) {
+			// create the RFCOMM service
+			try {
+				this.listener = (StreamConnectionNotifier) Connector.open(serviceURL);
+			} catch (IOException e) {
+				logger.error("Unable to register SDP service with URL '" + serviceURL + "', aborting startListening: " + e);
+				throw e;
+			}
+			// we can query and modify our local service description
+			try {
+				ServiceRecord service;
+				service = LocalDevice.getLocalDevice().getRecord(listener);
+				registeredURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
+				logger.info("Registered local service with URL " + registeredURL);
+			} catch (BluetoothStateException e) {
+				logger.error("Unable to query registered SDP record, aborting startListening: " + e);
+				throw e;
+			}
+		}
+		super.startListening();
+	}
+
 	/** Need to override the stopListening method to properly close the RFCOMM service notifier. 
 	 * @throws InternalApplicationException */
 	public void stopListening() throws InternalApplicationException {
@@ -97,6 +118,13 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		super.stopListening();
 	}
 	
+	/** After startListening finished successfully, this will return the URL 
+	 * that can be used by RFCOMM clients to connect to this service.
+	 */
+	public String getRegisteredServiceURL() {
+		return registeredURL;
+	}
+	
 	/** This actually implements the listening for new RFCOMM channels. */
 	public void run() {
 		logger.debug("Listening thread for RFCOMM service now running");
@@ -105,39 +133,19 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				StreamConnection connection = listener.acceptAndOpen();
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
-				logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
-						channel.getRemoteName() + "'");
+				if (logger.isInfoEnabled())
+					// TODO: getRemoteAddress and getRemoteName throw exceptions on J2ME - find out why
+					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
+							channel.getRemoteName() + "'");
 				
 				HostProtocolHandler h = new HostProtocolHandler(channel, keepConnected, useJSSE);
 				// before starting the background thread, register all our own listeners with this new event sender
     			for (int i=0; i<eventsHandlers.size(); i++)
     				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) eventsHandlers.elementAt(i));
-    			/* Call the protocol sychronously, because at least avetanaBT does not seem
-    			 * to support calling acceptAndOpen while a connection is still open. This is bad bad bad!
-    			 */ 
-    			// TODO: special care needs to be taken when keepConnected is true!
-    			h.startIncomingAuthenticationThread(false);
+    			// and asynchronously handle the connection
+    			// TODO: J2ME crashes with this line enabled - probably within performProtocol- FIXME FIXME FIXME FIXME
+//    			h.startIncomingAuthenticationThread(true);
     			
-    			/* Actually, it should work this way, and (at least some) J2ME devices seem to support it.
-    			 * From http://fivedots.coe.psu.ac.th/~ad/jg/blue1/:
-    			 *   public void run()
-    			 *   // Wait for client connections, creating a handler for each one
-    			 *   {
-    			 *   	isRunning = true;
-    			 *   	try {
-    			 *   		while (isRunning) {
-    			 *   			StreamConnection conn = server.acceptAndOpen(); 
-    			 *   			ThreadedEchoHandler hand = new ThreadedEchoHandler(conn, ecm);  
-    			 *   	        handlers.addElement(hand);
-    			 *   			hand.start();
-    			 *   		}
-    			 *   	}
-    			 *   	catch (IOException e) 
-    			 *   	{  System.out.println(e);  }
-    			 *   }  // run()
-    			 *   which is exactly what I'm trying to do here.
-    			 */
-				
     			/* It turns out that we need to add a sleep before starting the 
     			 * next acceptAndOpen after finishing the previous connection, or
     			 * it will simply stop accepting new connections after some time. 

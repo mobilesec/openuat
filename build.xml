@@ -309,11 +309,13 @@
 		<wtkpackage jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad" preverify="false" obfuscate="false">
 			<fileset dir="${bin}" includes="org/openuat/apps/j2me/BluetoothDemo.class 
 				org/openuat/util/Bluetooth*.class org/openuat/util/RemoteConnection.class
-				org/openuat/util/HostServerBase.class org/openuat/util/HostProtocolHandler.class 
+				org/openuat/util/HostServerBase.class org/openuat/authentication/HostProtocolHandler*.class 
 				org/openuat/authentication/AuthenticationEventSender.class 
 				org/openuat/authentication/AuthenticationProgressHandler.class org/openuat/authentication/exceptions/*.class"/>
 			<fileset dir="${thirdparty}/log4jNoop" includes="org/apache/log4j/**/*.class"/>
 			<fileset dir="${thirdparty}/avetanaNoop" includes="de/avetana/bluetooth/stack/**/*.class"/>
+			<!-- need the apache commons files -->
+			<fileset dir="${bin-BC-core}" includes="org/apache/commons/codec/**/*.class"/>
 			<!-- nope, doesn't work with CLDC -->
 			<!--<zipfileset src="${lib}/log4jMini.jar" />-->
 		</wtkpackage>
@@ -324,12 +326,12 @@
 	
 
 	<target name="run-midp" depends="jar-midp" description="Run the J2ME MIDP applications in the simulator" if="haveWTK">
-		<wtkrun jadfile="${build}/HelloProperty.jad"/>
+		<wtkrun jadfile="${build}/BluetoothDemo.jad"/>
 	</target>
 
 	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
 		<exec executable="obexftp">
-			<arg line="-b 00:18:0F:A3:A1:D4"/>
+			<arg line="-b 00:18:0F:A4:C9:97"/>
 			<arg line="-p ${build}/BluetoothDemo.jar"/>
         		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->

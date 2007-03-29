@@ -43,7 +43,7 @@ import org.apache.log4j.Logger;
  */
 public class HostProtocolHandler extends AuthenticationEventSender {
 	/** Our primary logger. */
-	private static Logger logger = Logger.getLogger(HostProtocolHandler.class);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.HostProtocolHandler" /*HostProtocolHandler.class*/);
 	
 	/** These are the messages of the ASCII authentication protocol. */
     public static final String Protocol_Hello = "HELO OpenUAT Authentication";
@@ -106,8 +106,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-    public HostProtocolHandler(RemoteConnection con, boolean keepConnected, boolean useJSSE) 
-	{
+    public HostProtocolHandler(RemoteConnection con, boolean keepConnected, boolean useJSSE) {
 		this.connection = con;
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
@@ -120,8 +119,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @see #fromRemote
 	 * @see #toRemote
 	 */
-    void shutdownStreamsCleanly()
-    {
+    void shutdownStreamsCleanly() {
     	logger.debug("Shutting down streams");
     	try {
     		if (fromRemote != null)
@@ -252,9 +250,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     private void performAuthenticationProtocol(boolean serverSide) {
     		SimpleKeyAgreement ka = null;
         String inOrOut, serverToClient, clientToServer;
-        
-        logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        logger.debug("Remote name is " + connection.getRemoteName());
+
+        if (logger.isDebugEnabled()) {
+        	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
+        	// TODO: that doesn't work with J2ME - check why
+        	logger.debug("Remote name is " + connection.getRemoteName());
+        }
 
         if (serverSide) {
         	inOrOut = "Incoming";
@@ -266,7 +267,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         	clientToServer = "sent";
         }
         
-        logger.debug(inOrOut + " connection to authentication service with " + connection.getRemoteName());
+        if (logger.isDebugEnabled())
+        	logger.debug(inOrOut + " connection to authentication service with " + connection.getRemoteName());
         
         try
         {
@@ -300,7 +302,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 int optParamOff = paramLine.indexOf(Protocol_AuthenticationRequest_Param);
                 if (optParamOff != -1) {
                 		optionalParameter = paramLine.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
-                		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
+                		if (logger.isDebugEnabled())
+                			logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
                 }
             }
             else {
@@ -373,7 +376,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         finally {
             if (ka != null)
                 ka.wipe();
-            logger.debug("Ended " + inOrOut + " authentication connection with " + connection.getRemoteName());
+            if (logger.isDebugEnabled())
+            	logger.debug("Ended " + inOrOut + " authentication connection with " + connection.getRemoteName());
         }
     }
     

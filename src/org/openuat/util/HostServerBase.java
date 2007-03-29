@@ -19,7 +19,7 @@ import java.io.*;
  * handling the background listening thread. 
  *  
  * @author Rene Mayrhofer
- * @version 1.1, changes to 1.0: this is now a base class for TCP and RFCOMM implementations
+ * @version 1.1, changes to 1.0: this is now a base class for TCP and RFCOMM implementations, and startListening can now throw an IOException
  */
 public abstract class HostServerBase extends AuthenticationEventSender implements Runnable {
 	/** Our log4j logger. */
@@ -49,13 +49,13 @@ public abstract class HostServerBase extends AuthenticationEventSender implement
 	 *                           reused for additional communication after the first authentication
 	 *                           protocol has been completed.
 	 */
-	public HostServerBase(boolean keepConnected, boolean useJSSE) throws IOException {
+	public HostServerBase(boolean keepConnected, boolean useJSSE) {
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
 	}
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
-	public void startListening() {
+	public void startListening() throws IOException {
 		running = true;
 		logger.debug("Starting listening thread for server socket");
 		listenerThread = new Thread(this);
@@ -68,18 +68,20 @@ public abstract class HostServerBase extends AuthenticationEventSender implement
 	 * @throws InternalApplicationException
 	 */
 	public void stopListening() throws InternalApplicationException {
-		logger.debug("Stopping listening thread for server socket");
-		running = false;
-		// this is not nice, but will throw an exception in the listener thread
-		// and thus allow it to exit by itself
-		try {
-			listenerThread.join();
-			listenerThread = null;
-		} catch (InterruptedException e) {
-			throw new InternalApplicationException(
-					"HostServerSocket listening thread got interrupted while waiting for it to finish. This should not happen.",
-					e);
+		if (listenerThread != null) {
+			logger.debug("Stopping listening thread for server socket");
+			running = false;
+			// this is not nice, but will throw an exception in the listener thread
+			// and thus allow it to exit by itself
+			try {
+				listenerThread.join();
+				listenerThread = null;
+			} catch (InterruptedException e) {
+				throw new InternalApplicationException(
+						"HostServerSocket listening thread got interrupted while waiting for it to finish. This should not happen.",
+						e);
+			}
+			logger.debug("Stopped listening thread for server socket");
 		}
-		logger.debug("Stopped listening thread for server socket");
 	}
 }
