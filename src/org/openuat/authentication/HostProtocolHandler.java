@@ -11,6 +11,7 @@ package org.openuat.authentication;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 
 import org.openuat.authentication.exceptions.*;
@@ -253,7 +254,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
         if (logger.isDebugEnabled()) {
         	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        	// TODO: that doesn't work with J2ME - check why
         	logger.debug("Remote name is " + connection.getRemoteName());
         }
 
@@ -272,11 +272,24 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         
         try
         {
-            fromRemote = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        	InputStreamReader r = new InputStreamReader(connection.getInputStream());
+        	OutputStream w = connection.getOutputStream();
+        	for (int j=0; j<10; j++) {
+        		for (int i=0; i<10; i++) {
+        			int c = r.read();
+        			w.write(c);
+        			w.flush();
+        		}
+        		w.write(new String("Received").getBytes());
+        		w.flush();
+        	}
+        	// TODO: this makes it crash on J2ME - why?
+//        	fromRemote = new BufferedReader(r);
+//            fromRemote = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             // this enables auto-flush
-            toRemote = new PrintWriter(connection.getOutputStream(), true);
+//            toRemote = new PrintWriter(connection.getOutputStream(), true);
 
-            if (serverSide) {
+/*            if (serverSide) {
             	toRemote.println(Protocol_Hello);
             }
             else {
@@ -348,8 +361,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             			optionalParameter });
             	shutdownConnectionCleanly();
             }
-        }
-        catch (InternalApplicationException e)
+  */      }
+/*        catch (InternalApplicationException e)
         {
             logger.error(e);
             // also communicate any application exception to interested
@@ -357,7 +370,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             raiseAuthenticationFailureEvent(connection.getRemoteName(), e, null);
             shutdownConnectionCleanly();
         }
-        catch (IOException e)
+  *//*      catch (IOException e)
         {
             logger.debug(e);
             // even if we ignore the exception and not treat it as an error
@@ -367,9 +380,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             raiseAuthenticationFailureEvent(connection.getRemoteName(), null, "Client closed connection unexpectedly\n");
             shutdownConnectionCleanly();
         }
-        catch (Exception e)
+*/        catch (Exception e)
         {
-            logger.fatal("UNEXPECTED EXCEPTION: " + e /*+ "\n" + e.getStackTrace()*/);
+            logger.fatal("UNEXPECTED EXCEPTION: " + e);
             e.printStackTrace();
             shutdownConnectionCleanly();
         }
