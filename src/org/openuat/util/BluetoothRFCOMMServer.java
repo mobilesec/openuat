@@ -143,8 +143,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
     			for (int i=0; i<eventsHandlers.size(); i++)
     				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) eventsHandlers.elementAt(i));
     			// and asynchronously handle the connection
-    			// TODO: J2ME crashes with this line enabled - probably within performProtocol- FIXME FIXME FIXME FIXME
-//    			h.startIncomingAuthenticationThread(true);
+    			h.startIncomingAuthenticationThread(true);
     			
     			/* It turns out that we need to add a sleep before starting the 
     			 * next acceptAndOpen after finishing the previous connection, or
