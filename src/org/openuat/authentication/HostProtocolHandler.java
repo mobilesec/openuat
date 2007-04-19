@@ -8,11 +8,9 @@
  */
 package org.openuat.authentication;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
 
 import org.openuat.authentication.exceptions.*;
 import org.openuat.util.RemoteConnection;
@@ -77,9 +75,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      */
     private String optionalParameter = null;
     /** The stream to send messages to the remote end. */
-    private PrintWriter toRemote;
+    private OutputStreamWriter toRemote;
     /** The stream to receive messages from the remote end. */
-    private BufferedReader fromRemote;
+    private InputStreamReader fromRemote;
     
     /**
 	 * This class should only be instantiated by HostServerSocket for incoming
@@ -131,7 +129,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     		}
    		}
    		catch (IOException e) {
-   			throw new RuntimeException("Unable to close streams cleanly", e);
+   			// need to ignore here, nothing we can do about it...
+   			logger.error("Unable to close streams cleanly", e);
    		}
     }
     
@@ -145,7 +144,24 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     void shutdownConnectionCleanly() {
     	shutdownStreamsCleanly();
     	logger.debug("Shutting down sockets");
-    	connection.close();
+   		connection.close();
+    }
+    
+    private String readLine() throws IOException {
+		String line = "";
+		int buf = fromRemote.read();
+		while (buf != -1 && buf != '\n') {
+			if (buf != '\r')
+				line += (char) buf;
+			buf = fromRemote.read();
+		}
+		return line;
+    }
+    
+    private void println(String line) throws IOException {
+		toRemote.write(line + "\n");
+		toRemote.flush();
+    	
     }
     
     /**
@@ -167,7 +183,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     private String helper_getAuthenticationParamLine(String expectedMsg, String remote) throws IOException
     {
-    	String msg = fromRemote.readLine();
+    	String msg = readLine();
         if (msg == null)
         {
         	logger.warn("helper_getAuthenticationParamLine called with null argument");
@@ -179,7 +195,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         if (!msg.startsWith(expectedMsg))
         {
         	logger.warn("Protocol error: unkown message '" + msg + "'");
-            toRemote.println("Protocol error: unknown message: '" + msg + "'");
+            println("Protocol error: unknown message: '" + msg + "'");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: unknown message");
             return null;
         }
@@ -204,9 +220,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @return The extracted public key is returned in this array. If decoding
 	 *         failed, null will be returned instead of the (meaningless) parts
 	 *         that might have been decoded.
+	 * @throws IOException 
 	 * @throws IOException
 	 */
-    private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, String remote)
+    private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, String remote) throws IOException
     {
     	if (paramLine == null)
     		return null;
@@ -222,14 +239,14 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (DecoderException e) {
             logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            toRemote.println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
+            println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
             raiseAuthenticationFailureEvent(remote, e, "Protocol error: can not decode remote public key");
             return null;
         }
         if (remotePubKey.length < 128)
         {
             logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            toRemote.println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
+            println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: remote key too short (only " + remotePubKey.length + " bytes instead of 128)");
             return null;
         }
@@ -272,28 +289,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         
         try
         {
-        	InputStreamReader r = new InputStreamReader(connection.getInputStream());
-        	OutputStream w = connection.getOutputStream();
-        	for (int j=0; j<10; j++) {
-        		for (int i=0; i<10; i++) {
-        			int c = r.read();
-        			w.write(c);
-        			w.flush();
-        		}
-        		w.write(new String("Received").getBytes());
-        		w.flush();
-        	}
-        	// TODO: this makes it crash on J2ME - why?
-//        	fromRemote = new BufferedReader(r);
-//            fromRemote = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        	fromRemote = new InputStreamReader(connection.getInputStream());
             // this enables auto-flush
-//            toRemote = new PrintWriter(connection.getOutputStream(), true);
+            toRemote = new OutputStreamWriter(connection.getOutputStream());
 
-/*            if (serverSide) {
-            	toRemote.println(Protocol_Hello);
+            if (serverSide) {
+            	println(Protocol_Hello);
             }
             else {
-                String msg = fromRemote.readLine();
+                String msg = readLine();
                 if (!msg.equals(Protocol_Hello))
                 {
                 	raiseAuthenticationFailureEvent(connection.getRemoteName(), null, "Protocol error: did not get greeting from server");
@@ -322,26 +326,26 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             else {
             		// now send my first message, but already need the public key for it
             		ka = new SimpleKeyAgreement(useJSSE);
-            		toRemote.println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
+            		println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
             				(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
             }
-        		raiseAuthenticationProgressEvent(connection.getRemoteName(), 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
+            raiseAuthenticationProgressEvent(connection.getRemoteName(), 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
-        		if (serverSide) {
+            if (serverSide) {
                 // for performance reasons: only now start the DH phase
                 ka = new SimpleKeyAgreement(useJSSE);
-                toRemote.println(Protocol_AuthenticationAcknowledge + new String(Hex.encodeHex(ka.getPublicKey())));
-        		}
-        		else {
-                remotePubKey = helper_extractPublicKey(
-                		helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, connection.getRemoteName()),
+                	println(Protocol_AuthenticationAcknowledge + new String(Hex.encodeHex(ka.getPublicKey())));
+            }
+            else {
+            	remotePubKey = helper_extractPublicKey(
+            			helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, connection.getRemoteName()),
                 		Protocol_AuthenticationAcknowledge, connection.getRemoteName());
                 if (remotePubKey == null)
                 {
                     shutdownConnectionCleanly();
                     return;
                 }
-        		}
+            }
             raiseAuthenticationProgressEvent(connection.getRemoteName(), 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
             ka.addRemotePublicKey(remotePubKey);
@@ -361,8 +365,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             			optionalParameter });
             	shutdownConnectionCleanly();
             }
-  */      }
-/*        catch (InternalApplicationException e)
+        }
+        catch (InternalApplicationException e)
         {
             logger.error(e);
             // also communicate any application exception to interested
@@ -370,7 +374,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             raiseAuthenticationFailureEvent(connection.getRemoteName(), e, null);
             shutdownConnectionCleanly();
         }
-  *//*      catch (IOException e)
+        catch (IOException e)
         {
             logger.debug(e);
             // even if we ignore the exception and not treat it as an error
@@ -380,7 +384,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             raiseAuthenticationFailureEvent(connection.getRemoteName(), null, "Client closed connection unexpectedly\n");
             shutdownConnectionCleanly();
         }
-*/        catch (Exception e)
+        catch (Exception e)
         {
             logger.fatal("UNEXPECTED EXCEPTION: " + e);
             e.printStackTrace();

@@ -27,7 +27,8 @@ public interface RemoteConnection {
 	/** Returns the OuputStream to write to the remote side. */
 	OutputStream getOutputStream() throws IOException;
 	
-	/** Returns the name of the remote host in appropriate representation. */
+	/** Returns the name of the remote host in appropriate representation, 
+	 * or null if it could not be resolved. */
 	String getRemoteName();
 	
 	/** Returns the address of the remote host as appropriate object. */

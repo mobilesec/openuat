@@ -200,7 +200,8 @@ try {
     		connection.close();
 		}
 		catch (IOException e) {
-			throw new RuntimeException("Unable to close socket cleanly", e);
+   			// need to ignore here, nothing we can do about it...
+   			logger.error("Unable to close streams cleanly", e);
 		}
 		fromRemote = null;
 		toRemote = null;
@@ -240,14 +241,24 @@ try {
 	 * @return A RemoteDevice object representing the Bluetooth device.
 	 */
 	public Object getRemoteAddress() throws IOException {
-		return new RemoteDevice(remoteDeviceAddress);
+		if (connection != null)
+			// connection already open, get the RemoteDevice object from it
+			return RemoteDevice.getRemoteDevice(connection);
+		else
+			// no connection open, need to work with remoteDeviceAddress here
+			return new RemoteDevice(remoteDeviceAddress);
 	}
 
 	/** Implementation of RemoteConnection.getRemoteName.
 	 * @see RemoteConnection.getRemoteName
 	 */
 	public String getRemoteName() {
-		return BluetoothPeerManager.resolveName(new RemoteDevice(remoteDeviceAddress));
+		try {
+			return BluetoothPeerManager.resolveName((RemoteDevice) getRemoteAddress());
+		} catch (IOException e) {
+			// can't resolve - that's bad
+			return null;
+		}
 	}
 
 	   /**

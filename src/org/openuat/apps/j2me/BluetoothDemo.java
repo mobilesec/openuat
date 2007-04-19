@@ -53,7 +53,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			rfcommServer.startListening();
 			do_alert("Registered SDP service at " + rfcommServer.getRegisteredServiceURL(), Alert.FOREVER);
 			try {
-				Thread.sleep(10000);
+				Thread.sleep(5000);
 			} catch (InterruptedException e) {
 			}
 		} catch (IOException e) {

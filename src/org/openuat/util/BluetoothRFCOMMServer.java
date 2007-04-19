@@ -134,7 +134,6 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				StreamConnection connection = listener.acceptAndOpen();
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
 				if (logger.isInfoEnabled())
-					// TODO: getRemoteAddress and getRemoteName throw exceptions on J2ME - find out why
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 							channel.getRemoteName() + "'");
 				

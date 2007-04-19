@@ -13,8 +13,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import org.apache.log4j.Logger;
+
 /** This is a private implementation of RemoteConnection for TCP. */
 public class RemoteTCPConnection implements RemoteConnection {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger("org.openuat.util.RemoteTCPConnection" /*BluetoothRFCOMMChannel.class*/);
+
 	/** Just a reference to the Socket object wrapped by this class. */
 	private Socket socket;
 	
@@ -66,7 +71,8 @@ public class RemoteTCPConnection implements RemoteConnection {
     		}
 		}
 		catch (IOException e) {
-			throw new RuntimeException("Unable to close socket cleanly", e);
+   			// need to ignore here, nothing we can do about it...
+   			logger.error("Unable to close streams cleanly", e);
 		}
 	}
 	
