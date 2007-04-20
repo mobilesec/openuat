@@ -57,6 +57,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		logForm.setDisplay(display);
 		Logger logger = Logger.getLogger();
 
+		// problem with CRLF in microlog.properies? try unix2dos...
         /*try {
             GlobalProperties.init(this);
         } catch (IllegalStateException e) {
