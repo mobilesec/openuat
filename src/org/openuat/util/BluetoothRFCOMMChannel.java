@@ -188,7 +188,7 @@ try {
 	 */
 	public void close() {
 		if (connection == null || toRemote == null || fromRemote == null) {
-			logger.error("RFCOMM channel has not yet been openend properly, can not close");
+			logger.error("RFCOMM channel has not been openend properly or been close already, can not close");
 			return;
 		}
 		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
@@ -216,7 +216,7 @@ try {
 	 */
 	public InputStream getInputStream() throws IOException {
 		if (connection == null || fromRemote == null) {
-			throw new IOException("RFCOMM channel has not yet been opened properly");
+			throw new IOException("RFCOMM channel has not been opened properly");
 		}
 		
 		return fromRemote;
@@ -230,7 +230,7 @@ try {
 	 */
 	public OutputStream getOutputStream() throws IOException {
 		if (connection == null || toRemote == null) {
-			throw new IOException("RFCOMM channel has not yet been opened properly");
+			throw new IOException("RFCOMM channel has not been opened properly");
 		}
 		
 		return toRemote;
@@ -330,14 +330,36 @@ StreamConnection con =(StreamConnection)Connector.open(connectionURL);
 btspp://0001234567AB:3
  */
 	
+	///////////////////////////////////////// test code begins here //////////////////////
+	private static class TempHandler implements org.openuat.authentication.AuthenticationProgressHandler {
+		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+			System.out.println("DH with " + remote + " failed: " + e + "/" + msg);
+		}
+
+		public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+			System.out.println("DH with " + remote + " progress: " + cur + "/" + max + ": " + msg);
+		}
+
+		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+			System.out.println("DH with " + remote + " SUCCESS");
+		}
+	}
+	
 	  public static void main(String[] args) throws IOException, NumberFormatException {
 		  BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
-		  c.open();
-		  InputStream i = c.getInputStream();
-		  int tmp = i.read();
-		  while (tmp != -1) {
-			  System.out.print((char) tmp);
-			  tmp = i.read();
+		  
+		  if (args.length > 2 && args[2].equals("DH")) {
+			  // this is our test client, so don't keep connected, but use JSSE (interoperability tests...)
+			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(c, new TempHandler(), false, null, true); 
+		  }
+		  else {
+			  c.open();
+			  InputStream i = c.getInputStream();
+			  int tmp = i.read();
+			  while (tmp != -1) {
+				  System.out.print((char) tmp);
+				  tmp = i.read();
+			  }
 		  }
 	  }
 }
