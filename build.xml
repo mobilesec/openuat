@@ -30,6 +30,9 @@
 	<property name="bin-BC-openssl" location="${build}/bin-bouncycastle-openssl"/>
 	<property name="thirdparty-apache-bzip2" location="${thirdparty}/apache-bzip2"/>
 	<property name="bin-apache-bzip2" location="${build}/bin-apache-bzip2"/>
+	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
+	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
+	<property name="bin-microlog" location="${build}/bin-microlog"/>
 	<property name="compile.debug" value="true"/>
 
 	<!-- these are the target JARs -->
@@ -118,6 +121,8 @@
 		<pathelement location="${wtk.home}/lib/midpapi20.jar"/>
 		<pathelement location="${wtk.home}/lib/cldcapi11.jar"/>
 		<pathelement location="${wtk.home}/lib/jsr082.jar"/>
+		<pathelement location="${wtk.home}/lib/jsr75.jar"/>
+		<pathelement location="${bin-microlog}"/>
 	</path>
 	
 	<path id="cobertura.classpath">
@@ -223,22 +228,23 @@
 	 other "common" classes are compiled in the standard compile target for
 	 Java language level 1.2. -->
 	<target name="compile-midp" description="Compile special classes for MIDP2.0" if="haveWTK">
-        	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<mkdir dir="${bin-microlog}"/>
+
+		<!-- Compile the MicroLog dependencies -->
+		<javac srcdir="${thirdparty-microlog}" destdir="${bin-microlog}" includeAntRuntime="no"
+		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
+
+		<!-- And the wrapper around it to have it usable under the log4j package name -->
+		<javac srcdir="${thirdparty-microlog-wrapper}" destdir="${bin-microlog}" includeAntRuntime="no"
+		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
+		
+		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 		       includeJavaRuntime="no">
 			<include name="${midp-only-files}" />
 		</javac>
 	</target>
     
-<!--    <target name="preverify" depends="compile">
-        <mkdir dir="${preverified}" />
-        <exec executable="${midp_home}/bin/preverify">
-	    <arg line="-classpath ${midp_libs}"/>
-	    <arg line="-d ${preverified}"/>
-	    <arg line="${bin}"/>
-	</exec>
-    </target>-->
-
 	<target name="jar" depends="compile" description="Build jar">
 		<mkdir dir="${dist}"/>
 		<jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
@@ -312,12 +318,12 @@
 				org/openuat/util/HostServerBase.class org/openuat/authentication/HostProtocolHandler*.class 
 				org/openuat/authentication/AuthenticationEventSender.class 
 				org/openuat/authentication/AuthenticationProgressHandler.class org/openuat/authentication/exceptions/*.class"/>
-			<fileset dir="${thirdparty}/log4jNoop" includes="org/apache/log4j/**/*.class"/>
 			<fileset dir="${thirdparty}/avetanaNoop" includes="de/avetana/bluetooth/stack/**/*.class"/>
 			<!-- need the apache commons files -->
 			<fileset dir="${bin-BC-core}" includes="org/apache/commons/codec/**/*.class"/>
-			<!-- nope, doesn't work with CLDC -->
-			<!--<zipfileset src="${lib}/log4jMini.jar" />-->
+			<!-- and MicroLog as log4j replacement -->
+			<fileset dir="${bin-microlog}" includes="**/*.class"/>
+			<fileset dir="${src}" includes="microlog.properties"/>
 		</wtkpackage>
     	
 		<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>

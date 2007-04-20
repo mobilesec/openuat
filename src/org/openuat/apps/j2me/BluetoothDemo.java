@@ -15,6 +15,13 @@ import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
 import javax.bluetooth.*;
 
+import net.sf.microlog.Level;
+import net.sf.microlog.Logger;
+import net.sf.microlog.appender.FormAppender;
+import net.sf.microlog.appender.RecordStoreAppender;
+import net.sf.microlog.ui.LogForm;
+import net.sf.microlog.util.GlobalProperties;
+
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMServer;
@@ -32,39 +39,55 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 
 	Command back;
 
+	Command log;
+
 	Display display;
 	
 	BluetoothPeerManager peerManager;
 	
 	BluetoothRFCOMMServer rfcommServer;
 	
+	LogForm logForm;
+	
 	public BluetoothDemo() {
 		display = Display.getDisplay(this);
 
+		// our logger
+		logForm = new LogForm();
+		logForm.setDisplay(display);
+		Logger logger = Logger.getLogger();
+
+        /*try {
+            GlobalProperties.init(this);
+        } catch (IllegalStateException e) {
+            //Ignore this exception. It is already initiated.
+        }
+		logger.configure(GlobalProperties.getInstance());*/
+		
+		logger.addAppender(new FormAppender(logForm));
+		
+		//logger.addAppender(new RecordStoreAppender());
+		logger.setLogLevel(Level.DEBUG);
+		logger.info("Microlog initialized");
+		
 		if (! BluetoothSupport.init()) {
 			do_alert("Could not initialize Bluetooth API", Alert.FOREVER);
 			return;
 		}
 
 		try {
-			do_alert("1", 1000);
 			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", false, false);
-			do_alert("2", 1000);
 			rfcommServer.startListening();
-			do_alert("Registered SDP service at " + rfcommServer.getRegisteredServiceURL(), Alert.FOREVER);
-			try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {
-			}
+			logger.info("Registered SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			do_alert("Error initializing BlutoothRFCOMMServer: " + e, Alert.FOREVER);
+			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 
 		try {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(this);
 		} catch (IOException e) {
-			do_alert("Error initializing BlutoothPeerManager: " + e, Alert.FOREVER);
+			logger.error("Error initializing BlutoothPeerManager: " + e);
 			return;
 		}
 
@@ -73,10 +96,13 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			serv_list = new List("Available Services", Choice.IMPLICIT); //the list of services
 			exit = new Command("Exit", Command.EXIT, 1);
 			back = new Command("Back", Command.BACK, 1);
+			log = new Command("Log", Command.ITEM, 2);
 
 			main_list.addCommand(exit);
+			main_list.addCommand(log);
 			main_list.setCommandListener(this);
 			dev_list.addCommand(exit);
+			dev_list.addCommand(log);
 			dev_list.setCommandListener(this);
 			serv_list.addCommand(exit);
 			serv_list.addCommand(back);
@@ -86,6 +112,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	}
 
 	public void startApp() {
+		logForm.setPreviousScreen(main_list);
 		display.setCurrent(main_list);
 	}
 
@@ -100,7 +127,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			destroyApp(false);
 			notifyDestroyed();
 		}
-		if (com == List.SELECT_COMMAND) {
+		else if (com == List.SELECT_COMMAND) {
 			if (dis == main_list) { //select triggered from the main from
 				if (main_list.getSelectedIndex() >= 0) { //find devices
 					if (!peerManager.startInquiry(false)) {
@@ -122,10 +149,13 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 				}
 			}
 		}
-		if (com == back) {
+		else if (com == back) {
 			if (dis == serv_list) { //back button is pressed in devices list
 				display.setCurrent(dev_list);
 			}
+		}
+		else if (com == log) {
+			display.setCurrent(logForm);
 		}
 
 	}
@@ -152,6 +182,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		for (int i=0; i<newDevices.size(); i++) {
 			String device_name = BluetoothPeerManager.resolveName((RemoteDevice) newDevices.elementAt(i));
 			this.dev_list.append(device_name, null);
+			logForm.setPreviousScreen(dev_list);
 			display.setCurrent(dev_list);
 		}
 	}
