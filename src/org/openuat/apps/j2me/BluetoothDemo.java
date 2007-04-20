@@ -16,12 +16,12 @@ import javax.microedition.lcdui.*;
 import javax.bluetooth.*;
 
 import net.sf.microlog.Level;
-import net.sf.microlog.Logger;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.appender.RecordStoreAppender;
 import net.sf.microlog.ui.LogForm;
 import net.sf.microlog.util.GlobalProperties;
 
+import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMServer;
@@ -48,14 +48,12 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	BluetoothRFCOMMServer rfcommServer;
 	
 	LogForm logForm;
+
+	// our logger
+	Logger logger = Logger.getLogger("");
 	
 	public BluetoothDemo() {
 		display = Display.getDisplay(this);
-
-		// our logger
-		logForm = new LogForm();
-		logForm.setDisplay(display);
-		Logger logger = Logger.getLogger();
 
 		// problem with CRLF in microlog.properies? try unix2dos...
         /*try {
@@ -65,10 +63,12 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
         }
 		logger.configure(GlobalProperties.getInstance());*/
 		
-		logger.addAppender(new FormAppender(logForm));
-		
-		//logger.addAppender(new RecordStoreAppender());
-		logger.setLogLevel(Level.DEBUG);
+		net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
+		logForm = new LogForm();
+		logForm.setDisplay(display);
+		logBackend.addAppender(new FormAppender(logForm));
+		//logBackend.addAppender(new RecordStoreAppender());
+		logBackend.setLogLevel(Level.DEBUG);
 		logger.info("Microlog initialized");
 		
 		if (! BluetoothSupport.init()) {
@@ -79,7 +79,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		try {
 			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", false, false);
 			rfcommServer.startListening();
-			logger.info("Registered SDP service at " + rfcommServer.getRegisteredServiceURL());
+			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
