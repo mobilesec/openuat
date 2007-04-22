@@ -131,9 +131,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		try {
 			while (running) {
 				//System.out.println("Listening thread for server socket waiting for connection");
-				logger.debug("XXXXXXXXX waiting");
 				StreamConnection connection = listener.acceptAndOpen();
-				logger.debug("XXXXXXXXX got it");
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
 				if (logger.isInfoEnabled())
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
