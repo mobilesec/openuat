@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="thirdparty/microlog"/>
 	<classpathentry kind="src" path="thirdparty/apache-bzip2"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-core-deps"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-openssl-deps"/>
@@ -16,5 +17,7 @@
 	<classpathentry kind="lib" path="lib/jcommon-1.0.5.jar"/>
 	<classpathentry kind="lib" path="lib/relate-2.2-apps.jar"/>
 	<classpathentry kind="lib" path="lib/relate-2.2-core.jar"/>
+	<classpathentry kind="var" path="CLDC_JAR"/>
+	<classpathentry kind="var" path="MIDP_JAR"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
