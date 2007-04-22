@@ -567,6 +567,11 @@ public class BluetoothPeerManager {
 	 * @param device The remote device to resolve the name for.
 	 */
 	public static String resolveName(RemoteDevice device) {
+		if (device == null) {
+			logger.warn("Can not resolve name for null device");
+			return null;
+		}
+		
 		String name;
 		try {
 			name = device.getFriendlyName(false);

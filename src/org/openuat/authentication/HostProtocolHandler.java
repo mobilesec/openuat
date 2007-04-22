@@ -267,11 +267,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     private void performAuthenticationProtocol(boolean serverSide) {
     		SimpleKeyAgreement ka = null;
-        String inOrOut, serverToClient, clientToServer;
+        String inOrOut, serverToClient, clientToServer,
+        	remoteName = connection.getRemoteName();
 
         if (logger.isDebugEnabled()) {
         	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        	logger.debug("Remote name is " + connection.getRemoteName());
+        	logger.debug("Remote name is " + remoteName);
         }
 
         if (serverSide) {
@@ -285,14 +286,29 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         
         if (logger.isDebugEnabled())
-        	logger.debug(inOrOut + " connection to authentication service with " + connection.getRemoteName());
+        	logger.debug(inOrOut + " connection to authentication service with " + remoteName);
         
         try
         {
         	fromRemote = new InputStreamReader(connection.getInputStream());
             // this enables auto-flush
             toRemote = new OutputStreamWriter(connection.getOutputStream());
-
+            
+            // debugging code for testing the connection
+/*            for (int j = 0; j < 10; j++) {
+				for (int i = 0; i < 10; i++) {
+					int c = fromRemote.read();
+					toRemote.write(c);
+					toRemote.flush();
+				}
+				toRemote.write("Received");
+				toRemote.flush();
+			}
+            
+            logger.debug("Starting host protocol");
+            Thread.sleep(10000);
+            logger.debug("Really now");*/
+          
             if (serverSide) {
             	println(Protocol_Hello);
             }
@@ -300,17 +316,17 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 String msg = readLine();
                 if (!msg.equals(Protocol_Hello))
                 {
-                	raiseAuthenticationFailureEvent(connection.getRemoteName(), null, "Protocol error: did not get greeting from server");
+                	raiseAuthenticationFailureEvent(remoteName, null, "Protocol error: did not get greeting from server");
                     shutdownConnectionCleanly();
                     return;
                 }
         	}
-            raiseAuthenticationProgressEvent(connection.getRemoteName(), 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
+            raiseAuthenticationProgressEvent(remoteName, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
             byte[] remotePubKey = null;
             if (serverSide) {
-            	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection.getRemoteName());
-                remotePubKey = helper_extractPublicKey(paramLine, Protocol_AuthenticationRequest, connection.getRemoteName());
+            	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, remoteName);
+                remotePubKey = helper_extractPublicKey(paramLine, Protocol_AuthenticationRequest, remoteName);
                 if (remotePubKey == null)
                 {
                     shutdownConnectionCleanly();
@@ -329,7 +345,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             		println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
             				(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
             }
-            raiseAuthenticationProgressEvent(connection.getRemoteName(), 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
+            raiseAuthenticationProgressEvent(remoteName, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
             if (serverSide) {
                 // for performance reasons: only now start the DH phase
@@ -338,50 +354,50 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             }
             else {
             	remotePubKey = helper_extractPublicKey(
-            			helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, connection.getRemoteName()),
-                		Protocol_AuthenticationAcknowledge, connection.getRemoteName());
+            			helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, remoteName),
+                		Protocol_AuthenticationAcknowledge, remoteName);
                 if (remotePubKey == null)
                 {
                     shutdownConnectionCleanly();
                     return;
                 }
             }
-            raiseAuthenticationProgressEvent(connection.getRemoteName(), 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
+            raiseAuthenticationProgressEvent(remoteName, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
             ka.addRemotePublicKey(remotePubKey);
-            raiseAuthenticationProgressEvent(connection.getRemoteName(), 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
+            raiseAuthenticationProgressEvent(remoteName, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
             // the authentication success event sent here is just an array of two keys
             if (keepConnected) {
             	logger.debug("Not closing socket as requested, but passing it to the success event.");
-            	// don't shut down the streams because this effectively shuts down the TCP connection
+            	// don't shut down the streams because this effectively shuts down the connection
             	// but make sure that the last message has been sent successfully
             	toRemote.flush();
-            	raiseAuthenticationSuccessEvent(connection.getRemoteName(), new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
+            	raiseAuthenticationSuccessEvent(remoteName, new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
             			optionalParameter, connection});
             }
             else {
-            	raiseAuthenticationSuccessEvent(connection.getRemoteName(), new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
+            	raiseAuthenticationSuccessEvent(remoteName, new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
             			optionalParameter });
             	shutdownConnectionCleanly();
             }
         }
         catch (InternalApplicationException e)
         {
-            logger.error(e);
+            logger.error("Caught exception during host protocol run, aborting: " + e);
             // also communicate any application exception to interested
 			// listeners
-            raiseAuthenticationFailureEvent(connection.getRemoteName(), e, null);
+            raiseAuthenticationFailureEvent(remoteName, e, null);
             shutdownConnectionCleanly();
         }
         catch (IOException e)
         {
-            logger.debug(e);
+            logger.error("Caught exception during host protocol run, aborting: " + e);
             // even if we ignore the exception and not treat it as an error
 			// case, report it to listeners
             // so that they can clean up their state of this authentication
 			// (identified by the remote)
-            raiseAuthenticationFailureEvent(connection.getRemoteName(), null, "Client closed connection unexpectedly\n");
+            raiseAuthenticationFailureEvent(remoteName, null, "Client closed connection unexpectedly\n");
             shutdownConnectionCleanly();
         }
         catch (Exception e)
@@ -394,7 +410,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (ka != null)
                 ka.wipe();
             if (logger.isDebugEnabled())
-            	logger.debug("Ended " + inOrOut + " authentication connection with " + connection.getRemoteName());
+            	logger.debug("Ended " + inOrOut + " authentication connection with " + remoteName);
         }
     }
     

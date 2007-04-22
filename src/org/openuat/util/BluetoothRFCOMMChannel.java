@@ -244,9 +244,11 @@ try {
 		if (connection != null)
 			// connection already open, get the RemoteDevice object from it
 			return RemoteDevice.getRemoteDevice(connection);
-		else
+		else if (remoteDeviceAddress != null)
 			// no connection open, need to work with remoteDeviceAddress here
 			return new RemoteDevice(remoteDeviceAddress);
+		else
+			return null;
 	}
 
 	/** Implementation of RemoteConnection.getRemoteName.
