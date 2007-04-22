@@ -316,6 +316,7 @@
 			<fileset dir="${bin}" includes="org/openuat/apps/j2me/BluetoothDemo.class 
 				org/openuat/util/Bluetooth*.class org/openuat/util/RemoteConnection.class
 				org/openuat/util/HostServerBase.class org/openuat/authentication/HostProtocolHandler*.class 
+				org/openuat/authentication/SimpleKeyAgreement.class org/openuat/util/Hash.class
 				org/openuat/authentication/AuthenticationEventSender.class 
 				org/openuat/authentication/AuthenticationProgressHandler.class org/openuat/authentication/exceptions/*.class"/>
 			<fileset dir="${thirdparty}/avetanaNoop" includes="de/avetana/bluetooth/stack/**/*.class"/>
@@ -324,6 +325,8 @@
 			<!-- and MicroLog as log4j replacement -->
 			<fileset dir="${bin-microlog}" includes="**/*.class"/>
 			<fileset dir="${src}" includes="microlog.properties"/>
+			<!-- the dependencies for SimpleKeyAgreement -->
+			<fileset dir="${bin-BC-core}" />
 		</wtkpackage>
     	
 		<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>

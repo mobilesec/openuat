@@ -336,6 +336,7 @@ btspp://0001234567AB:3
 	private static class TempHandler implements org.openuat.authentication.AuthenticationProgressHandler {
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 			System.out.println("DH with " + remote + " failed: " + e + "/" + msg);
+			System.exit(1);
 		}
 
 		public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
@@ -344,18 +345,21 @@ btspp://0001234567AB:3
 
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 			System.out.println("DH with " + remote + " SUCCESS");
+			System.exit(0);
 		}
 	}
 	
-	  public static void main(String[] args) throws IOException, NumberFormatException {
+	  public static void main(String[] args) throws IOException, NumberFormatException, InterruptedException {
 		  BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
+		  c.open();
 		  
 		  if (args.length > 2 && args[2].equals("DH")) {
 			  // this is our test client, so don't keep connected, but use JSSE (interoperability tests...)
-			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(c, new TempHandler(), false, null, true); 
+			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(c, new TempHandler(), false, null, true);
+			  System.out.println("Waiting for protocol to run in the background");
+			  while (true) Thread.sleep(500);
 		  }
 		  else {
-			  c.open();
 			  InputStream i = c.getInputStream();
 			  int tmp = i.read();
 			  while (tmp != -1) {
