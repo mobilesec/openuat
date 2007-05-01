@@ -324,7 +324,11 @@
 			<deviceRequirements unless="test">-->
 			<deviceRequirements>
 				<!--<requirement name="Identifier" value="Generic/jtwi,Generic/midp1,Generic/Midp2Cldc11,Nokia/Series40E3,Nokia/Series60E2,Nokia/Series60E3,Sony-Ericsson/JavaPlatform6" />-->
-				<requirement name="Identifier" value="Generic/Midp2Cldc11" />
+				<!--<requirement name="Identifier" value="Generic/Midp2Cldc11" />-->
+				<requirement name="Identifier" value="Generic/multi" />
+				<requirement name="JavaPackage" value="btapi" />
+				<requirement name="JavaPackage" value="mmapi" />
+				<requirement name="JavaPlatform" value="MIDP/2.0+" />
 			</deviceRequirements>
 			
 		    <!-- build settings -->
@@ -339,7 +343,7 @@
 				binaryLibraries="${thirdparty}/avetanaNoop:${bin-microlog}:${bin-BC-core}"
 				>
 				<!-- midlets definition -->
-				<midlet class="org.openuat.apps.j2me.HelloProperty" name="ShakeMe"/>
+				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="ShakeMe"/>
 				<variables includeAntProperties="true" />
 				<!-- explicitly set compiler options to exclude classes that wouldn't work on MIDP -->
 <!--				<compiler includes="org/openuat/apps/j2me/BluetoothDemo.java" />
