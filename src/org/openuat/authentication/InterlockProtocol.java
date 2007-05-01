@@ -205,12 +205,23 @@ public class InterlockProtocol {
 					(instanceId != null ? " [instance " + instanceId : ""));
 		
 		byte[] cipherText;
-		Object cipher = useJSSE ? initCipher_JSSE(true) : initCipher_BCAPI(true);
+		Object cipher; 
+//		#if cfg.includeJSSESupport
+		if (useJSSE) 
+			cipher = initCipher_JSSE(true);
+		else
+//		#endif
+			cipher = initCipher_BCAPI(true);
 		
 		// now distinguish between the single-block and the multiple-block cases
 		if (plainText.length == BlockByteLength) {
 			// ok, the simple case - just one block in ECB mode
-			cipherText = useJSSE ? processBlock_JSSE(cipher, plainText) : processBlock_BCAPI(cipher, plainText);
+//			#if cfg.includeJSSESupport
+			if (useJSSE) 
+				cipherText = processBlock_JSSE(cipher, plainText);
+			else
+//			#endif
+				cipherText = processBlock_BCAPI(cipher, plainText);
 		}
 		else {
 			// more difficult: multiple block in CBC mode with prepended IV
@@ -235,7 +246,13 @@ public class InterlockProtocol {
 				// then XOR with the last cipher text block
 				for (int j=0; j<BlockByteLength; j++)
 					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
-				byte[] cipherBlock = useJSSE ? processBlock_JSSE(cipher, plainBlock) : processBlock_BCAPI(cipher, plainBlock);
+				byte[] cipherBlock; 
+//				#if cfg.includeJSSESupport
+				if (useJSSE)
+					cipherBlock = processBlock_JSSE(cipher, plainBlock);
+				else
+//				#endif
+					cipherBlock = processBlock_BCAPI(cipher, plainBlock);
 				// and finally add to the output
 				System.arraycopy(cipherBlock, 0, cipherText, (i+1)*BlockByteLength, BlockByteLength);
 			}
@@ -269,11 +286,22 @@ public class InterlockProtocol {
 					(instanceId != null ? " [instance " + instanceId : ""));
 
 		byte[] plainText;
-		Object cipher = useJSSE ? initCipher_JSSE(false) : initCipher_BCAPI(false);
+		Object cipher; 
+//		#if cfg.includeJSSESupport
+		if (useJSSE)
+			cipher = initCipher_JSSE(false);
+		else
+//		#endif
+			cipher = initCipher_BCAPI(false);
 		// now distinguish between the single-block and the multiple-block cases
 		if (cipherText.length == BlockByteLength) {
 			// ok, the simple case - just one block in ECB mode
-			plainText = useJSSE ? processBlock_JSSE(cipher, cipherText) : processBlock_BCAPI(cipher, cipherText);
+//			#if cfg.includeJSSESupport
+			if (useJSSE) 
+				plainText = processBlock_JSSE(cipher, cipherText);
+			else
+//			#endif
+				plainText = processBlock_BCAPI(cipher, cipherText);
 		}
 		else {
 			// more difficult: multiple block in CBC mode with prepended IV
@@ -286,7 +314,13 @@ public class InterlockProtocol {
 			for (int i=0; i<numCipherTextBlocks-1; i++) {
 				byte[] cipherBlock = new byte[BlockByteLength];
 				System.arraycopy(cipherText, (i+1)*BlockByteLength, cipherBlock, 0, BlockByteLength);
-				byte[] plainBlock = useJSSE ? processBlock_JSSE(cipher, cipherBlock) : processBlock_BCAPI(cipher, cipherBlock);
+				byte[] plainBlock; 
+//				#if cfg.includeJSSESupport
+				if (useJSSE) 
+					plainBlock = processBlock_JSSE(cipher, cipherBlock);
+				else
+//				#endif
+					plainBlock = processBlock_BCAPI(cipher, cipherBlock);
 				// then XOR with the last cipher text block
 				for (int j=0; j<BlockByteLength; j++)
 					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
@@ -821,6 +855,7 @@ public class InterlockProtocol {
 		}
 	}
 
+//	#if cfg.includeJSSESupport
 	/** Encrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
 	private Object initCipher_JSSE(boolean encrypt) throws InternalApplicationException {
     	// encrypt already checks for correct length of plainText
@@ -841,6 +876,7 @@ public class InterlockProtocol {
 					"Cipher does not accept its key.", e);
 		}
 	}
+//	#endif
 	
 	/** Initializes the block cipher for encryption or decryption. This implementation utilizes the 
 	 * Bouncycastle Lightweight API. */
@@ -851,6 +887,7 @@ public class InterlockProtocol {
     	return cipher;
 	}
 
+//	#if cfg.includeJSSESupport
 	/** Process a block with the previously initialized block cipher (just in ECB mode). */
 	private byte[] processBlock_JSSE(Object cipher, byte[] input) throws InternalApplicationException {
 		try {
@@ -863,6 +900,7 @@ public class InterlockProtocol {
 				"Cipher does not accept requested padding.", e);
 		}
 	}
+//	#endif
 	
 	/** Process a block with the previously initialized block cipher (just in ECB mode). */
 	private byte[] processBlock_BCAPI(Object cipher, byte[] input) {
