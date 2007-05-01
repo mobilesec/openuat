@@ -33,7 +33,9 @@
 	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="bin-microlog" location="${build}/bin-microlog"/>
-	<property name="compile.debug" value="true"/>
+	<property name="build.midp" location="${build}/midp-work"/>
+	<property name="bin.midp" location="${build}/midp-bin"/>
+	<property name="debug" value="false"/>
 
 	<!-- these are the target JARs -->
 	<property name="dist.mainclass" value="no-main-class-at-the-moment"/>
@@ -61,16 +63,16 @@
 	<!-- the source tree, excluding files which can't be redistributed because of their license -->
 	<property name="zipfile.source" location="${dist}/${ant.project.name}-src.zip" />
     
-	<!-- Set to the correct paths for MIDP builds -->
-	<property name="wtk.home" value="/opt/WTK2.2" />
-	<property name="wtk.cldc.version" value="1.1" />
-	<property name="wtk.midp.version" value="2.0" />
-	<property name="wtk.bluetooth.enabled" value="true" />
-	<property name="wtk.locationservices.enabled" value="true" />
-	<property name="wtk.satsa.enabled" value="true" />
-	<property name="wtk.sipapi.enabled" value="true" />
-	<property name="wtk.proguard.home" value="${lib}/proguard.jar" />
-	<property name="midp_libs" value="${wtk.home}/lib/midpapi20.jar:${wtk.home}/lib/cldcapi11.jar" />
+	<!-- Settings for MIDP builds -->
+	<!-- The polish.home property needs to point to the directory -->
+	<!-- containing the J2ME Polish installation.                 -->
+	<property name="polish.home" location="/opt/J2MEPolish" />
+	<!-- import global properties                                 -->
+	<property file="${polish.home}/global.properties" />
+	<!-- the device for the test mode - you can define it on the command-line
+	     using the -D switch, e.g. ant -Ddevice=Generic/midp2 emulator -->
+	<property name="device" value="Generic/midp2"/>
+	<property name="midp_libs" value="${polish.home}/import/midp-2.0.jar:${polish.home}/lib/cldc-1.1-java5.0.jar" />
 	<!-- These classes can only be compiled with J2ME MIDP class libraries -->
 	<property name="midp-only-files" value="org/openuat/apps/j2me/**/*.java" />
 	<property name="preverified" location="${build}/bin-preverified"/>
@@ -130,13 +132,6 @@
 		<pathelement location="${lib}/cobertura-1.8.jar"/>
 	</path>
 	
-	<!-- Include the Antenna tasks for building J2ME packages -->
-	<taskdef resource="antenna.properties" classpath="${lib}/antenna-bin-0.9.14.jar"/>
-	<!-- And also include the Cobertura tasks for JUnit test coverage reports -->
-	<taskdef resource="tasks.properties" classpathref="cobertura.classpath"/>
-	<!-- And a task for creating installer packages for Windows -->
-	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
-
 	<!--                                                                           -->
 	<!-- Starting from here, it's build rules that shouldn't need any modification -->
 	<!--                                                                           -->
@@ -152,10 +147,11 @@
 		<isset property="haveJava5"/>
 	</condition>
 	
-	<!-- Figure out if we have a usable WTK for compiling and preverifying J2ME MIDP code -->
+	<!-- Figure out if we have a usable J2ME Polish and WTK installation for compiling and preverifying J2ME MIDP code -->
 	<condition property="haveWTK">
 		<and>
-			<available file="preverify" type="file" filepath="${wtk.home}/bin"/>
+			<available file="enough-j2mepolish-build.jar" type="file" filepath="${polish.home}/lib/"/>
+			<available file="jdom.jar" type="file" filepath="${polish.home}/lib/"/>
 			<available classname="javax.microedition.io.SecureConnection" classpathref="lib.path.midp"/>
 			<available classname="javax.microedition.pki.Certificate" classpathref="lib.path.midp"/>
 			<available classname="javax.microedition.lcdui.Display" classpathref="lib.path.midp"/>
@@ -165,6 +161,21 @@
 	<condition property="haveWTK.echo" value="true" else="false">
 		<isset property="haveWTK"/>
 	</condition>
+
+	<!-- Include the J2ME Polish tasks for building J2ME packages (but will only use it when haveWTK is set) -->
+	<taskdef name="j2mepolish" 
+		classname="de.enough.polish.ant.PolishTask" 
+		classpath="${polish.home}/lib/enough-j2mepolish-build.jar:${polish.home}/lib/jdom.jar"
+	/>
+	<!-- And a task for creating installer packages for Windows -->
+	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
+
+
+	<target name="enableDebug" 
+		description="Call this target first to skip the obfuscation step, call the emulator and start the debugger, e.g. ant enableDebug j2mepolish"
+		>
+		<property name="debug" value="true" />
+	</target>
 	
 	<target name="compile" description="Compile code">
         <mkdir dir="${bin}"/>
@@ -288,28 +299,92 @@
 	</target>
 	
 	<target name="jar-midp" depends="compile" description="Build packages for J2ME MIDP" if="haveWTK">
+        <mkdir dir="${build.midp}"/>
+        <mkdir dir="${bin.midp}"/>
+
+		<j2mepolish>
+		    <!-- general settings, these settings basically form the JAD-attributes. -->
+		    <!-- Have a look at the <jad>-section for setting specialised attributes.
+		         You can also define localized attributes in the resources/messages.txt files -->
+			<info
+				name="ShakeWellBeforeUse"
+				version="1.0.0"
+				description="A demonstration MIDlet for the Shake Well Before Use authentication protocol"
+				vendorName="Rene Mayrhofer"
+				infoUrl="http://www.openuat.org"
+				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-java5.jar" 
+				jarUrl="${deploy-url}${polish.jarName}"
+				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
+			/>
+			
+			<!-- selection of supported devices -->
+			<!--<deviceRequirements if="test">
+				<requirement name="Identifier" value="${device}" />
+			</deviceRequirements>
+			<deviceRequirements unless="test">-->
+			<deviceRequirements>
+				<!--<requirement name="Identifier" value="Generic/jtwi,Generic/midp1,Generic/Midp2Cldc11,Nokia/Series40E3,Nokia/Series60E2,Nokia/Series60E3,Sony-Ericsson/JavaPlatform6" />-->
+				<requirement name="Identifier" value="Generic/Midp2Cldc11" />
+			</deviceRequirements>
+			
+		    <!-- build settings -->
+			<build
+				symbols="ExampleSymbol, AnotherExample"
+				fullscreen="menu"
+				usePolishGui="false"
+				workDir="${build.midp}"
+				sourceDir="${src}1"
+				destDir="${dist}"
+				compilerDestDir="${bin.midp}"
+				binaryLibraries="${thirdparty}/avetanaNoop:${bin-microlog}:${bin-BC-core}"
+				>
+				<!-- midlets definition -->
+				<midlet class="org.openuat.apps.j2me.HelloProperty" name="ShakeMe"/>
+				<variables includeAntProperties="true" />
+				<!-- explicitly set compiler options to exclude classes that wouldn't work on MIDP -->
+<!--				<compiler includes="org/openuat/apps/j2me/BluetoothDemo.java" />
+					org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
+					org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
+					org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
+					org/openuat/authentication/AuthenticationEventSender.java 
+					org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java" /> -->
+				<!-- activate Java 5 syntax support -->
+<!--				<postcompiler name="java5" />-->
+				<!-- obfuscator settings: do not obfuscate when the test-property is true  -->
+				<obfuscator name="yGuard" useDefaultPackage="true" unless="test or debug2">
+<!--					<parameter name="optimize" value="true" />-->
+<!--					<parameter name="shrink" value="true" />-->
+					<!-- because BitSet implements clone (which is never called) -->
+<!--					<parameter name="ignorewarnings" value="true" />-->
+				</obfuscator>
+				<!-- resources to be included in the JAR file -->
+				<resources>
+					<!-- doesn't really do anything right now... -->
+					<fileset dir="${src}" includes="microlog.properties" />
+				</resources>
+				<!-- user defined JAD attributes can also be used: -->
+<!--				<jad>
+					<attribute name="Nokia-MIDlet-Category" value="Game" if="polish.group.Series40" />
+				</jad>	-->
+				<!-- and of course need to sign -->
+				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
+			</build>
+		</j2mepolish>		
+		
 		<!-- create JAD files -->
-		<wtkjad jadfile="${build}/HelloProperty.jad"
+<!--		<wtkjad jadfile="${build}/HelloProperty.jad"
 			jarfile="HelloProperty.jar"
 			name="MyHelloProperty"
 			vendor="Rene Mayrhofer"
 			version="0.0.1"
 			update="true">
 			<midlet name="MyHelloProperty" class="org.openuat.apps.j2me.HelloProperty"/>
-		</wtkjad>
-		<wtkjad jadfile="${build}/BluetoothDemo.jad"
-			jarfile="BluetoothDemo.jar"
-			name="MyBluetoothDemo"
-			vendor="Rene Mayrhofer"
-			version="0.0.1"
-			update="true">
-			<midlet name="MyBluetoothDemo" class="org.openuat.apps.j2me.BluetoothDemo"/>
-		</wtkjad>
+		</wtkjad>-->
     	
 		<!-- and package and preverify -->
 		<!-- TODO: specify required libraries that should be put into the package with the libclasspath property or nested FileSet or ZipFileSet or ZipGroupFileSet elements -->
 		<!-- TODO: set obfuscate=true -->
-		<wtkpackage jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad" preverify="false" obfuscate="false">
+<!--		<wtkpackage jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad" preverify="false" obfuscate="false">
 			<fileset dir="${bin}" includes="org/openuat/apps/j2me/HelloProperty.class"/>
 		</wtkpackage>
 		<wtkpackage jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad" preverify="false" obfuscate="false">
@@ -320,22 +395,50 @@
 				org/openuat/authentication/AuthenticationEventSender.class 
 				org/openuat/authentication/AuthenticationProgressHandler.class org/openuat/authentication/exceptions/*.class"/>
 			<fileset dir="${thirdparty}/avetanaNoop" includes="de/avetana/bluetooth/stack/**/*.class"/>
-			<!-- need the apache commons files -->
+			 need the apache commons files 
 			<fileset dir="${bin-BC-core}" includes="org/apache/commons/codec/**/*.class"/>
-			<!-- and MicroLog as log4j replacement -->
+			 and MicroLog as log4j replacement 
 			<fileset dir="${bin-microlog}" includes="**/*.class"/>
 			<fileset dir="${src}" includes="microlog.properties"/>
-			<!-- the dependencies for SimpleKeyAgreement -->
+			 the dependencies for SimpleKeyAgreement 
 			<fileset dir="${bin-BC-core}" />
-		</wtkpackage>
+		</wtkpackage>-->
     	
-		<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>
-		<wtkpreverify jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad"/>
+<!--		<wtkpreverify jarfile="${build}/HelloProperty.jar" jadfile="${build}/HelloProperty.jad"/>
+		<wtkpreverify jarfile="${build}/BluetoothDemo.jar" jadfile="${build}/BluetoothDemo.jad"/>-->
 	</target>
 	
 
 	<target name="run-midp" depends="jar-midp" description="Run the J2ME MIDP applications in the simulator" if="haveWTK">
-		<wtkrun jadfile="${build}/BluetoothDemo.jad"/>
+		<j2mepolish>
+			<emulator
+				wait="true"
+				securityDomain="trusted"
+				enableProfiler="true"
+				enableMemoryMonitor="true"
+				enableNetworkMonitor="true"
+				if="debug"
+				>
+				<!-- this is an example for connecting to a debugger - use the ${polish.debug.port} Ant property
+				     for getting to know the port of the debugger. In this example the 
+				     "connect-debugger" target is also required.
+				-->
+				<!--
+				<debugger name="antcall" target="connect-debugger" port="6001" />
+				-->
+			</emulator>
+                        
+			<emulator
+				wait="true"
+				trace="none"
+				securityDomain="trusted"
+				enableProfiler="false"
+				enableMemoryMonitor="false"
+				enableNetworkMonitor="false"
+				if="test and not debug"
+				>
+			</emulator>
+		</j2mepolish>
 	</target>
 
 	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
@@ -497,7 +600,7 @@
 		<copy file="${dist}/IPSecConnectorClient.jnlp" todir="${dist.webstart}" />
 	    
 	    <!-- the key was created with 
-		 "keytool -genkey -keystore dist/keystore -alias authentication -validity 1500"
+		 "keytool -genkey -keystore dist/keystore -alias authentication -validity 1500 -keyalg RSA"
 		 with password "authentication" for both the keystore and the key -->
 		<signjar alias="authentication" storepass="authentication" keystore="${dist}/keystore">
 			<fileset dir="${dist.webstart}/" includes="*.jar"/>
