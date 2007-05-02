@@ -21,7 +21,7 @@ import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.util.BluetoothPeerManager.PeerEventsListener;
+import org.openuat.util.BluetoothPeerManager;
 
 /** This class tries to authenticate to all Bluetooth devices that are
  * discovered to support the OpenUAT authentication service. It uses the
@@ -141,7 +141,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 		}
 	}
 	
-	protected class BluetoothPeerEventsHandler implements PeerEventsListener {
+	protected class BluetoothPeerEventsHandler implements BluetoothPeerManager.PeerEventsListener {
 		public void inquiryCompleted(Vector newDevices) {
 			// we are not interested in devices, only in services - just ignore this event
 		}
