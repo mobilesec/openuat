@@ -33,6 +33,8 @@
 	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="bin-microlog" location="${build}/bin-microlog"/>
+	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
+	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
 	<property name="build.midp" location="${build}/midp-work"/>
 	<property name="bin.midp" location="${build}/midp-bin"/>
 	<property name="debug" value="false"/>
@@ -240,6 +242,7 @@
 	 Java language level 1.2. -->
 	<target name="compile-midp" description="Compile special classes for MIDP2.0" if="haveWTK">
 		<mkdir dir="${bin-microlog}"/>
+		<mkdir dir="${bin-avetanaNoop}"/>
 
 		<!-- Compile the MicroLog dependencies -->
 		<javac srcdir="${thirdparty-microlog}" destdir="${bin-microlog}" includeAntRuntime="no"
@@ -248,7 +251,11 @@
 		<!-- And the wrapper around it to have it usable under the log4j package name -->
 		<javac srcdir="${thirdparty-microlog-wrapper}" destdir="${bin-microlog}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
-		
+
+		<!-- This is just a no-op avenata class when we can't use the JAR -->
+		<javac srcdir="${thirdparty-avetanaNoop}" destdir="${bin-avetanaNoop}" includeAntRuntime="no"
+		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
+
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 		       includeJavaRuntime="no">
@@ -340,7 +347,7 @@
 				sourceDir="${src}1"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${thirdparty}/avetanaNoop:${bin-microlog}:${bin-BC-core}"
+				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
 				>
 				<!-- midlets definition -->
 				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="ShakeMe"/>
@@ -357,8 +364,8 @@
 				<!-- activate Java 5 syntax support -->
 <!--				<postcompiler name="java5" />-->
 				<!-- obfuscator settings: do not obfuscate when the test-property is true  -->
-				<obfuscator name="yGuard" useDefaultPackage="true" unless="test or debug2">
-<!--					<parameter name="optimize" value="true" />-->
+				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
+					<parameter name="optimize" value="false" />
 <!--					<parameter name="shrink" value="true" />-->
 					<!-- because BitSet implements clone (which is never called) -->
 <!--					<parameter name="ignorewarnings" value="true" />-->
