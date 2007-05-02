@@ -450,7 +450,7 @@
 	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A4:C9:97"/>
-			<arg line="-p ${build}/BluetoothDemo.jar"/>
+			<arg line="-p ${dist}/Generic-multi-java5.jar"/>
         		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 		</exec>
