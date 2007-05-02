@@ -19,7 +19,9 @@ public class InternalApplicationException extends Exception {
 	public InternalApplicationException(String msg) {
 		super(msg);
 	}
-	public InternalApplicationException(String msg, Throwable t) {
+	public InternalApplicationException(String msg, Exception t) {
+//#if cfg.haveReflectionSupport
 		super(msg, t);
+//#endif
 	}
 }

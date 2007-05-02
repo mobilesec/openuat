@@ -245,8 +245,11 @@ try {
 			// connection already open, get the RemoteDevice object from it
 			return RemoteDevice.getRemoteDevice(connection);
 		else if (remoteDeviceAddress != null)
-			// no connection open, need to work with remoteDeviceAddress here
-			return new RemoteDevice(remoteDeviceAddress);
+			// No connection open, need to work with remoteDeviceAddress here.
+			/* But the JSR82 API makes the RemoteDevice(String) constructor 
+			   protected, so can't use it. The best option is to simply return
+			   a string object. */
+			return remoteDeviceAddress;
 		else
 			return null;
 	}
@@ -331,7 +334,8 @@ StreamConnection con =(StreamConnection)Connector.open(connectionURL);
 
 btspp://0001234567AB:3
  */
-	
+
+//#if cfg.includeTestCode
 	///////////////////////////////////////// test code begins here //////////////////////
 	private static class TempHandler implements org.openuat.authentication.AuthenticationProgressHandler {
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
@@ -368,5 +372,6 @@ btspp://0001234567AB:3
 			  }
 		  }
 	  }
+//#endif	  
 }
 

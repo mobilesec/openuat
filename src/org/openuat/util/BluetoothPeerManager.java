@@ -11,6 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Random;
 import java.util.Vector;
 
 import javax.bluetooth.BluetoothStateException;
@@ -79,6 +80,9 @@ public class BluetoothPeerManager {
 	
 	/** A reference to the background inquiry thread when it is running, or null if not running. */
 	private Thread inquiryThread = null;
+	
+	/** Use for randomized sleeps. */
+	private Random random = new Random();
 	
 	public BluetoothPeerManager() throws IOException {
 		if (! BluetoothSupport.init()) {
@@ -180,8 +184,10 @@ public class BluetoothPeerManager {
 								eventsHandler.wait();
 						}
 						// and sleep
-						Thread.sleep((int) (sleepBetweenInquiries * (0.8 + Math.random() * 0.4)));
-					} catch (InterruptedException e) { }
+						Thread.sleep((sleepBetweenInquiries*8 + random.nextInt(sleepBetweenInquiries*4))/10);
+					} catch (InterruptedException e) { 
+						// just ignore when we are being interrupted - will only shorten the wait time but is non-critical
+					}
 				}
 			}});
 			inquiryThread.start();
@@ -200,7 +206,9 @@ public class BluetoothPeerManager {
 			tmp.interrupt();
 			try {
 				tmp.join();
-			} catch (InterruptedException e) { }
+			} catch (InterruptedException e) {
+				// stopping anyway, don't care when interrupted
+			}
 			return true;
 		}
 		else
@@ -337,7 +345,7 @@ public class BluetoothPeerManager {
 	/** Remove a registered event listener. 
 	 * @return true if the listener was removed, false if it was not found in the list. */
 	public boolean removeListener(PeerEventsListener listener) {
-		return listeners.remove(listener);
+		return listeners.removeElement(listener);
 	}
 	
 	/** Users of BluetoothPeerManager should most probably implement this
@@ -624,6 +632,7 @@ public class BluetoothPeerManager {
 		}
 	}
 	
+//#if cfg.includeTestCode
 	public static void main (String[] args) throws IOException {
 		TempEventsHandler l = new TempEventsHandler();
 		BluetoothPeerManager m = new BluetoothPeerManager();
@@ -636,4 +645,5 @@ public class BluetoothPeerManager {
 		System.in.read();
 		m.stopInquiry();
 	}
+//#endif
 }

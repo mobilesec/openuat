@@ -33,16 +33,16 @@ public class Hash {
 		// this double hashing with the first hash being prepended to the message is suggested by 
 		// Practical Cryptography, p. 93 - it should solve the length extension attacks and thus the
 		// MD5 attacks
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE)
 			return doubleSHA256_JSSE(text);
 		else
-//		#endif
+//#endif
 			return doubleSHA256_BCAPI(text);
 	}
 	
 	/** This is an implementation of doubleSHA256 using the Sun JSSE. */
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 	private static byte[] doubleSHA256_JSSE(byte[] text)
 			throws InternalApplicationException {
 		try {
@@ -60,7 +60,7 @@ public class Hash {
 					e);
 		}
 	}
-//	#endif
+//#endif
 
 	/** This is an implementation of doubleSHA256 using the Bouncycastle Lightweight API. */
 	private static byte[] doubleSHA256_BCAPI(byte[] text)

@@ -21,7 +21,9 @@ public class DongleAuthenticationProtocolException extends Exception {
 		super(msg);
 	}
 
-	public DongleAuthenticationProtocolException(String msg, Throwable t) {
+	public DongleAuthenticationProtocolException(String msg, Exception t) {
+//#if cfg.haveReflectionSupport
 		super(msg, t);
+//#endif
 	}
 }

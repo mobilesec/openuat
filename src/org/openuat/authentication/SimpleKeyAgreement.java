@@ -139,15 +139,15 @@ public class SimpleKeyAgreement {
 	 */
 	public void init(boolean useJSSE) throws InternalApplicationException {
 		this.useJSSE = useJSSE;
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE)
 			init_JSSE();
 		else
-//		#endif
+//#endif
 			init_BCAPI();
 	}
 
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 	/** This is an implementation of init() using the Sun JSSE API. */
 	private void init_JSSE() throws InternalApplicationException {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
@@ -181,7 +181,7 @@ public class SimpleKeyAgreement {
 					e);
 		}
 	}
-//	#endif
+//#endif
 
 	/** This is an implementation of init() using the Bouncycastle Lightweight API. */
 	private void init_BCAPI() throws InternalApplicationException {
@@ -243,20 +243,20 @@ public class SimpleKeyAgreement {
 		state = STATE_INTRANSIT;
 
 		// Do without any special encapsulation, just transfer the raw byte stream. Why should we use X.509 encoding just for transferring the key bytes?
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE)
 			return getPublicKey_JSSE();
 		else
-//		#endif
+//#endif
 			return getPublicKey_BCAPI();
 	}
 	
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
 	private byte[] getPublicKey_JSSE() throws KeyAgreementProtocolException {
 		return ((javax.crypto.interfaces.DHPublicKey) ((java.security.KeyPair) myKeypair).getPublic()).getY().toByteArray();
 	}
-//	#endif
+//#endif
 	
 	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
 	private byte[] getPublicKey_BCAPI() throws KeyAgreementProtocolException {
@@ -294,15 +294,15 @@ public class SimpleKeyAgreement {
 		/* if(! new BigInteger(key).pow(q).Equals(BigInteger.ONE))
 		 throw new KeyAgreementProtocolException("addRemotePublicKey error: received public key k does not fulfill key^q = 1"); */
 
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE)
 			addRemotePublicKey_JSSE(key);
 		else
-//		#endif
+//#endif
 			addRemotePublicKey_BCAPI(key);
 	}
 	
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
 	private void addRemotePublicKey_JSSE(byte[] key)
 			throws KeyAgreementProtocolException, InternalApplicationException {
@@ -336,7 +336,7 @@ public class SimpleKeyAgreement {
 					e);
 		}
 	}
-//	#endif
+//#endif
 
 	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
 	private void addRemotePublicKey_BCAPI(byte[] key)

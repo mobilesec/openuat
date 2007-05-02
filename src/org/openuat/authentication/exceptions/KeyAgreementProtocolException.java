@@ -20,7 +20,9 @@ public class KeyAgreementProtocolException extends Exception {
 	public KeyAgreementProtocolException(String msg) {
 		super(msg);
 	}
-	public KeyAgreementProtocolException(String msg, Throwable t) {
+	public KeyAgreementProtocolException(String msg, Exception t) {
+//#if cfg.haveReflectionSupport
 		super(msg, t);
+//#endif
 	}
 }

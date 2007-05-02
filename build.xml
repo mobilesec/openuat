@@ -344,7 +344,9 @@
 				>
 				<!-- midlets definition -->
 				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="ShakeMe"/>
-				<variables includeAntProperties="true" />
+				<variables includeAntProperties="true">
+					<variable file="${src}/configuration.midp.properties" />
+				</variables>
 				<!-- explicitly set compiler options to exclude classes that wouldn't work on MIDP -->
 <!--				<compiler includes="org/openuat/apps/j2me/BluetoothDemo.java" />
 					org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java

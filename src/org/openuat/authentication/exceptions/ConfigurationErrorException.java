@@ -21,7 +21,9 @@ public class ConfigurationErrorException extends Exception {
 	public ConfigurationErrorException(String msg) {
 		super(msg);
 	}
-	public ConfigurationErrorException(String msg, Throwable t) {
+	public ConfigurationErrorException(String msg, Exception t) {
+//#if cfg.haveReflectionSupport
 		super(msg, t);
+//#endif
 	}
 }

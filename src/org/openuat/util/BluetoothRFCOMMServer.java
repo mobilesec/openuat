@@ -171,6 +171,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		}
 	}
 	
+//#if cfg.includeTestCode
 	////////////////////// test code begins here ////////////////
 	public static void main(String[] args) throws NullPointerException, IllegalArgumentException, IOException, InternalApplicationException {
 		BluetoothRFCOMMServer s = new BluetoothRFCOMMServer(null, new UUID("1089a94a47044480adc9576fd41a04b2", false), "Test Service", false, false);
@@ -183,4 +184,5 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		System.out.println("Application exiting now");
 		System.exit(0);
 	}
+//#endif
 }

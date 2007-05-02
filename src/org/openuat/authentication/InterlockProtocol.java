@@ -11,7 +11,7 @@ package org.openuat.authentication;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
 import java.security.SecureRandom;
 import java.util.BitSet;
 
@@ -47,7 +47,7 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
  */
 public class InterlockProtocol {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(InterlockProtocol.class);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.InterlockProtocol" /*InterlockProtocol.class*/);
 
 	/** The current length in byte of the key. */
 	private static final int KeyByteLength = 32;
@@ -206,21 +206,21 @@ public class InterlockProtocol {
 		
 		byte[] cipherText;
 		Object cipher; 
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE) 
 			cipher = initCipher_JSSE(true);
 		else
-//		#endif
+//#endif
 			cipher = initCipher_BCAPI(true);
 		
 		// now distinguish between the single-block and the multiple-block cases
 		if (plainText.length == BlockByteLength) {
 			// ok, the simple case - just one block in ECB mode
-//			#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 			if (useJSSE) 
 				cipherText = processBlock_JSSE(cipher, plainText);
 			else
-//			#endif
+//#endif
 				cipherText = processBlock_BCAPI(cipher, plainText);
 		}
 		else {
@@ -247,11 +247,11 @@ public class InterlockProtocol {
 				for (int j=0; j<BlockByteLength; j++)
 					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
 				byte[] cipherBlock; 
-//				#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 				if (useJSSE)
 					cipherBlock = processBlock_JSSE(cipher, plainBlock);
 				else
-//				#endif
+//#endif
 					cipherBlock = processBlock_BCAPI(cipher, plainBlock);
 				// and finally add to the output
 				System.arraycopy(cipherBlock, 0, cipherText, (i+1)*BlockByteLength, BlockByteLength);
@@ -287,20 +287,20 @@ public class InterlockProtocol {
 
 		byte[] plainText;
 		Object cipher; 
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE)
 			cipher = initCipher_JSSE(false);
 		else
-//		#endif
+//#endif
 			cipher = initCipher_BCAPI(false);
 		// now distinguish between the single-block and the multiple-block cases
 		if (cipherText.length == BlockByteLength) {
 			// ok, the simple case - just one block in ECB mode
-//			#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 			if (useJSSE) 
 				plainText = processBlock_JSSE(cipher, cipherText);
 			else
-//			#endif
+//#endif
 				plainText = processBlock_BCAPI(cipher, cipherText);
 		}
 		else {
@@ -315,11 +315,11 @@ public class InterlockProtocol {
 				byte[] cipherBlock = new byte[BlockByteLength];
 				System.arraycopy(cipherText, (i+1)*BlockByteLength, cipherBlock, 0, BlockByteLength);
 				byte[] plainBlock; 
-//				#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 				if (useJSSE) 
 					plainBlock = processBlock_JSSE(cipher, cipherBlock);
 				else
-//				#endif
+//#endif
 					plainBlock = processBlock_BCAPI(cipher, cipherBlock);
 				// then XOR with the last cipher text block
 				for (int j=0; j<BlockByteLength; j++)
@@ -614,10 +614,10 @@ public class InterlockProtocol {
 	 * @throws IOException 
 	 */
 	private static String swapLine(String command, String value, 
-			InputStream fromRemote, PrintWriter toRemote) throws IOException {
+			InputStream fromRemote, OutputStreamWriter toRemote) throws IOException {
 		if (logger.isDebugEnabled())
 			logger.debug("Sending line to remote host: command '" + command + "', value '" + value + "'");
-		toRemote.println(command + " " + value);
+		toRemote.write(command + " " + value + "\n");
 		toRemote.flush();
 		StringBuffer remoteLine = new StringBuffer();
 		int ch = fromRemote.read();
@@ -628,8 +628,8 @@ public class InterlockProtocol {
 			ch = fromRemote.read();
 		}
 		if (remoteLine.length() > command.length()+1 && 
-			remoteLine.substring(0, command.length()+1).equals(command + " ")) {
-			String ret = remoteLine.substring(command.length() + 1);
+			remoteLine.toString().substring(0, command.length()+1).equals(command + " ")) {
+			String ret = remoteLine.toString().substring(command.length() + 1);
 			if (logger.isDebugEnabled())
 				logger.debug("Received line from remote host: command '" + command + "', value + '" + ret + "'");
 			return ret;
@@ -682,7 +682,7 @@ public class InterlockProtocol {
 				message.length*8, null, useJSSE);
 		byte[][] localParts = myIp.split(myIp.encrypt(message));
 		
-		PrintWriter writer = new PrintWriter(toRemote, true);
+		OutputStreamWriter writer = new OutputStreamWriter(toRemote);
 		/* do not use a BufferedReader here because that would potentially mess up
 		 * the stream for other users of the socket (by consuming too many bytes)
 		 */
@@ -855,7 +855,7 @@ public class InterlockProtocol {
 		}
 	}
 
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 	/** Encrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
 	private Object initCipher_JSSE(boolean encrypt) throws InternalApplicationException {
     	// encrypt already checks for correct length of plainText
@@ -876,7 +876,7 @@ public class InterlockProtocol {
 					"Cipher does not accept its key.", e);
 		}
 	}
-//	#endif
+//#endif
 	
 	/** Initializes the block cipher for encryption or decryption. This implementation utilizes the 
 	 * Bouncycastle Lightweight API. */
@@ -887,7 +887,7 @@ public class InterlockProtocol {
     	return cipher;
 	}
 
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 	/** Process a block with the previously initialized block cipher (just in ECB mode). */
 	private byte[] processBlock_JSSE(Object cipher, byte[] input) throws InternalApplicationException {
 		try {
@@ -900,7 +900,7 @@ public class InterlockProtocol {
 				"Cipher does not accept requested padding.", e);
 		}
 	}
-//	#endif
+//#endif
 	
 	/** Process a block with the previously initialized block cipher (just in ECB mode). */
 	private byte[] processBlock_BCAPI(Object cipher, byte[] input) {
