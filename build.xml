@@ -36,6 +36,7 @@
 	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
 	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
 	<property name="build.midp" location="${build}/midp-work"/>
+	<property name="build.midp.temp" location="${build}/midp-tmp"/>
 	<property name="bin.midp" location="${build}/midp-bin"/>
 	<property name="debug" value="false"/>
 
@@ -308,6 +309,22 @@
 	<target name="jar-midp" depends="compile" description="Build packages for J2ME MIDP" if="haveWTK">
         <mkdir dir="${build.midp}"/>
         <mkdir dir="${bin.midp}"/>
+		
+		<!-- bad, ugly, evil, unmaintainable, and should-be-completely-unnecessary hack begins here -->
+		<!-- I can't get the dumb j2mepolish build/compiler part to only use the classes 
+		     the MIDlet depends on (the includes attribute obviously doesn't work, so just copy
+		     the required files manually and build from there... -->
+        <mkdir dir="${build.midp.temp}"/>
+		<copy todir="${build.midp.temp}" failonerror="true">
+			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java
+				org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
+				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
+				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
+				org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
+				org/openuat/authentication/AuthenticationEventSender.java org/openuat/authentication/InterlockProtocol.java
+				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java" />
+		</copy>
+		<!-- hack ends here -->
 
 		<j2mepolish>
 		    <!-- general settings, these settings basically form the JAD-attributes. -->
@@ -319,7 +336,7 @@
 				description="A demonstration MIDlet for the Shake Well Before Use authentication protocol"
 				vendorName="Rene Mayrhofer"
 				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-java5.jar" 
+				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-shakeme.jar" 
 				jarUrl="${deploy-url}${polish.jarName}"
 				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
 			/>
@@ -344,7 +361,7 @@
 				fullscreen="menu"
 				usePolishGui="false"
 				workDir="${build.midp}"
-				sourceDir="${src}1"
+				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
 				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
@@ -354,17 +371,12 @@
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 				</variables>
-				<!-- explicitly set compiler options to exclude classes that wouldn't work on MIDP -->
-<!--				<compiler includes="org/openuat/apps/j2me/BluetoothDemo.java" />
-					org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
-					org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
-					org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
-					org/openuat/authentication/AuthenticationEventSender.java 
-					org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java" /> -->
 				<!-- activate Java 5 syntax support -->
-<!--				<postcompiler name="java5" />-->
+				<!-- TODO: this doesn't work yet - proguard emits errors when activated -->
+				<!--<postcompiler name="java5" />-->
 				<!-- obfuscator settings: do not obfuscate when the test-property is true  -->
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
+					<!-- with optimize=true the code no longer pre-verifies -->
 					<parameter name="optimize" value="false" />
 <!--					<parameter name="shrink" value="true" />-->
 					<!-- because BitSet implements clone (which is never called) -->
@@ -457,7 +469,7 @@
 	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A4:C9:97"/>
-			<arg line="-p ${dist}/Generic-multi-java5.jar"/>
+			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
         		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 		</exec>
