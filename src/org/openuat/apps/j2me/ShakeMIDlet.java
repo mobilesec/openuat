@@ -22,13 +22,13 @@ import net.sf.microlog.ui.LogForm;
 import net.sf.microlog.util.GlobalProperties;
 
 import org.apache.log4j.Logger;
+import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 
-public class ShakeMIDlet extends MIDlet implements CommandListener,
-		BluetoothPeerManager.PeerEventsListener {
+public class ShakeMIDlet extends MIDlet implements CommandListener, AuthenticationProgressHandler {
 	List main_list;
 
 	Command exit;
@@ -39,8 +39,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener,
 
 	Display display;
 	
-	BluetoothPeerManager peerManager;
-	
 	BluetoothRFCOMMServer rfcommServer;
 	
 	LogForm logForm;
@@ -48,7 +46,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener,
 	// our logger
 	Logger logger = Logger.getLogger("");
 	
-	public BluetoothDemo() {
+	public ShakeMIDlet() {
 		display = Display.getDisplay(this);
 
 		// problem with CRLF in microlog.properies? try unix2dos...
@@ -80,17 +78,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener,
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 
-		try {
-			peerManager = new BluetoothPeerManager();
-			peerManager.addListener(this);
-		} catch (IOException e) {
-			logger.error("Error initializing BlutoothPeerManager: " + e);
-			return;
-		}
-
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
-			dev_list = new List("Select Device", Choice.IMPLICIT); //the list of devices
-			serv_list = new List("Available Services", Choice.IMPLICIT); //the list of services
 			exit = new Command("Exit", Command.EXIT, 1);
 			back = new Command("Back", Command.BACK, 1);
 			log = new Command("Log", Command.ITEM, 2);
@@ -98,12 +86,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener,
 			main_list.addCommand(exit);
 			main_list.addCommand(log);
 			main_list.setCommandListener(this);
-			dev_list.addCommand(exit);
-			dev_list.addCommand(log);
-			dev_list.setCommandListener(this);
-			serv_list.addCommand(exit);
-			serv_list.addCommand(back);
-			serv_list.setCommandListener(this);
 
 			main_list.append("Find Devices", null);
 	}
@@ -127,29 +109,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener,
 		else if (com == List.SELECT_COMMAND) {
 			if (dis == main_list) { //select triggered from the main from
 				if (main_list.getSelectedIndex() >= 0) { //find devices
-					if (!peerManager.startInquiry(false)) {
-						this.do_alert("Error in initiating search", 4000);
-					}
-					do_alert("Searching for devices...", Alert.FOREVER);
-				}
-			}
-			if (dis == dev_list) { //select triggered from the device list
-				if (dev_list.getSelectedIndex() >= 0) { //find services
-					RemoteDevice[] devices = peerManager.getPeers();
-					
-					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x1002); // publicly browsable services
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
-						this.do_alert("Error in initiating search", 4000);
-					}
-					do_alert("Inquiring device for services...", Alert.FOREVER);
 				}
 			}
 		}
 		else if (com == back) {
-			if (dis == serv_list) { //back button is pressed in devices list
-				display.setCurrent(dev_list);
-			}
 		}
 		else if (com == log) {
 			display.setCurrent(logForm);
@@ -175,25 +138,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener,
 	public void destroyApp(boolean unconditional) {
 	}
 
-	public void inquiryCompleted(Vector newDevices) {
-		for (int i=0; i<newDevices.size(); i++) {
-			String device_name = BluetoothPeerManager.resolveName((RemoteDevice) newDevices.elementAt(i));
-			this.dev_list.append(device_name, null);
-			logForm.setPreviousScreen(dev_list);
-			display.setCurrent(dev_list);
-		}
+	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 	}
 
-	public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
-		for (int x = 0; x < services.size(); x++)
-			try {
-				DataElement ser_de = ((ServiceRecord) services.elementAt(x))
-						.getAttributeValue(0x100);
-				String service_name = (String) ser_de.getValue();
-				serv_list.append(service_name, null);
-				display.setCurrent(serv_list);
-			} catch (Exception e) {
-				do_alert("Error in adding services ", 1000);
-			}
+	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+	}
+
+	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 	}
 }
