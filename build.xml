@@ -331,12 +331,12 @@
 		    <!-- Have a look at the <jad>-section for setting specialised attributes.
 		         You can also define localized attributes in the resources/messages.txt files -->
 			<info
-				name="ShakeWellBeforeUse"
+				name="BluetoothDemo"
 				version="1.0.0"
-				description="A demonstration MIDlet for the Shake Well Before Use authentication protocol"
+				description="A demonstration MIDlet for the Bluetooth and Diffie-Hellman HostProtocol infrastructure"
 				vendorName="Rene Mayrhofer"
 				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-shakeme.jar" 
+				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-bt_dh-demo.jar" 
 				jarUrl="${deploy-url}${polish.jarName}"
 				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
 			/>
@@ -367,7 +367,7 @@
 				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
 				>
 				<!-- midlets definition -->
-				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="ShakeMe"/>
+				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="BluetoothDemo"/>
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 				</variables>
@@ -469,7 +469,7 @@
 	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A4:C9:97"/>
-			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
+			<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>
         		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 		</exec>
