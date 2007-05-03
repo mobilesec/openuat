@@ -316,7 +316,7 @@
 		     the required files manually and build from there... -->
         <mkdir dir="${build.midp.temp}"/>
 		<copy todir="${build.midp.temp}" failonerror="true">
-			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java
+			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java org/openuat/apps/j2me/ShakeMIDlet.java
 				org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
 				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
 				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
@@ -395,6 +395,47 @@
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
 			</build>
 		</j2mepolish>		
+
+		<j2mepolish>
+			<info
+				name="Shake Well Before Use"
+				version="1.0.0"
+				description="A demonstration MIDlet for the Shake Well Before Use authentication protocol"
+				vendorName="Rene Mayrhofer"
+				infoUrl="http://www.openuat.org"
+				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-shakeme.jar" 
+				jarUrl="${deploy-url}${polish.jarName}"
+				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
+			/>
+			<deviceRequirements>
+				<requirement name="Identifier" value="Generic/multi" />
+				<requirement name="JavaPackage" value="btapi" />
+				<requirement name="JavaPackage" value="mmapi" />
+				<requirement name="JavaPlatform" value="MIDP/2.0+" />
+			</deviceRequirements>
+			<build
+				symbols="ExampleSymbol, AnotherExample"
+				fullscreen="menu"
+				usePolishGui="false"
+				workDir="${build.midp}"
+				sourceDir="${build.midp.temp}"
+				destDir="${dist}"
+				compilerDestDir="${bin.midp}"
+				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
+				>
+				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
+				<variables includeAntProperties="true">
+					<variable file="${src}/configuration.midp.properties" />
+				</variables>
+				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
+					<parameter name="optimize" value="false" />
+				</obfuscator>
+				<resources>
+					<fileset dir="${src}" includes="microlog.properties" />
+				</resources>
+				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
+			</build>
+		</j2mepolish>		
 		
 		<!-- create JAD files -->
 <!--		<wtkjad jadfile="${build}/HelloProperty.jad"
@@ -470,6 +511,7 @@
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A4:C9:97"/>
 			<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>
+			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
         		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 		</exec>

@@ -8,10 +8,14 @@
  */
 package org.openuat.apps.j2me;
 
+import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.Vector;
+import java.io.OutputStreamWriter;
 
 import javax.microedition.midlet.*;
+import javax.microedition.io.Connector;
+import javax.microedition.io.ServerSocketConnection;
+import javax.microedition.io.StreamConnection;
 import javax.microedition.lcdui.*;
 import javax.bluetooth.*;
 
@@ -24,11 +28,11 @@ import net.sf.microlog.util.GlobalProperties;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
+import org.openuat.util.RemoteConnection;
 
-public class ShakeMIDlet extends MIDlet implements CommandListener, AuthenticationProgressHandler {
+public class ShakeMIDlet extends MIDlet implements CommandListener, AuthenticationProgressHandler, Runnable {
 	List main_list;
 
 	Command exit;
@@ -45,6 +49,15 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	// our logger
 	Logger logger = Logger.getLogger("");
+	
+	Thread sensorReader = null;
+	
+	boolean running = true;
+
+	ServerSocketConnection server = null;
+	
+	RemoteConnection connectionToRemote = null;
+	OutputStreamWriter toRemote = null;
 	
 	public ShakeMIDlet() {
 		display = Display.getDisplay(this);
@@ -71,13 +84,20 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		}
 
 		try {
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", false, false);
+			// keep the socket connected for now
+			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", true, false);
+			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.startListening();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
-
+		
+		// start listening for sensor data
+		sensorReader = new Thread(this);
+		running = true;
+		sensorReader.start();
+		
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
 			exit = new Command("Exit", Command.EXIT, 1);
 			back = new Command("Back", Command.BACK, 1);
@@ -103,6 +123,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 				} catch (InternalApplicationException e) {
 					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
 				}
+				
+			running = false;
+			// this should send an interrupt
+			try {
+				server.close();
+				sensorReader.join();
+			} catch (IOException e) {
+			} catch (InterruptedException e) {
+			}
+				
 			destroyApp(false);
 			notifyDestroyed();
 		}
@@ -139,11 +169,82 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 	}
 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+		toRemote = null;
 	}
-
+	
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+		toRemote = null;
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+		logger.info("Successful authentication");
+        Object[] res = (Object[]) result;
+        // remember the secret key shared with the other device
+        byte[] sharedKey = (byte[]) res[0];
+        // and extract the shared authentication key for phase 2
+        byte[] authKey = (byte[]) res[1];
+        // then extraxt the optional parameter
+        String param = (String) res[2];
+        connectionToRemote = (RemoteConnection) res[3];
+        try {
+			toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());
+		} catch (IOException e) {
+			logger.debug("Unable to open stream to remote: " + e);
+		}
+	}
+
+	public void run() {
+		StreamConnection sensorConnector = null;
+		DataInputStream sensorDataIn = null;
+		try {
+			server =  (ServerSocketConnection)Connector.open("socket://:8101");
+			logger.debug("Waiting for sensor to connect...");
+			
+			while (running) {
+				sensorConnector = server.acceptAndOpen();
+				logger.info("Connection from " + sensorConnector);
+				sensorDataIn = sensorConnector.openDataInputStream();
+				while (running) {
+					byte[] bytes = new byte[7];
+					sensorDataIn.readFully(bytes);
+
+					int x = bytes[0] << 8;
+					x |= bytes[1] & 0xFF;
+					
+					int xxx = x-2050;
+					
+					int y = bytes[2] << 8;
+					y |= bytes[3] & 0xFF;
+
+					int yyy = y-2050;
+
+					int z = bytes[4] << 8;
+					z |= bytes[5] & 0xFF;
+
+					int zzz = z-2050;
+					
+					//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
+					if (toRemote != null) {
+						toRemote.write(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz) + "\n");
+						toRemote.flush();
+					}
+				}
+			}
+		} catch (IOException e) {
+			logger.error("Error setting up or reading from sensor TCP socket: " + e);
+		}
+		finally {
+			try {
+				// properly close all resources
+				if (sensorDataIn != null)
+					sensorDataIn.close();
+				if (sensorConnector != null)
+					sensorConnector.close();
+				if (server != null)
+					server.close();
+			} catch (IOException e) {
+				logger.error("Error closing server socket or connection to sensor source: " + e);
+			}
+		}
 	}
 }

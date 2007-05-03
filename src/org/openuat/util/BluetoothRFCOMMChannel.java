@@ -16,6 +16,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 
 /** This is a very simple class that uses the JSR82 API to open an RFCOMM channel
@@ -349,6 +350,32 @@ btspp://0001234567AB:3
 
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 			System.out.println("DH with " + remote + " SUCCESS");
+
+	        Object[] res = (Object[]) result;
+	        // remember the secret key shared with the other device
+	        byte[] sharedKey = (byte[]) res[0];
+	        // and extract the shared authentication key for phase 2
+	        byte[] authKey = (byte[]) res[1];
+	        logger.debug("Shared session key is now '" + new String(Hex.encodeHex(sharedKey)) + 
+	        		"' with length " + sharedKey.length + 
+	        		", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
+	        		"' with length " + authKey.length);
+	        // then extraxt the optional parameter
+	        String param = (String) res[2];
+	        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
+			
+	        InputStream i;
+			try {
+				i = connectionToRemote.getInputStream();
+		        int tmp = i.read();
+				while (tmp != -1) {
+					System.out.print((char) tmp);
+				  	tmp = i.read();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			System.exit(0);
 		}
 	}
@@ -358,8 +385,8 @@ btspp://0001234567AB:3
 		  c.open();
 		  
 		  if (args.length > 2 && args[2].equals("DH")) {
-			  // this is our test client, so don't keep connected, but use JSSE (interoperability tests...)
-			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(c, new TempHandler(), false, null, true);
+			  // this is our test client, keep connected, and use JSSE (interoperability tests...)
+			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(c, new TempHandler(), true, null, true);
 			  System.out.println("Waiting for protocol to run in the background");
 			  while (true) Thread.sleep(500);
 		  }
