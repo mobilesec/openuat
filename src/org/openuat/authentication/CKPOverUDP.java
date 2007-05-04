@@ -77,6 +77,13 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * But set this large, because we don't really care about fragmentation.
 	 */
 	public final static int Maximum_Udp_Data_Size = 65535-8;
+	
+	/** These are just internal, hard-coded constants; but it's still better 
+	 * to have them up here than buried somewhere in the code.
+	 */
+	private final static int incomingKeyPartsBufferSize = 5;
+	private final static int incomingCandKeyBufferSize = 5;
+	private final static int generatedKeysPerHostBufferSize = 5;
 
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
@@ -122,17 +129,13 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 */
 	private int minNumRoundsForAction;
 	
-	/** This is used as a circular buffer for incoming candidate key part messages where no
-	 * match has been found. When new local candidates are added, we then try to match with
-	 * the parts in this buffer, because a message might be received before the local parts
-	 * have been added.
-	 * The elements of this array are Object array where the first element is an InetAddress
-	 * holding the remote host address and and the second element is an array of
-	 * CandidateKeyPartIdenfiers.
+	/** This is used as a circular buffer for incoming candidate key part messages. When 
+	 * new local candidates are added, we then try to match with the parts in this buffer, 
+	 * because a message might be received before the local parts have been added.
 	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
 	 * @see #addCandidates(byte[][], float)
 	 */
-	private Object[][] incomingKeyPartsBuffer;
+	private ReceivedCandidateKeyPartMessage[] incomingKeyPartsBuffer;
 	/** The index where to insert the next incoming candidate key part into incomingKeyPartsBuffer.
 	 * @see #incomingKeyPartsBuffer
 	 */
@@ -142,7 +145,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * match has been found. When new candidate key parts are matched, we then try to match with
 	 * the candidate keys in this buffer, because a message might be received before the local parts
 	 * have been added.
-	 * The elements of this array are Object array where the first element is an InetAddress
+	 * The elements of this array are Object arrays where the first element is an InetAddress
 	 * holding the remote host address, the second element is an Integer indicating the number
 	 * of key parts that the candidate key is composed of, and and the third element is a byte array 
 	 * containing the candidate key hash
@@ -231,8 +234,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		private byte[] foundMatchingKey;
 		
 		GeneratedKeyCandidates() {
-			// and keep a history of the last 5 generated keys (this is for each host)
-			list = new CandidateKey[5];
+			// and keep a history of the last generated keys (this is for each host)
+			list = new CandidateKey[generatedKeysPerHostBufferSize];
 			index = 0;
 			foundMatchingKey = null;
 		}
@@ -240,6 +243,17 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	/** Keep one list for each remote host we have contact to. Keys are remote object identifiers
 	 * (in this case Strings containing host addresses), values are GeneratedKeyCandidates. */
 	HashMap generatedKeys = null;
+	
+	/** This class represents received candidate key part identifiers, adding 
+	 * the respective sender.
+	 */
+	private static class ReceivedCandidateKeyPartMessage {
+		/** The host from which we received this identifier. */
+		InetAddress sender;
+		
+		/** The key part identifiers contained in the message. */
+		CandidateKeyPartIdentifier keyParts[];
+	}
 	
 	/** Construct the object by initializing basic variables.
 	 * 
@@ -321,9 +335,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			throw new IllegalArgumentException("minMatchingRoundsFraction + maxMismatchRoundsFraction must be <= 1.0");
 		
 		// remember the last 5 incoming messages for matching with new local key parts
-		this.incomingKeyPartsBuffer= new Object[5][];
+		this.incomingKeyPartsBuffer= new ReceivedCandidateKeyPartMessage[incomingKeyPartsBufferSize];
 		this.incomingKeyPartsBufferIndex = 0;
-		this.incomingCandKeyBuffer= new Object[5][];
+		this.incomingCandKeyBuffer= new Object[incomingCandKeyBufferSize][];
 		this.incomingCandKeyBufferIndex = 0;
 
 		channel = new UDPMulticastSocket(udpReceivePort, udpSendPort, multicastGroup);
@@ -426,15 +440,15 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 			for (int i=0; i<incomingKeyPartsBuffer.length; i++)
 				if (incomingKeyPartsBuffer[i] != null) {
 					numOldMessages++;
-					InetAddress sender = (InetAddress) incomingKeyPartsBuffer[i][0];
-					CandidateKeyPartIdentifier[] incomingKeyParts = (CandidateKeyPartIdentifier[]) incomingKeyPartsBuffer[i][1];
+					CandidateKeyPartIdentifier[] incomingKeyParts = incomingKeyPartsBuffer[i].keyParts;
 					numOldCandidates += incomingKeyParts.length;
-					int match = ckp.matchCandidates(sender.getHostAddress(), incomingKeyParts);
+					int match = ckp.matchCandidates(incomingKeyPartsBuffer[i].sender.getHostAddress(), incomingKeyParts);
 					if (match > -1) {
 						// yes, we have a match, handle it
-						handleMatchingCandidateKeyPart(incomingKeyParts[match].round, match, sender);
-						// and remove from the list to not match one incoming message twice
-						incomingKeyPartsBuffer[i] = null;
+						handleMatchingCandidateKeyPart(incomingKeyParts[match].round, match, incomingKeyPartsBuffer[i].sender);
+						// but leave the message in the queue, future local 
+						// parts may match too (and we don't care about
+						// multiple matches, CKP does that already)
 					}
 				}
 			statisticsLogger.debug("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
@@ -964,9 +978,10 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 							 * another) matching local candidates are about to be added - classical race
 							 * condition, should be solved by this buffer. 
 							 */
-							Object[] tmp = new Object[2];
-							tmp[0] = sender;
-							tmp[1] = keyParts;
+							ReceivedCandidateKeyPartMessage tmp = new ReceivedCandidateKeyPartMessage();
+							tmp.sender = (InetAddress) sender;
+							tmp.keyParts = keyParts;
+							// alas, if we had a match, remember it to prevent double matches with the same local round!
 							incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
 							if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length) {
 								statisticsLogger.debug("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");

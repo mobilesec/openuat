@@ -389,14 +389,6 @@ public class CandidateKeyProtocol {
 		int firstLocalRoundNumber;
 		/** The number of rounds in which a match was found. */
 		int numMatchingRounds = 0;
-		
-		/** Initializes an instance for a remote host. It only sets @see #firstLocalRoundNumber
-		 * to the current value of @see #lastRound minus 1 (because when creating this object,
-		 * exactly one round has already been involved with the respective remote host).
-		 */
-		MatchingKeyParts() {
-			this.firstLocalRoundNumber = lastRound-1;
-		}
 	}
 
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
@@ -692,13 +684,30 @@ public class CandidateKeyProtocol {
 	private synchronized void advanceCandidateToMatch(Object remoteHost, int candidateIndex, 
 			int remoteReportedRound, int remoteReportedCandidateNumber) throws InternalApplicationException {
 		MatchingKeyParts matchList = null;
-		if (matchingKeyParts.containsKey(remoteHost))
+		if (matchingKeyParts.containsKey(remoteHost)) {
+			// ok, we already have a match list for this remote host
 			matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
+			/* But also make sure that, if there are multiple 
+			 * matches across multiple local round numbers, that
+			 * we record the first local round that matches! This
+			 * is important for computing the number of local
+			 * rounds correctly.
+			 */ 
+			if (matchList.firstLocalRoundNumber > recentKeyParts[candidateIndex].round) {
+				if (logger.isDebugEnabled())
+					logger.debug("Found match with earlier local round number, updating first local round for host " +
+						remoteHost + " from " + matchList.firstLocalRoundNumber +
+						" to " + recentKeyParts[candidateIndex].round +
+						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+				matchList.firstLocalRoundNumber = recentKeyParts[candidateIndex].round;
+			}
+		}
 		else {
 			if (logger.isDebugEnabled())
 				logger.debug("Creating new match list for remote host " + remoteHost +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			matchList = new MatchingKeyParts();
+			matchList.firstLocalRoundNumber = recentKeyParts[candidateIndex].round;
 			matchingKeyParts.put(remoteHost, matchList);
 			if (statisticsLogger.isDebugEnabled())
 				statisticsLogger.debug("+ Creating new match list for " + remoteHost + ", now " + 
@@ -794,12 +803,13 @@ public class CandidateKeyProtocol {
 			logger.debug("Remote host " + remoteHost + " now has " + matchList.numMatchingRounds + 
 					" rounds with matches out of " + (lastRound-matchList.firstLocalRoundNumber) +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		if (lastRound-matchList.firstLocalRoundNumber < matchList.numMatchingRounds) {
-			logger.info("More matching rounds (" + matchList.numMatchingRounds + ") than total rounds (" +
+		if (lastRound-matchList.firstLocalRoundNumber+1 < matchList.numMatchingRounds) {
+			logger.error("More matching rounds (" + matchList.numMatchingRounds + ") than total rounds (" +
 					(lastRound-matchList.firstLocalRoundNumber) + "), correcting first round number for remote host " +
 					remoteHost + " to " + (lastRound-matchList.numMatchingRounds) +
+					" - BUT THIS SHOULD NOT LONGER HAPPEN - " +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-			matchList.firstLocalRoundNumber = lastRound-matchList.numMatchingRounds;
+			matchList.firstLocalRoundNumber = lastRound-matchList.numMatchingRounds+1;
 		}
 	}
 	
@@ -818,10 +828,14 @@ public class CandidateKeyProtocol {
 		}
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 		// sanity check
-		if (lastRound <= matchList.firstLocalRoundNumber)
+		if (lastRound < matchList.firstLocalRoundNumber)
 			throw new InternalApplicationException("lastRound <= first round with remote host " + remoteHost + ". Overflow?" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		return lastRound - matchList.firstLocalRoundNumber;
+		logger.debug("For remote host " + remoteHost + ", lastRound=" + 
+				lastRound + ", first local round=" + matchList.firstLocalRoundNumber + 
+				", thus numLocalRounds=" + (lastRound-matchList.firstLocalRoundNumber+1) +
+				(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		return lastRound - matchList.firstLocalRoundNumber + 1;
 	}
 	
 	/** Returns the number of entries in the matches list. 
@@ -862,11 +876,11 @@ public class CandidateKeyProtocol {
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 		
 		// sanity check
-		if (lastRound <= matchList.firstLocalRoundNumber)
+		if (lastRound < matchList.firstLocalRoundNumber)
 			throw new InternalApplicationException("lastRound <= first round with remote host " + remoteHost + ". Overflow?" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		
-		float ret = ((float) matchList.numMatchingRounds) / (lastRound - matchList.firstLocalRoundNumber);
+		float ret = ((float) matchList.numMatchingRounds) / (lastRound - matchList.firstLocalRoundNumber + 1);
 		if (ret > 1) {
 			logger.warn("Computed a matching rounds fraction > 1 - this indicates a strange order " +
 					"of local and remote message generation and should not happen in practice! " +

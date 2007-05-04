@@ -20,7 +20,7 @@ public class CKPOverUDPTest extends TestCase {
 	private class TestHelper extends CKPOverUDP {
 		protected TestHelper(int udpReceivePort, int udpSendPort, String multicastGroup, String instanceId, boolean broadcastCandidates, boolean sendMatches, boolean useJSSE) throws IOException {
 			super(udpReceivePort, udpSendPort, multicastGroup, instanceId, broadcastCandidates, sendMatches,
-					10, 5, 60, 1f, 0, 0f, 2, useJSSE);
+					30, 5, 60, 1f, 0, 0f, 2, useJSSE);
 		}
 
 		int numResetHookCalled = 0;
@@ -40,7 +40,6 @@ public class CKPOverUDPTest extends TestCase {
 
 		protected void protocolFailedHook(String remote, float matchingFraction, Exception e, String message) {
 			numFailedHookCalled++;
-			
 		}
 
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
@@ -158,9 +157,9 @@ public class CKPOverUDPTest extends TestCase {
 		
 		Assert.assertEquals(0, helper1.numSucceededHookCalled);
 		Assert.assertEquals(0, helper2.numSucceededHookCalled);
-		// depending on timing, the failure event may be sent once or twice
-		Assert.assertTrue(helper1.numFailedHookCalled == 1 || helper1.numFailedHookCalled == 2);
-		Assert.assertTrue(helper2.numFailedHookCalled == 1 || helper2.numFailedHookCalled == 2);
+		// depending on timing, the failure event may be sent once or up to 4 times - but that's ok...
+		Assert.assertTrue(helper1.numFailedHookCalled >= 1 && helper1.numFailedHookCalled <= 4);
+		Assert.assertTrue(helper2.numFailedHookCalled >= 1 && helper2.numFailedHookCalled <= 4);
 
 		helper1.dispose();
 		helper1 = null;
