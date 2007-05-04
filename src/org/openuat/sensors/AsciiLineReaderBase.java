@@ -1,4 +1,4 @@
- /* File created 2006-06-07
+/* File created 2006-06-07
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -14,8 +14,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.LinkedList;
-import java.util.ListIterator;
 
 import org.apache.log4j.Logger;
 
@@ -31,59 +29,19 @@ import org.apache.log4j.Logger;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public abstract class AsciiLineReaderBase {
+public abstract class AsciiLineReaderBase extends SamplesSource {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(AsciiLineReaderBase.class);
+	private static Logger logger = Logger.getLogger("org.openuat.sensors.AsciiLineReaderBase" /*AsciiLineReaderBase.class*/);
+	
+	/** This represent the stream to read from and is opened in the constructor.
+	 */
+	protected InputStream port = null;
+	
+	/** This is always initialized with port as a backend. When reopening, this
+	 * must also be re-initialized, as handleSample will read from it.
+	 */
+	protected BufferedReader reader = null;
 
-	/** The maximum number of data lines to read from the device - depends on the sensor. */
-	protected int maxNumLines;
-
-	/** This represent the file to read from and is opened in the constructor.
-	 * @see #AsciiLineReaderBase(String, int)
-	 */
-	protected InputStream port;
-	
-	/** Objects of this type are held in sinks. They represent listeners to 
-	 * be notified of samples.
-	 */
-	private class ListenerCombination {
-		int[] lines;
-		SamplesSink[] sinks;
-		public ListenerCombination(int[] lines, SamplesSink[] sinks) {
-			this.lines = lines;
-			this.sinks = sinks;
-		}
-		public boolean equals(Object o) {
-			return o instanceof ListenerCombination &&
-				((ListenerCombination) o).lines.equals(lines) &&
-				((ListenerCombination) o).sinks.equals(sinks);
-		}
-	}
-	
-	/** This holds all registered sinks in form of ListenerCombination
-	 * objects.
-	 * @see #addSink(int[], SamplesSink[])
-	 * @see #removeSink(int[], SamplesSink[])
-	 */
-	private LinkedList sinks;
-
-	/** The total number of samples read until currently. Changed by emitSample.
-	 * @see #emitSample(double[]) 
-	 */
-	private int numSamples;
-	
-	/** The thread that does the actual reading from the port.
-	 * @see #start()
-	 * @see #stop()
-	 */
-	private Thread samplingThread = null;
-	
-	/** The time to sleep between two reads from the file in milliseconds.
-	 * @see RunHelper#run()
-	 * @see #simulateSampling()
-	 */
-	private int sleepBetweenReads = 0;
-	
 	/** Set to true when the InputStream should be reopened from the file 
 	 * before every read. If set to true, reopenStreamFrom <b>must</b> be set.
 	 * @see #reopenStreamFrom
@@ -100,12 +58,6 @@ public abstract class AsciiLineReaderBase {
 	 * @see #simulateSampling()
 	 */
 	protected File reopenStreamFrom = null;
-	
-	/** Used to signal the sampling thread to terminate itself.
-	 * @see #stop()
-	 * @see RunHelper#run()
-	 */
-	boolean alive = true;
 	
 	/** Initializes the reader base object. It only saves the
 	 * passed parameters, but the member variable @see {@link #port} needs to
@@ -128,17 +80,14 @@ public abstract class AsciiLineReaderBase {
 	 *                        Set to false if you don't know what this is.
 	 */
 	protected AsciiLineReaderBase(int maxNumLines, int sleepBetweenReads, boolean reopenBeforeRead) {
-		this.sinks = new LinkedList();
-		this.numSamples = 0;
-		this.maxNumLines = maxNumLines;
-		this.sleepBetweenReads = sleepBetweenReads;
+		super(maxNumLines, sleepBetweenReads);
 		this.reopenBeforeRead = reopenBeforeRead;
 
 		logger.info("Initializing for " + maxNumLines + 
-				" sampling lines, sleeping for " + this.sleepBetweenReads + 
+				" sampling lines, sleeping for " + sleepBetweenReads + 
 				" ms between reads" +
 				(this.reopenBeforeRead ? " and reopening before each read": ""));
-	}
+}
 	
 	/** Initializes the reader base object. It only saves the
 	 * passed parameters and opens the InputStream to read from the specified
@@ -167,6 +116,7 @@ public abstract class AsciiLineReaderBase {
 		logger.info("Reading from " + filename);
 		
 		port = new FileInputStream(new File(filename));
+		reader = new BufferedReader(new InputStreamReader(port));
 	}
 	
 	/** Initializes the reader base object. It only saves the
@@ -183,6 +133,7 @@ public abstract class AsciiLineReaderBase {
 		
 		logger.info("Reading from input stream");
 		port = stream;
+		reader = new BufferedReader(new InputStreamReader(port));
 	}
 	
 	/** Initializes the reader base object. It only saves the
@@ -193,121 +144,40 @@ public abstract class AsciiLineReaderBase {
 	protected AsciiLineReaderBase(int maxNumLines) {
 		this(maxNumLines, 0, false);
 	}
-
-	/** Registers a sink, which will receive all new values as they are sampled.
-	 * @param sink The time series to fill. This array must have the same number of
-	 *             elements as the number of lines specified to the constructor.  
-	 * @param lines The set of lines on the device to read. Must be an integer
-	 *              array with a minimum length of 1 and a maximum length specified to
-	 *              the constructor, containing the indices of the lines to read. These 
-	 *              indices are counted from 0 to maxNumLines-1. E.g. for a parallel 
-	 *              port (see ParallelPortPWMReader), this corresponds to data lines 
-	 *              DATA0 to DATA7. E.g. for a 3D accelerometer (see WiTiltRawReader),
-	 *              this corresponds to 0=X, 1=Y, 2=Z.
-	 */
-	public void addSink(int[] lines, SamplesSink[] sink) throws IllegalArgumentException {
-		if (lines.length < 1 || lines.length > maxNumLines)
-			throw new IllegalArgumentException("Number of lines to read must be between 1 and " +
-					maxNumLines);
-		StringBuffer tmp = new StringBuffer();
-		for (int i=0; i<lines.length; i++) {
-			if (lines[i] < 0 || lines[i] > maxNumLines-1)
-				throw new IllegalArgumentException("Line index must be between 0 and " +
-						(maxNumLines-1));
-			if (logger.isDebugEnabled()) {
-				tmp.append(lines[i]);
-				tmp.append(' ');
-			}
-		}
-		if (sink.length != lines.length)
-			throw new IllegalArgumentException("Passed TimeSeries array has " + sink.length 
-					+ " elements, but sampling " + lines.length + " devices lines");
-		if (logger.isDebugEnabled())
-			logger.debug("Registering new listener for lines " + tmp.toString());
-		sinks.add(new ListenerCombination(lines, sink));
-	}
 	
-	/** Removes a previously registered sink.
-	 * 
-	 * @param sink The time series to stop filling.
-	 * @param lines The set of lines with which this sink has been registered. 
-	 *              @see #addSink(int[], SamplesSink[]) 
-	 * @return true if removed, false if not (i.e. if they have not been added previously).
-	 */
-	public boolean removeSink(int[] lines, SamplesSink[] sink) {
-		return sinks.remove(new ListenerCombination(lines, sink));
-	}
-	
-	/** Starts a new background thread to read from the file and create sample
-	 * values as the lines are read.
-	 */
-	public void start() {
-		if (samplingThread == null) {
-			if (logger.isDebugEnabled())
-				logger.debug("Starting sampling thread");
-			samplingThread = new Thread(new RunHelper());
-			samplingThread.start();
-		}
-	}
-
-	/** Stops the background thread, if started previously. */
-	public void stop() {
-		if (samplingThread != null) {
-			if (logger.isDebugEnabled())
-				logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
-			alive = false;
-			try {
-				samplingThread.interrupt();
-				samplingThread.join();
-			}
-			catch (InterruptedException e) {
-				if (! System.getProperty("os.name").startsWith("Windows CE")) {
-					logger.error("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
-				}
-				else {
-					// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
-					logger.error("Error waiting for sampling thread to terminate: " + e.toString());
-				}
-			}
-			logger.error("Sampling thread stopped");
-			samplingThread = null;
-		}
-	}
-	
-	/** Simulate sampling by reading all available lines from the spcified file. */
-	public void simulateSampling() throws IOException {
-		BufferedReader r = new BufferedReader(new InputStreamReader(port));
-		
-		String line = r.readLine();
-		while (line != null) {
+	/** Implementation of SamplesSource.handleSample. */
+	protected boolean handleSample() {
+		try {
+			String line = reader.readLine();
+			if (line == null) 
+				// no more lines to read, thus no more samples left
+				return false;
 			parseLine(line);
 
 			try {
-				if (sleepBetweenReads > 0)
-					Thread.sleep(sleepBetweenReads);
-			} catch (InterruptedException e) {}
-			
-			try {
 				if (reopenBeforeRead) {
 					port = new FileInputStream(reopenStreamFrom);
-					r = new BufferedReader(new InputStreamReader(port));
+					reader = new BufferedReader(new InputStreamReader(port));
 				}
-				line = r.readLine();
 			}
 			catch (IOException e) {
 				if (logger.isDebugEnabled())
-					logger.debug("Ignoring exception: " + e);
-				line = null;
+					logger.debug("Ignoring exception, but ending reading: " + e);
+				return false;
 			}
+			return true;
+		}
+		catch (IOException e) {
+			logger.error("Could not read from file: " + e);
+			return false;
 		}
 	}
-
-	/** This causes the reader to be shut down properly by calling stop() and making
-	 * sure that all ressources are freed properly when this object is garbage collected.
-	 * #see stop
+	
+	/** This makes sure that all ressources are freed properly when this object 
+	 * is garbage collected.
 	 */
 	public void dispose() {
-		stop();
+		super.dispose();
 		try {
 			if (port != null)
 				port.close();
@@ -316,100 +186,11 @@ public abstract class AsciiLineReaderBase {
 			logger.error("Could not properly close input stream");
 		}
 	}
-	
-	/** Returns the maximum number of lines that can be sampled. This depends on the
-	 * specific sensor implementation.
-	 * @return The value of @see maxNumLines.
-	 */
-	public int getMaxNumLines() {
-		return maxNumLines;
-	}
 
-	
-	/** This is a helper class that implements the Runnable interface internally. This way, one <b>has</b> to use the
-	 * start and stop methods of the outer class to start the thread, which is cleaner from an interface point of view.
+	/** This method must be implemented to parse each line of sensor data, and
+	 * call emitSample after successful parsing to send samples to all 
+	 * registered listeners.
+	 * @param line The line that should be parsed.
 	 */
-	private class RunHelper implements Runnable {
-		public void run() {
-			BufferedReader r = new BufferedReader(new InputStreamReader(port));
-			
-			try {
-				String line = r.readLine();
-				while (alive && line != null) {
-					parseLine(line);
-					
-					try {
-						if (sleepBetweenReads > 0)
-							Thread.sleep(sleepBetweenReads);
-					} catch (InterruptedException e) {}
-					
-					try {
-						if (reopenBeforeRead) {
-							port = new FileInputStream(reopenStreamFrom);
-							r = new BufferedReader(new InputStreamReader(port));
-						}
-						line = r.readLine();
-					}
-					catch (IOException e) {
-						if (logger.isDebugEnabled())
-							logger.debug("Ignoring exception: " + e);
-						line = null;
-					}
-				}
-				if (! alive)
-					if (logger.isDebugEnabled())
-						logger.debug("Background sampling thread terminated regularly due to request");
-				else
-					logger.warn("Background sampling thread received empty line! This should not happen when reading from a FIFO");
-			}
-			catch (IOException e) {
-				logger.error("Could not read from file: " + e);
-			}
-			// old code that use to read from a UDP socket
-			/*else {
-				// no port to read from, instead read from UDP socket
-				byte[] lineBuffer = new byte[65536];
-				DatagramPacket packet = new DatagramPacket(lineBuffer, lineBuffer.length);
-				StringBuffer buf = new StringBuffer();
-				try {
-					while (alive) {
-						socket.receive(packet);
-						// as we don't know where a packet might end, need to reconstruct the lines 
-						buf.append(new String(packet.getData()));
-						int nextLF = buf.indexOf("\n");
-						while (nextLF != -1) {
-							String line = buf.substring(0, nextLF).trim();
-							System.out.println("line: '" + line + "'");
-							buf.delete(0, nextLF+1);
-							parseLine(line);
-							nextLF = buf.indexOf("\n");
-						}
-					}
-				}
-				catch (IOException e) {
-					logger.error("Aborting reading from UDP port due to: " + e);
-				}
-			}*/
-		}
-	}
-	
-	/** This method should be called by the parseLine method to send samples to all registered
-	 * listeners.
-	 * @param sample The current sample.
-	 */
-	protected void emitSample(double[] sample) {
-		if (logger.isDebugEnabled()) 
-			for (int i=0; i<maxNumLines; i++)
-				logger.debug("Sample number " + numSamples +  
-						", line " + i + " = " + sample[i]);
-    	if (sinks != null)
-    		for (ListIterator j = sinks.listIterator(); j.hasNext(); ) {
-    			ListenerCombination l = (ListenerCombination) j.next();
-    			for (int i=0; i<l.lines.length; i++)
-    				l.sinks[i].addSample(sample[l.lines[i]], numSamples);
-    		}
-		numSamples++;
-	}
-
 	protected abstract void parseLine(String line);
 }

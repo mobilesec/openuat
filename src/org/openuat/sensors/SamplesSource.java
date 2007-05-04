@@ -1,0 +1,280 @@
+/* File created 2007-05-04
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+package org.openuat.sensors;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Vector;
+
+import org.apache.log4j.Logger;
+
+/** This is a base class for emitting samples to a list of registers 
+ * SamplesSink objects. It imlements handling the listeners and the background
+ * thread for doing the sampling.
+ * 
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
+public abstract class SamplesSource {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger("org.openuat.sensors.SamplesSource" /*SamplesSource.class*/);
+
+	/** The maximum number of data lines to read from the device - depends on the sensor. */
+	protected int maxNumLines;
+
+	/** Objects of this type are held in sinks. They represent listeners to 
+	 * be notified of samples.
+	 */
+	private class ListenerCombination {
+		int[] lines;
+		SamplesSink[] sinks;
+		public ListenerCombination(int[] lines, SamplesSink[] sinks) {
+			this.lines = lines;
+			this.sinks = sinks;
+		}
+		public boolean equals(Object o) {
+			return o instanceof ListenerCombination &&
+				((ListenerCombination) o).lines.equals(lines) &&
+				((ListenerCombination) o).sinks.equals(sinks);
+		}
+	}
+	
+	/** This holds all registered sinks in form of ListenerCombination
+	 * objects.
+	 * @see #addSink(int[], SamplesSink[])
+	 * @see #removeSink(int[], SamplesSink[])
+	 */
+	private Vector listeners;
+
+	/** The total number of samples read until currently. Changed by emitSample.
+	 * @see #emitSample(double[]) 
+	 */
+	private int numSamples;
+	
+	/** The thread that does the actual reading from the port.
+	 * @see #start()
+	 * @see #stop()
+	 */
+	private Thread samplingThread = null;
+	
+	/** The time to sleep between two reads from the file in milliseconds.
+	 * @see RunHelper#run()
+	 * @see #simulateSampling()
+	 */
+	private int sleepBetweenReads = 0;
+	
+	/** Used to signal the sampling thread to terminate itself.
+	 * @see #stop()
+	 * @see RunHelper#run()
+	 */
+	boolean alive = true;
+
+	/** Initializes the reader base object. It only saves the
+	 * passed parameters, but the member variable @see {@link #port} needs to
+	 * be initialized separately before starting and sampling.
+	 * 
+	 * @param filename The log to read from. This may either be a normal log file
+	 *                 when simulation is intended or it can be a FIFO/pipe to read
+	 *                 online data.
+	 * @param maxNumLines The maximum number of data lines to read from the device - 
+	 *                    depends on the sensor.
+	 * @param sleepBetweenReads The number of milliseconds to sleep between two 
+	 *                          reads from filename. Set to 0 to do blocking reads
+	 *                          (i.e. as fast as the file can give something back).
+	 */
+	protected SamplesSource(int maxNumLines, int sleepBetweenReads) {
+		this.listeners = new Vector();
+		this.numSamples = 0;
+		this.maxNumLines = maxNumLines;
+		this.sleepBetweenReads = sleepBetweenReads;
+
+		logger.info("Initializing for " + maxNumLines + 
+				" sampling lines, sleeping for " + this.sleepBetweenReads + 
+				" ms between reads");
+	}
+
+	/** Registers a sink, which will receive all new values as they are sampled.
+	 * @param sink The time series to fill. This array must have the same number of
+	 *             elements as the number of lines specified to the constructor.  
+	 * @param lines The set of lines on the device to read. Must be an integer
+	 *              array with a minimum length of 1 and a maximum length specified to
+	 *              the constructor, containing the indices of the lines to read. These 
+	 *              indices are counted from 0 to maxNumLines-1. E.g. for a parallel 
+	 *              port (see ParallelPortPWMReader), this corresponds to data lines 
+	 *              DATA0 to DATA7. E.g. for a 3D accelerometer (see WiTiltRawReader),
+	 *              this corresponds to 0=X, 1=Y, 2=Z.
+	 */
+	public void addSink(int[] lines, SamplesSink[] sink) throws IllegalArgumentException {
+		if (lines.length < 1 || lines.length > maxNumLines)
+			throw new IllegalArgumentException("Number of lines to read must be between 1 and " +
+					maxNumLines);
+		StringBuffer tmp = new StringBuffer();
+		for (int i=0; i<lines.length; i++) {
+			if (lines[i] < 0 || lines[i] > maxNumLines-1)
+				throw new IllegalArgumentException("Line index must be between 0 and " +
+						(maxNumLines-1));
+			if (logger.isDebugEnabled()) {
+				tmp.append(lines[i]);
+				tmp.append(' ');
+			}
+		}
+		if (sink.length != lines.length)
+			throw new IllegalArgumentException("Passed TimeSeries array has " + sink.length 
+					+ " elements, but sampling " + lines.length + " devices lines");
+		if (logger.isDebugEnabled())
+			logger.debug("Registering new listener for lines " + tmp.toString());
+		listeners.addElement(new ListenerCombination(lines, sink));
+	}
+	
+	/** Removes a previously registered sink.
+	 * 
+	 * @param sink The time series to stop filling.
+	 * @param lines The set of lines with which this sink has been registered. 
+	 *              @see #addSink(int[], SamplesSink[]) 
+	 * @return true if removed, false if not (i.e. if they have not been added previously).
+	 */
+	public boolean removeSink(int[] lines, SamplesSink[] sink) {
+		return listeners.removeElement(new ListenerCombination(lines, sink));
+	}
+	
+	/** Starts a new background thread to read from the file and create sample
+	 * values as the lines are read.
+	 */
+	public void start() {
+		if (samplingThread == null) {
+			if (logger.isDebugEnabled())
+				logger.debug("Starting sampling thread");
+			samplingThread = new Thread(new RunHelper());
+			samplingThread.start();
+		}
+	}
+
+	/** Stops the background thread, if started previously. */
+	public void stop() {
+		if (samplingThread != null) {
+			if (logger.isDebugEnabled())
+				logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
+			alive = false;
+			try {
+				samplingThread.interrupt();
+				samplingThread.join();
+			}
+			catch (InterruptedException e) {
+				if (! System.getProperty("os.name").startsWith("Windows CE")) {
+					logger.error("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
+				}
+				else {
+					// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
+					logger.error("Error waiting for sampling thread to terminate: " + e.toString());
+				}
+			}
+			logger.error("Sampling thread stopped");
+			samplingThread = null;
+		}
+	}
+
+	/** This causes the reader to be shut down properly by calling stop().
+	 * #see stop
+	 */
+	public void dispose() {
+		stop();
+	}
+	
+	/** Returns the maximum number of lines that can be sampled. This depends on the
+	 * specific sensor implementation.
+	 * @return The value of @see maxNumLines.
+	 */
+	public int getMaxNumLines() {
+		return maxNumLines;
+	}
+
+	/** Simulate sampling by reading all available lines from the spcified file. */
+	public void simulateSampling() {
+		while (handleSample()) {
+			try {
+				if (sleepBetweenReads > 0)
+					Thread.sleep(sleepBetweenReads);
+			} catch (InterruptedException e) {
+				// just don't care when being interrupted, it just makes the waiting time shorter when stopping
+			}
+		}
+	}
+	
+	/** This method should be called by the parseLine method to send samples to all registered
+	 * listeners.
+	 * @param sample The current sample.
+	 */
+	protected void emitSample(double[] sample) {
+		if (logger.isDebugEnabled()) 
+			for (int i=0; i<maxNumLines; i++)
+				logger.debug("Sample number " + numSamples +  
+						", line " + i + " = " + sample[i]);
+    	if (listeners != null)
+    		for (int j=0; j<listeners.size(); j++) {
+    			ListenerCombination l = (ListenerCombination) listeners.elementAt(j);
+    			for (int i=0; i<l.lines.length; i++)
+    				l.sinks[i].addSample(sample[l.lines[i]], numSamples);
+    		}
+		numSamples++;
+	}
+
+	/** This is a helper class that implements the Runnable interface internally. This way, one <b>has</b> to use the
+	 * start and stop methods of the outer class to start the thread, which is cleaner from an interface point of view.
+	 */
+	private class RunHelper implements Runnable {
+		public void run() {
+			while (alive && handleSample()) {
+				try {
+					if (sleepBetweenReads > 0)
+						Thread.sleep(sleepBetweenReads);
+				} catch (InterruptedException e) {
+					// just don't care when being interrupted, it just makes the waiting time shorter when stopping
+				}
+			}
+			if (! alive)
+				if (logger.isDebugEnabled())
+					logger.debug("Background sampling thread terminated regularly due to request");
+			else
+				logger.warn("Background sampling thread received no more samples, ending now");
+			// old code that used to read from a UDP socket
+			/*else {
+				// no port to read from, instead read from UDP socket
+				byte[] lineBuffer = new byte[65536];
+				DatagramPacket packet = new DatagramPacket(lineBuffer, lineBuffer.length);
+				StringBuffer buf = new StringBuffer();
+				try {
+					while (alive) {
+						socket.receive(packet);
+						// as we don't know where a packet might end, need to reconstruct the lines 
+						buf.append(new String(packet.getData()));
+						int nextLF = buf.indexOf("\n");
+						while (nextLF != -1) {
+							String line = buf.substring(0, nextLF).trim();
+							System.out.println("line: '" + line + "'");
+							buf.delete(0, nextLF+1);
+							parseLine(line);
+							nextLF = buf.indexOf("\n");
+						}
+					}
+				}
+				catch (IOException e) {
+					logger.error("Aborting reading from UDP port due to: " + e);
+				}
+			}*/
+		}
+	}
+	
+	/** This method is called whenever a sample should be read from the 
+	 * respective source, and it should in turn call emitSample to send the
+	 * new sample to all registered listeners.
+	 * @return true if more samples are available, false otherwise.
+	 */
+	protected abstract boolean handleSample();
+}
