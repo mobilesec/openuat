@@ -133,7 +133,6 @@ public class CKPOverUDPTest extends TestCase {
 		System.gc();
 	}*/
 	
-	// TODO: protocol sometimes files, race condition?
 	public void testFailedRun_SymmetricNoSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1);
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2);
