@@ -302,6 +302,7 @@ public class CandidateKeyProtocol {
 		 * can not be decoded.
 		 */
 		public static int[][] stringToIndexTuples(String coded) {
+			logger.debug("Trying to decode index tuples from string '" + coded + "'");
 			try {
 				// this is a crude heuristic of the maximum length the array can get
 				int[][] tmp = new int[coded.length()*2/3][];
@@ -352,7 +353,8 @@ public class CandidateKeyProtocol {
 					}
 					else {
 						logger.error("Unexpected character '" + coded.charAt(inI) + 
-								" in index tuple string at index " + inI);
+								"' in index tuple string at index " + inI);
+						inI++;
 					}
 				}
 				logger.debug("Decoded " + outI  + " tuples from string");

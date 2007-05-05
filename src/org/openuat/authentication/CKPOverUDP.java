@@ -330,10 +330,6 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		this.maxMismatchRoundsFraction = maxMismatchRoundsFraction;
 		this.minNumRoundsForAction = minNumRoundsForAction;
 		
-		// sanity check
-		if (minMatchingRoundsFraction + maxMismatchRoundsFraction > 1.0f)
-			throw new IllegalArgumentException("minMatchingRoundsFraction + maxMismatchRoundsFraction must be <= 1.0");
-		
 		// remember the last 5 incoming messages for matching with new local key parts
 		this.incomingKeyPartsBuffer= new ReceivedCandidateKeyPartMessage[incomingKeyPartsBufferSize];
 		this.incomingKeyPartsBufferIndex = 0;
