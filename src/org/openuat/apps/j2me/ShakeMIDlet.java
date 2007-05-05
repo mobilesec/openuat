@@ -8,14 +8,10 @@
  */
 package org.openuat.apps.j2me;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
 import javax.microedition.midlet.*;
-import javax.microedition.io.Connector;
-import javax.microedition.io.ServerSocketConnection;
-import javax.microedition.io.StreamConnection;
 import javax.microedition.lcdui.*;
 import javax.bluetooth.*;
 
@@ -28,11 +24,13 @@ import net.sf.microlog.util.GlobalProperties;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.sensors.SamplesSink;
+import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.RemoteConnection;
 
-public class ShakeMIDlet extends MIDlet implements CommandListener, AuthenticationProgressHandler, Runnable {
+public class ShakeMIDlet extends MIDlet implements CommandListener, AuthenticationProgressHandler {
 	List main_list;
 
 	Command exit;
@@ -49,12 +47,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	// our logger
 	Logger logger = Logger.getLogger("");
-	
-	Thread sensorReader = null;
-	
-	boolean running = true;
 
-	ServerSocketConnection server = null;
+	SymbianTCPAccelerometerReader reader;
 	
 	RemoteConnection connectionToRemote = null;
 	OutputStreamWriter toRemote = null;
@@ -75,7 +69,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		logForm.setDisplay(display);
 		logBackend.addAppender(new FormAppender(logForm));
 		//logBackend.addAppender(new RecordStoreAppender());
-		logBackend.setLogLevel(Level.DEBUG);
+		logBackend.setLogLevel(Level.INFO);
 		logger.info("Microlog initialized");
 		
 		if (! BluetoothSupport.init()) {
@@ -93,10 +87,13 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 		
-		// start listening for sensor data
-		sensorReader = new Thread(this);
-		running = true;
-		sensorReader.start();
+		try {
+			reader = new SymbianTCPAccelerometerReader(8101);
+			reader.addSink(new int[] {0,1,2}, new SamplesSink[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
+			reader.start();
+		} catch (IOException e) {
+			logger.error("Error initializing sensor socket: " + e);
+		}
 		
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
 			exit = new Command("Exit", Command.EXIT, 1);
@@ -124,15 +121,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
 				}
 				
-			running = false;
-			// this should send an interrupt
-			try {
-				server.close();
-				sensorReader.join();
-			} catch (IOException e) {
-			} catch (InterruptedException e) {
-			}
-				
+			reader.stop();
 			destroyApp(false);
 			notifyDestroyed();
 		}
@@ -193,58 +182,32 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		}
 	}
 
-	public void run() {
-		StreamConnection sensorConnector = null;
-		DataInputStream sensorDataIn = null;
+	private double[] samples = new double[3];
+	
+	private class SamplesHandler implements SamplesSink {
+		private int dim;
+		
+		SamplesHandler(int dim) {this.dim = dim;}
+	
+	public void addSample(double sample, int index) {
+		samples[dim] = sample;
+		if (dim == 2) {
 		try {
-			server =  (ServerSocketConnection)Connector.open("socket://:8101");
-			logger.debug("Waiting for sensor to connect...");
-			
-			while (running) {
-				sensorConnector = server.acceptAndOpen();
-				logger.info("Connection from " + sensorConnector);
-				sensorDataIn = sensorConnector.openDataInputStream();
-				while (running) {
-					byte[] bytes = new byte[7];
-					sensorDataIn.readFully(bytes);
-
-					int x = bytes[0] << 8;
-					x |= bytes[1] & 0xFF;
-					
-					int xxx = x-2050;
-					
-					int y = bytes[2] << 8;
-					y |= bytes[3] & 0xFF;
-
-					int yyy = y-2050;
-
-					int z = bytes[4] << 8;
-					z |= bytes[5] & 0xFF;
-
-					int zzz = z-2050;
-					
-					//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
-					if (toRemote != null) {
-						toRemote.write(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz) + "\n");
-						toRemote.flush();
-					}
-				}
+			//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
+			if (toRemote != null) {
+				toRemote.write(String.valueOf(samples[0])+"\t"+String.valueOf(samples[1])+"\t"+String.valueOf(samples[2]) + "\n");
+				toRemote.flush();
 			}
 		} catch (IOException e) {
 			logger.error("Error setting up or reading from sensor TCP socket: " + e);
 		}
-		finally {
-			try {
-				// properly close all resources
-				if (sensorDataIn != null)
-					sensorDataIn.close();
-				if (sensorConnector != null)
-					sensorConnector.close();
-				if (server != null)
-					server.close();
-			} catch (IOException e) {
-				logger.error("Error closing server socket or connection to sensor source: " + e);
-			}
 		}
+	}
+
+	public void segmentEnd(int index) {
+	}
+
+	public void segmentStart(int index) {
+	}
 	}
 }

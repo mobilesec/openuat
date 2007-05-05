@@ -7,10 +7,6 @@
  */
 package org.openuat.sensors;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Vector;
 
 import org.apache.log4j.Logger;
@@ -167,10 +163,13 @@ public abstract class SamplesSource {
 				samplingThread.join();
 			}
 			catch (InterruptedException e) {
+//#if cfg.haveReflectionSupport
 				if (! System.getProperty("os.name").startsWith("Windows CE")) {
 					logger.error("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
 				}
-				else {
+				else
+//#endif
+				{
 					// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
 					logger.error("Error waiting for sampling thread to terminate: " + e.toString());
 				}
