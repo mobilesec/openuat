@@ -103,7 +103,7 @@ public class CKPOverUDPTest extends TestCase {
 				new byte[] {10, 2, 3, 4, 5, 4, 3, 2, 8} };
 	}
 	
-/*	public void testCompleteRun_SymmetricNoSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
+	public void testCompleteRun_SymmetricNoSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1, 2, 1f, 0.51f);
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", true, false, useJSSE2, 2, 1f, 0.51f);
 		
@@ -233,7 +233,7 @@ public class CKPOverUDPTest extends TestCase {
 		helper2.dispose();
 		helper2 = null;
 		System.gc();
-	}*/
+	}
 
 	public void testCompleteRun_AsymmetricOneSideSendMatches_Interlocked() throws IOException, InternalApplicationException, InterruptedException {
 		// this simulates with localhost communication
@@ -268,7 +268,7 @@ public class CKPOverUDPTest extends TestCase {
 		System.gc();
 	}
 	
-/*	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
+	public void testCompleteRun_AsymmetricOneSideSendMatches_Sequenced1() throws IOException, InternalApplicationException, InterruptedException {
 		// this simulates with localhost communication
 		helper1 = new TestHelper(54321, 54322, "127.0.0.1", "p1", true, false, useJSSE1, 2, 1f, 0.51f); // broadcast candidates
 		helper2 = new TestHelper(54322, 54321, "127.0.0.1", "p2", false, true, useJSSE2, 2, 1f, 0.51f); // send matches
@@ -332,5 +332,5 @@ public class CKPOverUDPTest extends TestCase {
 		helper2.dispose();
 		helper2 = null;
 		System.gc();
-	}*/
+	}
 }
