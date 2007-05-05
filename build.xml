@@ -77,7 +77,8 @@
 	<property name="device" value="Generic/midp2"/>
 	<property name="midp_libs" value="${polish.home}/import/midp-2.0.jar:${polish.home}/lib/cldc-1.1-java5.0.jar" />
 	<!-- These classes can only be compiled with J2ME MIDP class libraries -->
-	<property name="midp-only-files" value="org/openuat/apps/j2me/**/*.java" />
+	<property name="midp-only-files1" value="org/openuat/apps/j2me/**/*.java" />
+	<property name="midp-only-files2" value="org/openuat/sensors/j2me/**/*.java" />
 	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
@@ -215,7 +216,8 @@
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
 			<exclude name="${java5-files}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files}" />
+			<exclude name="${midp-only-files1}" />
+			<exclude name="${midp-only-files2}" />
 		</javac>
 		
 		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
@@ -260,7 +262,8 @@
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 		       includeJavaRuntime="no">
-			<include name="${midp-only-files}" />
+			<include name="${midp-only-files1}" />
+			<include name="${midp-only-files2}" />
 		</javac>
 	</target>
     
@@ -307,6 +310,8 @@
 	</target>
 	
 	<target name="jar-midp" depends="compile" description="Build packages for J2ME MIDP" if="haveWTK">
+		<delete dir="${build.midp}"/>
+		<delete dir="${bin.midp}"/>
         <mkdir dir="${build.midp}"/>
         <mkdir dir="${bin.midp}"/>
 		
@@ -314,9 +319,10 @@
 		<!-- I can't get the dumb j2mepolish build/compiler part to only use the classes 
 		     the MIDlet depends on (the includes attribute obviously doesn't work, so just copy
 		     the required files manually and build from there... -->
+		<delete dir="${build.midp.temp}"/>
         <mkdir dir="${build.midp.temp}"/>
 		<copy todir="${build.midp.temp}" failonerror="true">
-			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java org/openuat/apps/j2me/ShakeMIDlet.java
+			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java
 				org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
 				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
 				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
@@ -396,6 +402,12 @@
 			</build>
 		</j2mepolish>		
 
+		<!-- additional files for the second MIDlet -->
+		<copy todir="${build.midp.temp}" failonerror="true">
+			<fileset dir="${src}" includes="org/openuat/apps/j2me/ShakeMIDlet.java
+				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
+				org/openuat/sensors/j2me/SymbianTCPAccelerometerReader.java" />
+		</copy>
 		<j2mepolish>
 			<info
 				name="Shake Well Before Use"
