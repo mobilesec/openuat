@@ -1020,7 +1020,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 						int[][] remoteIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
 						int[][] localIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
 						if (logger.isDebugEnabled())
-						logger.debug("Received candidate key composed of " + numParts + " parts with hash " +
+							logger.debug("Received candidate key composed of " + numParts + " parts with hash " +
 								new String(Hex.encodeHex(candKeyHash)) + ", remote indices " + 
 								CandidateKeyProtocol.CandidateKey.indexTuplesToString(remoteIndices) + 
 								", my indices " + 

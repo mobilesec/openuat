@@ -288,9 +288,16 @@ public class CandidateKeyProtocol {
 		public static String indexTuplesToString(int[][] indices) {
 			StringBuffer tmp = new StringBuffer();
 			for (int i=0; i<indices.length; i++) {
-				tmp.append(indices[i][0]);
+				// take care of a special case: -1 means unknown
+				if (indices[i][0] != -1)
+					tmp.append(indices[i][0]);
+				else
+					tmp.append('u');
 				tmp.append('/');
-				tmp.append(indices[i][1]);
+				if (indices[i][1] != -1)
+					tmp.append(indices[i][1]);
+				else
+					tmp.append('u');
 				if (i<indices.length-1)
 					tmp.append(';');
 			}
@@ -333,6 +340,18 @@ public class CandidateKeyProtocol {
 							finishedGroup = true;
 							tmp[outI++][1] = val;
 						}
+					}
+					else if (coded.charAt(inI) == 'u') {
+						// unknown index, i.e. -1
+						if (firstDigit) {
+							tmp[outI] = new int[2];
+							tmp[outI][0] = -1;
+						}
+						else {
+							finishedGroup = true;
+							tmp[outI++][1] = -1;
+						}
+						inI++;
 					}
 					else if (coded.charAt(inI) == ';') {
 						if (firstDigit || !finishedGroup) {
@@ -1091,6 +1110,18 @@ public class CandidateKeyProtocol {
 			throw new IllegalArgumentException("Length of local indices tuples (" + localIndices.length +
 					") does not equal length of remote indices tuples (" + remoteIndices.length + ")" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
+		
+		/* Fallback: when we don't know all of our local indices (if any of 
+		 * them is unknown, then can't efficiently assemble the key. Instead,
+		 * fall back to a full key search.
+		 */
+		boolean localIndicesComplete = true;
+		for (int i=0; i<localIndices.length && localIndicesComplete; i++)
+			if (localIndices[i][0] == -1 || localIndices[i][1] == -1)
+				localIndicesComplete = false;
+		if (! localIndicesComplete)
+			return searchKey(remoteHost, hash, localIndices.length);
+		
 		if (! matchingKeyParts.containsKey(remoteHost)) {
 			logger.warn("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
