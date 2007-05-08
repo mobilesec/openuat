@@ -30,15 +30,18 @@ public abstract class SamplesSource {
 	 */
 	private class ListenerCombination {
 		int[] lines;
-		SamplesSink[] sinks;
-		public ListenerCombination(int[] lines, SamplesSink[] sinks) {
+		SamplesSink[] doubleSinks;
+		SamplesSink_Int[] intSinks;
+		public ListenerCombination(int[] lines, SamplesSink[] doubleSinks, SamplesSink_Int[] intSinks) {
 			this.lines = lines;
-			this.sinks = sinks;
+			this.doubleSinks = doubleSinks;
+			this.intSinks = intSinks;
 		}
 		public boolean equals(Object o) {
 			return o instanceof ListenerCombination &&
 				((ListenerCombination) o).lines.equals(lines) &&
-				((ListenerCombination) o).sinks.equals(sinks);
+				(intSinks == null && ((ListenerCombination) o).doubleSinks.equals(doubleSinks)) ||
+				(doubleSinks == null && ((ListenerCombination) o).intSinks.equals(intSinks));
 		}
 	}
 	
@@ -46,11 +49,14 @@ public abstract class SamplesSource {
 	 * objects.
 	 * @see #addSink(int[], SamplesSink[])
 	 * @see #removeSink(int[], SamplesSink[])
+	 * @see #addSink(int[], SamplesSink_Int[])
+	 * @see #removeSink(int[], SamplesSink_Int[])
 	 */
 	private Vector listeners;
 
 	/** The total number of samples read until currently. Changed by emitSample.
 	 * @see #emitSample(double[]) 
+	 * @see #emitSample(int[]) 
 	 */
 	private int numSamples;
 	
@@ -95,19 +101,11 @@ public abstract class SamplesSource {
 				" sampling lines, sleeping for " + this.sleepBetweenReads + 
 				" ms between reads");
 	}
-
-	/** Registers a sink, which will receive all new values as they are sampled.
-	 * @param sink The time series to fill. This array must have the same number of
-	 *             elements as the number of lines specified to the constructor.  
-	 * @param lines The set of lines on the device to read. Must be an integer
-	 *              array with a minimum length of 1 and a maximum length specified to
-	 *              the constructor, containing the indices of the lines to read. These 
-	 *              indices are counted from 0 to maxNumLines-1. E.g. for a parallel 
-	 *              port (see ParallelPortPWMReader), this corresponds to data lines 
-	 *              DATA0 to DATA7. E.g. for a 3D accelerometer (see WiTiltRawReader),
-	 *              this corresponds to 0=X, 1=Y, 2=Z.
+	
+	/** This is just a helper doing some checks and debug printing, called by
+	 * the public addSink implementations.
 	 */
-	public void addSink(int[] lines, SamplesSink[] sink) throws IllegalArgumentException {
+	private void addSinkHelper(int[] lines, ListenerCombination listener) throws IllegalArgumentException {
 		if (lines.length < 1 || lines.length > maxNumLines)
 			throw new IllegalArgumentException("Number of lines to read must be between 1 and " +
 					maxNumLines);
@@ -121,23 +119,69 @@ public abstract class SamplesSource {
 				tmp.append(' ');
 			}
 		}
-		if (sink.length != lines.length)
-			throw new IllegalArgumentException("Passed TimeSeries array has " + sink.length 
-					+ " elements, but sampling " + lines.length + " devices lines");
 		if (logger.isDebugEnabled())
 			logger.debug("Registering new listener for lines " + tmp.toString());
-		listeners.addElement(new ListenerCombination(lines, sink));
+		listeners.addElement(listener);
 	}
-	
+
+	/** Registers a sink, which will receive all new values as they are sampled.
+	 * @param doubleSinks The time series to fill. This array must have the same number of
+	 *             elements as the number of lines specified to the constructor.  
+	 * @param lines The set of lines on the device to read. Must be an integer
+	 *              array with a minimum length of 1 and a maximum length specified to
+	 *              the constructor, containing the indices of the lines to read. These 
+	 *              indices are counted from 0 to maxNumLines-1. E.g. for a parallel 
+	 *              port (see ParallelPortPWMReader), this corresponds to data lines 
+	 *              DATA0 to DATA7. E.g. for a 3D accelerometer (see WiTiltRawReader),
+	 *              this corresponds to 0=X, 1=Y, 2=Z.
+	 */
+	public void addSink(int[] lines, SamplesSink[] doubleSinks) throws IllegalArgumentException {
+		if (doubleSinks.length != lines.length)
+			throw new IllegalArgumentException("Passed TimeSeries array has " + doubleSinks.length 
+					+ " elements, but sampling " + lines.length + " devices lines");
+		addSinkHelper(lines, new ListenerCombination(lines, doubleSinks, null));
+	}
+
+	/** Registers a sink, which will receive all new values as they are sampled. 
+	 * This is the integer sinks variant.
+	 * @param intSinks The time series to fill. This array must have the same number of
+	 *             elements as the number of lines specified to the constructor.  
+	 * @param lines The set of lines on the device to read. Must be an integer
+	 *              array with a minimum length of 1 and a maximum length specified to
+	 *              the constructor, containing the indices of the lines to read. These 
+	 *              indices are counted from 0 to maxNumLines-1. E.g. for a parallel 
+	 *              port (see ParallelPortPWMReader), this corresponds to data lines 
+	 *              DATA0 to DATA7. E.g. for a 3D accelerometer (see WiTiltRawReader),
+	 *              this corresponds to 0=X, 1=Y, 2=Z.
+	 */
+	public void addSink(int[] lines, SamplesSink_Int[] intSinks) throws IllegalArgumentException {
+		if (intSinks.length != lines.length)
+			throw new IllegalArgumentException("Passed TimeSeries array has " + intSinks.length 
+					+ " elements, but sampling " + lines.length + " devices lines");
+		addSinkHelper(lines, new ListenerCombination(lines, null, intSinks));
+	}
+
 	/** Removes a previously registered sink.
 	 * 
-	 * @param sink The time series to stop filling.
+	 * @param doubleSinks The time series to stop filling.
 	 * @param lines The set of lines with which this sink has been registered. 
 	 *              @see #addSink(int[], SamplesSink[]) 
 	 * @return true if removed, false if not (i.e. if they have not been added previously).
 	 */
-	public boolean removeSink(int[] lines, SamplesSink[] sink) {
-		return listeners.removeElement(new ListenerCombination(lines, sink));
+	public boolean removeSink(int[] lines, SamplesSink[] doubleSinks) {
+		return listeners.removeElement(new ListenerCombination(lines, doubleSinks, null));
+	}
+
+	/** Removes a previously registered sink.
+	 * This is the integer sinks variant.
+	 * 
+	 * @param intSinks The time series to stop filling.
+	 * @param lines The set of lines with which this sink has been registered. 
+	 *              @see #addSink(int[], SamplesSink[]) 
+	 * @return true if removed, false if not (i.e. if they have not been added previously).
+	 */
+	public boolean removeSink_Int(int[] lines, SamplesSink_Int[] intSinks) {
+		return listeners.removeElement(new ListenerCombination(lines, null, intSinks));
 	}
 	
 	/** Starts a new background thread to read from the file and create sample
@@ -207,23 +251,50 @@ public abstract class SamplesSource {
 	}
 	
 	/** This method should be called by the parseLine method to send samples to all registered
-	 * listeners.
+	 * listeners. Note: When integer sinks have been registered, the double values will be truncated
+	 * for sending to these listeners!
 	 * @param sample The current sample.
 	 */
 	protected void emitSample(double[] sample) {
 		if (logger.isDebugEnabled()) 
 			for (int i=0; i<maxNumLines; i++)
-				logger.debug("Sample number " + numSamples +  
+				logger.debug("Double sample number " + numSamples +  
 						", line " + i + " = " + sample[i]);
     	if (listeners != null)
     		for (int j=0; j<listeners.size(); j++) {
     			ListenerCombination l = (ListenerCombination) listeners.elementAt(j);
-    			for (int i=0; i<l.lines.length; i++)
-    				l.sinks[i].addSample(sample[l.lines[i]], numSamples);
+				if (l.doubleSinks != null)
+					for (int i=0; i<l.lines.length; i++)
+    					l.doubleSinks[i].addSample(sample[l.lines[i]], numSamples);
+   				if (l.intSinks != null)
+					for (int i=0; i<l.lines.length; i++)
+    					l.intSinks[i].addSample((int) sample[l.lines[i]], numSamples);
     		}
 		numSamples++;
 	}
 
+	/** This method should be called by the parseLine method to send samples to all registered
+	 * listeners. 
+	 * @param sample The current sample.
+	 */
+	protected void emitSample(int[] sample) {
+		if (logger.isDebugEnabled()) 
+			for (int i=0; i<maxNumLines; i++)
+				logger.debug("Integer sample number " + numSamples +  
+						", line " + i + " = " + sample[i]);
+    	if (listeners != null)
+    		for (int j=0; j<listeners.size(); j++) {
+    			ListenerCombination l = (ListenerCombination) listeners.elementAt(j);
+				if (l.doubleSinks != null)
+					for (int i=0; i<l.lines.length; i++)
+    					l.doubleSinks[i].addSample(sample[l.lines[i]], numSamples);
+   				if (l.intSinks != null)
+					for (int i=0; i<l.lines.length; i++)
+    					l.intSinks[i].addSample(sample[l.lines[i]], numSamples);
+    		}
+		numSamples++;
+	}
+	
 	/** This is a helper class that implements the Runnable interface internally. This way, one <b>has</b> to use the
 	 * start and stop methods of the outer class to start the thread, which is cleaner from an interface point of view.
 	 */

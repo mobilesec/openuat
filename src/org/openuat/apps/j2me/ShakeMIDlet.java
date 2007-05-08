@@ -24,7 +24,7 @@ import net.sf.microlog.util.GlobalProperties;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.sensors.SamplesSink;
+import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
@@ -89,7 +89,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		
 		try {
 			reader = new SymbianTCPAccelerometerReader(8101);
-			reader.addSink(new int[] {0,1,2}, new SamplesSink[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
+			reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
 			reader.start();
 		} catch (IOException e) {
 			logger.error("Error initializing sensor socket: " + e);
@@ -184,12 +184,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	private double[] samples = new double[3];
 	
-	private class SamplesHandler implements SamplesSink {
+	private class SamplesHandler implements SamplesSink_Int {
 		private int dim;
 		
 		SamplesHandler(int dim) {this.dim = dim;}
 	
-	public void addSample(double sample, int index) {
+	public void addSample(int sample, int index) {
 		samples[dim] = sample;
 		if (dim == 2) {
 		try {

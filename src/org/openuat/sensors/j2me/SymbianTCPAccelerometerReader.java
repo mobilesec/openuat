@@ -29,13 +29,32 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.j2me.SymbianTCPAccelerometerReader" /*SymbianTCPAccelerometerReader.class*/);
 
-	/** The TCP port used for connecting to the sensor wrapper. */
-	private int port;
-	
+	/** This holds the server socket listening for incoming connections from
+	 * the Symbian Sensor API wrapper.
+	 */
 	private ServerSocketConnection server = null;
 
+	/** When the connection to the Symbian Sensor API wrapper has been opened
+	 * successfully, this contains the connection object.
+	 */
 	private StreamConnection sensorConnector = null;
+	/** When the connection to the Symbian Sensor API wrapper has been opened
+	 * successfully, this contains the input stream object.
+	 * <br>
+	 * Note: Whenever changing the connection object sensorConnecter, this
+	 * one <b>must</b> be changed as well (e.g. opening or closing).
+	 * handleSample will read from it.
+	 * 
+	 * @see #handleSample
+	 */
 	private DataInputStream sensorDataIn = null;
+	
+	/** This is a buffer for reading from sensorDataIn that is kept as a 
+	 * member variable instead of locally in the method for performance 
+	 * reasons.
+	 * 
+	 * @see #handleSample
+	 */ 
 	private byte[] bytes = new byte[7];
 	
 	/** Initializes the reader.
@@ -49,10 +68,12 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 		 * possible (read is blocking anyway). */
 		super(3, 0);
 		
-		this.port = port;
 		server =  (ServerSocketConnection)Connector.open("socket://:" + port);
 	}
 	
+	/** This overrides the SamplesSource.stop implementation to also properly
+	 * close all resources the may be in use (the sockets).
+	 */
 	public void stop() {
 		try {
 			// properly close all resources
@@ -69,6 +90,12 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 		super.stop();
 	}
 
+	/** Implementation of SamplesSource.handleSample. When the connection has 
+	 * not yet been established by the Symbian Sensor API wrapper, then this
+	 * method will block until an incoming connection has been established.
+	 * Then, and on all further calls, it will read the samples from 
+	 * sensorDataIn and call emitSample to send to listeners.
+	 */
 	protected boolean handleSample() {
 		if (sensorConnector == null) {
 			logger.debug("Waiting for sensor to connect...");
@@ -97,7 +124,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 			z |= bytes[5] & 0xFF;
 			int zzz = z-2050;
 			
-			emitSample(new double[] {xxx, yyy, zzz});
+			emitSample(new int[] {xxx, yyy, zzz});
 		} catch (IOException e) {
 			logger.warn("Unable to read from socket, closing and waiting for next connection: " + e);
 			try {
@@ -115,5 +142,4 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 
 		return true;
 	}
-
 }

@@ -406,6 +406,7 @@
 		<copy todir="${build.midp.temp}" failonerror="true">
 			<fileset dir="${src}" includes="org/openuat/apps/j2me/ShakeMIDlet.java
 				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
+				org/openuat/sensors/SamplesSink_Int.java
 				org/openuat/sensors/j2me/SymbianTCPAccelerometerReader.java" />
 		</copy>
 		<j2mepolish>
