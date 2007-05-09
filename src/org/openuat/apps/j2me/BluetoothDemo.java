@@ -9,6 +9,7 @@
 package org.openuat.apps.j2me;
 
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Vector;
 
 import javax.microedition.midlet.*;
@@ -22,13 +23,15 @@ import net.sf.microlog.ui.LogForm;
 import net.sf.microlog.util.GlobalProperties;
 
 import org.apache.log4j.Logger;
+import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
+import org.openuat.util.RemoteConnection;
 
 public class BluetoothDemo extends MIDlet implements CommandListener,
-		BluetoothPeerManager.PeerEventsListener {
+		BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler {
 	List main_list;
 
 	List dev_list;
@@ -77,7 +80,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		}
 
 		try {
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", false, false);
+			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "J2ME Test Service", true, false);
+			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.startListening();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
@@ -199,5 +203,30 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			} catch (Exception e) {
 				do_alert("Error in adding services ", 1000);
 			}
+	}
+
+	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+	}
+
+	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+	}
+
+	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+		logger.info("Successful authentication");
+        Object[] res = (Object[]) result;
+        // remember the secret key shared with the other device
+        byte[] sharedKey = (byte[]) res[0];
+        // and extract the shared authentication key for phase 2
+        byte[] authKey = (byte[]) res[1];
+        // then extraxt the optional parameter
+        String param = (String) res[2];
+        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
+        try {
+        	OutputStreamWriter toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());
+       		toRemote.write("Finished DH key agreement - now start to verify\n");
+       		toRemote.flush();
+		} catch (IOException e) {
+			logger.debug("Unable to open stream to remote: " + e);
+		}
 	}
 }
