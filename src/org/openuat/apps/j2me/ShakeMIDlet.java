@@ -87,13 +87,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 		
-		try {
-			reader = new SymbianTCPAccelerometerReader(8101);
-			reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
-			reader.start();
-		} catch (IOException e) {
-			logger.error("Error initializing sensor socket: " + e);
-		}
+		reader = new SymbianTCPAccelerometerReader();
+		reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
+		reader.start();
 		
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
 			exit = new Command("Exit", Command.EXIT, 1);
@@ -192,15 +188,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 	public void addSample(int sample, int index) {
 		samples[dim] = sample;
 		if (dim == 2) {
-		try {
-			//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
-			if (toRemote != null) {
-				toRemote.write(String.valueOf(samples[0])+"\t"+String.valueOf(samples[1])+"\t"+String.valueOf(samples[2]) + "\n");
-				toRemote.flush();
+			try {
+				//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
+				if (toRemote != null) {
+					toRemote.write(String.valueOf(samples[0])+"\t"+String.valueOf(samples[1])+"\t"+String.valueOf(samples[2]) + "\n");
+					toRemote.flush();
+				}
+			} catch (IOException e) {
+				logger.error("Error sending samples to RFCOMM channel, dropping connection: " + e);
+				toRemote = null;
 			}
-		} catch (IOException e) {
-			logger.error("Error setting up or reading from sensor TCP socket: " + e);
-		}
 		}
 	}
 

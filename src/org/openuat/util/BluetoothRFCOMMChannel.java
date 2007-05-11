@@ -361,7 +361,7 @@ btspp://0001234567AB:3
 	        		", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
 	        		"' with length " + authKey.length);
 	        // then extraxt the optional parameter
-	        String param = (String) res[2];
+	        //String param = (String) res[2];
 	        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
 			
 	        InputStream i;
