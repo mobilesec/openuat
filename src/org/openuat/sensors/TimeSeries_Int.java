@@ -1,5 +1,5 @@
 /* Copyright Rene Mayrhofer
- * File created 2006-04-28
+ * File created 2007-05-12
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -16,42 +16,45 @@ import org.apache.log4j.Logger;
  * sensor. It computes simply statistical values, can distinguish active from
  * passive segments, and offers some convenience methods.
  * 
+ * In contrast to the TimeSeries class, this one uses int values for 
+ * samples, and is thus better suited for resource limited scenarios like J2ME.
+ * 
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class TimeSeries implements SamplesSink {
+public class TimeSeries_Int implements SamplesSink_Int {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries" /*TimeSeries.class*/);
+	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries_Int" /*TimeSeries_Int.class*/);
 
 	/** This is the internal circular buffer used to hold the values inside the time window. */
-	private double[] circularBuffer;
+	private int[] circularBuffer;
 	/** The current position inside the circular buffer. This marks the position where the next sample will be written to. */
 	private int index = 0;
 	/** This is a boolean because once filled, we never expect it to be contain less elements again. So using a boolean, the checking is faster.*/
 	private boolean full = false;
 	
 	/** Keeps a running total sum over all samples added to this time series so far (not only the current time window). */
-	private double totalSum = 0;
+	private int totalSum = 0;
 	/** Keeps a running total sum over all squared samples added to this time series so far (not only the current time window). */
-	private double totalSum2 = 0;
+	private int totalSum2 = 0;
 	/** The number of samples added to this time series so far (not only the current time window). */
 	private int totalNum = 0;
 	
 	/** Keeps a running sum over all samples pf the current time window. */
-	private double windowSum = 0;
+	private int windowSum = 0;
 	/** Keeps a running sum over all squared samples pf the current time window. */
-	private double windowSum2 = 0;
+	private int windowSum2 = 0;
 
 	/** This offset is added to all sample values before passing them on to the next stage.
-	 * @see #setOffset(double)
+	 * @see #setOffset(int)
 	 * @see #getOffset() 
 	 */
-	private double offset = 0;
+	private int offset = 0;
 	/** All sample values are multiplied with this factor before passing them on to the next stage.
-	 * @see #setOffset(double)
+	 * @see #setOffset(int)
 	 * @see #getOffset() 
 	 */
-	private double multiplicator = 1.0f;
+	private int multiplicator = 1;
 	/** If set to true, the window mean will be subtracted before passing a sample on to the next stage.
 	 * @see #setSubtractWindowMean(boolean)
 	 * @see #getSubtractWindowMean()
@@ -65,8 +68,8 @@ public class TimeSeries implements SamplesSink {
 	
 	/** Holds the "listeners" for samples in the next stage, i.e. after filtering by
 	 * this object.
-	 * @see #addNextStageSink(SamplesSink)
-	 * @see #removeSink(SamplesSink)
+	 * @see #addNextStageSink(SamplesSink_Int)
+	 * @see #removeSink(SamplesSink_Int)
 	 */
 	private Vector nextStageSinks = new Vector();
 	
@@ -74,7 +77,7 @@ public class TimeSeries implements SamplesSink {
 	 * detection of active segments (and thus calculation of the variance) will be
 	 * done.
 	 */ 
-	private double activeVarianceThreshold = 0;
+	private int activeVarianceThreshold = 0;
 	
 	/** true if the current segment has previously been detected to be active, falls if
 	 * previously detected to be quiescent.
@@ -86,12 +89,12 @@ public class TimeSeries implements SamplesSink {
 	 * @param windowSize Specifies the number of past samples kept in memory and used for
 	 *                   computing the window mean and variance.
 	 */
-	public TimeSeries(int windowSize) {
+	public TimeSeries_Int(int windowSize) {
 		if (windowSize <= 0) {
 			throw new IllegalArgumentException("Window size must by > 0");
 		}
 
-		circularBuffer = new double[windowSize];
+		circularBuffer = new int[windowSize];
 	}
 	
 	/** Resets the time series to the state as created when freshly constructing it. 
@@ -116,7 +119,7 @@ public class TimeSeries implements SamplesSink {
 	 *              that all samples are received and no duplicates happen. index is assumed
 	 *              to start at 0.
 	 */
-	public void addSample(double sample, int sampleNum) {
+	public void addSample(int sample, int sampleNum) {
 		if (sampleNum != totalNum) {
 			logger.warn("Sample index " + sampleNum + " does not correspond to number of samples already received "
 					+ "(" + totalNum + ")");
@@ -144,7 +147,7 @@ public class TimeSeries implements SamplesSink {
 		
 		// Now that this time series buffer has been updated, notify next stage.
 		// But optionally pre-process our values before forwarding them.
-		double nextStageSample = sample;
+		int nextStageSample = sample;
 		// first subtract mean (because that is in the same value range as the "raw" values)
 		if (subtractWindowMean)
 			nextStageSample -= getWindowMean();
@@ -156,7 +159,7 @@ public class TimeSeries implements SamplesSink {
 			logger.trace("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
     		for (int i=0; i<nextStageSinks.size(); i++) {
-    			SamplesSink s = (SamplesSink) nextStageSinks.elementAt(i);
+    			SamplesSink_Int s = (SamplesSink_Int) nextStageSinks.elementAt(i);
     			s.addSample(nextStageSample, sampleNum);
     		}
 		
@@ -170,7 +173,7 @@ public class TimeSeries implements SamplesSink {
     		isActive = true;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
-        			SamplesSink s = (SamplesSink) nextStageSinks.elementAt(i);
+        			SamplesSink_Int s = (SamplesSink_Int) nextStageSinks.elementAt(i);
         			// we define the active segment to start at the end of an active window
         			s.segmentStart(sampleNum);
         		}
@@ -181,19 +184,19 @@ public class TimeSeries implements SamplesSink {
     		isActive = false;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
-        			SamplesSink s = (SamplesSink) nextStageSinks.elementAt(i);
+        			SamplesSink_Int s = (SamplesSink_Int) nextStageSinks.elementAt(i);
         			// and to end at the beginning of a quiescent window
         			s.segmentEnd(sampleNum-circularBuffer.length+1);
         		}
     	}
 	}
 	
-	/** Dummy implementation of SamplesSink.segmentStart. Does nothing. */
+	/** Dummy implementation of SamplesSink_Int.segmentStart. Does nothing. */
 	public void segmentStart(int index) {
 		logger.warn("segmentStart method of TimeSeries called. This should not happen");
 	}
 
-	/** Dummy implementation of SamplesSink.segmentEnd. Does nothing. */
+	/** Dummy implementation of SamplesSink_Int.segmentEnd. Does nothing. */
 	public void segmentEnd(int index) {
 		logger.warn("segmentEnd method of TimeSeries called. This should not happen");
 	}
@@ -202,7 +205,7 @@ public class TimeSeries implements SamplesSink {
 	 * 
 	 * @param sink The sink to push new pre-processed samples to.
 	 */
-	public void addNextStageSink(SamplesSink sink) {
+	public void addNextStageSink(SamplesSink_Int sink) {
 		nextStageSinks.addElement(sink);
 	}
 
@@ -211,12 +214,12 @@ public class TimeSeries implements SamplesSink {
 	 * @param sink The sink to stop pushing samples to.
 	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
-	public boolean removeSink(SamplesSink sink) {
+	public boolean removeSink(SamplesSink_Int sink) {
 		return nextStageSinks.removeElement(sink);
 	}
 	
 	/** Helper method for computing the arithmetical average, i.e. the mean. */
-	private static double getMean(double sum, int num) {
+	private static int getMean(int sum, int num) {
 		if (num > 0)
 			return sum / num;
 		else
@@ -224,7 +227,7 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Helper method for computing the variance. */
-	private static double getVariance(double sum, double sum2, int num) {
+	private static int getVariance(int sum, int sum2, int num) {
 		if (num > 1) {
 			//return (sum2 - 2*sum*sum/num + sum*sum/num) / (num -1);
 			return (sum2 - sum*sum/num) / (num -1);
@@ -234,31 +237,31 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Returns the mean over all values added to this time series since its construction. */
-	public double getTotalMean() {
+	public int getTotalMean() {
 		return getMean(totalSum, totalNum);
 	}
 	
 	/** Returns the variance over all values added to this time series since its construction. */
-	public double getTotalVariance() {
+	public int getTotalVariance() {
 		return getVariance(totalSum, totalSum2, totalNum);
 	}
 
 	/** Returns the mean over all values in the time series buffer, i.e. the last window size samples. */
-	public double getWindowMean() {
+	public int getWindowMean() {
 		return getMean(windowSum, full ? circularBuffer.length : index);
 	}
 	
 	/** Returns the variance over all values in the time series buffer, i.e. the last window size samples. */
-	public double getWindowVariance() {
+	public int getWindowVariance() {
 		return getVariance(windowSum, windowSum2, full ? circularBuffer.length : index); 
 	}
 	
 	/** Returns all samples currently contained in the time window. */
-	public double[] getSamplesInWindow() {
+	public int[] getSamplesInWindow() {
 		// TODO: this can be optimized with 2 System.ArrayCopy calls
 		int startInd = full ? index : 0;
 		int num = full ? circularBuffer.length : index;
-		double[] ret = new double[num];
+		int[] ret = new int[num];
 		
 		for (int i=0; i<num; i++)
 			ret[i] = circularBuffer[(startInd+i)%circularBuffer.length];
@@ -270,7 +273,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #offset
 	 * @return The current value of offset.
 	 */
-	public double getOffset() {
+	public int getOffset() {
 		return offset;
 	}
 	
@@ -278,7 +281,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #offset
 	 * @param offset The current value of offset.
 	 */
-	public void setOffset(double offset) {
+	public void setOffset(int offset) {
 		this.offset = offset;
 	}
 	
@@ -286,7 +289,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #multiplicator
 	 * @return The current value of multiplicator.
 	 */
-	public double getMultiplicator() {
+	public int getMultiplicator() {
 		return multiplicator;
 	}
 	
@@ -294,7 +297,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #multiplicator
 	 * @param multiplicator The current value of multiplicator.
 	 */
-	public void setMultiplicator(double multiplicator) {
+	public void setMultiplicator(int multiplicator) {
 		this.multiplicator = multiplicator;
 	}
 	
@@ -342,7 +345,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #activeVarianceThreshold
 	 * @return The current value of activeVarianceThreshold.
 	 */
-	public double getActiveVarianceThreshold() {
+	public int getActiveVarianceThreshold() {
 		return activeVarianceThreshold;
 	}
 
@@ -350,7 +353,7 @@ public class TimeSeries implements SamplesSink {
 	 * @see #activeVarianceThreshold
 	 * @param activeVarianceThreshold The current value of activeVarianceThreshold.
 	 */
-	public void setActiveVarianceThreshold(double activeVarianceThreshold) {
+	public void setActiveVarianceThreshold(int activeVarianceThreshold) {
 		this.activeVarianceThreshold = activeVarianceThreshold;
 	}
 	

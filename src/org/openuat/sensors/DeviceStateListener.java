@@ -22,7 +22,7 @@ import org.apache.log4j.Logger;
  */
 public abstract class DeviceStateListener {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(DeviceStateListener.class);
+	private static Logger logger = Logger.getLogger("org.openuat.sensors.DeviceStateListener" /*DeviceStateListener.class*/);
 
 	/** Used to remember which of the lines are currently active. */
 	private boolean[] lineActive;
@@ -51,7 +51,16 @@ public abstract class DeviceStateListener {
 	public SamplesSink[] getSinks() {
 		return lineListeners;
 	}
-	
+
+	/** Returns an array of SampleSink_Int implementations that can be registered
+	 * with the respective source of sample events.
+	 * @return An array of SampleSink objects with length numLines as passed to
+	 *         the constructor.
+	 */
+	public SamplesSink_Int[] getSinks_Int() {
+		return lineListeners;
+	}
+
 	/** Resets the time series to the state as created when freshly constructing it (i.e. quiescent). */
 	public void reset() {
 		for (int i=0; i<lineActive.length; i++)
@@ -86,6 +95,17 @@ public abstract class DeviceStateListener {
 	 */
 	protected abstract void sampleAdded(int lineIndex, double sample, int numSample);
 
+	/** This method will be called when a new sample is received.
+	 * 
+	 * This uses integer samples and is called when DeviceStateListener is
+	 * used as a SamplesSink_Int.
+	 * 
+	 * @param lineIndex The line/time series that received the sample.
+	 * @param sample The sample value.
+	 * @param numSample The number of the sample within the time series.
+	 */
+	protected abstract void sampleAdded(int lineIndex, int sample, int numSample);
+
 	/** A helper function to check if the whole, multi-dimensional segment is active.
 	 * 
 	 * @return True when any of the dimensions is active, i.e. when at least one of 
@@ -99,7 +119,7 @@ public abstract class DeviceStateListener {
 	}
 
 	/** This is a helper class for listening to the sample events. */
-	private class TimeSeriesEventListener implements SamplesSink {
+	private class TimeSeriesEventListener implements SamplesSink, SamplesSink_Int {
 		/** The line index in @see #lineActive that this object is responsible for. */
 		int lineIndex;
 	
@@ -110,6 +130,11 @@ public abstract class DeviceStateListener {
 	
 		/** Empty implementation of the SamplesSink method. Does nothing. */
 		public void addSample(double sample, int index) {
+			sampleAdded(lineIndex, sample, index);
+		}
+
+		/** Empty implementation of the SamplesSink_Int method. Does nothing. */
+		public void addSample(int sample, int index) {
 			sampleAdded(lineIndex, sample, index);
 		}
 
