@@ -32,7 +32,7 @@ import org.apache.log4j.Logger;
  */
 public class Coherence {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(Coherence.class);
+	private static Logger logger = Logger.getLogger("org.openuat.features.Coherence" /*Coherence.class*/);
 	
 	/** This is a small helper function to compute how many slices will be used. */
 	public static int getNumSlices(int signalLength, int windowsize, int overlap) {

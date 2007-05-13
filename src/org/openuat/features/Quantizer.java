@@ -21,7 +21,7 @@ import org.apache.log4j.Logger;
  */
 public class Quantizer {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(Quantizer.class);
+	private static Logger logger = Logger.getLogger("org.openuat.features.Quantizer" /*Quantizer.class*/);
 
 	/** Quantifies a signal according to the parameters. Every value of the
 	 * input vector is quantized independently.

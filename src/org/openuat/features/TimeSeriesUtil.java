@@ -17,7 +17,7 @@ import org.apache.log4j.Logger;
  */
 public class TimeSeriesUtil {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(TimeSeriesUtil.class);
+	private static Logger logger = Logger.getLogger("org.openuat.features.TimeSeriesUtil" /*TimeSeriesUtil.class*/);
 
 	/** This method equalizes the length of two time series segments by cutting
 	 * the longer to the length of the shorter.
