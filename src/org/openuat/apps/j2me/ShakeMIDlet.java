@@ -11,6 +11,11 @@ package org.openuat.apps.j2me;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+import javax.microedition.media.Control;
+import javax.microedition.media.Manager;
+import javax.microedition.media.MediaException;
+import javax.microedition.media.Player;
+import javax.microedition.media.control.VolumeControl;
 import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
 import javax.bluetooth.*;
@@ -23,8 +28,11 @@ import net.sf.microlog.util.GlobalProperties;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
+import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.sensors.SamplesSink_Int;
+import org.openuat.sensors.SegmentsSink_Int;
+import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
@@ -49,9 +57,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 	Logger logger = Logger.getLogger("");
 
 	SymbianTCPAccelerometerReader reader;
+	TimeSeriesAggregator aggregator;
 	
 	RemoteConnection connectionToRemote = null;
 	OutputStreamWriter toRemote = null;
+	
+	// this is used for controlling the volume
+	Player player;
+	VolumeControl volumeControl;
 	
 	public ShakeMIDlet() {
 		display = Display.getDisplay(this);
@@ -72,6 +85,22 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		logBackend.setLogLevel(Level.INFO);
 		logger.info("Microlog initialized");
 		
+		// need to get the player and volumeControl objects
+		try {
+			/* InputStream is = getClass().getResourceAsStream("/your.mp3");
+			player = Manager.createPlayer(is,"audio/mpeg");*/
+			player = Manager.createPlayer(Manager.TONE_DEVICE_LOCATOR);
+			player.realize();
+			/*player.setLoopCount(-1);
+			player.prefetch();
+			player.start();*/
+			volumeControl = (VolumeControl) player.getControl("VolumeControl");
+		} catch (IOException e) {
+			logger.error("Unable to get volume control: " + e);
+		} catch (MediaException e) {
+			logger.error("Unable to get volume control: " + e);
+		}
+		
 		if (! BluetoothSupport.init()) {
 			do_alert("Could not initialize Bluetooth API", Alert.FOREVER);
 			return;
@@ -88,7 +117,18 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		}
 		
 		reader = new SymbianTCPAccelerometerReader();
+		// this is a test/debug sink to stream the values across Bluetooth
 		reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
+		// this is the "proper" sink
+		aggregator = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, 
+				MotionAuthenticationParameters.coherenceSegmentSize, 
+				MotionAuthenticationParameters.coherenceSegmentSize);
+		aggregator.setOffset(-100);
+		aggregator.setSubtractTotalMean(true);
+		// the integer TimeSeriesAggregator part does _not_ take the square roots when computing the magnitudes, so expect to square the threshold as well
+		aggregator.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold*
+				MotionAuthenticationParameters.activityVarianceThreshold);
+		reader.addSink(new int[] {0, 1, 2}, aggregator.getInitialSinks_Int());
 		reader.start();
 		
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
@@ -159,6 +199,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 	
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 		toRemote = null;
+		// indicate progress in the first phase
+		// min 0, max 100
+		//volumeControl.setLevel(30);
+		try {
+			Manager.playTone(60, 300, 30);
+		} catch (MediaException e) {
+			logger.error("Unable to play tone");
+		}
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
@@ -173,6 +221,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
         connectionToRemote = (RemoteConnection) res[3];
         try {
 			toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());
+			
+			// finished DH and connected to the remote
+			Display.getDisplay(this).vibrate(800); // for 800ms
 		} catch (IOException e) {
 			logger.debug("Unable to open stream to remote: " + e);
 		}
@@ -206,5 +257,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	public void segmentStart(int index) {
 	}
+	}
+	
+	private class SegmentsHandler implements SegmentsSink_Int {
+
+		public void addSegment(int[] segment, int startIndex) {
+		}
+		
 	}
 }

@@ -208,7 +208,8 @@ public class TimeSeriesAggregator {
 					magnitude += curSample_Int[i] * curSample_Int[i];
 					curSampleReceived[i] = false;
 				}
-				magnitude = (int) Math.sqrt(magnitude);
+				// TODO: verify if this is doing the correct thing!
+				//magnitude = (int) Math.sqrt(magnitude);
 				aggregatedSeries_Int.addElement(new Integer(magnitude));
 
 				/* this is inside an active segment, so also forward the samples 
@@ -368,6 +369,14 @@ public class TimeSeriesAggregator {
 	 */
 	public SamplesSink[] getInitialSinks() {
 		return firstStageSeries;
+	}
+	
+	/** Returns the first stage sink objects that can be registered with the samples source.
+	 * 
+	 * @return The sink objects to be registered.
+	 */
+	public SamplesSink_Int[] getInitialSinks_Int() {
+		return firstStageSeries_Int;
 	}
 	
 	/** Sets the offset for all internally kept time series.

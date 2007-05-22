@@ -219,10 +219,10 @@ public class FPIntFFT {
 				/* variable scaling, depending upon data */
 				shift = false;
 				for (i=0; i<n; ++i) {
-					j = fr[i];
+					j = fr[i+off_fr];
 					if (j < 0)
 						j = -j;
-					m = fi[i];
+					m = fi[i+off_fi];
 					if (m < 0)
 						m = (short) -m;
 					if (j > 16383 || m > 16383) {
@@ -260,18 +260,18 @@ public class FPIntFFT {
 				}
 				for (i=m; i<n; i+=istep) {
 					j = i + l;
-					tr = (short) (FIX_MPY(wr,fr[j]) - FIX_MPY(wi,fi[j]));
-					ti = (short) (FIX_MPY(wr,fi[j]) + FIX_MPY(wi,fr[j]));
-					qr = fr[i];
-					qi = fi[i];
+					tr = (short) (FIX_MPY(wr,fr[j+off_fr]) - FIX_MPY(wi,fi[j+off_fi]));
+					ti = (short) (FIX_MPY(wr,fi[j+off_fi]) + FIX_MPY(wi,fr[j+off_fr]));
+					qr = fr[i+off_fr];
+					qi = fi[i+off_fi];
 					if (shift) {
 						qr >>= 1;
 						qi >>= 1;
 					}
-					fr[j] = (short) (qr - tr);
-					fi[j] = (short) (qi - ti);
-					fr[i] = (short) (qr + tr);
-					fi[i] = (short) (qi + ti);
+					fr[j+off_fr] = (short) (qr - tr);
+					fi[j+off_fi] = (short) (qi - ti);
+					fr[i+off_fr] = (short) (qr + tr);
+					fi[i+off_fi] = (short) (qi + ti);
 				}
 			}
 			--k;
