@@ -51,9 +51,14 @@ public class TimeSeriesAggregator {
 			/* one of the time series just became active when no one was before 
 			 * --> start of active segment, start aggregating
 			 */
+//#if cfg.haveFloatSupport
 			aggregatedSeries = new Vector();
+//#endif
+			// start aggregating into the array
+			aggregatedSeriesIndex_Int = 0;
 
 			// also forward this event to the sample listeners
+//#if cfg.haveFloatSupport
 			if (samplesSinks != null) {
 				logger.debug("Forwarding segment start event to " + samplesSinks.size() + " registered sinks");
 				for (int i=0; i<samplesSinks.size(); i++) {
@@ -61,6 +66,7 @@ public class TimeSeriesAggregator {
 					s.segmentStart(numSample);
 				}			
 			}
+//#endif			
 			if (samplesSinks_Int != null) {
 				for (int i=0; i<samplesSinks_Int.size(); i++) {
 					SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
@@ -82,6 +88,7 @@ public class TimeSeriesAggregator {
 			/* the last time series just became quiescent when at least one was active before 
 			 * --> end of active segment, forward the complete segment
 			 */
+//#if cfg.haveFloatSupport
 			if (aggregatedSeries != null && aggregatedSeries.size() > windowSize) {
 				if (aggregatedSeries.size()-windowSize >= minSegmentSize) {
 					double[] segment = new double[aggregatedSeries.size()-windowSize];
@@ -89,7 +96,7 @@ public class TimeSeriesAggregator {
 						segment[i] = ((Double) aggregatedSeries.elementAt(i)).doubleValue();
 					if (segmentsSinks != null) {
 						logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
-						for (int i=0; i<samplesSinks.size(); i++) {
+						for (int i=0; i<segmentsSinks.size(); i++) {
 							SegmentsSink s = (SegmentsSink) segmentsSinks.elementAt(i);
 							s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
 						}			
@@ -107,47 +114,52 @@ public class TimeSeriesAggregator {
 				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
 
 			aggregatedSeries = null;
-
-			if (aggregatedSeries_Int != null && aggregatedSeries_Int.size() > windowSize) {
-				if (aggregatedSeries_Int.size()-windowSize >= minSegmentSize) {
-					int[] segment = new int[aggregatedSeries_Int.size()-windowSize];
-					for (int i=0; i<aggregatedSeries_Int.size()-windowSize; i++)
-						segment[i] = ((Integer) aggregatedSeries_Int.elementAt(i)).intValue();
+//#endif
+			
+			if (aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && aggregatedSeriesIndex_Int > windowSize) {
+				if (aggregatedSeriesIndex_Int-windowSize >= minSegmentSize) {
+					int[] segment = new int[aggregatedSeriesIndex_Int-windowSize];
+					System.arraycopy(aggregatedSeries_Int, 0, segment, 0, aggregatedSeriesIndex_Int-windowSize);
 					if (segmentsSinks_Int != null) {
 						logger.debug("Forwarding segment to " + segmentsSinks_Int.size() + " registered sinks");
-						for (int i=0; i<samplesSinks_Int.size(); i++) {
+						for (int i=0; i<segmentsSinks_Int.size(); i++) {
 							SegmentsSink_Int s = (SegmentsSink_Int) segmentsSinks_Int.elementAt(i);
-							s.addSegment(segment, curSampleIndex-aggregatedSeries_Int.size());
+							s.addSegment(segment, curSampleIndex-aggregatedSeriesIndex_Int);
 						}			
 						logger.debug("Finished forwarding segment to sinks");
 					}
 				}
 				else
-					logger.info("Active segment with " + aggregatedSeries_Int.size() +
+					logger.info("Active segment with " + aggregatedSeriesIndex_Int +
 							" samples is too short, not forwarding");
 			}
-			else if (aggregatedSeries_Int != null)
+			else if (aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0)
 				logger.info("Detected segment that is smaller than the window size (" +
-						aggregatedSeries_Int.size() + " <= " + windowSize + ", ignoring");
+						aggregatedSeriesIndex_Int + " <= " + windowSize + ", ignoring");
 			else
 				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
 
-			aggregatedSeries_Int = null;
+			// stop aggregating
+			aggregatedSeriesIndex_Int = -1;
 
-			// also forward this event to the sample listeners
-			if (samplesSinks != null) {
-				logger.debug("Forwarding segment end event to " + samplesSinks.size() + " registered sinks");
-				for (int i=0; i<samplesSinks.size(); i++) {
-					SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
-					s.segmentEnd(numSample);
+			// also forward this event to the sample listeners - but only if it was a genuine event and not called from addSample!
+			if (lineIndex != -1) {
+//#if cfg.haveFloatSupport
+				if (samplesSinks != null) {
+					logger.debug("Forwarding segment end event to " + samplesSinks.size() + " registered sinks");
+					for (int i=0; i<samplesSinks.size(); i++) {
+						SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
+						s.segmentEnd(numSample);
+					}
 				}
-			}
-			if (samplesSinks_Int != null) {
-				logger.debug("Forwarding segment end event to " + samplesSinks_Int.size() + " registered sinks");
-				for (int i=0; i<samplesSinks_Int.size(); i++) {
-					SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
-					s.segmentEnd(numSample);
-				}			
+//#endif			
+				if (samplesSinks_Int != null) {
+					logger.debug("Forwarding segment end event to " + samplesSinks_Int.size() + " registered sinks");
+					for (int i=0; i<samplesSinks_Int.size(); i++) {
+						SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
+						s.segmentEnd(numSample);
+					}
+				}
 			}
 		}
 		
@@ -159,6 +171,7 @@ public class TimeSeriesAggregator {
 		 * @see TimeSeriesAggregator#curSampleReceived is reset when all sample dimensions are complete and have been aggregated
 		 */
 		protected void sampleAdded(int lineIndex, double sample, int numSample) {
+//#if cfg.haveFloatSupport
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
 			curSample[lineIndex] = sample;
 			curSampleReceived[lineIndex] = true;
@@ -194,13 +207,14 @@ public class TimeSeriesAggregator {
 					toQuiescent(-1, numSample);
 				}
 			}
+//#endif			
 		}
 		protected void sampleAdded(int lineIndex, int sample, int numSample) {
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
 			curSample_Int[lineIndex] = sample;
 			curSampleReceived[lineIndex] = true;
 			// if currently active, aggregatedSeries will be set
-			if (aggregatedSeries_Int != null && isCurSampleComplete()) {
+			if (aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && isCurSampleComplete()) {
 				// this time step is now complete, so immediately aggregate
 				curSampleIndex = numSample;
 				int magnitude = 0;
@@ -210,7 +224,10 @@ public class TimeSeriesAggregator {
 				}
 				// TODO: verify if this is doing the correct thing!
 				//magnitude = (int) Math.sqrt(magnitude);
-				aggregatedSeries_Int.addElement(new Integer(magnitude));
+				if (aggregatedSeriesIndex_Int < maxSegmentSize+windowSize)
+					aggregatedSeries_Int[aggregatedSeriesIndex_Int++] = magnitude;
+				else
+					logger.warn("Want to write more active samples than segment size. This should not happen!");
 
 				/* this is inside an active segment, so also forward the samples 
 				 * immediately to all registered listeners
@@ -225,8 +242,8 @@ public class TimeSeriesAggregator {
 				
 				/* and also check if the maximum segment size has been reached */
 				// need to subtract windowSize, because the segment will be shortened in toQuiescent
-				if (maxSegmentSize != -1 && aggregatedSeries_Int.size()-windowSize == maxSegmentSize) {
-					logger.debug("Active segment with " + aggregatedSeries_Int.size() +
+				if (maxSegmentSize != -1 && aggregatedSeriesIndex_Int-windowSize == maxSegmentSize) {
+					logger.debug("Active segment with " + aggregatedSeriesIndex_Int +
 							" samples has reached maximum segment size, forwarding now");
 					// the first parameter is ignored by this toQuiescent implementation
 					toQuiescent(-1, numSample);
@@ -239,7 +256,9 @@ public class TimeSeriesAggregator {
 	 * an initial linear transform of the sample values to [-1;1] and for detecting 
 	 * active/quiescent segments within the single dimensions.
 	 */
+//#if cfg.haveFloatSupport
 	private TimeSeries[] firstStageSeries;
+//#endif
 	/** And the integer version. */
 	private TimeSeries_Int[] firstStageSeries_Int;
 	/** Holds the TimeSeriesSink objects that are registered as sinks with the 
@@ -250,7 +269,9 @@ public class TimeSeriesAggregator {
 	 * dimensions have been received and can thus be aggregated into a new value
 	 * appended to aggregatedSeries.
 	 */
+//#if cfg.haveFloatSupport
 	private double[] curSample;
+//#endif
 	/** And the integer version. */
 	private int[] curSample_Int;
 	/** Used to mark the sample dimensions that have already been received. It is 
@@ -264,8 +285,15 @@ public class TimeSeriesAggregator {
 	/** This holds the current, aggregated segment when currently in active state. If
 	 * in quiescent state, it is set to null;
 	 */
+//#if cfg.haveFloatSupport
 	private Vector aggregatedSeries = null;
-	private Vector aggregatedSeries_Int = null;
+//#endif
+	private int[] aggregatedSeries_Int = null;
+	/** A negative index means that we are not in an active segment and that
+	 * nothing will be written into the (statically allocated) 
+	 * aggregatedSeries_Int array.
+	 */
+	private int aggregatedSeriesIndex_Int = -1;
 	
 	/** This window size as passed to the constructor.
 	 * @see #TimeSeriesAggregator(int, int, int, int)
@@ -285,13 +313,17 @@ public class TimeSeriesAggregator {
 	/** Holds all registered sinks that should receive active, aggregated, completed segments.
 	 * Elements in this list are of type SegmentsSink.
 	 */
+//#if cfg.haveFloatSupport
 	private Vector segmentsSinks;
+//#endif
 	private Vector segmentsSinks_Int;
 	
 	/** Holds all registered sinks that should receive active, aggregated samples.
 	 * Elements in this list are of type SamplesSink. 
 	 */
+//#if cfg.haveFloatSupport
 	private Vector samplesSinks;
+//#endif
 	private Vector samplesSinks_Int;
 	
 	/** Constructs all internal buffers and the time series.
@@ -329,23 +361,39 @@ public class TimeSeriesAggregator {
 		this.minSegmentSize = minSegmentSize;
 		this.maxSegmentSize = maxSegmentSize;
 		
-		curSample = new double[numSeries];
-		curSample_Int = new int[numSeries];
 		curSampleReceived = new boolean[numSeries];
-		firstStageSeries = new TimeSeries[numSeries];
 		firstStageHandlers = new TimeSeriesSinks(numSeries);
+//#if cfg.haveFloatSupport
+		curSample = new double[numSeries];
+		firstStageSeries = new TimeSeries[numSeries];
+//#endif
+		aggregatedSeries_Int = new int[maxSegmentSize+windowSize];
+		curSample_Int = new int[numSeries];
+		firstStageSeries_Int = new TimeSeries_Int[numSeries];
 		for (int i=0; i<numSeries; i++) {
+//#if cfg.haveFloatSupport
 			firstStageSeries[i] = new TimeSeries(windowSize);
 			firstStageSeries[i].addNextStageSink(firstStageHandlers.getSinks()[i]);
+//#endif
+			firstStageSeries_Int[i] = new TimeSeries_Int(windowSize);
+			firstStageSeries_Int[i].addNextStageSink(firstStageHandlers.getSinks_Int()[i]);
 		}
+//#if cfg.haveFloatSupport
 		segmentsSinks = new Vector();
 		samplesSinks = new Vector();
+//#endif
+		segmentsSinks_Int = new Vector();
+		samplesSinks_Int = new Vector();
 	}
 
 	/** Resets the time series to the state as created when freshly constructing it. */
 	public void reset() {
-		for (int i=0; i<firstStageSeries.length; i++) {
+		// note: we use curSampleReceived.length instead of firstStageSeries.length because the latter may not exist...
+		for (int i=0; i<curSampleReceived.length; i++) {
+//#if cfg.haveFloatSupport
 			firstStageSeries[i].reset();
+//#endif
+			firstStageSeries_Int[i].reset();
 		}
 		curSampleIndex = 0;
 		firstStageHandlers.reset();
@@ -367,9 +415,11 @@ public class TimeSeriesAggregator {
 	 * 
 	 * @return The sink objects to be registered.
 	 */
+//#if cfg.haveFloatSupport
 	public SamplesSink[] getInitialSinks() {
 		return firstStageSeries;
 	}
+//#endif
 	
 	/** Returns the first stage sink objects that can be registered with the samples source.
 	 * 
@@ -382,10 +432,12 @@ public class TimeSeriesAggregator {
 	/** Sets the offset for all internally kept time series.
 	 * @see TimeSeries#setOffset(double)
 	 */
+//#if cfg.haveFloatSupport
 	public void setOffset(double offset) {
 		for (int i=0; i<firstStageSeries.length; i++)
 			firstStageSeries[i].setOffset(offset);
 	}
+//#endif
 	public void setOffset(int offset) {
 		for (int i=0; i<firstStageSeries_Int.length; i++)
 			firstStageSeries_Int[i].setOffset(offset);
@@ -394,10 +446,12 @@ public class TimeSeriesAggregator {
 	/** Sets the multiplicator for all internally kept time series.
 	 * @see TimeSeries#setMultiplicator(double)
 	 */
+//#if cfg.haveFloatSupport
 	public void setMultiplicator(double multiplicator) {
 		for (int i=0; i<firstStageSeries.length; i++)
 			firstStageSeries[i].setMultiplicator(multiplicator);
 	}
+//#endif
 	public void setMultiplicator(int multiplicator) {
 		for (int i=0; i<firstStageSeries_Int.length; i++)
 			firstStageSeries_Int[i].setMultiplicator(multiplicator);
@@ -407,25 +461,35 @@ public class TimeSeriesAggregator {
 	 * @see TimeSeries#setSubtractWindowMean(boolean)
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
-		for (int i=0; i<firstStageSeries.length; i++)
+		for (int i=0; i<curSampleReceived.length; i++) {
+//#if cfg.haveFloatSupport
 			firstStageSeries[i].setSubtractWindowMean(subtractWindowMean);
+//#endif
+			firstStageSeries_Int[i].setSubtractWindowMean(subtractWindowMean);
+		}
 	}
 
 	/** Sets the subtractTotalMean for all internally kept time series.
 	 * @see TimeSeries#setSubtractTotalMean(boolean)
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
-		for (int i=0; i<firstStageSeries.length; i++)
+		for (int i=0; i<curSampleReceived.length; i++) {
+//#if cfg.haveFloatSupport
 			firstStageSeries[i].setSubtractTotalMean(subtractTotalMean);
+//#endif
+			firstStageSeries_Int[i].setSubtractTotalMean(subtractTotalMean);
+		}
 	}
 
 	/** Sets the activeVarianceThreshold for all internally kept time series.
 	 * @see TimeSeries#setActiveVarianceThreshold(double)
 	 */
+//#if cfg.haveFloatSupport
 	public void setActiveVarianceThreshold(double activeVarianceThreshold) {
 		for (int i=0; i<firstStageSeries.length; i++)
 			firstStageSeries[i].setActiveVarianceThreshold(activeVarianceThreshold);
 	}
+//#endif
 	public void setActiveVarianceThreshold(int activeVarianceThreshold) {
 		for (int i=0; i<firstStageSeries_Int.length; i++)
 			firstStageSeries_Int[i].setActiveVarianceThreshold(activeVarianceThreshold);
@@ -435,9 +499,11 @@ public class TimeSeriesAggregator {
 	 * 
 	 * @param sink The sink to push new aggregated segments to.
 	 */
+//#if cfg.haveFloatSupport
 	public void addNextStageSegmentsSink(SegmentsSink sink) {
 		segmentsSinks.addElement(sink);
 	}
+//#endif
 	public void addNextStageSegmentsSink_Int(SegmentsSink_Int sink) {
 		segmentsSinks_Int.addElement(sink);
 	}
@@ -447,9 +513,11 @@ public class TimeSeriesAggregator {
 	 * @param sink The sink to stop pushing segments to.
 	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
+//#if cfg.haveFloatSupport
 	public boolean removeNextStageSegmentsSink(SegmentsSink sink) {
 		return segmentsSinks.removeElement(sink);
 	}
+//#endif
 	public boolean removeNextStageSegmentsSink(SegmentsSink_Int sink) {
 		return segmentsSinks_Int.removeElement(sink);
 	}
@@ -459,9 +527,11 @@ public class TimeSeriesAggregator {
 	 * 
 	 * @param sink The sink to push new aggregated segments to.
 	 */
+//#if cfg.haveFloatSupport
 	public void addNextStageSamplesSink(SamplesSink sink) {
 		samplesSinks.addElement(sink);
 	}
+//#endif
 	public void addNextStageSamplesSink(SamplesSink_Int sink) {
 		samplesSinks_Int.addElement(sink);
 	}
@@ -471,9 +541,11 @@ public class TimeSeriesAggregator {
 	 * @param sink The sink to stop pushing segments to.
 	 * @return true if removed, false if not (i.e. if it has not been added previously).
 	 */
+//#if cfg.haveFloatSupport
 	public boolean removeNextStageSamplesSink(SamplesSink sink) {
 		return samplesSinks.removeElement(sink);
 	}
+//#endif
 	public boolean removeNextStageSamplesSink(SamplesSink_Int sink) {
 		return samplesSinks_Int.removeElement(sink);
 	}

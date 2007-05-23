@@ -11,7 +11,7 @@ package org.openuat.sensors;
 import org.apache.log4j.Logger;
 
 /** This is a small helper class for checking the status of a device
- * with multiple lines/time series based on the events from the AsciiLineReader.
+ * with multiple lines/time series based on the events fired by its SampleSource objects.
  * A device is defined to be active when at least one of its lines is active.
  * 
  * It calls the abstract functions toActive and toPassive when the device state

@@ -36,6 +36,11 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	
 	private final static int numBytesPerSample = 4;
 
+	/** This is only approximate, we can't control the sample rate on the device. */
+	public final static int SAMPLERATE = 30;
+	
+	public final static int VALUE_RANGE = 512;
+
 	/** This holds the server socket listening for incoming data connections 
 	 * from the Symbian Sensor API wrapper.
 	 */

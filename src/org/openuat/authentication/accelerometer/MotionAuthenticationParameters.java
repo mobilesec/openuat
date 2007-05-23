@@ -33,7 +33,7 @@ public class MotionAuthenticationParameters {
 	
 	public final static int coherenceWindowOverlap = coherenceWindowSize*7/8; // 87,5% overlap
 	
-	public final static int coherenceSegmentSize = 3*samplerate; // ss
+	public final static int coherenceSegmentSize = 3*samplerate; // 3s segments
 
 	public final static int coherenceCutOffFrequency = 40; // Hz
 	

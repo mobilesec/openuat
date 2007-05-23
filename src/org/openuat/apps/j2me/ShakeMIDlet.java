@@ -11,7 +11,6 @@ package org.openuat.apps.j2me;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
-import javax.microedition.media.Control;
 import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
@@ -87,13 +86,13 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		
 		// need to get the player and volumeControl objects
 		try {
-			/* InputStream is = getClass().getResourceAsStream("/your.mp3");
-			player = Manager.createPlayer(is,"audio/mpeg");*/
+			//InputStream is = getClass().getResourceAsStream("/your.mp3");
+			//player = Manager.createPlayer(is,"audio/mpeg");
 			player = Manager.createPlayer(Manager.TONE_DEVICE_LOCATOR);
 			player.realize();
-			/*player.setLoopCount(-1);
-			player.prefetch();
-			player.start();*/
+			//player.setLoopCount(-1);
+			//player.prefetch();
+			//player.start();
 			volumeControl = (VolumeControl) player.getControl("VolumeControl");
 		} catch (IOException e) {
 			logger.error("Unable to get volume control: " + e);
@@ -118,17 +117,32 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		
 		reader = new SymbianTCPAccelerometerReader();
 		// this is a test/debug sink to stream the values across Bluetooth
-		reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {new SamplesHandler(0), new SamplesHandler(1), new SamplesHandler(2)});
+		reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {
+				new TestBTStreamingSamplesHandler(0), 
+				new TestBTStreamingSamplesHandler(1), 
+				new TestBTStreamingSamplesHandler(2)});
 		// this is the "proper" sink
-		aggregator = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, 
-				MotionAuthenticationParameters.coherenceSegmentSize, 
-				MotionAuthenticationParameters.coherenceSegmentSize);
-		aggregator.setOffset(-100);
+		aggregator = new TimeSeriesAggregator(3, // 3 dimensions 
+				SymbianTCPAccelerometerReader.SAMPLERATE/2, // this should be about 1/2s 
+				SymbianTCPAccelerometerReader.SAMPLERATE*4, // use segments of 4s length 
+				SymbianTCPAccelerometerReader.SAMPLERATE*4);
+		// the values are already zero-based
+		aggregator.setOffset(0);
 		aggregator.setSubtractTotalMean(true);
-		// the integer TimeSeriesAggregator part does _not_ take the square roots when computing the magnitudes, so expect to square the threshold as well
-		aggregator.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold*
-				MotionAuthenticationParameters.activityVarianceThreshold);
+		/* The integer TimeSeriesAggregator part does _not_ take the square 
+		 * roots when computing the magnitudes, so expect to square the 
+		 * threshold as well. Additionally, we don't use signals in the range
+		 * [-1;1] but ca. [-300;300].
+		 * THIS DEPENDS HEAVILY ON THE WINDOW SIZE SET ABOVE IN THE CONSTRUCTOR
+		 */
+		aggregator.setActiveVarianceThreshold(100
+				/*(MotionAuthenticationParameters.activityVarianceThreshold*
+				MotionAuthenticationParameters.activityVarianceThreshold) *
+				(SymbianTCPAccelerometerReader.VALUE_RANGE*SymbianTCPAccelerometerReader.VALUE_RANGE)*/);
 		reader.addSink(new int[] {0, 1, 2}, aggregator.getInitialSinks_Int());
+		// also register the activity indicator
+		aggregator.addNextStageSamplesSink(new ActivityHandler());
+		// finally start the reader, now that everything is registered and the time series chains are ready
 		reader.start();
 		
 			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
@@ -141,6 +155,13 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			main_list.setCommandListener(this);
 
 			main_list.append("Find Devices", null);
+			
+			// announce that we are up and about
+			try {
+				Manager.playTone(72, 500, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
+			}
 	}
 
 	public void startApp() {
@@ -202,11 +223,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		// indicate progress in the first phase
 		// min 0, max 100
 		//volumeControl.setLevel(30);
-		try {
+		/*try {
 			Manager.playTone(60, 300, 30);
 		} catch (MediaException e) {
 			logger.error("Unable to play tone");
-		}
+		}*/
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
@@ -224,6 +245,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			
 			// finished DH and connected to the remote
 			Display.getDisplay(this).vibrate(800); // for 800ms
+			try {
+				Manager.playTone(60, 100, 30);
+				Manager.playTone(62, 100, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
+			}
 		} catch (IOException e) {
 			logger.debug("Unable to open stream to remote: " + e);
 		}
@@ -231,38 +258,60 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	private double[] samples = new double[3];
 	
-	private class SamplesHandler implements SamplesSink_Int {
+	private class TestBTStreamingSamplesHandler implements SamplesSink_Int {
 		private int dim;
 		
-		SamplesHandler(int dim) {this.dim = dim;}
+		TestBTStreamingSamplesHandler(int dim) {this.dim = dim;}
 	
-	public void addSample(int sample, int index) {
-		samples[dim] = sample;
-		if (dim == 2) {
-			try {
-				//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
-				if (toRemote != null) {
-					toRemote.write(String.valueOf(samples[0])+"\t"+String.valueOf(samples[1])+"\t"+String.valueOf(samples[2]) + "\n");
-					toRemote.flush();
+		public void addSample(int sample, int index) {
+			samples[dim] = sample;
+			if (dim == 2) {
+				try {
+					//main_list.append(String.valueOf(xxx)+"\t"+String.valueOf(yyy)+"\t"+String.valueOf(zzz), null);
+					if (toRemote != null) {
+						toRemote.write(String.valueOf(samples[0])+"\t"+String.valueOf(samples[1])+"\t"+String.valueOf(samples[2]) + "\n");
+						toRemote.flush();
+					}
+				} catch (IOException e) {
+					logger.error("Error sending samples to RFCOMM channel, dropping connection: " + e);
+					toRemote = null;
 				}
-			} catch (IOException e) {
-				logger.error("Error sending samples to RFCOMM channel, dropping connection: " + e);
-				toRemote = null;
+			}
+		}
+
+		public void segmentEnd(int index) {
+		}
+
+		public void segmentStart(int index) {
+		}
+	}
+	
+	private class ActivityHandler implements SamplesSink_Int {
+		public void addSample(int sample, int index) {
+			// ignore
+		}
+
+		public void segmentEnd(int index) {
+			// announce quiescent
+			try {
+				Manager.playTone(60, 100, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
+			}
+		}
+
+		public void segmentStart(int index) {
+			// announce active
+			try {
+				Manager.playTone(72, 100, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
 			}
 		}
 	}
-
-	public void segmentEnd(int index) {
-	}
-
-	public void segmentStart(int index) {
-	}
-	}
 	
 	private class SegmentsHandler implements SegmentsSink_Int {
-
 		public void addSegment(int[] segment, int startIndex) {
 		}
-		
 	}
 }
