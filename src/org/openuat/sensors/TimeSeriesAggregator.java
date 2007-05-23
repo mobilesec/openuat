@@ -111,7 +111,7 @@ public class TimeSeriesAggregator {
 				logger.info("Detected segment that is smaller than the window size (" +
 						aggregatedSeries.size() + " <= " + windowSize + ", ignoring");
 			else
-				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
+				logger.info("toQuiescent called, but aggregated time series not initialized (it was probably forwarded due to reaching the maximum size), ignoring");
 
 			aggregatedSeries = null;
 //#endif
@@ -137,7 +137,7 @@ public class TimeSeriesAggregator {
 				logger.info("Detected segment that is smaller than the window size (" +
 						aggregatedSeriesIndex_Int + " <= " + windowSize + ", ignoring");
 			else
-				logger.error("toQuiescent called, but aggregated time series not initialized. This should not happen!");
+				logger.info("toQuiescent called, but aggregated time series not initialized (it was probably forwarded due to reaching the maximum size), ignoring");
 
 			// stop aggregating
 			aggregatedSeriesIndex_Int = -1;

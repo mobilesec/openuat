@@ -142,6 +142,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		reader.addSink(new int[] {0, 1, 2}, aggregator.getInitialSinks_Int());
 		// also register the activity indicator
 		aggregator.addNextStageSamplesSink(new ActivityHandler());
+		// and the segments listener
+		aggregator.addNextStageSegmentsSink_Int(new SegmentsHandler());
 		// finally start the reader, now that everything is registered and the time series chains are ready
 		reader.start();
 		
@@ -246,8 +248,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			// finished DH and connected to the remote
 			Display.getDisplay(this).vibrate(800); // for 800ms
 			try {
-				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
+				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
 			}
@@ -312,6 +314,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 	
 	private class SegmentsHandler implements SegmentsSink_Int {
 		public void addSegment(int[] segment, int startIndex) {
+			// announce shaking complete
+			try {
+				Manager.playTone(60, 100, 30);
+				Manager.playTone(62, 100, 30);
+				Manager.playTone(64, 100, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
+			}
 		}
 	}
 }
