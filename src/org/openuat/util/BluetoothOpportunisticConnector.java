@@ -9,6 +9,10 @@
 package org.openuat.util;
 
 import java.io.IOException;
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 
 import javax.bluetooth.DataElement;
@@ -51,10 +55,18 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	/** This is the Bluetooth service UUID used for the opportunistic 
 	 * authentication service.
 	 */
-	public static UUID serviceUUID = new UUID("c9cb7b45-91ee-46e3-92f5-0933394f613e", false);
+	public static UUID serviceUUID = new UUID("c9cb7b4591ee46e392f50933394f613e", false);
 	
 	/** The Bluetooth service will be advertised under this friendly name. */
 	public static String serviceName = "OpenUAT Opportunistic Authentication";
+	
+	/** The maximum number of connection attempts for a service that 
+	 * advertises the serviceUUID.
+	 */
+	public static int maxConnectionRetries = 3;
+	
+	/** The sleep time before re-attempting a connection in ms. */
+	public static int retryConnectionDelay = 5000;
 	
 	// TODO: make me configurable - maybe with setters/getters?
 	public static boolean keepConnected = true;
@@ -74,10 +86,20 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	 */
 	private BluetoothPeerManager manager;
 	
+	/** This is a queue of connections that could not be established for some
+	 * reason and that should be re-tried. Keys are of type String (connection
+	 * URLs), values of type Integer (the number of retries).
+	 */ 
+	private Hashtable failedConnections = new Hashtable();
+	
+	/** Failed connections will be re-scheduled using this timer object. */
+	private Timer connectionRetryTimer = null;
+	
 	protected BluetoothOpportunisticConnector() throws IOException {
 		logger.debug("Creating BluetoothOpportunisticConnector instance, initializing BluetoothPeerManager");
 		manager = new BluetoothPeerManager();
 		manager.setAutomaticServiceDiscovery(true);
+		manager.setAdaptiveSleepTime(true);
 		manager.setAutomaticServiceDiscoveryUUID(serviceUUID);
 		manager.addListener(new BluetoothPeerEventsHandler());
 	}
@@ -92,26 +114,6 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 		}
 		
 		return singleton;
-	}
-	
-	/** Returns the time to sleep in between two inquiries. 
-	 * @see BluetoothPeerManager#sleepBetweenInquiries
-	 * @return The sleep time in ms.
-	 */
-	public int getSleepBetweenInquiriesTime() {
-		return manager.getSleepBetweenInquiriesTime();
-	}
-
-	/** Sets the time to sleep in between two inquiries. 
-	 * Note that the actual sleep time 
-	 * will be up to 20% randomly off this time to prevent continuous 
-	 * collisions between two devices doing the same. This may be changed even 
-	 * while a backgound inquiry is running. 
-	 * @see BluetoothPeerManager#sleepBetweenInquiries
-	 * @param milliseconds The sleep time in ms.
-	 */
-	public void setSleepBetweenInquiriesTime(int milliseconds) {
-		manager.setSleepBetweenInquiriesTime(milliseconds);
 	}
 	
 	/** Starts the local authentication service and the background discovery 
@@ -140,6 +142,79 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 			logger.error("Could not properly close RFCOMM service socket: " + e);
 		}
 	}
+
+	/** This is a helper method to attempt a new connection. If it fails,
+	 * if will be (re-)queued in failedConnections.
+	 * @see #failedConnections
+	 * @param connectionURL The URL to connect to.
+	 */
+	private boolean attemptConnection(String connectionURL) {
+		BluetoothRFCOMMChannel channel;
+		try {
+			channel = new BluetoothRFCOMMChannel(connectionURL);
+			HostProtocolHandler.startAuthenticationWith(channel, 
+					new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
+			logger.info("Discovered remote device  " + 
+					channel.getRemoteAddress() + "/'" + 
+					channel.getRemoteName() + 
+					"' which advertises opportunistic authentication, started key agreement");
+			return true;
+		} catch (IOException e) {
+			// check if we can (re-)schedule
+			synchronized (failedConnections) {
+				if (failedConnections.contains(connectionURL)) {
+					int numRetries = ((Integer) failedConnections.get(connectionURL)).intValue();
+					if (numRetries >= maxConnectionRetries) {
+						// no more retries for this one
+						logger.warn("Could not connect to '" + connectionURL +
+								"' after " + maxConnectionRetries + " tries, aborting");
+						failedConnections.remove(connectionURL);
+						// maybe we can stop the timer now, if there are no more scheduled attempts
+						if (failedConnections.isEmpty()) {
+							logger.debug("Removed the last scheduled connection, stopping timer task");
+							connectionRetryTimer.cancel();
+							connectionRetryTimer = null;
+						}
+						return false;
+					}
+					else
+						// already in the list, but can still re-schedule (overwrite object)
+						failedConnections.put(connectionURL, new Integer(numRetries++));
+				}
+				else
+					// already had one failed connection, so start counter there
+					failedConnections.put(connectionURL, new Integer(1));
+			}
+			logger.warn("Could not connect to remote service, will retry in " +
+					retryConnectionDelay + "ms");
+			// if we get here, we have re-scheduled, so maybe need to start the timer
+			if (connectionRetryTimer == null) {
+				logger.debug("No retry timer task running, starting it now");
+				connectionRetryTimer = new Timer();
+				connectionRetryTimer.scheduleAtFixedRate(new ConnectionRetryTask(), 
+						retryConnectionDelay, retryConnectionDelay);
+			}
+			return false;
+		}
+	}
+	
+	/** This is a simple helper task to re-attempt failed connections. */
+	private class ConnectionRetryTask extends TimerTask {
+		public void run() {
+			synchronized (failedConnections) {
+				if (!failedConnections.isEmpty()) {
+					logger.debug("Timer task running, re-attempting " +
+							failedConnections.size() + " connections");
+					Enumeration urls = failedConnections.keys();
+					while (urls.hasMoreElements()) {
+						String url = (String) urls.nextElement();
+						logger.info("Retrying connection to '" + url + "'");
+						attemptConnection(url);
+					}
+				}
+			}
+		}
+	}
 	
 	protected class BluetoothPeerEventsHandler implements BluetoothPeerManager.PeerEventsListener {
 		public void inquiryCompleted(Vector newDevices) {
@@ -162,20 +237,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 							"', expected '" + serviceName + "'");
 				}
 				else {
-					BluetoothRFCOMMChannel channel;
-					try {
-						channel = new BluetoothRFCOMMChannel(
-								sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
-						HostProtocolHandler.startAuthenticationWith(channel, 
-								new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
-						logger.info("Started authentication attempt with remote device " + 
-								remoteDevice.getBluetoothAddress() + "/'" + 
-								BluetoothPeerManager.resolveName(remoteDevice) + "'");
-					} catch (IOException e) {
-						logger.warn("Could not connect to remote service, will retry in " +
-								"XXXXX" + " ms");
-						// TODO: schedule for retry
-					}
+					attemptConnection(sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
 				}
 			}
 		}
@@ -189,6 +251,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 		}
 		
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+			logger.debug("Could not create shared key with " + remote + ": " + e + "/" + msg);
 			raiseAuthenticationFailureEvent(remote, e, msg);
 		}
 
@@ -197,6 +260,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 		}
 
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+			logger.debug("Successfully connected to " + remote);
 			raiseAuthenticationSuccessEvent(remote, result);
 		}
 	}

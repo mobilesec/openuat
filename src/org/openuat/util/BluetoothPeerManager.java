@@ -44,7 +44,17 @@ import org.apache.log4j.Logger;
  */ 
 public class BluetoothPeerManager {
 	/** The default sleep time between two inquiry runs in milliseconds. */
-	public final static int DEFAULT_SLEEP_TIME = 20000;
+	public final static int DEFAULT_SLEEP_TIME = 30000;
+	
+	/** The maximum sleep time between two inquiry runs in milliseconds.
+	 * Automatic sleep time adaptation will not set it higher than this. 
+	 */
+	public final static int MAXIMUM_SLEEP_TIME = 120000;
+	
+	/** The minimum sleep time between two inquiry runs in milliseconds.
+	 * Automatic sleep time adaptation will not set it lower than this. 
+	 */
+	public final static int MINIMUM_SLEEP_TIME = 10000;
 	
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(/*BluetoothPeerManager.class*/ "org.openuat.util.BluetoothPeerManager");
@@ -64,6 +74,12 @@ public class BluetoothPeerManager {
 	 * actual sleep time will be up to 20% randomly off this time to prevent
 	 * continuous collisions between two devices doing the same. */
 	private int sleepBetweenInquiries = DEFAULT_SLEEP_TIME;
+	
+	/** If this is set to true, then sleepBetweenInquiries will be adapted 
+	 * automatically depending on the "volatility" of the Bluetooth inquiry
+	 * results.
+	 */
+	private boolean adaptiveSleepTime = false;
 	
 	/** If set to true, then services will automatically be discovered for 
 	 * newly found devices.
@@ -96,7 +112,7 @@ public class BluetoothPeerManager {
 	 * @see #sleepBetweenInquiries
 	 * @return The sleep time in ms.
 	 */
-	public int getSleepBetweenInquiriesTime() {
+	public int getCurrentSleepBetweenInquiriesTime() {
 		return sleepBetweenInquiries;
 	}
 	
@@ -105,11 +121,33 @@ public class BluetoothPeerManager {
 	 * will be up to 20% randomly off this time to prevent continuous 
 	 * collisions between two devices doing the same. This may be changed even 
 	 * while a backgound inquiry is running. 
+	 * 
+	 * When setAdaptiveSleepTime(true) is set, then this value will be changed
+	 * automatically depending on the "volatility" of the Bluetooth inquiry
+	 * results.
+	 * 
 	 * @see #sleepBetweenInquiries
+	 * @see #getAdaptiveSleepTime
+	 * @see #setAdaptiveSleepTime
 	 * @param milliseconds The sleep time in ms.
 	 */
 	public void setSleepBetweenInquiriesTime(int milliseconds) {
 		this.sleepBetweenInquiries = milliseconds;
+	}
+	
+	/** Returns the value of adaptiveSleepTime. */
+	public boolean getAdaptiveSleepTime() {
+		return adaptiveSleepTime;
+	}
+	
+	/** Sets the value of adaptiveSleepTime.
+	 * 
+	 * @param value true if the sleep time between two subsequent inquiry runs
+	 *              should be adapted automatically depending on the "volatility"
+	 *              of the Bluetooth inquiry results.
+	 */
+	public void setAdaptiveSleepTime(boolean value) {
+		adaptiveSleepTime = value;
 	}
 	
 	/** Returns the state of automatic service discovery.
@@ -460,6 +498,26 @@ public class BluetoothPeerManager {
 				
 				for (int i=0; i<listeners.size(); i++)
 					((PeerEventsListener) listeners.elementAt(i)).inquiryCompleted(newDevices);
+				
+				// also adapt the sleep time depending on how many new devices were found
+				/* Don't care about synchronization, it's only an integer 
+				 * variable and we can't really mess it up too badly here.
+				 */
+				if (adaptiveSleepTime) {
+					if (newDevices.size() > 0) 
+						// found new devices, decrease time quickly
+						sleepBetweenInquiries = sleepBetweenInquiries / (newDevices.size() + 1);
+					else
+						// no new devices, slowly increase
+						sleepBetweenInquiries += sleepBetweenInquiries/2; 
+					if (sleepBetweenInquiries < MINIMUM_SLEEP_TIME)
+						sleepBetweenInquiries = MINIMUM_SLEEP_TIME;
+					if (sleepBetweenInquiries > MAXIMUM_SLEEP_TIME)
+						sleepBetweenInquiries = MAXIMUM_SLEEP_TIME;
+					logger.info("Inquiry found " + newDevices.size() + 
+							", adapting sleep time to " + sleepBetweenInquiries + "ms");
+				}
+				
 				break;
 			case DiscoveryListener.INQUIRY_ERROR:
 				logger.error("Inquiry error");
@@ -608,6 +666,7 @@ public class BluetoothPeerManager {
 	/* In the case of a Serial Port service record, this string might look like "btspp://0050CD00321B:3;authenticate=true;encrypt=false;master=true", where "0050CD00321B" is the Bluetooth address of the device that provided this ServiceRecord, "3" is the RFCOMM server channel mentioned in this ServiceRecord, and there are three optional parameters related to security and master/slave roles.  */
 	
 	////////////// testing code //////////////////
+//#if cfg.includeTestCode
 	private static class TempEventsHandler implements PeerEventsListener {
 		BluetoothPeerManager man;
 		
@@ -632,7 +691,6 @@ public class BluetoothPeerManager {
 		}
 	}
 	
-//#if cfg.includeTestCode
 	public static void main (String[] args) throws IOException {
 		TempEventsHandler l = new TempEventsHandler();
 		BluetoothPeerManager m = new BluetoothPeerManager();
