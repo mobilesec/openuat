@@ -63,6 +63,20 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 
 		// remember the parameter
 		serviceURL = connectionURL;
+		/* and try to parse the address and channel number parameters, so that
+		 * getRemoteAddress will work even before opening the connection */
+		if (serviceURL.startsWith("btspp://") &&
+				serviceURL.indexOf(';') == 20 &&
+				serviceURL.indexOf(';') > 22) {
+			this.remoteDeviceAddress = serviceURL.substring(8, 20);
+			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(22, serviceURL.indexOf(';')));
+			logger.debug("Parsed remote device address '" + remoteDeviceAddress + 
+					"' and channel " + remoteChannelNumber + " from URL '" +
+					serviceURL + "'");
+		}
+		else
+			logger.warn("Could not parse URL '" + serviceURL + 
+					"', getRemoteAddress and getRemoteName will not work until a connection is established");
 	}
 	
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
