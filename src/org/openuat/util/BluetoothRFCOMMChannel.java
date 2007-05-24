@@ -67,7 +67,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		 * getRemoteAddress will work even before opening the connection */
 		if (serviceURL.startsWith("btspp://") &&
 				serviceURL.indexOf(':', 8) == 20 &&
-				serviceURL.indexOf(';') > 22) {
+				serviceURL.indexOf(';') >= 22) {
 			this.remoteDeviceAddress = serviceURL.substring(8, 20);
 			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(22, serviceURL.indexOf(';')));
 			if (logger.isDebugEnabled())
