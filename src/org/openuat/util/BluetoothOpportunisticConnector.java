@@ -280,8 +280,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	public static void main(String[] args) throws IOException, InterruptedException {
 		BluetoothOpportunisticConnector c = BluetoothOpportunisticConnector.getInstance();
 		c.start();
-		while (true)
-			Thread.sleep(1000);
+		System.in.read();
+		c.stop();
 	}
 //#endif
 }
