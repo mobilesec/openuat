@@ -264,4 +264,15 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 			raiseAuthenticationSuccessEvent(remote, result);
 		}
 	}
+	
+	///////////////////////////////////////
+	// test code
+//#if cfg.includeTestCode
+	public static void main(String[] args) throws IOException, InterruptedException {
+		BluetoothOpportunisticConnector c = BluetoothOpportunisticConnector.getInstance();
+		c.start();
+		while (true)
+			Thread.sleep(1000);
+	}
+//#endif
 }
