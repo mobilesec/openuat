@@ -69,7 +69,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 				serviceURL.indexOf(':', 8) == 20 &&
 				serviceURL.indexOf(';') >= 22) {
 			this.remoteDeviceAddress = serviceURL.substring(8, 20);
-			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(22, serviceURL.indexOf(';')));
+			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(21, serviceURL.indexOf(';')));
 			if (logger.isDebugEnabled())
 				logger.debug("Parsed remote device address '" + remoteDeviceAddress + 
 					"' and channel " + remoteChannelNumber + " from URL '" +
