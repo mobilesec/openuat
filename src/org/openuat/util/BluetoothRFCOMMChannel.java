@@ -401,7 +401,11 @@ btspp://0001234567AB:3
 	}
 	
 	  public static void main(String[] args) throws IOException, NumberFormatException, InterruptedException {
-		  BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
+		  BluetoothRFCOMMChannel c;
+		  if (args[0].equals("URL"))
+			  c = new BluetoothRFCOMMChannel(args[1]);
+		  else
+			  c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
 		  c.open();
 		  
 		  if (args.length > 2 && args[2].equals("DH")) {
