@@ -508,8 +508,9 @@ public class BluetoothPeerManager {
 					}
 				}
 				
-				logger.info("Discovery completed, found " + newDevices.size() + 
-						" new devices, forwarding to listeners");
+				if (logger.isInfoEnabled())
+					logger.info("Discovery completed, found " + newDevices.size() + 
+						" new devices, forwarding to " + listeners.size() + " listeners");
 				for (int i=0; i<listeners.size(); i++)
 					((PeerEventsListener) listeners.elementAt(i)).inquiryCompleted(newDevices);
 				
@@ -550,7 +551,8 @@ public class BluetoothPeerManager {
 
 
 		public void servicesDiscovered(int transID, ServiceRecord[] serviceRecord) {
-			logger.info("Discovered " + serviceRecord.length + " services for remote device " +
+			if (logger.isInfoEnabled())
+				logger.info("Discovered " + serviceRecord.length + " services for remote device " +
 					currentRemoteDevice + " with transaction id " + transID);
 			if (currentRemoteDevice == null) {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
@@ -591,6 +593,10 @@ public class BluetoothPeerManager {
 
 				Vector services = device.services;
 				synchronized (services) { 
+					if (logger.isInfoEnabled())
+						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
+								" completed, found " + services.size() + 
+							" services, forwarding to " + listeners.size() + " listeners");
 					for (int i=0; i<listeners.size(); i++)
 						((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
 				}
