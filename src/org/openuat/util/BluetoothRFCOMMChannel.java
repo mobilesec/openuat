@@ -265,7 +265,9 @@ try {
 			/* But the JSR82 API makes the RemoteDevice(String) constructor 
 			   protected, so can't use it. The best option is to simply return
 			   a string object. */
-			return remoteDeviceAddress;
+			// no, don't do it! some callers may depend on this being a RemoteDevice object
+			//return remoteDeviceAddress;
+			return null;
 		else
 			return null;
 	}
@@ -275,7 +277,10 @@ try {
 	 */
 	public String getRemoteName() {
 		try {
-			return BluetoothPeerManager.resolveName((RemoteDevice) getRemoteAddress());
+			if (connection != null)
+				return BluetoothPeerManager.resolveName((RemoteDevice) getRemoteAddress());
+			else
+				return remoteDeviceAddress;
 		} catch (IOException e) {
 			// can't resolve - that's bad
 			return null;
