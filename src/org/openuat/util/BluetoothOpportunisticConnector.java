@@ -142,6 +142,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 			logger.error("Could not properly close RFCOMM service socket: " + e);
 		}
 	}
+	
+	/** Make sure to free resources when destroyed - particularly to remove 
+	 * the SDP record again (which happens in service.stopListening.
+	 */
+	public void dispose() {
+		stop();
+	}
 
 	/** This is a helper method to attempt a new connection. If it fails,
 	 * if will be (re-)queued in failedConnections.
@@ -149,6 +156,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	 * @param connectionURL The URL to connect to.
 	 */
 	private boolean attemptConnection(String connectionURL) {
+		logger.debug("Attempting to connect to '" + connectionURL + "'");
+		
 		BluetoothRFCOMMChannel channel;
 		try {
 			channel = new BluetoothRFCOMMChannel(connectionURL);

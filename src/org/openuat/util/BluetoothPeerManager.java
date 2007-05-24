@@ -56,6 +56,11 @@ public class BluetoothPeerManager {
 	 */
 	public final static int MINIMUM_SLEEP_TIME = 10000;
 	
+	/** Re-scan services every nth time that a device is discovered by the
+	 * inquiry process.
+	 */
+	public final static int SCAN_SERVICES_FACTOR = 5;
+	
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(/*BluetoothPeerManager.class*/ "org.openuat.util.BluetoothPeerManager");
 	
@@ -421,6 +426,7 @@ public class BluetoothPeerManager {
 	private class RemoteDeviceDetail {
 		public boolean newlyDiscovered = true;
 		public long lastSeen = System.currentTimeMillis();
+		public int numNoServiceScans = 0;
 		public Vector services = new Vector();
 		public boolean serviceSearchFinished = false;
 	}
@@ -456,7 +462,7 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			logger.info("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
+			logger.debug("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
 					" named '" + resolveName(remoteDevice) + "' of class " + 
 					deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
 			synchronized(foundDevices) {
@@ -486,9 +492,15 @@ public class BluetoothPeerManager {
 						if (entry.newlyDiscovered) {
 							entry.newlyDiscovered = false;
 							newDevices.addElement(device);
-							// and start service discovery if requested
-							if (automaticServiceDiscovery)
+						}
+						// and start service discovery if requested the first and every nth time
+						if (automaticServiceDiscovery) {
+							if (entry.numNoServiceScans >= SCAN_SERVICES_FACTOR || entry.numNoServiceScans == 0) {
+								entry.numNoServiceScans = 1;
 								startServiceSearch(device, automaticServiceDiscoveryUUID);
+							}
+							else
+								entry.numNoServiceScans++;
 						}
 						// also need to check if service discovery needs to be re-started because of a previous error
 						if (!entry.serviceSearchFinished && automaticServiceDiscovery)
@@ -496,6 +508,8 @@ public class BluetoothPeerManager {
 					}
 				}
 				
+				logger.info("Discovery completed, found " + newDevices.size() + 
+						" new devices, forwarding to listeners");
 				for (int i=0; i<listeners.size(); i++)
 					((PeerEventsListener) listeners.elementAt(i)).inquiryCompleted(newDevices);
 				
@@ -514,8 +528,8 @@ public class BluetoothPeerManager {
 						sleepBetweenInquiries = MINIMUM_SLEEP_TIME;
 					if (sleepBetweenInquiries > MAXIMUM_SLEEP_TIME)
 						sleepBetweenInquiries = MAXIMUM_SLEEP_TIME;
-					logger.info("Inquiry found " + newDevices.size() + 
-							", adapting sleep time to " + sleepBetweenInquiries + "ms");
+					logger.debug("Inquiry found " + newDevices.size() + 
+							" new, adapting sleep time to " + sleepBetweenInquiries + "ms");
 				}
 				
 				break;
