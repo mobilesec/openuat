@@ -595,7 +595,7 @@ public class BluetoothPeerManager {
 				synchronized (services) { 
 					if (logger.isInfoEnabled())
 						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
-								" completed, found " + services.size() + 
+								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
 					for (int i=0; i<listeners.size(); i++)
 						((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
