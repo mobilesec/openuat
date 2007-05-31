@@ -88,7 +88,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	
 	/** This is a queue of connections that could not be established for some
 	 * reason and that should be re-tried. Keys are of type String (connection
-	 * URLs), values of type Integer (the number of retries).
+	 * URLs), values of type Integer (the number of retries). A special case 
+	 * is that the number of retries may be negative, which signifies that a
+	 * connection is currently attempted.
 	 */ 
 	private Hashtable failedConnections = new Hashtable();
 	
@@ -157,8 +159,24 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	 */
 	private boolean attemptConnection(String connectionURL) {
 		logger.debug("Attempting to connect to '" + connectionURL + "'");
-		
 		BluetoothRFCOMMChannel channel;
+		int numRetries = -1;
+
+		synchronized (failedConnections) {
+			if (failedConnections.contains(connectionURL)) {
+				numRetries = ((Integer) failedConnections.get(connectionURL)).intValue();
+				if (numRetries < 0) {
+					// this is the sign that a connection attempt is already running in parallel!
+					logger.warn("Connection attempt to '" + connectionURL + 
+							"' is currently running, not starting a second one. This should not happen.");
+					return false;
+				}
+			}
+			else 
+				// we are about to start a connection attempt, so create the lock
+				failedConnections.put(connectionURL, new Integer(-1));
+		}
+		
 		try {
 			channel = new BluetoothRFCOMMChannel(connectionURL);
 			HostProtocolHandler.startAuthenticationWith(channel, 
@@ -167,35 +185,35 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 					channel.getRemoteAddress() + "/'" + 
 					channel.getRemoteName() + 
 					"' which advertises opportunistic authentication, started key agreement");
+			// if we get here, the connection itself succeeded
+			synchronized (failedConnections) {
+				failedConnections.remove(connectionURL);
+			}
 			return true;
 		} catch (IOException e) {
 			// check if we can (re-)schedule
 			synchronized (failedConnections) {
-				if (failedConnections.contains(connectionURL)) {
-					int numRetries = ((Integer) failedConnections.get(connectionURL)).intValue();
-					if (numRetries >= maxConnectionRetries) {
-						// no more retries for this one
-						logger.warn("Could not connect to '" + connectionURL +
-								"' after " + maxConnectionRetries + " tries, aborting");
-						failedConnections.remove(connectionURL);
-						// maybe we can stop the timer now, if there are no more scheduled attempts
-						if (failedConnections.isEmpty()) {
-							logger.debug("Removed the last scheduled connection, stopping timer task");
-							connectionRetryTimer.cancel();
-							connectionRetryTimer = null;
-						}
-						return false;
+				if (numRetries >= maxConnectionRetries) {
+					// no more retries for this one
+					logger.warn("Could not connect to '" + connectionURL +
+							"' after " + maxConnectionRetries + " tries, aborting");
+					failedConnections.remove(connectionURL);
+					// maybe we can stop the timer now, if there are no more scheduled attempts
+					if (failedConnections.isEmpty()) {
+						logger.debug("Removed the last scheduled connection, stopping timer task");
+						connectionRetryTimer.cancel();
+						connectionRetryTimer = null;
 					}
-					else
-						// already in the list, but can still re-schedule (overwrite object)
-						failedConnections.put(connectionURL, new Integer(numRetries++));
+					return false;
 				}
-				else
-					// already had one failed connection, so start counter there
+				else if (numRetries == -1)
+					// first failed attempt, so start counter there
 					failedConnections.put(connectionURL, new Integer(1));
+				else
+					failedConnections.put(connectionURL, new Integer(numRetries++));
 			}
-			logger.warn("Could not connect to remote service, will retry in " +
-					retryConnectionDelay + "ms");
+			logger.warn("Could not connect to remote service '" + connectionURL + 
+					"', will retry in " + retryConnectionDelay + "ms");
 			// if we get here, we have re-scheduled, so maybe need to start the timer
 			if (connectionRetryTimer == null) {
 				logger.debug("No retry timer task running, starting it now");
