@@ -179,6 +179,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 		
 		try {
 			channel = new BluetoothRFCOMMChannel(connectionURL);
+			channel.open();
 			HostProtocolHandler.startAuthenticationWith(channel, 
 					new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
 			logger.info("Discovered remote device  " + 

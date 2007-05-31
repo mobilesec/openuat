@@ -295,29 +295,34 @@ public class BluetoothPeerManager {
 			uuids[0] = new UUID(0x0100);
 			uuids[1] = specificService;
 		}
-		synchronized(foundDevices) {
-			if (! foundDevices.containsKey(device)) {
-				logger.error("Remote device " + device.getBluetoothAddress() + 
-					" has not been discovered before, don't have a service list yet. This is not yet supported!");
+		RemoteDeviceDetail dev = getDeviceDetail(device);
+		// no need to report the error here, the helper method does that
+		if (dev == null) return false;
+		synchronized (dev) {
+			// safety check
+			if (dev.serviceSearchTransId != -1) {
+				logger.warn("Service search for remote device " + 
+						device.getBluetoothAddress() + 
+						" already in progress, not starting a second time");
 				return false;
 			}
-			RemoteDeviceDetail dev = (RemoteDeviceDetail) foundDevices.get(device);
+			
 			// when requested to start a new search, we certainly aren't finished...
 			dev.serviceSearchFinished = false;
 			dev.services.removeAllElements();
-		}
-		
-		try {
-			agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
-			return true;
-		} catch (BluetoothStateException e) {
-			logger.error("Could not initiate inquiry: " + e);
-			e.printStackTrace();
-			return false;
-		} catch (IllegalArgumentException e) {
-			logger.error("Could not initiate inquiry: " + e);
-			e.printStackTrace();
-			return false;
+
+			try {
+				dev.serviceSearchTransId = agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
+				return true;
+			} catch (BluetoothStateException e) {
+				logger.error("Could not initiate inquiry: " + e);
+				e.printStackTrace();
+				return false;
+			} catch (IllegalArgumentException e) {
+				logger.error("Could not initiate inquiry: " + e);
+				e.printStackTrace();
+				return false;
+			}
 		}
 	}
 	
@@ -348,14 +353,10 @@ public class BluetoothPeerManager {
 	 */
 	public ServiceRecord[] getServices(RemoteDevice device) {
 		Vector services;
-		synchronized(foundDevices) {
-			if (! foundDevices.containsKey(device)) {
-				logger.warn("Remote device " + device.getBluetoothAddress() + 
-						" has not been discovered before, don't have a service list yet.");
-				return null;
-			}
-			RemoteDeviceDetail dev = (RemoteDeviceDetail) foundDevices.get(device);
-			
+		RemoteDeviceDetail dev = getDeviceDetail(device);
+		// no need to report the error here, the helper method does that
+		if (dev == null) return null;
+		synchronized (dev) {
 			if (!dev.serviceSearchFinished) {
 				logger.warn("Service search for remote device " + device.getBluetoothAddress() +
 						" has not finished yet, don't have a service list.");
@@ -424,11 +425,12 @@ public class BluetoothPeerManager {
 	 * remember about a discovered remote device. 
 	 */
 	private class RemoteDeviceDetail {
-		public boolean newlyDiscovered = true;
-		public long lastSeen = System.currentTimeMillis();
-		public int numNoServiceScans = 0;
-		public Vector services = new Vector();
-		public boolean serviceSearchFinished = false;
+		boolean newlyDiscovered = true;
+		long lastSeen = System.currentTimeMillis();
+		int numNoServiceScans = 0;
+		Vector services = new Vector();
+		boolean serviceSearchFinished = false;
+		int serviceSearchTransId = -1; // -1 when not in progress 
 	}
 	
 	/** This is an internal helper class for reacting to Bluetooth events. */
@@ -488,23 +490,25 @@ public class BluetoothPeerManager {
 					for (Enumeration devices = foundDevices.keys(); devices.hasMoreElements(); ) {
 						RemoteDevice device = (RemoteDevice) devices.nextElement();
 						RemoteDeviceDetail entry = (RemoteDeviceDetail) foundDevices.get(device);
-						// if this device has been discovered in the current inquiry run, report it
-						if (entry.newlyDiscovered) {
-							entry.newlyDiscovered = false;
-							newDevices.addElement(device);
-						}
-						// and start service discovery if requested the first and every nth time
-						if (automaticServiceDiscovery) {
-							if (entry.numNoServiceScans >= SCAN_SERVICES_FACTOR || entry.numNoServiceScans == 0) {
-								entry.numNoServiceScans = 1;
-								startServiceSearch(device, automaticServiceDiscoveryUUID);
+						synchronized (entry) {
+							// if this device has been discovered in the current inquiry run, report it
+							if (entry.newlyDiscovered) {
+								entry.newlyDiscovered = false;
+								newDevices.addElement(device);
 							}
-							else
-								entry.numNoServiceScans++;
+							// and start service discovery if requested the first and every nth time
+							// NOTE: all service searches are started in parallel
+							if (automaticServiceDiscovery) {
+								if (entry.numNoServiceScans >= SCAN_SERVICES_FACTOR || entry.numNoServiceScans == 0 ||
+										// but also start it if the last search finished with an error
+										!entry.serviceSearchFinished) {
+									entry.numNoServiceScans = 1;
+									startServiceSearch(device, automaticServiceDiscoveryUUID);
+								}
+								else
+									entry.numNoServiceScans++;
+							}
 						}
-						// also need to check if service discovery needs to be re-started because of a previous error
-						if (!entry.serviceSearchFinished && automaticServiceDiscovery)
-							startServiceSearch(device, automaticServiceDiscoveryUUID);
 					}
 				}
 				
@@ -560,16 +564,36 @@ public class BluetoothPeerManager {
 			}
 
 			Vector services;
-			synchronized(foundDevices) {
-				if (! foundDevices.containsKey(currentRemoteDevice)) {
-					logger.error("Internal error: Remote device set and discovered services, but no device entry. This should not happen, ignoring services!");
+			RemoteDeviceDetail dev = getDeviceDetail(currentRemoteDevice);
+			// no need to report the error here, the helper method does that
+			if (dev == null) return;
+			synchronized (dev) {
+				// sanity check
+				if (dev.serviceSearchFinished) {
+					logger.warn("Service search for remote device " + currentRemoteDevice +
+							" has already finished, can not append to services list");
 					return;
 				}
-				services = ((RemoteDeviceDetail) foundDevices.get(currentRemoteDevice)).services; 
+				// and another sanity check
+				if (dev.serviceSearchTransId != transID) {
+					logger.warn("Discovered services with transaction id " + 
+							transID + ", while starting the search returned id " +
+							dev.serviceSearchTransId + ", not appending to services list");
+					return;
+				}
+				
+				services = dev.services;
 			}
 			synchronized (services) {	
-				for (int x = 0; x < serviceRecord.length; x++)
-					services.addElement(serviceRecord[x]);
+				for (int i=0; i<serviceRecord.length; i++) {
+					if (logger.isDebugEnabled())
+						logger.debug("Service " + i + ": " + 
+							serviceRecord[i].getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+					dev.services.addElement(serviceRecord[i]);
+				}
+				if (logger.isDebugEnabled())
+					logger.debug("Total number of services discovered for " + 
+						currentRemoteDevice + " is now " + services.size());
 			}
 		}
 
@@ -578,25 +602,47 @@ public class BluetoothPeerManager {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
 			}
-			RemoteDeviceDetail device;
-			synchronized(foundDevices) {
-				if (! foundDevices.containsKey(currentRemoteDevice)) {
-					logger.error("Internal error: Remote device set and discovered services, but no device entry. This should not happen, ignoring services!");
+			RemoteDeviceDetail dev = getDeviceDetail(currentRemoteDevice);
+			// no need to report the error here, the helper method does that
+			if (dev == null) return;
+			synchronized (dev) {
+				// and another sanity check
+				if (dev.serviceSearchTransId != transID) {
+					logger.warn("Finished service discovery with transaction id " + 
+							transID + ", while starting the search returned id " +
+							dev.serviceSearchTransId + ", ignoring");
 					return;
 				}
-				device = (RemoteDeviceDetail) foundDevices.get(currentRemoteDevice);
+				// the transaction is now complete
+				dev.serviceSearchTransId = -1;
 			}
 			
 			switch (respCode) {
 			case DiscoveryListener.SERVICE_SEARCH_COMPLETED:
-				device.serviceSearchFinished = true;
+				Vector services;
+				synchronized (dev) {
+					// sanity check
+					if (dev.serviceSearchFinished) {
+						logger.warn("Service search for remote device " + currentRemoteDevice +
+								" has already finished, can not finish twice, ignoring");
+						return;
+					}
+					dev.serviceSearchFinished = true;
+					
+					services = dev.services;
+				}
 
-				Vector services = device.services;
 				synchronized (services) { 
 					if (logger.isInfoEnabled())
 						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
 								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
+					if (logger.isDebugEnabled()) {
+						for (int i=0; i<services.size(); i++) {
+							ServiceRecord sr = (ServiceRecord) services.elementAt(i);
+							logger.debug("Service " + i + ": " + sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+						}
+					}
 					for (int i=0; i<listeners.size(); i++)
 						((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
 				}
@@ -604,20 +650,28 @@ public class BluetoothPeerManager {
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_DEVICE_NOT_REACHABLE:
 				logger.error("Device not reachable while trying to perform service discovery");
-				device.serviceSearchFinished = false;
+				synchronized (dev) {
+					dev.serviceSearchFinished = false;
+				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
 				logger.error("Service serch error");
-				device.serviceSearchFinished = false;
+				synchronized (dev) {
+					dev.serviceSearchFinished = false;
+				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
 				logger.error("No records returned");
-				// in this case, service search was actually finished correctly (even if we didn't get any records)
-				device.serviceSearchFinished = true;
+				synchronized (dev) {
+					// in this case, service search was actually finished correctly (even if we didn't get any records)
+					dev.serviceSearchFinished = true;
+				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
 				logger.error("Inquiry cancelled");
-				device.serviceSearchFinished = false;
+				synchronized (dev) {
+					dev.serviceSearchFinished = false;
+				}
 				break;
 			}
 		}
@@ -643,6 +697,29 @@ public class BluetoothPeerManager {
 			e.printStackTrace();
 			return false;
 		}
+	}
+	
+	/** This is only a small helper function of retrieving the 
+	 * RemoteDeviceDetail object for an already discovered device.
+	 * @return The RemoteDeviceDetail object if found or null if not found.
+	 */ 
+	private RemoteDeviceDetail getDeviceDetail(RemoteDevice device) {
+		RemoteDeviceDetail dev;
+		synchronized(foundDevices) {
+			if (! foundDevices.containsKey(device)) {
+				logger.error("Remote device " + device.getBluetoothAddress() + 
+					" has not been discovered before, don't have a service list yet. This is not yet supported!");
+				return null;
+			}
+			dev = (RemoteDeviceDetail) foundDevices.get(device);
+			// sanity check
+			if (dev == null) {
+				logger.error("Internal error: Remote device " + device.getBluetoothAddress() + 
+				" has been discovered before, service list has not been set correctly. This should not happen!");
+			return null;
+			}
+		}
+		return dev;
 	}
 	
 	/** This is a helper function for resolving a remote device name. If the
