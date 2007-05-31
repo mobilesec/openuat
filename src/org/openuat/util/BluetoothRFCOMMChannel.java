@@ -27,7 +27,7 @@ import org.apache.log4j.Logger;
  */
 public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFOMMChannel" /*BluetoothRFCOMMChannel.class*/);
+	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMChannel" /*BluetoothRFCOMMChannel.class*/);
 	
 	/** The remote device address string, as passed to the constructor. */
 	private String remoteDeviceAddress;
@@ -235,6 +235,10 @@ try {
 			throw new IOException("RFCOMM channel has not been opened properly");
 		}
 		
+		// maybe apply decorator
+		if (logger.isTraceEnabled())
+			return new DebugInputStream(fromRemote, "org.openuat.util.BluetoothRFCOMMChannel_IN");
+			
 		return fromRemote;
 	}
 
@@ -249,6 +253,10 @@ try {
 			throw new IOException("RFCOMM channel has not been opened properly");
 		}
 		
+		// maybe apply decorator
+		if (logger.isTraceEnabled())
+			return new DebugOutputStream(toRemote, "org.openuat.util.BluetoothRFCOMMChannel_OUT");
+			
 		return toRemote;
 	}
 

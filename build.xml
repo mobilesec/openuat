@@ -326,6 +326,7 @@
 				org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
 				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
 				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
+				org/openuat/util/DebugInputStream.java org/openuat/util/DebugOutputStream.java
 				org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
 				org/openuat/authentication/AuthenticationEventSender.java org/openuat/authentication/InterlockProtocol.java
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java" />

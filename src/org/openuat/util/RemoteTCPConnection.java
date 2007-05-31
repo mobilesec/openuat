@@ -32,6 +32,10 @@ public class RemoteTCPConnection implements RemoteConnection {
 	 * @see RemoteConnection.getInputStream
 	 */
 	public InputStream getInputStream() throws IOException {
+		// maybe apply decorator
+		if (logger.isTraceEnabled())
+			return new DebugInputStream(socket.getInputStream(), "org.openuat.util.RemoteTCPConnection_IN");
+			
 		return socket.getInputStream();
 	}
 
@@ -39,6 +43,10 @@ public class RemoteTCPConnection implements RemoteConnection {
 	 * @see RemoteConnection.getOutputStream
 	 */
 	public OutputStream getOutputStream() throws IOException {
+		// maybe apply decorator
+		if (logger.isTraceEnabled())
+			return new DebugOutputStream(socket.getOutputStream(), "org.openuat.util.RemoteTCPConnection_OUT");
+			
 		return socket.getOutputStream();
 	}
 
