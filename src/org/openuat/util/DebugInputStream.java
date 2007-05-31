@@ -17,6 +17,7 @@ import org.apache.log4j.Logger;
  * read from the underlying stream at log4j trace level.
  *  
  * @author Rene Mayrhofer
+ * @version 1.0
  */
 public class DebugInputStream extends InputStream {
 	/** The underlying input stream to read from. */

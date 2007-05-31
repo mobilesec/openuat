@@ -17,6 +17,7 @@ import org.apache.log4j.Logger;
  * written to the underlying stream at log4j trace level.
  *  
  * @author Rene Mayrhofer
+ * @version 1.0
  */
 public class DebugOutputStream extends OutputStream {
 	/** The underlying output stream to read from. */
