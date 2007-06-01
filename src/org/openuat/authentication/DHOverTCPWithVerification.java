@@ -91,8 +91,7 @@ public abstract class DHOverTCPWithVerification extends DHWithVerification {
 	public void startServer() throws IOException {
 		if (serverSocket == null) {
 			serverSocket = new TCPPortServer(tcpPort, true, useJSSE);
-			HostAuthenticationEventHandler hostServerHandler = new HostAuthenticationEventHandler();
-    		serverSocket.addAuthenticationProgressHandler(hostServerHandler);
+    		serverSocket.addAuthenticationProgressHandler(keyManager.getHostAuthenticationHandler());
     		serverSocket.startListening();
 		}
 		else

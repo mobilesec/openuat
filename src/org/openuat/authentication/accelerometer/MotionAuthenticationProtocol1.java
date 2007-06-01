@@ -152,9 +152,9 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * @see #interlockRunner
 	 * @see AsyncInterlockHelper
 	 */
-	protected void startVerification(byte[] sharedAuthenticationKey, 
-			String remote, String param, RemoteConnection connectionToRemote) {
-		logger.info("startVerification hook called with " + remote + ", param " + param);
+	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
+			String param, RemoteConnection connectionToRemote) {
+		logger.info("startVerification hook called with " + connectionToRemote.getRemoteName() + ", param " + param);
 	
 		if (interlockRunner == null) {
 			this.connectionToRemote = connectionToRemote;

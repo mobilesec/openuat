@@ -435,8 +435,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	/** Called by the base class when shared keys have been established and should be verified now.
 	 * In this implementation, verification is done by starting a DongleAuthenticationProtocol. 
 	 */
-	protected void startVerification(byte[] sharedAuthenticationKey, 
-			String remote, String param, RemoteConnection socketToRemote) {
+	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
+			String param, RemoteConnection socketToRemote) {
 		// first do some sanity checks
 		if (referenceMeasurement != -1)
 			logger.error("Internal inconsistency! Object is idle in server mode, but referenceMeasurement is set");
@@ -444,7 +444,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			logger.error("Internal inconsistency! Object is idle in server mode, but remoteRelateId is set");
 		
 		logger.info("Starting key verification at port " + serialPort + " after successful host authentication with " +
-				remote + ", socketToRemote is " + socketToRemote);
+				socketToRemote.getRemoteName() + ", socketToRemote is " + socketToRemote);
 
         /* extract the optional parameters (in the case of the RelateAuthenticationProtocol: the remote
         relate id to authenticate with and the number of rounds - we assume them to be set) as well as the 

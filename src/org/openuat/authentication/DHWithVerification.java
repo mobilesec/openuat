@@ -11,8 +11,6 @@ package org.openuat.authentication;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-
-import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.DongleProtocolHandler;
@@ -63,39 +61,6 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.DHWithVerification" /*DHOverTCPWithVerification.class*/);
 
-	/** Possible value of state, indicates that the authentication has not been started yet. 
-	 * @see #state 
-	 */
-	private final static int STATE_IDLE = 1;
-	/** Possible value of state, indicates that the host authentication is running.
-	 * @see #state 
-	 */
-	private final static int STATE_HOST_AUTH_RUNNING = 2;
-	/** Possible value of state, indicates that the key verification is running
-	 * (and the host authentication has thus implicitly been completed successfully).
-	 * @see #state 
-	 */
-	private final static int STATE_VERIFICATION_RUNNING = 3;
-	/** Possible value of state, indicates that the whole authentication protocol has 
-	 * been completed successfully.
-	 * @see #state 
-	 */
-	private final static int STATE_SUCCEEDED = 4;
-	/** Possible value of state, indicates that the whole authentication protocol has failed.
-	 * @see #state 
-	 */
-	private final static int STATE_FAILED = 5;
-	
-	/** The current state of the authentication, one of STATE_IDLE,
-	 * STATE_HOST_AUTH_RUNNING, STATE_VERIFICATION_RUNNING, STATE_SUCCEEDED, STATE_FAILED.
-	 * @see #STATE_IDLE
-	 * @see #STATE_HOST_AUTH_RUNNING
-	 * @see #STATE_VERIFICATION_RUNNING
-	 * @see #STATE_SUCCEEDED
-	 * @see #STATE_FAILED
-	 */
-	private int state = STATE_IDLE;
-	
 	/** This message is sent via the TCP channel to the remote upon authentication success. */
 	private final static String Protocol_Success = "ACK ";
 	/** This message is sent via the TCP channel to the remote upon authentication failure. */
@@ -112,16 +77,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
 
-	/** If the state is STATE_DONGLE_AUTH_RUNNING or STATE_SUCCEEDED, this contains
-	 * the secret key shared with the other device.
-	 */
-	private byte[] sharedKey = null;
-
 	/** If the state is one of STATE_*_RUNNING, this contains a socket that is still
 	 * connected to the remote side and which is used for transmitting success or failure
 	 * messages from the dongle authentication protocol (i.e. the second stage).
-	 * It is set by HostAuthenticationEventHandler.AuthenticationSuccess.
-	 * @see HostAuthenticationEventHandler#AuthenticationSuccess
+	 * It is set by StartVerfificationHandler.startVerification
+	 * @see StartVerificationHandler#startVerification
 	 */
 	private RemoteConnection connectionToRemote = null;
 
@@ -131,6 +91,12 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @see #stopServer
 	 */
 	protected HostServerBase serverSocket = null;
+	
+	/** The key manager instance we are using to keep track of keys and 
+	 * states. We don't support concurrent key verification with different
+	 * hosts at this time. This may change in the future. 
+	 */
+	protected KeyManager keyManager;
 	
 	/** This may be set to distinguish multiple instances running on the same machine. */
 	protected String instanceId = null;
@@ -148,7 +114,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 *            socket will be closed when this protocol is done with it. The socket
 	 *            will always be closed on authentication failures.
 	 *            If in doubt, set to false;
-	 * @param instanceId This parameter may be used to distinguish differenc instances of
+	 * @param instanceId This parameter may be used to distinguish different instances of
 	 *                   this class running on the same machine. It will be used in logging
 	 *                   and error messages. May be set to null.
 	 */
@@ -157,6 +123,10 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
 		this.instanceId = instanceId;
+		keyManager = new KeyManager(false, instanceId);
+		// and also register ourselves at the key manager
+		keyManager.addAuthenticationProgressHandler(new HostAuthenticationEventHandler());
+		keyManager.addVerificationHandler(new StartVerificationHandler());
 	}
 
 	/** This method returns true if this object is idle or if it is currently running the authentication protocol
@@ -168,7 +138,8 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	public boolean isIdle() {
 		// no synchronization mechanism here because it's only a boolean
-		return state == STATE_IDLE;
+		// there's no connectionToRemote object in this state!
+		return keyManager.isIdle();
 	}
 	
 	/** This method returns true if key verification is currently running.
@@ -177,7 +148,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	public boolean isVerifying() {
 		// dt.
-		return state == STATE_VERIFICATION_RUNNING;
+		return connectionToRemote != null && keyManager.getState(connectionToRemote) == KeyManager.STATE_VERIFICATION;
 	}
 	
 	/** Starts the authentication protocol in the background. Listeners should subscribe to
@@ -201,7 +172,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 			return false;
 		}
 		
-		state = STATE_HOST_AUTH_RUNNING;
+		if (!keyManager.startKeyAgreement(remote)) {
+        	logger.error("Could not start remote host object, this should not happen! Aborting startAuthentication" +
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+        	return false;
+		}
 		
 		/* This is simple in the implementation, because we just need to start the
 		 * host authentication here. When that suceeds, the event handler will 
@@ -213,7 +188,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		 * finishes. */
 		try {
 			HostProtocolHandler.startAuthenticationWith(remote, 
-					new HostAuthenticationEventHandler(), 
+					keyManager.getHostAuthenticationHandler(), 
 					true, param, useJSSE);
 		} 
 		catch (IOException e) {
@@ -247,13 +222,16 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * authentication protocol runs are again possible. 
 	 */
 	protected void reset() {
+		if (connectionToRemote != null)
+			if (!keyManager.reset(connectionToRemote))
+				logger.error("Could not reset remote host object, this should not happen!" +
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		connectionToRemote = null;
 		
 		// also allow derived classes to do more specific resets
 		resetHook();
 
 		// and finally reset the state
-		state = STATE_IDLE;
 		logger.debug("Reset object to idle set" + 
 				(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
@@ -264,26 +242,23 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */ 
-	private void authenticationFailed(String remote, 
+	public void authenticationFailed(String remoteName, 
 			Object optionalRemoteId, Exception e, String message) {
-		state = STATE_FAILED;
-		// be sure to wipe the shared key if it has already been set
-		if (sharedKey != null) {
-			for (int i=0; i<sharedKey.length; i++)
-				sharedKey[i] = 0;
-			sharedKey = null;
-		}
-		raiseAuthenticationFailureEvent(remote, e, message);
+		if (connectionToRemote != null)
+			if (!keyManager.fail(connectionToRemote))
+				logger.error("Could not fail remote host object, this should not happen!" +
+						(instanceId != null ? " [instance " + instanceId + "]" : ""));
+		raiseAuthenticationFailureEvent(remoteName, e, message);
 		
 		// also allow derived classes to do special failure handling
-		protocolFailedHook(remote, optionalRemoteId, e, message);
+		protocolFailedHook(remoteName, optionalRemoteId, e, message);
 		
 		// no need to keep the connection around in any case - close it properly
 		closeConnection();
 		
 		reset();
 	}
-
+	
 	/** Small helper to send to the remote and wait for the remote message 
 	 * (after we sent our own - hint against dead locks) before continuing with 
 	 * either success of failure handling.
@@ -366,7 +341,12 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     			logger.info("Received success status from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
-		        state = STATE_SUCCEEDED;
+    			// mark host as succeeded
+		        if (!keyManager.succeed(connectionToRemote)) {
+		        	logger.error("Could not succeed remote host object, this should not happen! Aborting verificationSuccess" +
+							(instanceId != null ? " [instance " + instanceId + "]" : ""));
+		        	return;
+		        }
 		        /* for sending the success events, first figure out both aspects of the remote host
 		           (i.e. the remote host name and the optional remote ID) */
 		        Object[] remoteParam = new Object[] {connectionToRemote.getRemoteName(), optionalRemoteId};
@@ -374,21 +354,29 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        // this string can be null if no optional parameter has been received from the remote host
 		        String optionalParameterFromRemote = remoteStatus.substring(Protocol_Success.length());
 		        
+		        byte[] sessionKey = keyManager.getSessionKey(connectionToRemote);
+		        if (sessionKey == null) {
+		        	logger.error("Could not retreive session key for remote host '" + connectionToRemote.getRemoteName() +
+		        			", this should not happen! Aborting verificationSuccess" +
+							(instanceId != null ? " [instance " + instanceId + "]" : ""));
+		        	return;
+		        }
+		        
 		        if (!keepConnected) {
 			        // first also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(connectionToRemote.getRemoteName(), optionalRemoteId, optionalParameterFromRemote, sharedKey, null);
+			        protocolSucceededHook(connectionToRemote.getRemoteName(), optionalRemoteId, optionalParameterFromRemote, sessionKey, null);
 			        /* our result object is here the secret key that is shared (host authentication) 
 			           and now spatially authenticated (dongle authentication) */
-		        	raiseAuthenticationSuccessEvent(remoteParam, sharedKey);
+		        	raiseAuthenticationSuccessEvent(remoteParam, sessionKey);
 		        }
 		        else {
 			        // first also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(connectionToRemote.getRemoteName(), optionalRemoteId, optionalParameterFromRemote, sharedKey, connectionToRemote);
+			        protocolSucceededHook(connectionToRemote.getRemoteName(), optionalRemoteId, optionalParameterFromRemote, sessionKey, connectionToRemote);
 		        	/* It has been requested that the socket be kept open, so pass it over
 		        	 * in addition to the shared secret key.
 		        	 * As we need to pass two parameters in this case, again use an array...
 		        	 */
-		        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sharedKey, connectionToRemote});
+		        	raiseAuthenticationSuccessEvent(remoteParam, new Object[] {sessionKey, connectionToRemote});
 		        }
 		        		
 				// if the socket is not going to be re-used, don't forget to close it properly
@@ -448,89 +436,22 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
 	}
 
-	/** A helper class for handling the events from HostProtocolHandler.
-	 * Its main purpose is to react to the AuthenticationSuccess event of
-	 * HostAuthenticationProtocol (i.e. stage 1), record its results and
-	 * fire off the key verification (i.e. stage 2).
-	 * Additionally, it will forward failure and progress events.  
+	/** A helper class for handling the events from KeyManager to forward 
+	 * failure and progress events.  
 	 */
 	protected class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
-	    public void AuthenticationSuccess(Object sender, Object remote, Object result)
-	    {
-	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		state = STATE_HOST_AUTH_RUNNING;
-	    	}
-	    	if (state != STATE_HOST_AUTH_RUNNING) {
-	    		logger.error("Received host authentication success event with remote host " + remote + 
-	    				" while not expecting one! This event will be ignored." + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		return;
-	    	}
-			
-	        logger.info("Received host authentication success event with " + remote + 
-					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	        Object[] res = (Object[]) result;
-	        // remember the secret key shared with the other device
-	        sharedKey = (byte[]) res[0];
-	        // and extract the shared authentication key for phase 2
-	        byte[] authKey = (byte[]) res[1];
-	        logger.debug("Shared session key is now '" + new String(Hex.encodeHex(sharedKey)) + 
-	        		"' with length " + sharedKey.length + 
-	        		", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
-	        		"' with length " + authKey.length + 
-					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	        // then extraxt the optional parameter
-	        String param = (String) res[2];
-	        /* TODO: this could need some error handling, but at the moment we depend on it being set
-	         * (it should be, since we set keepSocketConnected=true for HostProtocolHandler)
-	         */
-	        connectionToRemote = (RemoteConnection) res[3];
-
-	        // finally change state and fire off the key verification
-        	state = STATE_VERIFICATION_RUNNING;
-	        startVerification(authKey, (String) remote, param, connectionToRemote);
+	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+	    	logger.error("");
 	    }
 
-	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
-	    {
-	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		state = STATE_HOST_AUTH_RUNNING;
-	    	}
-	    	if (state != STATE_HOST_AUTH_RUNNING) {
-	    		logger.error("Received host authentication failure event with remote host " + remote + 
-	    				" while not expecting one! This event will be ignored." + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		return;
-	    	}
-			
+	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 	        logger.info("Received host authentication failure with " + remote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	        if (e != null)
-	            logger.info("Exception: " + e);
-	        if (msg != null)
-	            logger.info("Message: " + msg);
-	        // this will also call the derived classes hook
-	        authenticationFailed((String) remote, null, e, msg);
+	        // this will also call the derived classes hook and raise an event to listeners
+	        authenticationFailed(((RemoteConnection) remote).getRemoteName(), null, e, msg);
 	    }
 
-	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
-	    {
-	    	if (isIdle()) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		state = STATE_HOST_AUTH_RUNNING;
-	    	}
-	    	if (state != STATE_HOST_AUTH_RUNNING) {
-	    		logger.error("Received host authentication progress event with remote host " + remote + 
-	    				" while not expecting one! This event will be ignored." + 
-						(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		return;
-	    	}
-			
+	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this is not optional because we don't know the number of rounds to use yet
@@ -538,8 +459,18 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages,
 	        		msg);
 	        // also call the hook of derived classes
-	        protocolProgressHook((String) remote, null, cur, max, msg);
+	        protocolProgressHook(((RemoteConnection) remote).getRemoteName(), null, cur, max, msg);
 	    }
+	}
+	
+	protected class StartVerificationHandler implements KeyManager.VerificationHandler {
+		public void startVerification(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection toRemote) {
+	        logger.info("Received host authentication success event with " + toRemote.getRemoteName() + 
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	        // remember the connection object
+	        connectionToRemote = toRemote;
+	        startVerificationAsync(sharedAuthenticationKey, optionalParam, toRemote);
+		}
 	}
 
 	
@@ -550,8 +481,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * 
 	 * @param sharedAuthenticationKey This key should be verified to be equal on
 	 *                                both sides.
-	 * @param remote The remote host with which the key exchange succeeded.
-	 * @param param Optional parameters sent by the remote host during the key agreement
+	 * @param optionalParam Optional parameters sent by the remote host during the key agreement
 	 *              phase.
 	 * @param socketToRemote This socket is still open and can be used to communicate
 	 *                       with the remote host for verifying the authentication
@@ -561,8 +491,8 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 *                       used for exchanging status information about the success
 	 *                       or failure of the whole authentication protocol.
 	 */
-	protected abstract void startVerification(byte[] sharedAuthenticationKey, 
-			String remoteName, String param, RemoteConnection toRemote);
+	protected abstract void startVerificationAsync(byte[] sharedAuthenticationKey, 
+			String optionalParam, RemoteConnection toRemote);
 	
 	/** This hook will be called when the object is reset to its "idle" state,
 	 * i.e. so that subsequent authentications can be performed. Derived classes

@@ -11,6 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.Socket;
 
 import org.apache.log4j.Logger;
@@ -21,7 +22,7 @@ public class RemoteTCPConnection implements RemoteConnection {
 	private static Logger logger = Logger.getLogger("org.openuat.util.RemoteTCPConnection" /*BluetoothRFCOMMChannel.class*/);
 
 	/** Just a reference to the Socket object wrapped by this class. */
-	private Socket socket;
+	private Socket socket = null;
 	
 	/** Only stores the Socket reference s in socket. */
 	public RemoteTCPConnection(Socket s) {
@@ -89,5 +90,12 @@ public class RemoteTCPConnection implements RemoteConnection {
 	 */
 	public Socket getSocketReference() {
 		return socket;
+	}
+	
+	/** Implementation of equals, comparing the socket objects with their equals method. */
+	public boolean equals(Object other) {
+		return other != null && (other instanceof RemoteTCPConnection) &&
+			((RemoteTCPConnection) other).socket != null &&
+			((RemoteTCPConnection) other).socket.equals(socket);
 	}
 }

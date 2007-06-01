@@ -38,4 +38,11 @@ public interface RemoteConnection {
 	 * held by it.
 	 */
 	void close();
+	
+	/** This must be implemented properly so that KeyManager can deal with
+	 * keys for different hosts. End point descriptions should be compared, 
+	 * e.g. IP address and port or Bluetooth MAC address and RFCOMM channel 
+	 * nummber.
+	 */
+	boolean equals(Object other);
 }

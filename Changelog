@@ -1,4 +1,4 @@
-Version 0.10, released 2007-05-
+Version 0.10, released 2007-06-
 
   This is a minor new feature release, adding support for new accelerometer
   sensors available on some recent laptop mainboards and Bluetooth RFCOMM
@@ -7,6 +7,9 @@ Version 0.10, released 2007-05-
   are now represented by the new RemoteConnection interface so that classes 
   like HostProtocolHandler and the DHWithVerification protocol can 
   transparently use different connection types, e.g. TCP or Bluetooth RFCOMM.
+  
+  This release also adds a key manager for keeping track of the keys that a
+  host shares with remote hosts.
   
   A new concept introduced with this release is the concept of roles: a device
   or side of the authentication can hold one or multiple roles. Initial
@@ -21,6 +24,10 @@ Version 0.10, released 2007-05-
   New sensor data classes:
   * sensors.MainboardAccelerometerReaderFactory with implementations for 
     Linux and MacOS/X
+  * sensors.j2me.SymbianTCPAccelerometerReader
+  
+  New classes for authentication:
+  * authentication.KeyManager
   
   New utility classes for communication:
   * util.BluetoothRFCOMMServer
@@ -51,7 +58,8 @@ Version 0.10, released 2007-05-
     
   New applications:
   * (J2ME) apps.j2me.HelloProporty
-  * (J2ME) apps.j2me.
+  * (J2ME) apps.j2me.BluetoothDemo
+  * (J2ME) apps.j2me.ShakeMIDlet
   
   Changed applications:
   * IPSecME client and server applications: now use Swing and are
@@ -59,7 +67,7 @@ Version 0.10, released 2007-05-
 
   The build script now integrates:
   * Cobertura for generating coverage reports.
-  * Sun WTK with Ant Antenna plugins to create J2ME MIDlets.
+  * Sun WTK with J2ME Polish to create J2ME MIDlets.
 
 --- Rene Mayrhofer <rene@mayrhofer.eu.org>
 

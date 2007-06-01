@@ -295,6 +295,27 @@ try {
 		}
 	}
 
+	/** This implementation of equals either compares either the connection
+	 * objects (if set) or serviceURL.
+	 */ 
+	public boolean equals(Object other) {
+		if (other == null || !(other instanceof BluetoothRFCOMMChannel))
+			return false;
+		BluetoothRFCOMMChannel o = (BluetoothRFCOMMChannel) other;
+		
+		// already connected? if yes, this has precedence
+		if (connection != null && o.connection != null)
+			return connection.equals(o.connection);
+		
+		// not connected, compare serviceURL (because this will be used in open()
+		if (serviceURL != null && o.serviceURL != null)
+			return serviceURL.equals(o.serviceURL);
+		
+		// don't know...
+		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL set. For what I know, they are different.");
+		return false;
+	}
+
 	   /**
 	    * Shows information about the remote device (name, device class, BT address ..etc..)
 	    */

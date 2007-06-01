@@ -8,11 +8,11 @@
  */
 package org.openuat.util;
 
+import java.io.IOException;
+
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.exceptions.*;
-
-import java.io.*;
 
 /** This is a base class for listening to connections and spawning 
  * HostProtocolHandler objects upon incoming connections. It takes care of
