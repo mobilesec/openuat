@@ -75,9 +75,6 @@ public class IPSecConnection_Windows implements IPSecConnection {
 		}
 	}
 
-	public IPSecConnection_Windows() {
-	}
-	
 	/** Initializes an instance of a secure channel. This implementation only remembers
 	 * remoteHost in the member variable.
 	 * @see #remoteHost 
@@ -94,6 +91,8 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, boolean useAsDefault) {
 		if (! useAsDefault)
 			return init(remoteHost, null, 0);
@@ -125,6 +124,8 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 

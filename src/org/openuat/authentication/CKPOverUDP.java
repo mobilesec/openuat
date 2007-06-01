@@ -544,7 +544,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 					int[][] remoteIndices = (int[][]) incomingCandKeyBuffer[i][4];
 					numOldCandidates += numParts;
 					// the call to checkForKeyMatch already handles to send the message if successful
-					if (checkForKeyMatch(sender, numParts, candKeyHash, localIndices, remoteIndices))
+					if (checkForKeyMatch(sender, candKeyHash, localIndices, remoteIndices))
 						// and remove from the list to not match one incoming message twice
 						incomingCandKeyBuffer[i] = null;
 				}
@@ -669,7 +669,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @see UDPMessageHandler#handleMessage(byte[], int, int, Object)
 	 * @see #addCandidates(byte[][], float)
 	 */
-	private boolean checkForKeyMatch(InetAddress remoteHost, int numParts, byte[] candKeyHash,
+	private boolean checkForKeyMatch(InetAddress remoteHost, byte[] candKeyHash,
 			int[][] localIndices, int[][] remoteIndices) throws InternalApplicationException, IOException {
 		CandidateKey candKey = ckp.searchKey(remoteHost.getHostAddress(), candKeyHash, localIndices, remoteIndices);
 		
@@ -737,7 +737,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		try { 
 			matchingRoundsFraction = ckp.getMatchingRoundsFraction(remoteHostAddress);
 		}
-		catch (InternalApplicationException f) { }
+		catch (InternalApplicationException f) { 
+			logger.error("Can not compute fraction of matching rounds, this should not happen!", f);
+		}
 
 		// also wipe the state local to this class
 		wipe(remoteHostAddress);
@@ -753,7 +755,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
 	 */
 	private void authenticationSucceededStage1(InetAddress remoteHost,
-			byte[] foundKeyHash, byte[] foundKey) throws InternalApplicationException, IOException {
+			byte[] foundKeyHash, byte[] foundKey) throws IOException {
 		String remoteHostAddress = remoteHost.getHostAddress();
 
 		if (! generatedKeys.containsKey(remoteHostAddress)) {
@@ -785,7 +787,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * finished. For details about the two stages, see @see GeneratedKeyCandidates#foundMatchingKeyHash.
 	 */
 	private void authenticationSucceededStage2(InetAddress remoteHost,
-			byte[] ackedKeyHash) throws InternalApplicationException, IOException {
+			byte[] ackedKeyHash) throws InternalApplicationException {
 		String remoteHostAddress = remoteHost.getHostAddress();
 
 		if (! generatedKeys.containsKey(remoteHostAddress))
@@ -1027,7 +1029,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 								CandidateKeyProtocol.CandidateKey.indexTuplesToString(localIndices) +
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 
-						if (! checkForKeyMatch((InetAddress) sender, numParts, candKeyHash, localIndices, remoteIndices)) {
+						if (! checkForKeyMatch((InetAddress) sender, candKeyHash, localIndices, remoteIndices)) {
 							/* No match, but remember the received candidate key in case the match local 
 							 * candidates are about to be added. 
 							 * Note: in contrast to storing candidate key parts in the buffer independently

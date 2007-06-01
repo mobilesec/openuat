@@ -14,8 +14,8 @@ import java.util.TimerTask;
 
 public class TrayIconHelper extends TimerTask implements ActionListener {
 	
-	private static final int WIDTH = 16;
-	private static final int HEIGHT = 16;
+	/*private static final int WIDTH = 16;
+	private static final int HEIGHT = 16;*/
 	
 	private boolean isBlue;
 	private TrayIcon trayIcon;
@@ -39,6 +39,7 @@ public class TrayIconHelper extends TimerTask implements ActionListener {
 		timer.schedule(this, 1000, 1000);
 	}
 	
+	@Override
 	public void run() {
 		Graphics g = image.getGraphics();
 		g.setColor(Color.white);

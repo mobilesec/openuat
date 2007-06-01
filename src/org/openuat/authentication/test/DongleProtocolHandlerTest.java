@@ -8,7 +8,6 @@
  */
 package org.openuat.authentication.test;
 
-import org.openuat.authentication.exceptions.*;
 import org.openuat.authentication.relate.DongleProtocolHandler;
 
 import junit.framework.*;

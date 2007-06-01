@@ -66,7 +66,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 		this.ignoredConns.add("clear-or-private");
 	}
 	
-	protected String createConnName(String localAddr, String remoteAddr) {
+	protected static String createConnName(String localAddr, String remoteAddr) {
 		return "auto-" + localAddr.replace('.', '_') + "-" + remoteAddr.replace('.', '_');
 	}
 	
@@ -86,6 +86,8 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, boolean useAsDefault) {
 		if (! useAsDefault)
 			return init(remoteHost, null, 0);
@@ -117,6 +119,8 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 * @return true if the channel could be initialized, false otherwise. It will return
 	 *         false if the channel has already been initialized previously.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
 			logger.error("Can not initialize connection with remote '" + remoteHost + 
@@ -141,6 +145,8 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
 	 *                   it will be set to auto=add.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean start(byte[] sharedSecret, boolean persistent) {
 		return start(sharedSecret, null, persistent);
 	}
@@ -153,6 +159,8 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 * @param persistent Supported. If set to true, the connection will be set to auto=start, if set to false,
 	 *                   it will be set to auto=add.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean start(String caDistinguishedName, boolean persistent) {
 		return start(null, caDistinguishedName, persistent);
 	}
@@ -162,6 +170,8 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	 * (But both can be null, this will indicate X.509 certificate authentication
 	 * with any valid certificate.)
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
 			logger.error("Can not start connection, remoteHost not yet set");
@@ -263,7 +273,9 @@ class IPSecConnection_Openswan implements IPSecConnection {
 					// ignore it, because if one of the connections comes up, we are set
 					try {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
-					} catch (ExitCodeException f) {}
+					} catch (ExitCodeException f) {
+						logger.error("Can't execute command!", f);
+					}
 				}
 			}
 			writerConn.close();
@@ -274,7 +286,9 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			configPsk.delete();
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
-			} catch (ExitCodeException f) {}
+			} catch (ExitCodeException f) {
+				logger.error("Can't execute command!", f);
+			}
 			return false;
 		}
 		catch (IOException e) {
@@ -285,7 +299,9 @@ class IPSecConnection_Openswan implements IPSecConnection {
 				configPsk.delete();
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
-			} catch (Exception f) {}
+			} catch (Exception f) {
+				logger.error("Can't execute command!", f);
+			}
 			return false;
 		}
 	}

@@ -101,6 +101,8 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 * @param udpSendPort The UDP port to send packets to.
 	 * @param sendAddress The (multicast or unicast) IP address to send UDP packets to.
 	 * @throws IOException 
+	 * 
+	 * // TODO: implement handling of minMatchingParts 
 	 */
 	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
 			int cutOffFrequency, int windowOverlap, float matchThreshold,
@@ -202,18 +204,24 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
 		logger.info("CKP succeeded with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds, shared key is now " + sharedSessionKey.toString() +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
 		logger.error("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds: " + message + "/" + e +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
 		logger.debug("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message +
 				(instanceId != null ? " [" + instanceId + "]" : ""));

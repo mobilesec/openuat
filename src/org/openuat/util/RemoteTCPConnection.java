@@ -11,7 +11,6 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.Socket;
 
 import org.apache.log4j.Logger;
@@ -92,10 +91,28 @@ public class RemoteTCPConnection implements RemoteConnection {
 		return socket;
 	}
 	
-	/** Implementation of equals, comparing the socket objects with their equals method. */
+	/** Implementation of equals, comparing the target IP address and target 
+	 * port. Local port are ignored in this comparison, as we refer to 
+	 * Remote_TCP_Connections. 
+	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public boolean equals(Object other) {
-		return other != null && (other instanceof RemoteTCPConnection) &&
-			((RemoteTCPConnection) other).socket != null &&
-			((RemoteTCPConnection) other).socket.equals(socket);
+		if (other == null || !(other instanceof RemoteTCPConnection)) {
+			if (logger.isDebugEnabled())
+				logger.debug("equals called with object of wrong type");
+			return false;
+		}
+		RemoteTCPConnection o = (RemoteTCPConnection) other;
+		boolean ret = o.socket != null && socket != null &&
+			o.socket.getInetAddress().equals(socket.getInetAddress()) &&
+			o.socket.getPort() == socket.getPort(); 
+		if (logger.isDebugEnabled())
+			logger.debug("socket=" + socket + ", o.socket=" + o.socket +
+					", socket.InetAddress=" + socket.getInetAddress() + 
+					", o.socket.InetAddress=" + o.socket.getInetAddress() + 
+					", socket.port=" + socket.getPort() + ", o.socket.port=" + o.socket.getPort() +
+					", RET=" + ret);
+		return ret; 
 	}
 }

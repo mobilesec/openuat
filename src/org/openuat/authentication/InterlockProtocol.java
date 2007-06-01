@@ -665,7 +665,10 @@ public class InterlockProtocol {
 	 * @return The message that the remote host sent, or null if the interlock protocol 
 	 *         could not be completed successfully.
 	 * @throws IOException 
-	 * @throws InternalApplicationException 
+	 * @throws InternalApplicationException
+	 * 
+	 *  // TODO: implement handling of timeoutMS
+	 *  // TODO: implement handling of retransmit
 	 */
 	public static byte[] interlockExchange(byte[] message, InputStream fromRemote, OutputStream toRemote,
 			byte[] sharedKey, int rounds, boolean retransmit, int timeoutMs, boolean useJSSE) 
@@ -675,8 +678,8 @@ public class InterlockProtocol {
 		if (retransmit)
 			throw new IllegalArgumentException("Retransmit is currently not implemented");
 
-		logger.info("Running interlock exchange with " + rounds + " rounds. My message is " + 
-				message.length + " bytes long");
+		logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
+				timeoutMs + "ms. My message is " + message.length + " bytes long");
 		
 		InterlockProtocol myIp = new InterlockProtocol(sharedKey, rounds, 
 				message.length*8, null, useJSSE);

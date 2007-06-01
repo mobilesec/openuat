@@ -146,6 +146,8 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 	}
 	
 	/** Implementation of SamplesSource.handleSample. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected boolean handleSample() {
 		try {
 			String line = reader.readLine();
@@ -176,6 +178,8 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 	/** This makes sure that all ressources are freed properly when this object 
 	 * is garbage collected.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void dispose() {
 		super.dispose();
 		try {

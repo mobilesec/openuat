@@ -137,7 +137,9 @@ public class SimpleKeyAgreement {
 	 *                Lightweight API classes will be used.
 	 * @see #wipe
 	 */
-	public void init(boolean useJSSE) throws InternalApplicationException {
+	public void init(// TODO: activate me again when J2ME polish can deal with Java5 sources!
+			//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
+			boolean useJSSE) throws InternalApplicationException {
 		this.useJSSE = useJSSE;
 //#if cfg.includeJSSESupport
 		if (useJSSE)
@@ -184,7 +186,7 @@ public class SimpleKeyAgreement {
 //#endif
 
 	/** This is an implementation of init() using the Bouncycastle Lightweight API. */
-	private void init_BCAPI() throws InternalApplicationException {
+	private void init_BCAPI() {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
 		wipe();
 
@@ -253,13 +255,13 @@ public class SimpleKeyAgreement {
 	
 //#if cfg.includeJSSESupport
 	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
-	private byte[] getPublicKey_JSSE() throws KeyAgreementProtocolException {
+	private byte[] getPublicKey_JSSE() {
 		return ((javax.crypto.interfaces.DHPublicKey) ((java.security.KeyPair) myKeypair).getPublic()).getY().toByteArray();
 	}
 //#endif
 	
 	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
-	private byte[] getPublicKey_BCAPI() throws KeyAgreementProtocolException {
+	private byte[] getPublicKey_BCAPI() {
 		return ((org.bouncycastle.crypto.params.DHPublicKeyParameters) 
 				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPublic()) .getY().toByteArray();
 	}
@@ -340,7 +342,7 @@ public class SimpleKeyAgreement {
 
 	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
 	private void addRemotePublicKey_BCAPI(byte[] key)
-			throws KeyAgreementProtocolException, InternalApplicationException {
+			throws KeyAgreementProtocolException {
 		if (new BigInteger(key).equals(((org.bouncycastle.crypto.params.DHPublicKeyParameters) 
 				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPublic()) .getY()))
 			throw new KeyAgreementProtocolException(

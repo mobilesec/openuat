@@ -18,9 +18,7 @@ import javax.bluetooth.*;
 
 import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
-import net.sf.microlog.appender.RecordStoreAppender;
 import net.sf.microlog.ui.LogForm;
-import net.sf.microlog.util.GlobalProperties;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
@@ -116,6 +114,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			main_list.append("Find Devices", null);
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void startApp() {
 		logForm.setPreviousScreen(main_list);
 		display.setCurrent(main_list);
@@ -177,10 +177,16 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		}
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void pauseApp() {
+		// nothing to do when the app is paused, leave the background actions running
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void destroyApp(boolean unconditional) {
+		// nothing special to do, resources will be freed automatically
 	}
 
 	public void inquiryCompleted(Vector newDevices) {
@@ -206,9 +212,11 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	}
 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+		// just ignore for this demo application 
 	}
 
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+		// just ignore for this demo application 
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
@@ -220,6 +228,9 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
         byte[] authKey = (byte[]) res[1];
         // then extraxt the optional parameter
         String param = (String) res[2];
+        logger.info("Extracted session key of length " + sharedKey.length +
+        		", authentication key of length " + authKey.length + 
+        		" and optional parameter '" + param + "'");
         RemoteConnection connectionToRemote = (RemoteConnection) res[3];
         try {
         	OutputStreamWriter toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());

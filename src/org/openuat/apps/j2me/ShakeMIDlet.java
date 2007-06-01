@@ -21,13 +21,10 @@ import javax.bluetooth.*;
 
 import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
-import net.sf.microlog.appender.RecordStoreAppender;
 import net.sf.microlog.ui.LogForm;
-import net.sf.microlog.util.GlobalProperties;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.SegmentsSink_Int;
@@ -166,6 +163,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			}
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void startApp() {
 		logForm.setPreviousScreen(main_list);
 		display.setCurrent(main_list);
@@ -191,6 +190,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			}
 		}
 		else if (com == back) {
+			// TODO: clean me up here - what should our interface be?
 		}
 		else if (com == log) {
 			display.setCurrent(logForm);
@@ -210,10 +210,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		}
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void pauseApp() {
+		// nothing to do when the app is paused, leave the background actions running
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void destroyApp(boolean unconditional) {
+		// nothing special to do, resources will be freed automatically
 	}
 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
@@ -242,6 +248,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
         // then extraxt the optional parameter
         String param = (String) res[2];
         connectionToRemote = (RemoteConnection) res[3];
+        logger.info("Extracted session key of length " + sharedKey.length +
+        		", authentication key of length " + authKey.length + 
+        		" and optional parameter '" + param + "'");
         try {
 			toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());
 			
@@ -282,9 +291,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		}
 
 		public void segmentEnd(int index) {
+			// not interested in segments when only forwarding to BT
 		}
 
 		public void segmentStart(int index) {
+			// not interested in segments when only forwarding to BT
 		}
 	}
 	

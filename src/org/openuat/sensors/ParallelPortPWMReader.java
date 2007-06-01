@@ -96,6 +96,8 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 	 * parport-pulsewidth. This method creates the samples and emits events.
 	 * @param line The line to parse.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void parseLine(String line) {
 		long timestamp = 0;
 		/* Version 1 

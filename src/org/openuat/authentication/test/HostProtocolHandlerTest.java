@@ -36,7 +36,9 @@ public class HostProtocolHandlerTest extends TestCase {
     protected boolean useJSSEServer = true;
     protected boolean useJSSEClient = true;
 
-    public void setUp() throws InterruptedException, IOException
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	public void setUp() throws InterruptedException, IOException
     {
         // This is a rather dirty hack: whenever the socket was open earlier and has just been closed
         // by the TearDown method before this SetUp method was called, it seems that the OS does need
@@ -51,7 +53,9 @@ public class HostProtocolHandlerTest extends TestCase {
         socketWasAlreadyOpen = true;
     }
 
-    public void tearDown() throws InterruptedException, IOException, InternalApplicationException
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	public void tearDown() throws InterruptedException, IOException, InternalApplicationException
     {
         if (client != null) {
             client.shutdownInput();

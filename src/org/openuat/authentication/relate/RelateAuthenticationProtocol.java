@@ -251,20 +251,20 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	/** This is only a helper method to fetch the reference measurement to a remote host from the
 	 * MeasurementManager. It will block until such a measurement could be received.
 	 * 
-	 * @param remoteRelateId The remote relate id to get the reference measurement to.
+	 * @param remoteIdToMeasure The remote relate id to get the reference measurement to.
 	 * @return The reference measurement.
 	 * 
 	 * @see #startAuthentication for the "outgoing" authentication
 	 * @see #startVerification(byte[], String, String, Socket) for the "incoming" authentication
 	 */
-	private int fetchReferenceMeasurement(int remoteRelateId) {
+	private int fetchReferenceMeasurement(int remoteIdToMeasure) {
 		int ref = -1;
 		while (ref == -1) {
-			logger.debug("Fetching reference mesurements from dongle at port " + serialPort + " to remote id " + remoteRelateId);
+			logger.debug("Fetching reference mesurements from dongle at port " + serialPort + " to remote id " + remoteIdToMeasure);
 			/* this gives us all the measurements that the local dongle took (i.e. where the 
 			 * getDongleId() of MeasurementEvent was equal to the localRelateId) to the remote 
 			 * dongle (i.e. where Measurement.getRelatumId was equal to remoteRelateId) */
-			MeasurementQueue measurements = manager.getLocalMeasurementsTo(remoteRelateId);
+			MeasurementQueue measurements = manager.getLocalMeasurementsTo(remoteIdToMeasure);
 			// simply find the first (i.e. newest) valid measurement
 			Iterator iter = measurements.iterator();
 			while (ref == -1 && iter.hasNext()) {
@@ -272,15 +272,17 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 				logger.debug("Examining measurement from dongle at port " + serialPort + ": " + m);
 				if (m.getTransducers() > 0 && m.getDistance() < 4094) {
 					ref = m.getDistance();
-					logger.info("Taking reference measurement from dongle at port " + serialPort + " to remote id " + remoteRelateId + ": " + ref);
+					logger.info("Taking reference measurement from dongle at port " + serialPort + " to remote id " + remoteIdToMeasure + ": " + ref);
 				}
 			}
 			if (ref == -1) { 
 				// no measurements in the list yet, wait for it to happen
-				logger.info("No measurement from dongle at port " + serialPort + " to remote id " + remoteRelateId + " yet. Waiting.");
+				logger.info("No measurement from dongle at port " + serialPort + " to remote id " + remoteIdToMeasure + " yet. Waiting.");
 				try {
 					Thread.sleep(500);
-				} catch (InterruptedException e) {}
+				} catch (InterruptedException e) {
+					// just ignore, doesn't matter too much if it's shorter
+				}
 			}
 		}
 		return ref;
@@ -299,7 +301,13 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * @see AuthenticationEventSender#addAuthenticationProgressHandler
 	 * @see DongleProtocolHandler#handleDongleCommunication
 	 */
-	public boolean startAuthentication(String remoteHost, int remoteRelateId, int rounds) 
+	public boolean startAuthentication(String remoteHost, 
+			// TODO: activate me again when J2ME polish can deal with Java5 sources!
+			//@SuppressWarnings("hiding") // this sets the member variable
+			int remoteRelateId, 
+			// TODO: activate me again when J2ME polish can deal with Java5 sources!
+			//@SuppressWarnings("hiding") // this indirectly (via the optional parameter passing) sets the member variable later on
+			int rounds) 
 			throws UnknownHostException, IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (rounds < 2) {
 			logger.error("Invalid number of rounds (" + rounds + "), need at least 2");
@@ -351,6 +359,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	}
 	
 	/** Called by the base class when the object is reset to idle state. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void resetHook() {
 		// this needs to be reset so that the handler will be in "server" state
 		remoteRelateId = -1;
@@ -364,6 +374,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
 	 * that the protocol execution times can be queried. 
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolSucceededHook(String remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
 			byte[] sharedSessionKey, RemoteConnection toRemote) {
@@ -371,7 +383,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		DongleProtocolHandler localSide = (DongleProtocolHandler) optionalRemoteId;
 		logger.debug("protocolSucceededHook called at port " + serialPort + " with remote " + 
 				remote + "/" + optionalRemoteId + ", param " + optionalParameterFromRemote + ", session key " + 
-				SerialConnector.byteArrayToHexString((byte[]) sharedSessionKey) + 
+				SerialConnector.byteArrayToHexString(sharedSessionKey) + 
 				", socket " + toRemote);
 		
 		// in addition to the "standard" event sent by the super class, send the specialized Relate event too
@@ -397,6 +409,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * be called when HostAuthenticationProtocol fails, we don't know if optionalRemoteId
 	 * is going to be set - can't use it here at all.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolFailedHook(String remote, Object optionalRemoteId, 
 			Exception e, String message) {
 
@@ -421,6 +435,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 * be called when HostAuthenticationProtocol fails, we don't know if optionalRemoteId
 	 * is going to be set - can't use it here at all.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolProgressHook(String remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
 		logger.debug("protocolProgressHook called at port " + serialPort + " with " + 
@@ -435,6 +451,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	/** Called by the base class when shared keys have been established and should be verified now.
 	 * In this implementation, verification is done by starting a DongleAuthenticationProtocol. 
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
 			String param, RemoteConnection socketToRemote) {
 		// first do some sanity checks
@@ -597,7 +615,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		}
 		try {
 			Thread.sleep(deviceType == 1 ? 2000 : 500);
-		} catch (InterruptedException e) {}
+		} catch (InterruptedException e) {
+			// just ignore, it doesn't matter too much if it's shorter
+		}
 		try {
 			SerialConnector.getSerialConnector("/dev/ttyUSB1", 1).switchDiagnosticMode(false);
 		}
@@ -664,7 +684,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
     				// give it time to settle....
     				try {
     					Thread.sleep(deviceType == 1 ? 3000 : 500);
-    				} catch (InterruptedException e) {}
+    				} catch (InterruptedException e) {
+    					// just ignore, it doesn't matter too much if it's shorter
+    				}
     				resetBothDongles(deviceType);
     				Runtime.getRuntime().exit(0);
     			}
@@ -767,7 +789,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             		// two minutes should really be enough
             		try {
             			Thread.sleep(120 * 1000);
-            		} catch (InterruptedException e) {}
+            		} catch (InterruptedException e) {
+            			// just ignore, it doesn't matter too much if it's shorter
+            		}
             		System.out.println("******** Timed out");
         			statisticsLogger.error("- Timer killed client");
    	        		resetBothDongles(deviceType);
@@ -840,7 +864,9 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             		// two minutes should really be enough
             		try {
             			Thread.sleep(120 * 1000);
-            		} catch (InterruptedException e) {}
+            		} catch (InterruptedException e) {
+            			// just ignore, it doesn't matter too much if it's shorter
+            		}
             		System.out.println("******** Timed out");
             		statisticsLogger.error("- Timer killed client");
             		if (! System.getProperty("os.name").startsWith("Windows CE"))

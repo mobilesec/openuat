@@ -21,12 +21,10 @@ public class IPSecConfigHandlerTest extends TestCase {
 		super(s);
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void setUp() {
 		handler = new IPSecConfigHandler();
-	}
-
-	public void tearDown() {
-		// nothing to do here
 	}
 
 	public void testGatewayProperty(){

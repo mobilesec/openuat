@@ -118,10 +118,6 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 *            The RF message transported over the Relate RF network to the
 	 *            remote dongle. At the moment, it is an encrypted version of
 	 *            the random nonce.
-	 * @param rounds
-	 *            The number of rounds to use. Due to the protocol and hardware
-	 *            limitations, the security of this authentication is given by
-	 *            rounds * EnropyBitsPerRound.
 	 * @param interlockUs
 	 *            The received nonce transported by the ultrasond delays from
 	 *            the remote dongle will be assembled with this InterlockProtocol
@@ -144,7 +140,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * @throws DongleAuthenticationProtocolException
 	 */
 	private boolean handleDongleCommunication(byte[] nonce, byte[] sentRfMessage, 
-			int rounds, InterlockProtocol interlockUs, InterlockProtocol interlockRf) 
+			InterlockProtocol interlockUs, InterlockProtocol interlockRf) 
 			throws DongleAuthenticationProtocolException, InternalApplicationException {
 		// first check the parameters
 		if (remoteRelateId < 0)
@@ -387,7 +383,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
 		
-		if (!handleDongleCommunication(nonce, rfMessage, rounds, interlockUs, interlockRf)) {
+		if (!handleDongleCommunication(nonce, rfMessage, interlockUs, interlockRf)) {
 			// all occurances of return false already raise an authentication failure event, so no need to do it here
 			return;
 		}
@@ -493,6 +489,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 	 * dongle. It is assumed that the real distance between the dongles will not 
 	 * change during the authentication.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public void startAuthentication(byte[] sharedKey, int rounds, int referenceMeasurement) {
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;

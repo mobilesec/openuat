@@ -1,3 +1,12 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-03-20
+ * Modified by Roswitha Gostner to use Swing instead of SWT
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.apps;
 
 import java.awt.BorderLayout;
@@ -7,7 +16,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.Socket;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -18,8 +26,6 @@ import org.apache.log4j.Logger;
 import org.openuat.apps.BinaryBlockStreamer;
 import org.openuat.apps.IPSecConfigHandler;
 
-import org.openuat.authentication.exceptions.ConfigurationErrorException;
-import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.IPSecConnection;
 import org.openuat.channel.IPSecConnection_Factory;
 import org.openuat.channel.X509CertificateGenerator;
@@ -59,7 +65,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	
 	private CAEventsHandler guiHandler=null;
 	
-	public IPSecConnectorClient(Configuration relateConf, MeasurementManager man) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
+	public IPSecConnectorClient(Configuration relateConf, MeasurementManager man) throws IOException {
 		super(false, relateConf, man);
 	}
 
@@ -92,7 +98,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		return config;
 	}*/
 	
-	public static void main (String[] agrs) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException{
+	public static void main (String[] agrs) throws DeviceException, IOException{
 		/* Before this is run, be sure to set up the launch configuration (Arguments->VM Arguments)
 		 * for the correct SWT library path in order to run with the SWT dlls. 
 		 * The dlls are located in the SWT plugin jar.  
@@ -183,6 +189,8 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			
 		}
 		
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		public void progress(String serialPort, String remoteHost, int remoteRelateId, int cur, int max, String msg) {
 			//-> i know that serial connection is not really there.
 			//-> remote Host ist the Name of the Host -> could get IPInet. and from there, I could get the Id. and 
@@ -195,7 +203,9 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 					side = CoordinateHelper.getRelationFromCoordinates(s.getX(), s.getY());
 					remoteId=new Integer(id);
 					}
-				}catch (Exception e){}
+				} catch (Exception e) {
+					logger.error("Can't update progress bar", e);
+				}
 			this.setPaintingToFreeze(true);
 			this.setLocalProgressBar(cur, max);
 		
@@ -211,6 +221,8 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	}
 	
 	/** This is an implementation of the AuthenticationProgressHandler interface. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg){
 		super.AuthenticationProgress(sender, remote, cur, max, msg);
 		/**
@@ -427,6 +439,8 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	
 	
 	/** This is an implementation of the AuthenticationProgressHandler interface. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg){
 		logger.info("Received relate authentication failure event with " + remote);
 		guiHandler.setLocalAuthSuccess(false);

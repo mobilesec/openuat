@@ -228,14 +228,14 @@
 	
 	<target name="compile-java5" description="Compile code that needs Java5" if="haveJava5">
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
-		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
 			<include name="${java5-files}" />
 		</javac>
 	</target>
 
 	<target name="compile-java6" description="Compile code that needs Java6" if="haveJava6">
     	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
-	       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
+	       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
 			<include name="${java6-files}" />
      	</javac>
 	</target>
@@ -381,6 +381,7 @@
 				</variables>
 				<!-- activate Java 5 syntax support -->
 				<!-- TODO: this doesn't work yet - proguard emits errors when activated -->
+				<!--<compiler source="1.5" target="1.5"/>-->
 				<!--<postcompiler name="java5" />-->
 				<!-- obfuscator settings: do not obfuscate when the test-property is true  -->
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">

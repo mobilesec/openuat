@@ -18,7 +18,6 @@ import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.HostServerBase;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
 
 public class BluetoothRFCOMMServerTest extends TestCase {
@@ -36,11 +35,15 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 		super(s);
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void setUp() throws IOException {
 		server = new BluetoothRFCOMMServer(new Integer(CHANNEL), SERVICE_UUID, SERVICE_NAME, false, true);
 		server.startListening();
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void tearDown() throws IOException, InternalApplicationException {
 		if (client != null)
 			client.close();

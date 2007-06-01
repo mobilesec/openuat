@@ -298,6 +298,8 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	/** This closes the serial port or Bluetooth channel properly. 
 	 * It should <b>not</b> be called manually!
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void dispose() {
 		if (serialPort != null) {
 			try {
@@ -316,6 +318,8 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	 * parport-pulsewidth. This method creates the samples and emits events.
 	 * @param line The line to parse.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void parseLine(String line) {
 		//System.out.println("got line from sensor: '" + line + "'");
 		if (line.length() < 2)
@@ -362,9 +366,11 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 		}
 
 		public void segmentStart(int index) {
+			// just ignore for sample code
 		}
 
 		public void segmentEnd(int index) {
+			// just ignore for sample code
 		}
 	}
 	

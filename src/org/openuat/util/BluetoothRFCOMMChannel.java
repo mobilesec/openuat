@@ -180,6 +180,8 @@ try {
 	 * @throws IOException On Bluetooth errors.
 	 * @throws IOException When the channel has already been opened.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
 	public void open() throws IOException {
 		if (connection != null) {
 			throw new IOException("Channel has already been opened");
@@ -298,18 +300,30 @@ try {
 	/** This implementation of equals either compares either the connection
 	 * objects (if set) or serviceURL.
 	 */ 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public boolean equals(Object other) {
-		if (other == null || !(other instanceof BluetoothRFCOMMChannel))
+		if (other == null || !(other instanceof BluetoothRFCOMMChannel)) {
+			if (logger.isDebugEnabled())
+				logger.debug("equals called with object of wrong type");
 			return false;
+		}
 		BluetoothRFCOMMChannel o = (BluetoothRFCOMMChannel) other;
 		
 		// already connected? if yes, this has precedence
-		if (connection != null && o.connection != null)
+		if (connection != null && o.connection != null) {
+			if (logger.isDebugEnabled())
+				logger.debug("Both connection objects set, comparing connection=" + 
+						connection + ", o.connection=" + connection);
 			return connection.equals(o.connection);
+		}
 		
 		// not connected, compare serviceURL (because this will be used in open()
-		if (serviceURL != null && o.serviceURL != null)
+		if (serviceURL != null && o.serviceURL != null) {
+			logger.debug("Both serviceURL objects set, comparing serviceURL=" + 
+					serviceURL + ", o.serviceURL=" + serviceURL);
 			return serviceURL.equals(o.serviceURL);
+		}
 		
 		// don't know...
 		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL set. For what I know, they are different.");

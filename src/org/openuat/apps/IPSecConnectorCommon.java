@@ -1,3 +1,11 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-03-20
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.apps;
 
 import java.io.IOException;
@@ -5,12 +13,9 @@ import java.io.IOException;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.exceptions.ConfigurationErrorException;
-import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.RelateAuthenticationProtocol;
 
 import uk.ac.lancs.relate.core.Configuration;
-import uk.ac.lancs.relate.core.DeviceException;
 import uk.ac.lancs.relate.core.MeasurementManager;
 
 
@@ -66,7 +71,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 	 *                   not using any dongles at all (just assuming that dongle authentication always succeeds).
 	 */
 	protected IPSecConnectorCommon(boolean adminEnd, Configuration relateConf, MeasurementManager mm) 
-			throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
+			throws IOException {
 		this.adminEnd = adminEnd;
 
 		if (System.getProperty("os.name").startsWith("Windows CE")) {

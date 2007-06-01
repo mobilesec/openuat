@@ -189,12 +189,12 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Dummy implementation of SamplesSink.segmentStart. Does nothing. */
-	public void segmentStart(int index) {
+	public void segmentStart(int indexNotUsed) {
 		logger.warn("segmentStart method of TimeSeries called. This should not happen");
 	}
 
 	/** Dummy implementation of SamplesSink.segmentEnd. Does nothing. */
-	public void segmentEnd(int index) {
+	public void segmentEnd(int indexNotUsed) {
 		logger.warn("segmentEnd method of TimeSeries called. This should not happen");
 	}
 	

@@ -48,15 +48,21 @@ public class HelloProperty extends MIDlet implements CommandListener {
                  + System.getProperty( "bluetooth.sd.attr.retrievable.max")+ "\n");
      }
 
-     protected void startApp() {
+ 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+ 	//@Override
+	protected void startApp() {
          Display.getDisplay(this).setCurrent(form);
      }
 
-     protected void pauseApp() {
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	protected void pauseApp() {
     	 // don't need to implement
      }
 
-     protected void destroyApp(boolean bool) {
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	protected void destroyApp(boolean bool) {
     	 // don't need to implement
      }
 

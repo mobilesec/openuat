@@ -8,7 +8,6 @@
  */
 package org.openuat.util.test;
 
-import org.openuat.authentication.*;
 import org.openuat.authentication.exceptions.*;
 import org.openuat.util.HostServerBase;
 import org.openuat.util.TCPPortServer;
@@ -29,11 +28,15 @@ public class TCPPortServerTest extends TestCase {
 		super(s);
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void setUp() throws IOException {
 		server = new TCPPortServer(PORT, false, true);
 		server.startListening();
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void tearDown() throws IOException, InternalApplicationException {
 		if (client != null)
 			client.close();

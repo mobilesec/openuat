@@ -113,6 +113,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the object is reset to idle state. Resets 
 	 * localSegment and remoteSegment to null. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void resetHook() {
 		// idle again --> no segments to compare
 		localSegment = null;
@@ -121,6 +123,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the whole authentication protocol succeeded. 
 	 * Does nothing. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolSucceededHook(String remote, 
 			Object optionalRemoteId, String optionalParameterFromRemote, 
 			byte[] sharedSessionKey, RemoteConnection toRemote) {
@@ -131,6 +135,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the whole authentication protocol failed. 
 	 * Does nothing. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolFailedHook(String remote, Object optionalRemoteId, 
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
@@ -140,6 +146,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	
 	/** Called by the base class when the whole authentication protocol shows progress. 
 	 * Does nothing. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void protocolProgressHook(String remote, 
 			Object optionalRemoteId, int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
@@ -152,12 +160,14 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * @see #interlockRunner
 	 * @see AsyncInterlockHelper
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
-			String param, RemoteConnection connectionToRemote) {
-		logger.info("startVerification hook called with " + connectionToRemote.getRemoteName() + ", param " + param);
+			String param, RemoteConnection toRemote) {
+		logger.info("startVerification hook called with " + toRemote.getRemoteName() + ", param " + param);
 	
 		if (interlockRunner == null) {
-			this.connectionToRemote = connectionToRemote;
+			this.connectionToRemote = toRemote;
 			interlockRunner = new Thread(new AsyncInterlockHelper(sharedAuthenticationKey));
 			interlockRunner.start();
 		}
@@ -289,7 +299,9 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 							try {
 								localSegmentLock.wait();
 							}
-							catch (InterruptedException e) {}
+							catch (InterruptedException e) {
+								// just ignore, it will only make the wait shorter but won't hurt
+							}
 						}
 					}
 					logger.debug("Local segment sampled, starting interlock protocol");

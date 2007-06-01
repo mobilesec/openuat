@@ -152,7 +152,7 @@ public class FPIntFFT {
   Scaling ensures that result remains 16-bit. */
 	private final static short FIX_MPY(short a, short b) {
 		/* shift right one less bit (i.e. 15-1) */
-		int c = ((int)a * (int)b) >> 14;
+		int c = (a * b) >> 14;
 		/* last bit shifted out = rounding-bit */
 		b = (short) (c & 0x01);
 		/* last shift + rounding bit */

@@ -38,6 +38,8 @@ public class DebugInputStream extends InputStream {
 	}
 	
 	/** Passes through to realStream, but logs. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public int read() throws IOException {
 		int c = realStream.read();
 		logger.trace("'" + (char) c + "' " + c);
@@ -45,6 +47,8 @@ public class DebugInputStream extends InputStream {
 	}
 	
 	/** Passes through to realStream, but logs. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public int read(byte[] arr) throws IOException {
 		int len = realStream.read(arr);
 		StringBuffer log = new StringBuffer();
@@ -55,6 +59,8 @@ public class DebugInputStream extends InputStream {
 	}
 	
 	/** Passes through to realStream, but logs. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public int read(byte[] arr, int off, int len) throws IOException {
 		int readLen = realStream.read(arr);
 		StringBuffer log = new StringBuffer();
@@ -65,31 +71,43 @@ public class DebugInputStream extends InputStream {
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public long skip(long arg0) throws java.io.IOException {
 		return realStream.skip(arg0);
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public int available() throws java.io.IOException {
 		return realStream.available();
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void close() throws java.io.IOException {
 		realStream.close();
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public synchronized void mark(int arg0) {
 		realStream.mark(arg0);
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public synchronized void reset() throws java.io.IOException {
 		realStream.reset();
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public boolean markSupported() {
 		return realStream.markSupported();
 	}

@@ -145,7 +145,7 @@ public class X509CertificateGenerator {
 	 * @throws InvalidKeyException 
 	 */
 	public static boolean createNewCa(String commonName, int validityDays, 
-			String caFile, String caPassword, String caAlias, boolean useBCAPI) throws InvalidKeyException, DataLengthException, SecurityException, SignatureException, NoSuchAlgorithmException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException, IOException, CryptoException {
+			String caFile, String caPassword, String caAlias, boolean useBCAPI) throws InvalidKeyException, DataLengthException, SecurityException, SignatureException, NoSuchAlgorithmException, KeyStoreException, CertificateException, InvalidKeySpecException, IOException, CryptoException {
 		X509CertificateGenerator g = new X509CertificateGenerator(useBCAPI);
 		return g.createCertificate(commonName, validityDays, caFile, caPassword, caAlias);
 	}
@@ -219,7 +219,7 @@ public class X509CertificateGenerator {
 	 *                 not be available on embedded platforms, i.e. J2ME.
 	 */
 	public X509CertificateGenerator(String caFile, String caPassword, String caAlias, boolean useBCAPI) 
-			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, UnrecoverableKeyException, InvalidKeyException, NoSuchProviderException, SignatureException {
+			throws NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidKeyException, NoSuchProviderException, SignatureException {
 		this.useBCAPI = useBCAPI;
 		
 		if (caFile == null || caPassword == null || caAlias == null) {
@@ -275,7 +275,7 @@ public class X509CertificateGenerator {
 	 * @return true if the certificate could be created, signed, and exported successfully, false otherwise.
 	 */
 	public boolean createCertificate(String commonName, int validityDays, String exportFile, String exportPassword) throws 
-			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException {
+			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, CertificateException, InvalidKeySpecException {
 		return createCertificate(commonName, validityDays, exportFile, exportPassword, null);
 	}
 	
@@ -291,7 +291,7 @@ public class X509CertificateGenerator {
 	 * @see #X509CertificateGenerator(boolean)
 	 */
 	protected boolean createCertificate(String commonName, int validityDays, String exportFile, String exportPassword, String exportAlias) throws 
-			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, NoSuchProviderException, CertificateException, InvalidKeySpecException {
+			IOException, InvalidKeyException, SecurityException, SignatureException, NoSuchAlgorithmException, DataLengthException, CryptoException, KeyStoreException, CertificateException, InvalidKeySpecException {
 		if (commonName == null || exportFile == null || exportPassword == null || validityDays < 1) {
 			throw new IllegalArgumentException("Can not work with null parameter");
 		}

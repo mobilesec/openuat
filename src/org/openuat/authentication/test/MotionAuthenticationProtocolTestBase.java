@@ -35,6 +35,8 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 	
 	protected boolean classIsReadyForTests = false;
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void setUp() throws IOException {
 		aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
@@ -54,6 +56,8 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 		classIsReadyForTests = false;
 	}
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void tearDown() {
 		classIsReadyForTests = false;
 	}

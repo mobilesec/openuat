@@ -1,3 +1,12 @@
+/* Copyright Rene Mayrhofer
+ * File created 2006-03-20
+ * Modified by Roswitha Gostner to use Swing instead of SWT
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.apps;
 
 import java.awt.BorderLayout;
@@ -23,8 +32,6 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.openuat.apps.BinaryBlockStreamer;
 import org.openuat.apps.IPSecConfigHandler;
-import org.openuat.authentication.exceptions.ConfigurationErrorException;
-import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.X509CertificateGenerator;
 import org.openuat.util.RemoteConnection;
 import org.openuat.util.RemoteTCPConnection;
@@ -95,7 +102,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 	private AuthenticationEventsHandler guiHandler=null;
 	
 	public IPSecConnectorAdmin(Configuration relateConf, String caFile, String caPassword, String caAlias, 
-			String configFilename, MeasurementManager mm) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException {
+			String configFilename, MeasurementManager mm) throws IOException {
 		super(true, relateConf, mm);
 		logger.info("Initializing IPSecConnectorAdmin");
 		
@@ -143,6 +150,8 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 	 * save the last id in progress... this is useful for a failaire -> redo.
 	 */
 	private int actualid=-1;
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 		super.AuthenticationProgress(sender, remote, cur, max, msg);
 		try {
@@ -152,7 +161,9 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			if (guiHandler!=null){
 				guiHandler.progress(sender.toString(), remote.toString(), id, cur, max, msg);
 			}
-		} catch(Exception e){}
+		} catch(Exception e) {
+			logger.error("Can't update progress bar", e);
+		}
 	}
 	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
@@ -168,6 +179,8 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		}
 	}
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg){
 		super.AuthenticationFailure(sender, remote, e, msg);
 		guiHandler.setPaintingToFreeze(false);
@@ -216,7 +229,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		return config;
 	}
 	
-	public static void main(String[] args) throws DeviceException, ConfigurationErrorException, InternalApplicationException, IOException{
+	public static void main(String[] args) throws DeviceException, IOException {
 		String serialPort = null, caFile = null, confFile = null;
 		if (System.getProperty("os.name").startsWith("Windows CE")) {
 			serialPort = "COM8:";
@@ -319,10 +332,12 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		}
 
 		private void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) throws UnknownHostException, IOException {	
-			logger.debug("start Authentication with "+remoteHost + "  where id is: "+ remoteRelateId+ " and the number of round is "+ numRounds);
+			logger.debug("start Authentication with "+remoteHost + " at port " + serialPort + " where id is: "+ remoteRelateId+ " and the number of round is "+ numRounds);
 			authp.startAuthentication(remoteHost, remoteRelateId, numRounds);
 		}		
 
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		public void success(String serialPort, String remoteHost, int remoteRelateId, byte numRounds, byte[] sharedSecret,
 				Socket socketToRemote) {
 			super.success(serialPort, remoteHost, remoteRelateId, numRounds, sharedSecret, socketToRemote);
@@ -331,6 +346,8 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			toRemote = new RemoteTCPConnection(socketToRemote);
 		}
 
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		public void progress(String serialPort, String remoteHost, int remoteRelateId, int cur, int max, String msg) {
 			super.progress(serialPort, remoteHost, remoteRelateId, cur, max, msg);
 		}
@@ -340,6 +357,8 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		 * just adds the possible user actions, deriving from
 		 * the admin interface only.
 		 */
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		public void actionPerformed(ActionEvent e) {
 			super.actionPerformed(e);
 			if (e.getActionCommand().equals(SEC_CON)){

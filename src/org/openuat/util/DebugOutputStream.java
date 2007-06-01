@@ -38,12 +38,16 @@ public class DebugOutputStream extends OutputStream {
 	}
 	
 	/** Passes through to realStream, but logs. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void write(int c) throws IOException {
 		logger.trace("'" + (char) c + "' " + c);
 		realStream.write(c);
 	}
 
 	/** Passes through to realStream, but logs. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void write(byte[] arr) throws java.io.IOException {
 		StringBuffer log = new StringBuffer();
 		for (int i=0; i<arr.length; i++)
@@ -53,6 +57,8 @@ public class DebugOutputStream extends OutputStream {
 	}
 	
 	/** Passes through to realStream, but logs. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void write(byte[] arr, int off, int len) throws java.io.IOException {
 		StringBuffer log = new StringBuffer();
 		for (int i=off; i<off+len; i++)
@@ -62,11 +68,15 @@ public class DebugOutputStream extends OutputStream {
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void flush() throws java.io.IOException {
 		realStream.flush();
 	}
 	
 	/** Only passes through to realStream, no logging. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void close() throws java.io.IOException {
 		realStream.close();
 	}

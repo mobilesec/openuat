@@ -33,16 +33,22 @@ public class X509CertificateGeneratorTest extends TestCase {
 
 	protected boolean useBCAPI = false;
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void setUp() throws Exception {
 		super.setUp();
 	}
 
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
 
-	public void testConstructorParameterCheck1() throws IOException, InvalidKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, NoSuchProviderException, SignatureException {
+	public void testConstructorParameterCheck1() throws IOException, InvalidKeyException, NoSuchAlgorithmException, CertificateException, NoSuchProviderException, SignatureException {
 		try {
+			// TODO: activate me again when J2ME polish can deal with Java5 sources!
+			//@SuppressWarnings("unused")
 			X509CertificateGenerator g = new X509CertificateGenerator(null, "", "", useBCAPI);
 			Assert.fail("Invalid parameter was not rejected by constructor");
 		}
@@ -50,8 +56,10 @@ public class X509CertificateGeneratorTest extends TestCase {
 			Assert.assertTrue(true);
 		}
 	}
-	public void testConstructorParameterCheck2() throws IOException, InvalidKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, NoSuchProviderException, SignatureException {
+	public void testConstructorParameterCheck2() throws IOException, InvalidKeyException, NoSuchAlgorithmException, CertificateException, NoSuchProviderException, SignatureException {
 		try {
+			// TODO: activate me again when J2ME polish can deal with Java5 sources!
+			//@SuppressWarnings("unused")
 			X509CertificateGenerator g = new X509CertificateGenerator("", null, "", useBCAPI);
 			Assert.fail("Invalid parameter was not rejected by constructor");
 		}
@@ -59,8 +67,10 @@ public class X509CertificateGeneratorTest extends TestCase {
 			Assert.assertTrue(true);
 		}
 	}
-	public void testConstructorParameterCheck3() throws IOException, InvalidKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, NoSuchProviderException, SignatureException {
+	public void testConstructorParameterCheck3() throws IOException, InvalidKeyException, NoSuchAlgorithmException, CertificateException, NoSuchProviderException, SignatureException {
 		try {
+			// TODO: activate me again when J2ME polish can deal with Java5 sources!
+			//@SuppressWarnings("unused")
 			X509CertificateGenerator g = new X509CertificateGenerator("", "", null, useBCAPI);
 			Assert.fail("Invalid parameter was not rejected by constructor");
 		}
@@ -112,7 +122,7 @@ public class X509CertificateGeneratorTest extends TestCase {
 	}*/
 	
 	// this is THE test
-	public void testCreateCaAndCertificate() throws InvalidKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, UnrecoverableKeyException, NoSuchProviderException, SignatureException, IOException, DataLengthException, SecurityException, InvalidKeySpecException, CryptoException {
+	public void testCreateCaAndCertificate() throws InvalidKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, NoSuchProviderException, SignatureException, IOException, DataLengthException, SecurityException, InvalidKeySpecException, CryptoException {
 		// first a new CA
 		File tempCa = File.createTempFile("testCA-", ".p12");
 		tempCa.deleteOnExit();

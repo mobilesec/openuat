@@ -97,6 +97,10 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	 * to open the outgoing control connection to get the incoming data 
 	 * connection.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void start() {
 		if (sensorDataIn != null || dataConnector != null || controlConnector != null) {
 			logger.warn("Connection seems to be already open: sensorDataIn="
@@ -107,7 +111,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 		}
 		try {
 			// be sure to listen for incoming data connections immediately.
-			dataServer =  (ServerSocketConnection)Connector.open("socket://:" + dataPort);
+			dataServer =  (ServerSocketConnection) Connector.open("socket://:" + dataPort);
 			
 			// then start the background thread
 			super.start();
@@ -126,6 +130,8 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	/** This overrides the SamplesSource.stop implementation to also properly
 	 * close all resources the may be in use (the sockets).
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void stop() {
 		try {
 			// properly close all resources
@@ -159,6 +165,8 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	 * Then, and on all further calls, it will read the samples from 
 	 * sensorDataIn and call emitSample to send to listeners.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected boolean handleSample() {
 		if (dataConnector == null) {
 			logger.debug("Waiting for sensor to connect...");

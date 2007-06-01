@@ -18,6 +18,8 @@ import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProtocolTestBase {
 	private Protocol1Hooks prot1_a, prot1_b;
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void setUp() throws IOException {
 		super.setUp();
 
@@ -44,6 +46,8 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		classIsReadyForTests = true;
 	}
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void tearDown() {
 		prot1_a.stopServer();
 	}
@@ -53,17 +57,23 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@SuppressWarnings("unused")
 		protected void protocolSucceededHook(InetAddress remote, 
 				Object optionalRemoteId, String optionalParameterFromRemote, 
 				byte[] sharedSessionKey, Socket toRemote) {
 			numSucceeded++;
 		}		
 
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@SuppressWarnings("unused")
 		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 				Exception e, String message) {
 			numFailed++;
 		}
 		
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@SuppressWarnings("unused")
 		protected void protocolProgressHook(InetAddress remote, 
 				Object optionalRemoteId, int cur, int max, String message) {
 			numProgress++;

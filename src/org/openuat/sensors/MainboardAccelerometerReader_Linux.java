@@ -37,7 +37,7 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 	 * @throws FileNotFoundException When filename does not exist or can not be opened.
 	 */
 	public MainboardAccelerometerReader_Linux(int samplerate) throws FileNotFoundException {
-		super(3, (int) (1000/samplerate), true);
+		super(3, (1000/samplerate), true);
 		
 		if (! System.getProperty("os.name").startsWith("Linux")) {
 			logger.error("Not running on Linux (os.name='" + System.getProperty("os.name") + "'), can not initialize!");
@@ -57,12 +57,14 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 		port = new FileInputStream(reopenStreamFrom);
 		
 		logger.info("Reading from " + filename + " with sample rate of " + samplerate + " Hz, sleeping for " + 
-				((int) (1000/samplerate)) + " ms between reads");
+				(1000/samplerate) + " ms between reads");
 	}
 
 	/* 
 	 * @param line The line to parse.
 	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	protected void parseLine(String line) {
 		double[] sample = new double[3];
 		

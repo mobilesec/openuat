@@ -27,6 +27,8 @@ public class InterlockProtocolTest extends TestCase {
 		super(s);
 	}
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void tearDown() {
 		System.gc();
 	}

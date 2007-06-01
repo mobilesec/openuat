@@ -47,6 +47,8 @@ public class TimeSeriesAggregator {
 		/** When the first dimension becomes active, this method starts a new active,
 		 * aggregated segment.
 		 */
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void toActive(int lineIndex, int numSample) {
 			/* one of the time series just became active when no one was before 
 			 * --> start of active segment, start aggregating
@@ -78,6 +80,8 @@ public class TimeSeriesAggregator {
 		/** When the last dimension becomes quiescent, this method stops the active,
 		 * aggregated segment. It will also send the complete segment to registered listeners. 
 		 */
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void toQuiescent(int lineIndex, int numSample) {
 			// +2 because first and last samples are added - or is it? not quite sure...
 			if (curSampleIndex-windowSize+1 != numSample && curSampleIndex-windowSize+2 != numSample)
@@ -170,6 +174,8 @@ public class TimeSeriesAggregator {
 		 * @see TimeSeriesAggregator#isCurSampleComplete() for checking if the current sample is complete
 		 * @see TimeSeriesAggregator#curSampleReceived is reset when all sample dimensions are complete and have been aggregated
 		 */
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void sampleAdded(int lineIndex, double sample, int numSample) {
 //#if cfg.haveFloatSupport
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
@@ -209,6 +215,8 @@ public class TimeSeriesAggregator {
 			}
 //#endif			
 		}
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void sampleAdded(int lineIndex, int sample, int numSample) {
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
 			curSample_Int[lineIndex] = sample;

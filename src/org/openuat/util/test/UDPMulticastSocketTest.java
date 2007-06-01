@@ -34,10 +34,14 @@ public class UDPMulticastSocketTest extends TestCase {
 	
 	private UDPMulticastSocket s;
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void setUp() throws IOException {
 		s = new UDPMulticastSocket(Port, Port, "230.0.0.1");
 	}
 	
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void tearDown() {
 		s.dispose();
 		s = null;
@@ -127,10 +131,11 @@ public class UDPMulticastSocketTest extends TestCase {
 				Enumeration addrs = iface.getInetAddresses();
 				while (addrs.hasMoreElements()) {
 					InetAddress addr = (InetAddress) addrs.nextElement();
-					if (addr instanceof Inet6Address) {
-					} else {
+					if (! (addr instanceof Inet6Address)) {
 						allAddrs.add(addr);
 					}
+					// ignore IPv6 for now
+					// TODO: test IPv6 handling 
 				}
 			}
 		}

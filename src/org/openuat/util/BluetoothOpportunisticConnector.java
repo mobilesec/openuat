@@ -228,6 +228,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	
 	/** This is a simple helper task to re-attempt failed connections. */
 	private class ConnectionRetryTask extends TimerTask {
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		public void run() {
 			synchronized (failedConnections) {
 				if (!failedConnections.isEmpty()) {
@@ -297,7 +299,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	///////////////////////////////////////
 	// test code
 //#if cfg.includeTestCode
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void main(String[] args) throws IOException {
 		BluetoothOpportunisticConnector c = BluetoothOpportunisticConnector.getInstance();
 		c.start();
 		System.in.read();

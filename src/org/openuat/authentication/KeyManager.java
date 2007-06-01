@@ -164,12 +164,13 @@ public class KeyManager extends AuthenticationEventSender {
 	    	}
 	    	RemoteConnection host = (RemoteConnection) remote;
 	    	State remoteState;
-	    	if (! hosts.contains(host)) {
+	    	if (! hosts.containsKey(host)) {
 	    		logger.debug("Received host authentication event from " + sender + " in nonexistant state - assuming to be the server." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState = new State();
 	    		remoteState.state = STATE_KEY_AGREEMENT;
-	    		hosts.put(host, remoteState);
+	    		if (hosts.put(host, remoteState) != null)
+	    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 	    	}
 	    	else
 	    		remoteState = (State) hosts.get(host);
@@ -324,7 +325,7 @@ public class KeyManager extends AuthenticationEventSender {
 	
 	/** Returns the current state of a remote host. */
 	public int getState(RemoteConnection host) {
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.warn("getState called for unknown host '" + 
 					host.getRemoteName() + "', return nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -405,7 +406,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 *              STATE_VERIFICATION.
 	 */ 
 	public boolean succeed(RemoteConnection host) {
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.warn("Can not succeed host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -438,12 +439,13 @@ public class KeyManager extends AuthenticationEventSender {
 	 */
 	public boolean startKeyAgreement(RemoteConnection host) {
 		State remoteState;
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.info("Host '" + host.getRemoteName() + "' is nonexistant when trying to start, creating its state object" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		remoteState = new State();
     		remoteState.state = STATE_IDLE;
-    		hosts.put(host, remoteState);
+    		if (hosts.put(host, remoteState) != null)
+    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 		}
 		else
 			remoteState = (State) hosts.get(host);
@@ -466,7 +468,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 * @return true if successful, false if the host is nonexistant.
 	 */
 	public boolean fail(RemoteConnection host) {
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.warn("Can not fail host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -487,7 +489,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 * @return true if successful, false if the host is nonexistant.
 	 */
 	public boolean reset(RemoteConnection host) {
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.warn("Can not reset host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -501,7 +503,7 @@ public class KeyManager extends AuthenticationEventSender {
 	}
 	
 	public byte[] getAuthenticationKey(RemoteConnection host) {
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.warn("Can not retreive authentication key for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -525,7 +527,7 @@ public class KeyManager extends AuthenticationEventSender {
 	}
 	
 	public byte[] getSessionKey(RemoteConnection host) {
-		if (! hosts.contains(host)) {
+		if (! hosts.containsKey(host)) {
 			logger.warn("Can not retreive session key for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));

@@ -52,6 +52,7 @@ public class IPSecConfigHandler {
 
 	/** This constructor actually does nothing. */
 	public IPSecConfigHandler() {
+		// nothing to do, so warnings shut up please
 	}
 
 	/** Returns the value to be used for the remote gateway of the IPSec tunnel. */

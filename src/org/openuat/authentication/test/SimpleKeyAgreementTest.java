@@ -152,7 +152,7 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 
-     public void testStates_getSessionKey_wrongState1() throws KeyAgreementProtocolException, InternalApplicationException
+     public void testStates_getSessionKey_wrongState1() throws InternalApplicationException
      {
          SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
          // should not work, we have noto yet complete the agreement
@@ -195,7 +195,7 @@ public class SimpleKeyAgreementTest extends TestCase {
          ka1.getSessionKey();
      }
 
-     public void testStates_getAuthenticationKey_wrongState1() throws KeyAgreementProtocolException, InternalApplicationException
+     public void testStates_getAuthenticationKey_wrongState1() throws InternalApplicationException
      {
          SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
          // should not work, we have noto yet complete the agreement

@@ -352,6 +352,8 @@ public class ShakingSinglePCDemonstrator {
 			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void protocolSucceededHook(String remote, 
 				Object optionalRemoteId, String optionalParameterFromRemote, 
 				byte[] sharedSessionKey, RemoteConnection toRemote) {
@@ -365,6 +367,8 @@ public class ShakingSinglePCDemonstrator {
 			});
 		}		
 
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void protocolFailedHook(String remote, Object optionalRemoteId, 
 				Exception e, String message) {
 			logger.info("Protocol variant 1 failed with " + remote  + ": " + e + ", " + message); 
@@ -376,6 +380,8 @@ public class ShakingSinglePCDemonstrator {
 			});
 		}
 		
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void protocolProgressHook(String remote, 
 				Object optionalRemoteId, int cur, int max, String message) {
 			logger.debug("Protocol variant 1 progress with " + remote +
@@ -392,6 +398,8 @@ public class ShakingSinglePCDemonstrator {
 					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
 			logger.info("Protocol variant 2 succedded with " + remote + " with " + 
 					matchingRoundsFraction + " matching rounds: shared key is " + sharedSessionKey.toString());
@@ -404,6 +412,8 @@ public class ShakingSinglePCDemonstrator {
 			});
 		}
 
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
 			logger.info("Protocol variant 2 failed with " + remote + " with " + 
 					matchingRoundsFraction + " matching rounds: " + e + ", " + message); 
@@ -416,6 +426,8 @@ public class ShakingSinglePCDemonstrator {
 			});
 		}
 
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
 			logger.debug("Protocol variant 2 progress with " + remote +
 					" " + cur + " of " + max + ": " + message); 
@@ -452,6 +464,7 @@ public class ShakingSinglePCDemonstrator {
 
 		/** This method is a dummy implementation and does nothing. */ 
 		public void addSample(double sample, int numSample) {
+			// not interested in samples here, so warnings shut up
 		}
 	}
 }

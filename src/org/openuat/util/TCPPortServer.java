@@ -58,6 +58,8 @@ public class TCPPortServer extends HostServerBase {
 
 	/** Need to override the startListening method to open the TCP server socket. 
 	 * @throws IOException */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void startListening() throws IOException {
 		this.listener = new ServerSocket(port);
 		super.startListening();
@@ -65,6 +67,8 @@ public class TCPPortServer extends HostServerBase {
 
 	/** Need to override the stopListening method to properly close the TCP server socket. 
 	 * @throws InternalApplicationException */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
 	public void stopListening() throws InternalApplicationException {
 		try {
 			listener.close();

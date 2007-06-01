@@ -37,7 +37,9 @@ public class Complex {
     }
 
     /** return a string representation of the invoking object. */
-    public String toString()  { return re + " + " + im + "i"; }
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	public String toString()  { return re + " + " + im + "i"; }
 
     /** return |this| */
     public double abs() { return Math.sqrt(re*re + im*im);  }

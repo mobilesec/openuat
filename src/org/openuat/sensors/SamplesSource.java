@@ -37,6 +37,8 @@ public abstract class SamplesSource {
 			this.doubleSinks = doubleSinks;
 			this.intSinks = intSinks;
 		}
+		// TODO: activate me again when J2ME polish can deal with Java5 sources!
+		//@Override
 		public boolean equals(Object o) {
 			return o instanceof ListenerCombination &&
 				((ListenerCombination) o).lines.equals(lines) &&
