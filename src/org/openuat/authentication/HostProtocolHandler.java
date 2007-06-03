@@ -38,6 +38,11 @@ import org.apache.log4j.Logger;
  * An optional fourth object will be included with the array when the keepSocketConnected
  * flag was set. This fourth paramater will then contain the still connected socket object.
  * 
+ * if, in addition to a simple Diffie-Hellman based key agreement, the server part of this
+ * HostProtocolHandler should support other commands, then, custom handlers can be 
+ * registered with addProtocolCommandHandlers. These commands can then be handled instead
+ * of the Protocol_AuthenticationRequest command.
+ * 
  * @author Rene Mayrhofer
  * @version 1.1, changes to 1.0: Support registering additional protocol 
  *               handlers that are called for their registered protocol.
