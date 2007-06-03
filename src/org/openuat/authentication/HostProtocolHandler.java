@@ -11,6 +11,7 @@ package org.openuat.authentication;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.Hashtable;
 
 import org.openuat.authentication.exceptions.*;
 import org.openuat.util.RemoteConnection;
@@ -38,7 +39,8 @@ import org.apache.log4j.Logger;
  * flag was set. This fourth paramater will then contain the still connected socket object.
  * 
  * @author Rene Mayrhofer
- * @version 1.0
+ * @version 1.1, changes to 1.0: Support registering additional protocol 
+ *               handlers that are called for their registered protocol.
  */
 public class HostProtocolHandler extends AuthenticationEventSender {
 	/** Our primary logger. */
@@ -79,6 +81,17 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     /** The stream to receive messages from the remote end. */
     private InputStreamReader fromRemote;
     
+    /** There may be additional handlers to call, depending on the first line
+     * that is received from the other side. Keys are of type String and 
+     * specify the first word (command) that a handler reacts to, values are
+     * of type ProtocolCommandHandler.
+     */
+    private Hashtable protocolCommandHandlers = null;
+    
+    public interface ProtocolCommandHandler {
+    	boolean handleProtocol(String firstLine, RemoteConnection remote);
+    }
+    
     /**
 	 * This class should only be instantiated by HostServerSocket for incoming
 	 * connections or with the static startAuthenticatingWith method for
@@ -109,6 +122,31 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		this.connection = con;
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
+    }
+
+    /** Adds a protocol command handler.
+     * 
+     * @param command The command to react to.
+     * @param handler The handler that will be called to handle the protocol 
+     *                session when it is started with command.
+     */
+    public void addProtocolCommandHandler(String command, ProtocolCommandHandler handler) {
+    	if (protocolCommandHandlers == null)
+    		protocolCommandHandlers = new Hashtable();
+    	protocolCommandHandlers.put(command, handler);
+    }
+    
+    /** removes a protocol command handler.
+     * 
+     * @param command The command to stop reacting to.
+     * @return true if the command handler was removed, false otherwise (if
+     *         no handler was previously registered for this command).
+     */
+    public boolean removeProtocolCommandHandler(String command) {
+    	boolean removed = (protocolCommandHandlers.remove(command) != null);
+    	if (protocolCommandHandlers.size() == 0)
+    		protocolCommandHandlers = null;
+    	return removed;
     }
     
     /**
@@ -178,10 +216,13 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @param remote
 	 *            The remote socket. This is only needed for raising events
 	 *            and is passed unmodified to the event method.
+	 * @param allowOtherCommands
+	 * 			  If true, then protocolCommandHandlers are checked when the
+	 *            received word does not match expectedMsg.
 	 *            
 	 * @return The complete parameter line on success, null otherwise.
 	 */
-    private String helper_getAuthenticationParamLine(String expectedMsg, RemoteConnection remote) throws IOException
+    private String helper_getAuthenticationParamLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException
     {
     	String msg = readLine();
         if (msg == null)
@@ -194,6 +235,24 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         // try to extract the remote key from it
         if (!msg.startsWith(expectedMsg))
         {
+        	if (protocolCommandHandlers != null && allowOtherCommands) {
+        		// we have registered handlers, maybe one can deal with the first word
+        		String command = msg;
+        		int firstSpace = msg.indexOf(' ');
+        		if (firstSpace > 0)
+        			command = msg.substring(0, firstSpace);
+        		if (protocolCommandHandlers.containsKey(command)) {
+        			// yes, a handler is known, delegate here
+        			if (! ((ProtocolCommandHandler) protocolCommandHandlers.get(command)).handleProtocol(
+        					msg, remote)) {
+        				logger.error("Could not handle protocol command '" + command + 
+        						"', registered handler returned error");
+        			}
+        		}
+        		// already handled in here, stop processing
+        		return null;
+        	}
+
         	logger.warn("Protocol error: unkown message '" + msg + "'");
             println("Protocol error: unknown message: '" + msg + "'");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: unknown message");
@@ -314,8 +373,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             }
             else {
                 String msg = readLine();
-                if (!msg.equals(Protocol_Hello))
-                {
+                if (!msg.equals(Protocol_Hello)) {
                 	raiseAuthenticationFailureEvent(connection, null, "Protocol error: did not get greeting from server");
                     shutdownConnectionCleanly();
                     return;
@@ -325,7 +383,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
             byte[] remotePubKey = null;
             if (serverSide) {
-            	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection);
+            	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection, true);
                 remotePubKey = helper_extractPublicKey(paramLine, Protocol_AuthenticationRequest, connection);
                 if (remotePubKey == null)
                 {
@@ -354,7 +412,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             }
             else {
             	remotePubKey = helper_extractPublicKey(
-            			helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, connection),
+            			helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, connection, false),
                 		Protocol_AuthenticationAcknowledge, connection);
                 if (remotePubKey == null)
                 {

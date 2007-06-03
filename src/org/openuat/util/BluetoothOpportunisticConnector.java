@@ -24,6 +24,7 @@ import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
+import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
 
@@ -42,8 +43,9 @@ import org.openuat.util.BluetoothPeerManager;
  * in addition to Diffie-Hellman key agreement that is currently used 
  * implicitly via HostProtocolHandler.
  * 
- *  Clients of this class should register for AuthenticationProgressEvents and,
- *  upon AuthenticationSuccessEvent, proceed to verify the peer device.
+ * Clients of this class should register for AuthenticationProgressEvents and,
+ * upon AuthenticationSuccessEvent, proceed to verify the peer device. 
+ * KeyManager would be a good option to register as a listener.
  * 
  * @author Rene Mayrhofer
  * @version 1.0
@@ -97,6 +99,10 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	/** Failed connections will be re-scheduled using this timer object. */
 	private Timer connectionRetryTimer = null;
 	
+	/** Initializes the object with defaults, but does not start any server 
+	 * or inquiry processes yet.
+	 * @throws IOException If the Bluetooth support could not be initialized.
+	 */
 	protected BluetoothOpportunisticConnector() throws IOException {
 		logger.debug("Creating BluetoothOpportunisticConnector instance, initializing BluetoothPeerManager");
 		manager = new BluetoothPeerManager();
@@ -301,6 +307,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 //#if cfg.includeTestCode
 	public static void main(String[] args) throws IOException {
 		BluetoothOpportunisticConnector c = BluetoothOpportunisticConnector.getInstance();
+		// yes, we support concurrent verification here for this test
+		KeyManager km = new KeyManager(true, "the one and only");
+		c.addAuthenticationProgressHandler(km.getHostAuthenticationHandler());
 		c.start();
 		System.in.read();
 		c.stop();
