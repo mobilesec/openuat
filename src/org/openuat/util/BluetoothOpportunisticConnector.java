@@ -50,7 +50,8 @@ import org.openuat.util.BluetoothPeerManager;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
+public class BluetoothOpportunisticConnector extends AuthenticationEventSender
+		implements HostAuthenticationServer {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(/*BluetoothOpportunisticConnector.class*/ "org.openuat.util.BluetoothOpportunisticConnector");
 

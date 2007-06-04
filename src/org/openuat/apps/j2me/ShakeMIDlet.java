@@ -17,24 +17,23 @@ import javax.microedition.media.Player;
 import javax.microedition.media.control.VolumeControl;
 import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
-import javax.bluetooth.*;
 
 import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
 import org.apache.log4j.Logger;
-import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.authentication.DHWithVerification;
 import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
-import org.openuat.util.BluetoothRFCOMMServer;
+import org.openuat.util.BluetoothOpportunisticConnector;
 import org.openuat.util.BluetoothSupport;
+import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
 
-public class ShakeMIDlet extends MIDlet implements CommandListener, AuthenticationProgressHandler {
+public class ShakeMIDlet extends MIDlet implements CommandListener {
 	List main_list;
 
 	Command exit;
@@ -45,7 +44,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	Display display;
 	
-	BluetoothRFCOMMServer rfcommServer;
+	ShakeAuthenticator protocol;
 	
 	LogForm logForm;
 
@@ -103,11 +102,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		}
 
 		try {
+			protocol = new ShakeAuthenticator(BluetoothOpportunisticConnector.getInstance(), this);
+			protocol.startListening();
+			
 			// keep the socket connected for now
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", true, false);
+			/*rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
-			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
+			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());*/
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 		}
@@ -153,7 +155,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			main_list.addCommand(log);
 			main_list.setCommandListener(this);
 
-			main_list.append("Find Devices", null);
+			//main_list.append("Find Devices", null);
 			
 			// announce that we are up and about
 			try {
@@ -172,12 +174,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 
 	public void commandAction(Command com, Displayable dis) {
 		if (com == exit) { //exit triggered from the main form
-			if (rfcommServer != null)
+			if (protocol != null)
+				protocol.stopListening();
+			/*if (rfcommServer != null)
 				try {
 					rfcommServer.stop();
 				} catch (InternalApplicationException e) {
 					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
-				}
+				}*/
 				
 			reader.stop();
 			destroyApp(false);
@@ -222,53 +226,71 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		// nothing special to do, resources will be freed automatically
 	}
 
-	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
-		toRemote = null;
-	}
-	
-	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
-		toRemote = null;
-		// indicate progress in the first phase
-		// min 0, max 100
-		//volumeControl.setLevel(30);
-		/*try {
-			Manager.playTone(60, 300, 30);
-		} catch (MediaException e) {
-			logger.error("Unable to play tone");
-		}*/
-	}
+	private double[] samples = new double[3];
 
-	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-		logger.info("Successful authentication");
-        Object[] res = (Object[]) result;
-        // remember the secret key shared with the other device
-        byte[] sharedKey = (byte[]) res[0];
-        // and extract the shared authentication key for phase 2
-        byte[] authKey = (byte[]) res[1];
-        // then extraxt the optional parameter
-        String param = (String) res[2];
-        connectionToRemote = (RemoteConnection) res[3];
-        logger.info("Extracted session key of length " + sharedKey.length +
-        		", authentication key of length " + authKey.length + 
-        		" and optional parameter '" + param + "'");
-        try {
-			toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());
-			
-			// finished DH and connected to the remote
-			Display.getDisplay(this).vibrate(800); // for 800ms
+	
+	private class ShakeAuthenticator extends DHWithVerification {
+		ShakeMIDlet outer;
+		
+		ShakeAuthenticator(HostAuthenticationServer server, ShakeMIDlet outer) {
+			super(server, false, // the channel is not needed after authentication 
+					true, // we support multiple authentications 
+					null, false); // no JSSE
+			this.outer = outer;
+		}
+
+		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
+			toRemote = null;
+		}
+
+		protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
+			toRemote = null;
+			// indicate progress in the first phase
+			// min 0, max 100
+			//volumeControl.setLevel(30);
+			/*try {
+				Manager.playTone(60, 300, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
+			}*/
+		}
+
+		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
 			try {
+				Manager.playTone(60, 100, 30);
+				Manager.playTone(62, 100, 30);
+				Manager.playTone(64, 100, 30);
 				Manager.playTone(62, 100, 30);
 				Manager.playTone(60, 100, 30);
+				Manager.playTone(64, 100, 30);
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
 			}
-		} catch (IOException e) {
-			logger.debug("Unable to open stream to remote: " + e);
+		}
+
+		protected void resetHook(RemoteConnection remote) {
+			toRemote = null;
+		}
+
+		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
+			logger.info("Successful authentication");
+	        try {
+				toRemote = new OutputStreamWriter(remote.getOutputStream());
+				
+				// finished DH and connected to the remote
+				Display.getDisplay(outer).vibrate(800); // for 800ms
+				try {
+					Manager.playTone(62, 100, 30);
+					Manager.playTone(60, 100, 30);
+				} catch (MediaException e) {
+					logger.error("Unable to play tone");
+				}
+			} catch (IOException e) {
+				logger.debug("Unable to open stream to remote: " + e);
+			}
 		}
 	}
 
-	private double[] samples = new double[3];
-	
 	private class TestBTStreamingSamplesHandler implements SamplesSink_Int {
 		private int dim;
 		

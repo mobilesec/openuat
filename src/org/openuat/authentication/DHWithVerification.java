@@ -14,7 +14,7 @@ import java.io.PrintWriter;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.DongleProtocolHandler;
-import org.openuat.util.HostServerBase;
+import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
 
 /** This is an abstract class that implements the basics of all protocols
@@ -63,9 +63,8 @@ import org.openuat.util.RemoteConnection;
  * Generally, events will be emitted by this class to all registered listeners.
  * 
  * @author Rene Mayrhofer
- * @version 1.3, changes to 1.2: no longer keep a HostServerBase instance member
- *               and no longer implement stopServer, this should only be done in
- *               derived classes;
+ * @version 1.3, changes to 1.2: can now deal with arbitrary servers as long as
+ *               they implement the new HostAuthenticationServer interface
  *               changes to 1.1: made independent of TCP, but provide a subclass
  *               with the same old interface;
  * 				 changes to 1.0: replaced InetAddress and Socket objects passed 
@@ -99,7 +98,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	/** This represents the server component that reacts to incoming 
 	 * authentication requests.
 	 */
-	protected HostServerBase server;
+	protected HostAuthenticationServer server;
 	
 	/** This may be set to distinguish multiple instances running on the same machine. */
 	protected String instanceId = null;
@@ -127,7 +126,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 *                   this class running on the same machine. It will be used in logging
 	 *                   and error messages. May be set to null.
 	 */
-	protected DHWithVerification(HostServerBase server, boolean keepConnected,
+	protected DHWithVerification(HostAuthenticationServer server, boolean keepConnected,
 			boolean concurrentVerificationSupported, String instanceId, boolean useJSSE) {
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;

@@ -21,7 +21,8 @@ import org.openuat.authentication.exceptions.*;
  * @author Rene Mayrhofer
  * @version 1.1, changes to 1.0: this is now a base class for TCP and RFCOMM implementations, and startListening can now throw an IOException
  */
-public abstract class HostServerBase extends AuthenticationEventSender implements Runnable {
+public abstract class HostServerBase extends AuthenticationEventSender 
+		implements HostAuthenticationServer, Runnable {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.HostServerBase" /*HostServerBase.class*/);
 
