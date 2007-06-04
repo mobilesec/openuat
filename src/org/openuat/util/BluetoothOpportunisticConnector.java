@@ -131,24 +131,32 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender {
 	 * @throws IOException
 	 */
 	public void start() throws IOException {
-		logger.debug("Starting RFCOMM service and background inquiries");
-		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, keepConnected, useJSSE);
-		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
-		service.startListening();
-		manager.startInquiry(true);
+		if (service == null) {
+			logger.debug("Starting RFCOMM service and background inquiries");
+			service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, keepConnected, useJSSE);
+			service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
+			service.start();
+			manager.startInquiry(true);
+		}
+		else
+			logger.error("Can not start Bluetooth service, because one is already running");
 	}
 	
 	/** Stops the local authentication service and the background inquiry. */
 	public void stop() {
-		logger.debug("Stopping RFCOMM service and background inquiries");
-		try {
-			manager.stopInquiry();
-			service.stopListening();
-			service = null;
-		} 
-		catch (InternalApplicationException e) {
-			logger.error("Could not properly close RFCOMM service socket: " + e);
+		if (service != null) {
+			logger.debug("Stopping RFCOMM service and background inquiries");
+			try {
+				manager.stopInquiry();
+				service.stop();
+				service = null;
+			} 
+			catch (InternalApplicationException e) {
+				logger.error("Could not properly close RFCOMM service socket: " + e);
+			}
 		}
+		else
+			logger.error("Can not stop Bluetooth service, because none is running");
 	}
 	
 	/** Make sure to free resources when destroyed - particularly to remove 

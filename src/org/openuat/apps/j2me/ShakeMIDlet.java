@@ -106,7 +106,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 			// keep the socket connected for now
 			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
-			rfcommServer.startListening();
+			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
@@ -174,7 +174,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener, Authenticati
 		if (com == exit) { //exit triggered from the main form
 			if (rfcommServer != null)
 				try {
-					rfcommServer.stopListening();
+					rfcommServer.stop();
 				} catch (InternalApplicationException e) {
 					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
 				}

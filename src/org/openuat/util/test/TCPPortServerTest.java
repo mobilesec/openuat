@@ -32,7 +32,7 @@ public class TCPPortServerTest extends TestCase {
 	//@Override
 	public void setUp() throws IOException {
 		server = new TCPPortServer(PORT, false, true);
-		server.startListening();
+		server.start();
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
@@ -41,7 +41,7 @@ public class TCPPortServerTest extends TestCase {
 		if (client != null)
 			client.close();
 		if (server != null)
-			server.stopListening();
+			server.stop();
 	}
 
 	public void testCreateConnection() throws UnknownHostException, IOException {

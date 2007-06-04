@@ -97,7 +97,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		
 		if (! adminEnd) {
 			logger.debug("Client end, starting authentication server");
-			authp.startServer();
+			authp.startListening();
 		}
 	}
 	

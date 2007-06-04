@@ -80,7 +80,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		try {
 			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "J2ME Test Service", true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
-			rfcommServer.startListening();
+			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
@@ -125,7 +125,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		if (com == exit) { //exit triggered from the main form
 			if (rfcommServer != null)
 				try {
-					rfcommServer.stopListening();
+					rfcommServer.stop();
 				} catch (InternalApplicationException e) {
 					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
 				}

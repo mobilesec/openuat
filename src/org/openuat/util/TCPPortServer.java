@@ -60,24 +60,29 @@ public class TCPPortServer extends HostServerBase {
 	 * @throws IOException */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	public void startListening() throws IOException {
-		this.listener = new ServerSocket(port);
-		super.startListening();
+	public void start() throws IOException {
+		if (listener == null) {
+			this.listener = new ServerSocket(port);
+			super.start();
+		}
+		else
+			logger.error("Could not start TCP server because one is already running.");
 	}
 
 	/** Need to override the stopListening method to properly close the TCP server socket. 
 	 * @throws InternalApplicationException */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	public void stopListening() throws InternalApplicationException {
+	public void stop() throws InternalApplicationException {
 		try {
 			listener.close();
+			listener = null;
 		} catch (IOException e) {
 			throw new InternalApplicationException(
 					"Could not close listening socket cleanly as a signal to the listener thread. This should not happen.",
 					e);
 		}
-		super.stopListening();
+		super.stop();
 	}
 
 	/** Does the actual listening for incoming connections by calling the blocking accept() on the listening socket in a loop.

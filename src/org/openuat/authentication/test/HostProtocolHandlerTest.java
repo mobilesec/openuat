@@ -49,7 +49,7 @@ public class HostProtocolHandlerTest extends TestCase {
             Thread.sleep(100);
 
         server = new TCPPortServer(PORT, true, useJSSEServer);
-        server.startListening();
+        server.start();
         socketWasAlreadyOpen = true;
     }
 
@@ -64,7 +64,7 @@ public class HostProtocolHandlerTest extends TestCase {
         }
         client = null;
         if (server != null)
-            server.stopListening();
+            server.stop();
         server = null;
     }
 

@@ -9,13 +9,16 @@
 package org.openuat.authentication.test;
 
 import java.io.IOException;
+import java.net.Socket;
 import java.net.UnknownHostException;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import org.openuat.authentication.DHOverTCPWithVerification;
+import org.openuat.authentication.DHWithVerification;
 import org.openuat.util.RemoteConnection;
+import org.openuat.util.RemoteTCPConnection;
+import org.openuat.util.TCPPortServer;
 
 /** There are no _BCAPI and _Mixed variants because DHOverTCPWithVerification only uses the crypto embedded into
  * SimpleKeyAgreement and InterlockProtocol, and those are tested with _BCAPI and _Mixed.
@@ -23,12 +26,14 @@ import org.openuat.util.RemoteConnection;
  *
  */
 public class DHOverTCPWithVerificationTest extends TestCase {
-	private class TestHelper extends DHOverTCPWithVerification {
+	private class TestHelper extends DHWithVerification {
 		protected TestHelper(int tcpPort, boolean keepConnected, String instanceId, boolean useJSSE, boolean succeed) {
-			super(tcpPort, keepConnected, instanceId, useJSSE);
+			super(new TCPPortServer(tcpPort, keepConnected, useJSSE), false, keepConnected, instanceId, useJSSE);
 			this.succeed = succeed;
+			this.tcpPort = tcpPort;
 		}
 
+		int tcpPort;
 		int numResetHookCalled = 0;
 		int numSucceededHookCalled = 0;
 		int numFailedHookCalled = 0;
@@ -85,7 +90,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		}
 		
 		public void startAuthentication(String parm) throws UnknownHostException, IOException {
-			this.startAuthentication("127.0.0.1", parm);
+			this.startAuthentication(new RemoteTCPConnection(new Socket("127.0.0.1", tcpPort)), parm);
 		}
 	}
 
@@ -113,7 +118,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		helper1.optVerifyIdIn = remoteId1;
 		helper2.optVerifyIdIn = remoteId2;
 		
-		helper1.startServer();
+		helper1.startListening();
 		helper2.startAuthentication(param);
 		
 		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
@@ -162,7 +167,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		helper1.optVerifyIdIn = remoteId1;
 		helper2.optVerifyIdIn = remoteId2;
 		
-		helper1.startServer();
+		helper1.startListening();
 		helper2.startAuthentication(param);
 		
 		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
@@ -204,7 +209,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		helper1.optVerifyIdIn = remoteId1;
 		helper2.optVerifyIdIn = remoteId2;
 		
-		helper1.startServer();
+		helper1.startListening();
 		helper2.startAuthentication(param);
 		
 		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
@@ -246,7 +251,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		helper1.optVerifyIdIn = remoteId1;
 		helper2.optVerifyIdIn = remoteId2;
 		
-		helper1.startServer();
+		helper1.startListening();
 		helper2.startAuthentication(param);
 		
 		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||

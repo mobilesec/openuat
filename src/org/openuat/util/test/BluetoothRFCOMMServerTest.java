@@ -39,7 +39,7 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 	//@Override
 	public void setUp() throws IOException {
 		server = new BluetoothRFCOMMServer(new Integer(CHANNEL), SERVICE_UUID, SERVICE_NAME, false, true);
-		server.startListening();
+		server.start();
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
@@ -48,7 +48,7 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 		if (client != null)
 			client.close();
 		if (server != null)
-			server.stopListening();
+			server.stop();
 	}
 
 	public void testCreateConnection() throws IOException {

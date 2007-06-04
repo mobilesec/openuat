@@ -14,6 +14,7 @@ import java.net.Socket;
 
 import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
 import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
+import org.openuat.util.TCPPortServer;
 
 public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProtocolTestBase {
 	private Protocol1Hooks prot1_a, prot1_b;
@@ -40,7 +41,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		 */
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
-		prot1_a.startServer();
+		prot1_a.startListening();
 		prot1_b.startAuthentication("localhost");
 
 		classIsReadyForTests = true;
@@ -49,12 +50,13 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void tearDown() {
-		prot1_a.stopServer();
+		prot1_a.stopListening();
 	}
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
-			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
+			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true), false,
+					MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!

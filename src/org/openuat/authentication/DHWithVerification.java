@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import org.apache.log4j.Logger;
+import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.DongleProtocolHandler;
+import org.openuat.util.HostServerBase;
 import org.openuat.util.RemoteConnection;
 
 /** This is an abstract class that implements the basics of all protocols
@@ -94,6 +96,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	protected KeyManager keyManager;
 	
+	/** This represents the server component that reacts to incoming 
+	 * authentication requests.
+	 */
+	protected HostServerBase server;
+	
 	/** This may be set to distinguish multiple instances running on the same machine. */
 	protected String instanceId = null;
 	
@@ -113,12 +120,14 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @param concurrentVerificationSupported If set to false, then only one 
 	 *        remote host can be in STATE_VERIFICATION at any time. This can 
 	 *        be used when the sensor hardware used for key verification can 
-	 *        only interact with one remote host at the same time. 
+	 *        only interact with one remote host at the same time.
+	 * @param server The server implementation to use. This will be started by
+	 *               startListening and stopped by stopListening. 
 	 * @param instanceId This parameter may be used to distinguish different instances of
 	 *                   this class running on the same machine. It will be used in logging
 	 *                   and error messages. May be set to null.
 	 */
-	protected DHWithVerification(boolean keepConnected,
+	protected DHWithVerification(HostServerBase server, boolean keepConnected,
 			boolean concurrentVerificationSupported, String instanceId, boolean useJSSE) {
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
@@ -127,6 +136,27 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		// and also register ourselves at the key manager
 		keyManager.addAuthenticationProgressHandler(new HostAuthenticationEventHandler());
 		keyManager.addVerificationHandler(new StartVerificationHandler());
+		this.server = server;
+		// and don't forget to register our new key manager with the server
+		server.addAuthenticationProgressHandler(keyManager.getHostAuthenticationHandler());
+	}
+	
+	/** This simply starts the server part so that it will listen for incoming
+	 * authentication requests.
+	 * @throws IOException
+	 */
+	public void startListening() throws IOException {
+		server.start();
+	}
+	
+	/** This stops the server part. */
+	public void stopListening() {
+		try {
+			server.stop();
+		}
+		catch (InternalApplicationException e) {
+			// ignore this case - we are shutting down anyway, just free resources
+		}
 	}
 
 	/** This method returns true if this object is idle or if it is currently running the authentication protocol

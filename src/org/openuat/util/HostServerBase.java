@@ -57,19 +57,20 @@ public abstract class HostServerBase extends AuthenticationEventSender implement
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("unused") // the exception may be thrown in sub-classes that override startListening
-	public void startListening() throws IOException {
-		running = true;
-		logger.debug("Starting listening thread for server socket");
-		listenerThread = new Thread(this);
-		listenerThread.start();
-		logger.debug("Started listening thread for server socket");
+	public void start() throws IOException {
+		if (!running) {
+			running = true;
+			logger.debug("Starting listening thread for server socket");
+			listenerThread = new Thread(this);
+			listenerThread.start();
+			logger.debug("Started listening thread for server socket");
+		}
 	}
 
 	/** Signals the background listening thread to stop and waits for it. This method will not return until the listening
 	 * thread has terminated.
-	 * @throws InternalApplicationException
 	 */
-	public void stopListening() throws InternalApplicationException {
+	public void stop() throws InternalApplicationException {
 		if (listenerThread != null) {
 			logger.debug("Stopping listening thread for server socket");
 			running = false;

@@ -31,6 +31,7 @@ import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.WiTiltRawReader;
 import org.openuat.util.RemoteConnection;
+import org.openuat.util.TCPPortServer;
 
 /** This is a simple demonstrator for the shaking authentication. It
  * shows both protocol variants with a simple GUI.
@@ -204,7 +205,7 @@ public class ShakingSinglePCDemonstrator {
 		/* 4: authenticate for protocol variant 1 (variant 2 doesn't need this step) */
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
-		prot1_a.startServer();
+		prot1_a.startListening();
 		prot1_b.startAuthentication("localhost");
 		
 		if (deviceType == 1) {
@@ -349,7 +350,8 @@ public class ShakingSinglePCDemonstrator {
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
 			// samplerate/2
-			super(MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
+			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true), false,
+					MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!

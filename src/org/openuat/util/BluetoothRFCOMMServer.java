@@ -82,7 +82,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	//@Override
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
-	public void startListening() throws IOException {
+	public void start() throws IOException {
 		if (listener == null) {
 			// create the RFCOMM service
 			try {
@@ -102,14 +102,14 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				throw e;
 			}
 		}
-		super.startListening();
+		super.start();
 	}
 
 	/** Need to override the stopListening method to properly close the RFCOMM service notifier. 
 	 * @throws InternalApplicationException */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	public void stopListening() throws InternalApplicationException {
+	public void stop() throws InternalApplicationException {
 		if (listener != null) {
 			try {
 				// this causes the service record to be removed from the SDDB 
@@ -121,7 +121,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 						e);
 			}
 		}
-		super.stopListening();
+		super.stop();
 	}
 	
 	/** After startListening finished successfully, this will return the URL 
@@ -171,7 +171,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	/** Override the dispose method to make sure that we remove the service record from the local SDB. */
 	public void dispose() {
 		try {
-			stopListening();
+			stop();
 		} catch (InternalApplicationException e) {
 			logger.error("Could not properly dispose object: unable to close listener: " + e);
 		}
@@ -183,10 +183,10 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		BluetoothRFCOMMServer s = new BluetoothRFCOMMServer(null, new UUID("1089a94a47044480adc9576fd41a04b2", false), "Test Service", false, false);
 		// for the test, make sure to be discoverable
 		LocalDevice.getLocalDevice().setDiscoverable(DiscoveryAgent.GIAC);
-		s.startListening();
+		s.start();
 		System.out.println("Service now listening, press any key to exit");
 		System.in.read();
-		s.stopListening();
+		s.stop();
 		System.out.println("Application exiting now");
 		System.exit(0);
 	}

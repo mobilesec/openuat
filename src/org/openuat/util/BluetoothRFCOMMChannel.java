@@ -329,6 +329,19 @@ try {
 		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL set. For what I know, they are different.");
 		return false;
 	}
+	
+	public String toString() {
+		if (connection != null)
+			try {
+				return "BluetoothRFCOMMChannel connected to " + getRemoteAddress();
+			} catch (IOException e) {
+				return "BluetoothRFCOMMChannel connected, but unable to resolve address: " + e;
+			}
+		else if (serviceURL != null)
+			return "BluetoothRFCOMMChannel with URL " + serviceURL;
+		else
+			return "BluetoothRFCOMMChannel with invalid/unknown endpoint";
+	}
 
 	   /**
 	    * Shows information about the remote device (name, device class, BT address ..etc..)

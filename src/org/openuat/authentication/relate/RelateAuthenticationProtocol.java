@@ -10,11 +10,13 @@ package org.openuat.authentication.relate;
 
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.DHOverTCPWithVerification;
+import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.KeyManager;
+import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.openuat.util.RemoteConnection;
 import org.openuat.util.RemoteTCPConnection;
+import org.openuat.util.TCPPortServer;
 
 import java.io.*;
 import java.net.Socket;
@@ -65,7 +67,7 @@ import uk.ac.lancs.relate.auth.ProgressEventHandler;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
+public class RelateAuthenticationProtocol extends DHWithVerification {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class);
 	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
@@ -165,7 +167,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
 				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) {
-		super(TcpPort, keepSocketConnected, serialPort, useJSSE);
+		super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true),
+				keepSocketConnected, false, serialPort, useJSSE);
 		
 		if (!simulation) {
 			// when simulating, we won't have these
@@ -277,7 +280,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 		
 		// create the optional parameter object to pass, consisting of the relate id and the number of rounds
 		String param = Integer.toString(localRelateId) + " " + Integer.toString(rounds);
-		if (!startAuthentication(remoteHost, param)) {
+		if (!startAuthentication(new RemoteTCPConnection(new Socket(remoteHost, TcpPort)), param)) {
 			logger.error("Could not start authentication with " + remoteHost + ", relate id " + remoteRelateId);
 			return false;
 		}
@@ -684,7 +687,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
             TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(1, deviceType);
             r.addAuthenticationProgressHandler(ht);
         	// and start....
-            r.startServer();
+            r.startListening();
             //new BufferedReader(new InputStreamReader(System.in)).readLine();
 
             while (true) Thread.sleep(1000);
@@ -776,7 +779,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         	TempAuthenticationEventHandler ht = new TempAuthenticationEventHandler(2, deviceType1);
             RelateAuthenticationProtocol r_serv = new RelateAuthenticationProtocol(serialPort1, man1, useJSSEServer, false, null);
             r_serv.addAuthenticationProgressHandler(ht);
-            r_serv.startServer();
+            r_serv.startListening();
 
             // client side
             RelateAuthenticationProtocol r_client = new RelateAuthenticationProtocol(serialPort2, man2, useJSSEClient, false, null);

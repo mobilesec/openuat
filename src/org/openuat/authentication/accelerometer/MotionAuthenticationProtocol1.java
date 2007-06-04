@@ -10,6 +10,7 @@
 package org.openuat.authentication.accelerometer;
 
 import java.io.IOException;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -17,14 +18,17 @@ import java.util.Locale;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
-import org.openuat.authentication.DHOverTCPWithVerification;
+import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.features.Coherence;
 import org.openuat.features.TimeSeriesUtil;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.TimeSeriesAggregator;
+import org.openuat.util.HostServerBase;
 import org.openuat.util.RemoteConnection;
+import org.openuat.util.RemoteTCPConnection;
+import org.openuat.util.TCPPortServer;
 
 /** This is the first variant of the motion authentication protocol. It
  * uses Diffie-Hellman key agreement with verification that the shared keys
@@ -36,7 +40,7 @@ import org.openuat.util.RemoteConnection;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification implements SegmentsSink {
+public class MotionAuthenticationProtocol1 extends DHWithVerification implements SegmentsSink {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol1.class);
 
@@ -105,8 +109,11 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public MotionAuthenticationProtocol1(double coherenceThreshold, int windowSize, boolean useJSSE) {
-		super(TcpPort, false, null, useJSSE);
+	public MotionAuthenticationProtocol1(HostServerBase server, 
+			boolean concurrentVerificationSupported, double coherenceThreshold, 
+			int windowSize, boolean useJSSE) {
+		super(server, false, // we don't need the channel after success/failure 
+				concurrentVerificationSupported, null, useJSSE);
 		this.coherenceThreshold = coherenceThreshold;
 		this.windowSize = windowSize;
 	}
@@ -161,6 +168,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
+	// TODO: this should be basically empty, and the thread should be running continuously
+	// or should it run when we don't have any key?? hmm
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
 			String param, RemoteConnection toRemote) {
 		logger.info("startVerification hook called with " + toRemote.getRemoteName() + ", param " + param);
@@ -223,7 +232,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 */
 	public void startAuthentication(String remoteHost) throws UnknownHostException, IOException {
 		logger.info("Starting authentication with " + remoteHost);
-		startAuthentication(remoteHost, null);
+		startAuthentication(new RemoteTCPConnection(new Socket(remoteHost, TcpPort)), null);
 	}
 	
 	/** Sets the coherence threshold. 
@@ -407,11 +416,17 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		
-		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
-		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
+		HostServerBase s1, s2;
+		s1 = new TCPPortServer(TcpPort, false, true);
+		// this will not be started
+		s2 = new TCPPortServer(0, false, true); 
+		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(s1, false,
+				0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
+		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(s2, false,
+				0.82, MotionAuthenticationParameters.coherenceWindowSize, true);
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
-		ma1.startServer();
+		ma1.startListening();
 		ma2.startAuthentication("localhost");
 		
 		r.simulateSampling();
