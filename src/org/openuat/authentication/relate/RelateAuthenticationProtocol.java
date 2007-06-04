@@ -383,6 +383,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
 			String param, RemoteConnection toRemote) {
 		// first do some sanity checks
+		// TODO: these checks are bogus now - what did they do in the past?
 		if (referenceMeasurement != -1)
 			logger.error("Internal inconsistency! Object is idle in server mode, but referenceMeasurement is set");
 		if (remoteRelateId != -1)
@@ -446,8 +447,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	private class DongleAuthenticationEventHandler implements AuthenticationProgressHandler {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-	    	if (! (remote instanceof RemoteConnection) || 
-	    		keyManager.getState((RemoteConnection) remote) != KeyManager.STATE_VERIFICATION) {
+	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
 	    		logger.error("Received dongle authentication success event with remote id " + remote + 
 	    				" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
@@ -477,10 +477,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	    	verificationSuccess(remoteHost, remote, localTimes);
 	    }
 
-	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
-	    {
-	    	if (! (remote instanceof RemoteConnection) || 
-		    		keyManager.getState((RemoteConnection) remote) != KeyManager.STATE_VERIFICATION) {
+	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
 	    		logger.error("Received dongle authentication failure event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
@@ -504,10 +502,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	        verificationFailure(remoteHost, remote, localTimes, e, msg);
 	    }
 
-	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
-	    {
-	    	if (! (remote instanceof RemoteConnection) || 
-		    		keyManager.getState((RemoteConnection) remote) != KeyManager.STATE_VERIFICATION) {
+	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
 	    		logger.error("Received dongle authentication progress event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
