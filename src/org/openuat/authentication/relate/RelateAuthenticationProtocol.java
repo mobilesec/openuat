@@ -470,7 +470,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
         		localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
         		/* and remember this reference for later usage (protocolSucceededHook
         		 * possibly called from verificationSuccess, will use it again) */
-        		keyManager.setOptionalRemoteReference((RemoteConnection) remote, h);
+        		keyManager.setOptionalRemoteReference(remoteHost, h);
 	    	}
 	    	
 	    	// report that success status to our super class and pass our times as parameters to the remote
@@ -496,7 +496,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	        	DongleProtocolHandler h = (DongleProtocolHandler) sender;
 	        	localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
 	        	// and again remember it so that protocolFailedHook can access it
-        		keyManager.setOptionalRemoteReference((RemoteConnection) remote, h);
+        		keyManager.setOptionalRemoteReference(remoteHost, h);
 	        }
 	        
 	        verificationFailure(remoteHost, remote, localTimes, e, msg);
