@@ -220,9 +220,11 @@ public class KeyManager extends AuthenticationEventSender {
 	        remoteState.sessionKey = (byte[]) res[0];
 	        // and extract the shared authentication key for phase 2
 	        remoteState.authenticationKey = (byte[]) res[1];
-	        logger.debug("Shared session key is now '" + new String(Hex.encodeHex(remoteState.sessionKey)) + 
+	        logger.debug("Host " + remote + ": shared session key is now '" + 
+	        		new String(Hex.encodeHex(remoteState.sessionKey)) + 
 	        		"' with length " + remoteState.sessionKey.length + 
-	        		", shared authentication key is now '" + new String(Hex.encodeHex(remoteState.authenticationKey)) + 
+	        		", shared authentication key is now '" + 
+	        		new String(Hex.encodeHex(remoteState.authenticationKey)) + 
 	        		"' with length " + remoteState.authenticationKey.length +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // then extraxt the optional parameter
