@@ -22,6 +22,7 @@ import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.DHWithVerification;
 import org.openuat.sensors.SamplesSink_Int;
@@ -244,7 +245,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
-			toRemote = null;
 			// indicate progress in the first phase
 			// min 0, max 100
 			//volumeControl.setLevel(30);
@@ -273,7 +273,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
-			logger.info("Successful authentication");
+			logger.info("Successful authentication with " + remote.getRemoteName() + 
+					", auth key is " + new String(Hex.encodeHex(sharedAuthenticationKey)));
 	        try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());
 				
