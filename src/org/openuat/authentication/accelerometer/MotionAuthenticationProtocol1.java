@@ -115,7 +115,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * localSegment and remoteSegment to null. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void resetHook() {
+	protected void resetHook(RemoteConnection remote) {
 		// idle again --> no segments to compare
 		localSegment = null;
 		remoteSegment = null;
@@ -125,9 +125,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * Does nothing. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolSucceededHook(String remote, 
-			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey, RemoteConnection toRemote) {
+	protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
+			String optionalParameterFromRemote,	byte[] sharedSessionKey) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
 		System.out.println("SUCCESS");
@@ -137,7 +136,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * Does nothing. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolFailedHook(String remote, Object optionalRemoteId, 
+	protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolFailedHook called");
@@ -148,8 +147,8 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 	 * Does nothing. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolProgressHook(String remote, 
-			Object optionalRemoteId, int cur, int max, String message) {
+	protected void protocolProgressHook(RemoteConnection remote,  
+			int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolProgressHook called");
 	}
@@ -319,7 +318,7 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 							// sanity check
 							if (localSegment[i] < 0 || localSegment[i] > 2) {
 								logger.error("Sample value out of expected range: " + localSegment[i]);
-								verificationFailure(null, null, null, "Interlock exchange aborted: sample value out of expected range");
+								verificationFailure(null, null, null, null, "Interlock exchange aborted: sample value out of expected range");
 								localSegment = remoteSegment = null;
 								return;
 							}
@@ -338,13 +337,13 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 					if (remotePlainText == null) {
 						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 						if (! continuousChecking) {
-							verificationFailure(null, null, null, "Interlock protocol failed");
+							verificationFailure(null, null, null, null, "Interlock protocol failed");
 							localSegment = remoteSegment = null;
 							return;
 						}
 						else {
 							// in case of checking continously, just call or own hook (for derived classes)
-							protocolFailedHook(connectionToRemote.getRemoteName(), null, null, "Interlock protocol failed");
+							protocolFailedHook(connectionToRemote, null, null, "Interlock protocol failed");
 							localSegment = remoteSegment = null;
 							continue;
 						}
@@ -367,15 +366,15 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 					// final decision
 					if (coherence) { 
 						if (! continuousChecking)
-							verificationSuccess(null, Double.toString(lastCoherenceMean));
+							verificationSuccess(null, null, Double.toString(lastCoherenceMean));
 						else
-							protocolSucceededHook(connectionToRemote.getRemoteName(), null, Double.toString(lastCoherenceMean), null, null);
+							protocolSucceededHook(connectionToRemote, null, Double.toString(lastCoherenceMean), null);
 					}
 					else {
 						if (! continuousChecking)
-							verificationFailure(null, null, null, "Coherence is below threshold, time series are not similar enough");
+							verificationFailure(null, null, null, null, "Coherence is below threshold, time series are not similar enough");
 						else
-							protocolFailedHook(connectionToRemote.getRemoteName(), null, null, "Coherence is below threshold, time series are not similar enough");
+							protocolFailedHook(connectionToRemote, null, null, "Coherence is below threshold, time series are not similar enough");
 					}
 
 					localSegment = remoteSegment = null;

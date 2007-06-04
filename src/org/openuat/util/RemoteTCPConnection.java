@@ -115,4 +115,18 @@ public class RemoteTCPConnection implements RemoteConnection {
 					", RET=" + ret);
 		return ret; 
 	}
+	
+	public String toString() {
+		if (socket.isConnected()) {
+			try {
+				return "RemoteTCPConnection connected to address " + getRemoteAddress() + 
+					" with name " + getRemoteName() + " at port " + socket.getPort();
+			}
+			catch (IOException e) {
+				return "RemoteTCPConnection connected to unretrievable address";
+			}
+		}
+		else
+			return "RemoteTCPConnection, unconnected";
+	}
 }

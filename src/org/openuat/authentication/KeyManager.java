@@ -20,6 +20,10 @@ import org.openuat.util.RemoteConnection;
  * shared with a remote host, an authentication key and a session key for 
  * further secure communication. Remote hosts are identified by their 
  * RemoteConnection objects, which must implement proper equals() methods.
+ * Note that RemoteConnection objects are used primarily for identification
+ * purposes, but also for communication with the remote host. A caller may not
+ * assume that the RemoteConnection reference can be used to communicate at 
+ * all times - the respective channel may have been closed.
  * 
  * A remote host can, as far as this class is concerned, be in one of the
  * following states:
@@ -117,6 +121,11 @@ public class KeyManager extends AuthenticationEventSender {
 		 * the AuthenticationSuccess event.
 		 */
 		String optionalParam = null;
+		
+		/** This may hold an additional reference that key verification 
+		 * protocols need to keep track of their state.
+		 */
+		Object optionalRemoteReference = null;
 		
 		void wipeSessionKey() {
 			logger.info("Wiping session key material for host in state " + state);
@@ -501,10 +510,16 @@ public class KeyManager extends AuthenticationEventSender {
 		s.wipe();
 		return true;
 	}
-	
+
+	/** Returns the authentication key for a remote host. An authentication key
+	 * will only exist if the host is in STATE_VERIFICATION.
+	 * @param host The remote host to retrieve the authentication key for.
+	 * @return The key if set or null if the host is nonexistant or not in
+	 *         STATE_VERIFICATION.
+	 */ 
 	public byte[] getAuthenticationKey(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warn("Can not retreive authentication key for host '" + 
+			logger.warn("Can not retrieve authentication key for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -519,16 +534,22 @@ public class KeyManager extends AuthenticationEventSender {
 			return s.authenticationKey;
 		}
 		else {
-			logger.warn("Can not retreive authentication key for host '" + 
+			logger.warn("Can not retrieve authentication key for host '" + 
 					host.getRemoteName() + "' that is not in verification state (state is " + s.state +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
 		}
 	}
 	
+	/** Returns the session key for a remote host. A session key
+	 * will only exist if the host is in STATE_SUCCEEDED.
+	 * @param host The remote host to retrieve the session key for.
+	 * @return The key if set or null if the host is nonexistant or not in
+	 *         STATE_SUCCEEDED.
+	 */ 
 	public byte[] getSessionKey(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warn("Can not retreive session key for host '" + 
+			logger.warn("Can not retrieve session key for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -543,11 +564,47 @@ public class KeyManager extends AuthenticationEventSender {
 			return s.sessionKey;
 		}
 		else {
-			logger.warn("Can not retreive session key for host '" + 
+			logger.warn("Can not retrieve session key for host '" + 
 					host.getRemoteName() + "' that is not in succeeded state (state is " + s.state +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
 		}
+	}
+	
+	/** Returns the optional remote reference for a remote host.
+	 * This may hold an additional reference that key verification 
+	 * protocols need to keep track of their state.
+	 * @param host The remote host to retrieve the optional remote reference.
+	 * @return The reference if set or null if the host is nonexistant.
+	 */ 
+	public Object getOptionalRemoteReference(RemoteConnection host) {
+		if (! hosts.containsKey(host)) {
+			logger.warn("Can not retrieve optional remote reference for host '" + 
+					host.getRemoteName() + "' in nonexistant state" +
+	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+			return null;
+		}
+		
+		State s = (State) hosts.get(host);
+		return s.optionalRemoteReference;
+	}
+	
+	/** Returns the optional remote reference for a remote host.
+	 * This may hold an additional reference that key verification 
+	 * protocols need to keep track of their state.
+	 * @param host The remote host to retrieve the optional remote reference.
+	 * @return The reference if set or null if the host is nonexistant.
+	 */ 
+	public void setOptionalRemoteReference(RemoteConnection host, Object optionalRemoteReference) {
+		if (! hosts.containsKey(host)) {
+			logger.warn("Can not set optional remote reference for host '" + 
+					host.getRemoteName() + "' in nonexistant state" +
+	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+			return;
+		}
+		
+		State s = (State) hosts.get(host);
+		s.optionalRemoteReference = optionalRemoteReference; 
 	}
 
 	/** Wipes all key material by calling wipe(). */

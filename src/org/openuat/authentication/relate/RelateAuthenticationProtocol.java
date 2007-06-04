@@ -12,6 +12,7 @@ import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.DHOverTCPWithVerification;
 import org.openuat.authentication.HostProtocolHandler;
+import org.openuat.authentication.KeyManager;
 import org.openuat.util.RemoteConnection;
 import org.openuat.util.RemoteTCPConnection;
 
@@ -130,88 +131,14 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	private int referenceMeasurement = -1;
 	
-	/** This is only a helper to get the reference measurement now - pending better integration
-	 * with the Relate framework.
-	 * @param remoteRelateId
-	 * @return
+	/** This holds the reference to the remote we are currently authentication with.
+	 * It is set in startVerificationAsync and used by the DongleAuthenticationEventHandler 
+	 * when calling verificationSuccess or verificationFailure.
+	 * @see #startVerificationAsync
+	 * @see DongleAuthenticationEventHandler#AuthenticationSuccess
+	 * @see DongleAuthenticationEventHandler#AuthenticationFailure  
 	 */
-	/*private static int helper_getReferenceMeasurement(String serialPort, int remoteRelateId) throws ConfigurationErrorException, InternalApplicationException {
-		int referenceMeasurement;
-		SerialConnector serialConn;
-		
-		// immediately get the reference measurement to the specific remote relate dongle
-		try {
-			// Connect here to the dongle so that we don't block it when not necessary. This needs better integration with the Relate framework. 
-			serialConn = SerialConnector.getSerialConnector(serialPort);
-			logger.info("-------- connected successfully to dongle at port " + serialPort + ", including first handshake. My ID is " + serialConn.getLocalRelateId());
-		}
-		catch (DongleException e) {
-			logger.error("-------- failed to connect to dongle at port " + serialPort + ", didn't get my ID.");
-			throw new ConfigurationErrorException("Can't connect to dongle.", e);
-		}
-		
-		int localRelateId = serialConn.getLocalRelateId();
-		if (localRelateId == -1)
-			throw new InternalApplicationException("Dongle at port " + serialPort + " reports id -1, which is an error case.");
-		
-		// This message queue is used to receive events from the dongle, in this case the reference measurements.
-		MessageQueue eventQueue = new MessageQueue();
-		serialConn.registerEventQueue(eventQueue);
-
-		// test code begin
-		class ThreeInts { public long sum = 0, n = 0, sum2 = 0; };
-		ThreeInts[] s = new ThreeInts[256]; for(int i=0; i<256; i++) s[i] = new ThreeInts();
-		// test code end
-		
-		// wait for the first reference measurements to come in (needed to compute the delays)
-		logger.debug("Trying to get reference measurement from local id " + localRelateId + " at port " + serialPort + " to relate id " + remoteRelateId);
-		int[] ref = new int[10];
-		int numMeasurements = 0;
-		while (numMeasurements < 10) {
-			while (eventQueue.isEmpty())
-				eventQueue.waitForMessage(500);
-			RelateEvent e = (RelateEvent) eventQueue.getMessage();
-			if (e == null) {
-				logger.warn("Warning: got null message out of message queue at port " + serialPort + "! This should not happen.");
-				continue;
-			}
-			
-			// test code begin
-			if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getDongleId() == localRelateId) {
-				MeasurementEvent me = (MeasurementEvent) e;
-				
-				if (/*me.getMeasurement().getTransducers() != 0 &&*/ 
-/*				me.getMeasurement().getDistance() != 4094) {
-					logger.debug("Got local measurement from dongle " + me.getDongleId() + " at port " + serialPort + " to dongle " + me.getMeasurement().getRelatumId() + ": " + me.getMeasurement().getDistance());
-					ThreeInts x = s[me.getMeasurement().getRelatumId()];
-					x.n++;
-					x.sum += me.getMeasurement().getDistance();
-					x.sum2 += me.getMeasurement().getDistance() * me.getMeasurement().getDistance();
-					logger.debug("To dongle " + me.getMeasurement().getRelatumId() + ": mean=" + (float) x.sum/x.n + ", variance=" + 
-							Math.sqrt((x.sum2 - 2*(float) x.sum/x.n*x.sum + (float) x.sum/x.n*x.sum)/x.n) );
-				}
-				else {
-					logger.debug("Discarded invalid local measurement from dongle " + me.getDongleId() + " to dongle " + me.getMeasurement().getRelatumId() + ": " + me.getMeasurement().getDistance());
-				}
-			}
-			// test code end
-			
-			if (e instanceof MeasurementEvent && ((MeasurementEvent) e).getMeasurement().getDongleId() == localRelateId &&  
-					((MeasurementEvent) e).getMeasurement().getRelatumId() == remoteRelateId && ((MeasurementEvent) e).getMeasurement().getTransducers() != 0 && ((MeasurementEvent) e).getMeasurement().getDistance() != 4094) {
-				MeasurementEvent me = (MeasurementEvent) e;
-
-				logger.info("Received reference measurement from dongle " + localRelateId + " at port " + serialPort + " to dongle " + remoteRelateId + ": " + me.getMeasurement().getDistance());
-				ref[numMeasurements++] = me.getMeasurement().getDistance();
-			}
-		}
-		Arrays.sort(ref);
-		referenceMeasurement = (ref[4] + ref[5]) / 2;
-		logger.info("Mean over reference measurements from dongle " + localRelateId + " at port " + serialPort + " to dongle " + remoteRelateId + ": " + referenceMeasurement);
-		
-		serialConn.unregisterEventQueue(eventQueue);
-		
-		return referenceMeasurement;
-	}*/
+	private RemoteConnection remoteHost = null;
 	
 	/** Initialized the authentication object with the contact data of the remote device to authenticate with.
 	 * This constructor also gets a reference measurement to the remote relate id by itself. This needs better
@@ -361,10 +288,11 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	/** Called by the base class when the object is reset to idle state. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void resetHook() {
+	protected void resetHook(RemoteConnection remote) {
 		// this needs to be reset so that the handler will be in "server" state
 		remoteRelateId = -1;
 		referenceMeasurement = -1;
+		remoteHost = null;
 		// also reset number of rounds
 		rounds = -1;
 	}
@@ -376,20 +304,19 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolSucceededHook(String remote, 
-			Object optionalRemoteId, String optionalParameterFromRemote, 
-			byte[] sharedSessionKey, RemoteConnection toRemote) {
-		// the optionalRemoteId is set to the DongleProtocolHandler object
-		DongleProtocolHandler localSide = (DongleProtocolHandler) optionalRemoteId;
+	protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, 
+			String optionalParameterFromRemote, byte[] sharedSessionKey) {
+		/* the optionalRemoteReference is set to the DongleProtocolHandler object
+		 * in AuthenticationSuccess and authenticationFailure handlers */
+		DongleProtocolHandler localSide = (DongleProtocolHandler) keyManager.getOptionalRemoteReference(remote);
 		logger.debug("protocolSucceededHook called at port " + serialPort + " with remote " + 
-				remote + "/" + optionalRemoteId + ", param " + optionalParameterFromRemote + ", session key " + 
-				SerialConnector.byteArrayToHexString(sharedSessionKey) + 
-				", socket " + toRemote);
+				remote + "/" + optionalVerificationId + ", param " + optionalParameterFromRemote + ", session key " + 
+				SerialConnector.byteArrayToHexString(sharedSessionKey));
 		
 		// in addition to the "standard" event sent by the super class, send the specialized Relate event too
 		if (relateEventHandler != null)
-			relateEventHandler.success(serialPort, remote, 
-					localSide.getRemoteRelateId(), (byte) rounds, sharedSessionKey, ((RemoteTCPConnection) toRemote).getSocketReference());
+			relateEventHandler.success(serialPort, remote.getRemoteName(), 
+					localSide.getRemoteRelateId(), (byte) rounds, sharedSessionKey, ((RemoteTCPConnection) remote).getSocketReference());
 
 		// and log to the statistics logger!
 		if (!simulation) {
@@ -411,15 +338,14 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolFailedHook(String remote, Object optionalRemoteId, 
+	protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
-
 		logger.error("Authentication protocol failed at port " + serialPort + 
-				" with " + remote + "%" + remoteRelateId + ": " + e + " / " + message);
+				" with " + remote + "/" + optionalVerificationId + "%" + remoteRelateId + ": " + e + " / " + message);
 		if (relateEventHandler != null)
-			relateEventHandler.failure(serialPort, remote,
-					optionalRemoteId instanceof DongleProtocolHandler ? 
-							((DongleProtocolHandler) optionalRemoteId).getRemoteRelateId() : -1, 
+			relateEventHandler.failure(serialPort, remote.getRemoteName(),
+					keyManager.getOptionalRemoteReference(remote) instanceof DongleProtocolHandler ? 
+							((DongleProtocolHandler) keyManager.getOptionalRemoteReference(remote)).getRemoteRelateId() : -1, 
 					e, message);
 
 		// also log that failure to the statistics logger
@@ -437,15 +363,16 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolProgressHook(String remote, 
-			Object optionalRemoteId, int cur, int max, String message) {
+	protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
 		logger.debug("protocolProgressHook called at port " + serialPort + " with " + 
-				remote + "/" + optionalRemoteId + ": " + cur + "/" + max + ": " + message);
-		if (relateEventHandler != null)
-			relateEventHandler.progress(serialPort, remote,
-					optionalRemoteId instanceof DongleProtocolHandler ? 
-							((DongleProtocolHandler) optionalRemoteId).getRemoteRelateId() : -1, 
+				remote + ": " + cur + "/" + max + ": " + message);
+		if (relateEventHandler != null) {
+			Object optionalRemoteReference = keyManager.getOptionalRemoteReference(remote);
+			relateEventHandler.progress(serialPort, remote.getRemoteName(),
+					optionalRemoteReference instanceof DongleProtocolHandler ? 
+							((DongleProtocolHandler) optionalRemoteReference).getRemoteRelateId() : -1, 
 				cur, max, message);
+		}
 	}
 	
 	/** Called by the base class when shared keys have been established and should be verified now.
@@ -454,7 +381,7 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
-			String param, RemoteConnection socketToRemote) {
+			String param, RemoteConnection toRemote) {
 		// first do some sanity checks
 		if (referenceMeasurement != -1)
 			logger.error("Internal inconsistency! Object is idle in server mode, but referenceMeasurement is set");
@@ -462,7 +389,10 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 			logger.error("Internal inconsistency! Object is idle in server mode, but remoteRelateId is set");
 		
 		logger.info("Starting key verification at port " + serialPort + " after successful host authentication with " +
-				socketToRemote.getRemoteName() + ", socketToRemote is " + socketToRemote);
+				toRemote.getRemoteName() + ", socketToRemote is " + toRemote);
+		
+		// remember the remote!
+		remoteHost = toRemote;
 
         /* extract the optional parameters (in the case of the RelateAuthenticationProtocol: the remote
         relate id to authenticate with and the number of rounds - we assume them to be set) as well as the 
@@ -516,7 +446,8 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	 */
 	private class DongleAuthenticationEventHandler implements AuthenticationProgressHandler {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-	    	if (! isVerifying()) {
+	    	if (! (remote instanceof RemoteConnection) || 
+	    		keyManager.getState((RemoteConnection) remote) != KeyManager.STATE_VERIFICATION) {
 	    		logger.error("Received dongle authentication success event with remote id " + remote + 
 	    				" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
@@ -533,23 +464,23 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	    	String localTimes = "";
 	    	DongleProtocolHandler h = null;
 	    	if (!simulation) {
-	    		// before forwarding the success event, send a success message to the remote and wait for its success message
+	    		// we know that the sender must have been a DongleProtocolHandler, so access this...
         		h = (DongleProtocolHandler) sender;
-    			// (also report the time it took on this side to the remote)
+    			// ... to report the time it took on this side to the remote
         		localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
+        		/* and remember this reference for later usage (protocolSucceededHook
+        		 * possibly called from verificationSuccess, will use it again) */
+        		keyManager.setOptionalRemoteReference((RemoteConnection) remote, h);
 	    	}
 	    	
 	    	// report that success status to our super class and pass our times as parameters to the remote
-	        /* Since we are in a DongleAuthenticationHandler right now, remote must be an Integer object, 
-	           which we don't need to pass because remoteRelateId should hold the same value.
-	    	   But we can (ab)use this object to pass the DongleProtocolHandler object to ourselves to the
-	    	   protocolSucceededHook. */
-	    	verificationSuccess(h, localTimes);
+	    	verificationSuccess(remoteHost, remote, localTimes);
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg)
 	    {
-	    	if (! isVerifying()) {
+	    	if (! (remote instanceof RemoteConnection) || 
+		    		keyManager.getState((RemoteConnection) remote) != KeyManager.STATE_VERIFICATION) {
 	    		logger.error("Received dongle authentication failure event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
@@ -566,18 +497,17 @@ public class RelateAuthenticationProtocol extends DHOverTCPWithVerification {
 	        	// and also send an authentication failed status to the remote
 	        	DongleProtocolHandler h = (DongleProtocolHandler) sender;
 	        	localTimes = h.getSendCommandTime() + " " + h.getDongleInterlockTime();
+	        	// and again remember it so that protocolFailedHook can access it
+        		keyManager.setOptionalRemoteReference((RemoteConnection) remote, h);
 	        }
 	        
-	    	DongleProtocolHandler h = null;
-	    	if (!simulation) {
-	    		h = (DongleProtocolHandler) sender;
-	    	}
-	        verificationFailure(h, localTimes, e, msg);
+	        verificationFailure(remoteHost, remote, localTimes, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg)
 	    {
-	    	if (! isVerifying()) {
+	    	if (! (remote instanceof RemoteConnection) || 
+		    		keyManager.getState((RemoteConnection) remote) != KeyManager.STATE_VERIFICATION) {
 	    		logger.error("Received dongle authentication progress event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;

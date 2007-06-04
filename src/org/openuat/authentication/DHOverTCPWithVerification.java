@@ -13,7 +13,9 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
+import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.relate.DongleProtocolHandler;
+import org.openuat.util.HostServerBase;
 import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
@@ -30,6 +32,13 @@ public abstract class DHOverTCPWithVerification extends DHWithVerification {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.DHOverTCPWithVerification" /*DHOverTCPWithVerification.class*/);
 
+	/** This is only a helper member for keeping the HostServerSocket object that is created by
+	 * startServer, so that it can be freed by stopServer.
+	 * @see #startServer
+	 * @see #stopServer
+	 */
+	protected HostServerBase serverSocket = null;
+	
 	/** The TCP port to listen on and to connect to the remote server. */
 	private int tcpPort;
 	
@@ -53,7 +62,7 @@ public abstract class DHOverTCPWithVerification extends DHWithVerification {
 	 */
 	protected DHOverTCPWithVerification(int tcpPort, boolean keepConnected,
 			String instanceId, boolean useJSSE) {
-		super(keepConnected, instanceId, useJSSE);
+		super(keepConnected, false, instanceId, useJSSE);
 		this.tcpPort = tcpPort;
 	}
 
@@ -70,16 +79,8 @@ public abstract class DHOverTCPWithVerification extends DHWithVerification {
 	 */
 	protected boolean startAuthentication(String remoteHost, String param) 
 			throws UnknownHostException, IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
-		try {
-			Socket socket = new Socket(remoteHost, tcpPort);
-			this.startAuthentication(new RemoteTCPConnection(socket), param);
-		} 
-		catch (UnknownHostException e) {
-			// when we can't start here, be sure to reset to a clean state
-			reset();
-			// and simply rethrow;
-			throw e;
-		}
+		Socket socket = new Socket(remoteHost, tcpPort);
+		this.startAuthentication(new RemoteTCPConnection(socket), param);
 		return true;
 	}
 
@@ -96,6 +97,24 @@ public abstract class DHOverTCPWithVerification extends DHWithVerification {
 		}
 		else
 			logger.error("Could not start authentication server because one is already running." + 
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	}
+
+	/** This is a helper function to stop the "server" part of the authentication protocol.
+	 * @see #serverSocket
+	 */
+	public void stopServer() {
+		if (serverSocket != null) {
+			try {
+				serverSocket.stopListening();
+			}
+			catch (InternalApplicationException e) {
+				// ignore this case - we are shutting down anyway, just free resources
+			}
+			serverSocket = null;
+		}
+		else
+			logger.error("Could not stop authentication server because none is running." + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
 }
