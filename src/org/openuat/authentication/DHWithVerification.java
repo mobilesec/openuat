@@ -10,10 +10,10 @@ package org.openuat.authentication;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
+
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.authentication.relate.DongleProtocolHandler;
 import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
 
@@ -276,10 +276,10 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 			String reportToRemote) {
 		try {
     		// this enables auto-flush
-    		PrintWriter toRemote = new PrintWriter(remote.getOutputStream(), true);
+    		OutputStreamWriter toRemote = new OutputStreamWriter(remote.getOutputStream());
 	    	logger.debug("Sending status to remote: '" + reportToRemote + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    		toRemote.println(reportToRemote);
+    		toRemote.write(reportToRemote + "\n");
     		toRemote.flush();
     		logger.debug("Status sent, waiting for status from remote" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -462,7 +462,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this is not optional because we don't know the number of rounds to use yet
 	        raiseAuthenticationProgressEvent(remote, cur, 
-	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages,
+	        		HostProtocolHandler.AuthenticationStages /*+ DongleProtocolHandler.AuthenticationStages*/,
 	        		msg);
 	        // also call the hook of derived classes
 	        protocolProgressHook(((RemoteConnection) remote), cur, max, msg);

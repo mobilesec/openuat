@@ -19,5 +19,6 @@
 	<classpathentry kind="lib" path="lib/relate-2.2-core.jar"/>
 	<classpathentry kind="var" path="CLDC_JAR"/>
 	<classpathentry kind="var" path="MIDP_JAR"/>
+	<classpathentry kind="var" path="JSR75_JAR"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
