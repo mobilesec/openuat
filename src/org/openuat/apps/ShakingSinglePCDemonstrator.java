@@ -356,7 +356,7 @@ public class ShakingSinglePCDemonstrator {
 		//@Override
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 				String optionalParameterFromRemote, byte[] sharedSessionKey) {
-			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote : "null") + 
+			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote.getRemoteName() : "null") + 
 					": shared key is " + (sharedSessionKey != null ? sharedSessionKey.toString() : "null"));
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
