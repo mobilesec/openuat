@@ -354,9 +354,8 @@ public class ShakingSinglePCDemonstrator {
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
-		protected void protocolSucceededHook(String remote, 
-				Object optionalRemoteId, String optionalParameterFromRemote, 
-				byte[] sharedSessionKey, RemoteConnection toRemote) {
+		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
+				String optionalParameterFromRemote, byte[] sharedSessionKey) {
 			logger.info("Protocol variant 1 succedded with " + (remote != null ? remote : "null") + 
 					": shared key is " + (sharedSessionKey != null ? sharedSessionKey.toString() : "null"));
 			Display.getDefault().asyncExec(new Runnable() {
@@ -369,7 +368,7 @@ public class ShakingSinglePCDemonstrator {
 
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
-		protected void protocolFailedHook(String remote, Object optionalRemoteId, 
+		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, 
 				Exception e, String message) {
 			logger.info("Protocol variant 1 failed with " + remote  + ": " + e + ", " + message); 
 			Display.getDefault().asyncExec(new Runnable() {
@@ -382,8 +381,8 @@ public class ShakingSinglePCDemonstrator {
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
-		protected void protocolProgressHook(String remote, 
-				Object optionalRemoteId, int cur, int max, String message) {
+		protected void protocolProgressHook(RemoteConnection remote, 
+				int cur, int max, String message) {
 			logger.debug("Protocol variant 1 progress with " + remote +
 					" " + cur + " of " + max + ": " + message); 
 		}		
