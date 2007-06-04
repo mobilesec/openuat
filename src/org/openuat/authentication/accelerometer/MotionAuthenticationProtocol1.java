@@ -401,11 +401,11 @@ public class MotionAuthenticationProtocol1 extends DHOverTCPWithVerification imp
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		
 		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
 		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 

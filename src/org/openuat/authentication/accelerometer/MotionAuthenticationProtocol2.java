@@ -240,11 +240,11 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		
 		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
 				MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,

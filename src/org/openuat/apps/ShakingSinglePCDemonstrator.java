@@ -171,16 +171,16 @@ public class ShakingSinglePCDemonstrator {
 		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		aggr1_a.setOffset(0);
 		aggr1_a.setSubtractTotalMean(true);
-		aggr1_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr1_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr1_b.setOffset(0);
 		aggr1_b.setSubtractTotalMean(true);
-		aggr1_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr1_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr2_a.setOffset(0);
 		aggr2_a.setSubtractTotalMean(true);
-		aggr2_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr2_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		aggr2_b.setOffset(0);
 		aggr2_b.setSubtractTotalMean(true);
-		aggr2_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr2_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		// including our listeners for the device status
 		devState1 = new StateListener(0);
 		devState2 = new StateListener(1);
