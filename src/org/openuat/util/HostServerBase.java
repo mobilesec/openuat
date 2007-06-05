@@ -9,9 +9,11 @@
 package org.openuat.util;
 
 import java.io.IOException;
+import java.util.Hashtable;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
+import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.*;
 
 /** This is a base class for listening to connections and spawning 
@@ -40,7 +42,13 @@ public abstract class HostServerBase extends AuthenticationEventSender
 
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
-	
+
+	/** This only keeps the command handlers so that they can be pre-registered
+	 * and then be passed onto HostProtocolHandler objects when they are 
+	 * instantiated.
+	 */
+    protected Hashtable protocolCommandHandlers = null;
+
 	/** Initializes the listener. 
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
@@ -54,6 +62,23 @@ public abstract class HostServerBase extends AuthenticationEventSender
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
 	}
+
+	/** @see HostProtocolHandler#addProtocolCommandHandler */
+    public void addProtocolCommandHandler(String command, HostProtocolHandler.ProtocolCommandHandler handler) {
+    	if (protocolCommandHandlers == null)
+    		protocolCommandHandlers = new Hashtable();
+    	protocolCommandHandlers.put(command, handler);
+    }
+
+	/** @see HostProtocolHandler#removeProtocolCommandHandler */
+    public boolean removeProtocolCommandHandler(String command) {
+    	if (protocolCommandHandlers == null)
+    		return false;
+    	boolean removed = (protocolCommandHandlers.remove(command) != null);
+    	if (protocolCommandHandlers.size() == 0)
+    		protocolCommandHandlers = null;
+    	return removed;
+    }
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
@@ -87,5 +112,19 @@ public abstract class HostServerBase extends AuthenticationEventSender
 			}
 			logger.debug("Stopped listening thread for server socket");
 		}
+	}
+
+	/** This is a small helper function that derived classes should call after
+	 * accepting an incoming connection. It fires off a HostProtocolHandler in
+	 * the background and registers all listeners beforehand.
+	 * @param remote The (already opened) remote connection to use.
+	 */
+	protected void startProtocol(RemoteConnection remote) {
+		HostProtocolHandler h = new HostProtocolHandler(remote, keepConnected, useJSSE);
+		// before starting the background thread, register all our own listeners with this new event sender
+		h.setAuthenticationProgressHandlers(eventsHandlers);
+		h.setProtocolCommandHandlers(protocolCommandHandlers);
+		// call the protocol asynchronously
+		h.startIncomingAuthenticationThread(true);
 	}
 }
