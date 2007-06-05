@@ -13,7 +13,7 @@ import org.apache.log4j.Logger;
 /** This class contains utility functions for dealing with time series.
  *
  * @author Rene Mayrhofer
- * @version 1.0
+ * @version 1.1, changes to 1.0: added integer versions of the helper methods
  */
 public class TimeSeriesUtil {
 	/** Our log4j logger. */
@@ -31,6 +31,7 @@ public class TimeSeriesUtil {
 	 *         segment2[0:len] with len being the minimum of segment1.length
 	 *         and segment2.length.
 	 */
+//#if cfg.haveFloatSupport
 	public static double[][] cutSegmentsToEqualLength(double[] segment1, double[] segment2) {
 		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
 		logger.debug("Using " + len + " samples for coherence computation");
@@ -43,7 +44,22 @@ public class TimeSeriesUtil {
 		
 		return ret;
 	}
-	
+//#endif
+
+	/** This is the integer variant of {@link #cutSegmentsToEqualLength(double[], double[]).} */
+	public static int[][] cutSegmentsToEqualLength(int[] segment1, int[] segment2) {
+		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
+		logger.debug("Using " + len + " samples for coherence computation");
+
+		int[][] ret = new int[2][];
+		ret[0] = new int[len];
+		ret[1] = new int[len];
+		System.arraycopy(segment1, 0, ret[0], 0, len);
+		System.arraycopy(segment2, 0, ret[1], 0, len);
+		
+		return ret;
+	}
+
 	/** Slices a time series into multiple parts pf a specified length.
 	 * 
 	 * @param segment The time series segment to slice.
@@ -62,6 +78,7 @@ public class TimeSeriesUtil {
 	 *         without remainder, the remainder will be ignored and will not 
 	 *         be returned.
 	 */
+//#if cfg.haveFloatSupport
 	public static double[][] slice(double[] segment, int maxSegmentLength, int segmentSkip) {
 		double[][] ret;
 		
@@ -80,6 +97,31 @@ public class TimeSeriesUtil {
 		else {
 			// simple case: just use the whole time series
 			ret = new double[1][];
+			ret[0] = segment;
+		}
+		return ret;
+	}
+//#endif
+
+	/** This is the integer version of {@link #slice(double[], int, int)}. */
+	public static int[][] slice(int[] segment, int maxSegmentLength, int segmentSkip) {
+		int[][] ret;
+		
+		if (maxSegmentLength > 0 && segment.length > maxSegmentLength) {
+			int numSplits = (segment.length-maxSegmentLength) / (segmentSkip) + 1;
+			logger.debug("Segments are longer than maximum length: " +
+					segment.length + " > " + maxSegmentLength + 
+					" s, splitting into " + numSplits + " segments");
+			ret = new int[numSplits][];
+			for (int i=0; i<numSplits; i++) {
+				ret[i] = new int[maxSegmentLength];
+				int off=segmentSkip*i;
+				System.arraycopy(segment, off, ret[i], 0, maxSegmentLength);
+			}
+		}
+		else {
+			// simple case: just use the whole time series
+			ret = new int[1][];
 			ret[0] = segment;
 		}
 		return ret;
