@@ -14,8 +14,6 @@ import java.net.Socket;
 import java.net.SocketException;
 
 import org.apache.log4j.Logger;
-import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This class represents a listener on a TCP port which responds to incoming authentication requests by delegating any incoming
@@ -26,7 +24,8 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
  * a specific port, startListening() needs to be called to start accepting incoming connection.
  *  
  * @author Rene Mayrhofer
- * @version 1.1, changes to 1.0: The TCP server socket is now opened in startListening instead of the constructor.
+ * @version 1.2, changes to 1.1: startListening is now called start
+ *               changes to 1.0: The TCP server socket is now opened in startListening instead of the constructor.
  */
 public class TCPPortServer extends HostServerBase {
 	/** Our log4j logger. */
@@ -93,15 +92,8 @@ public class TCPPortServer extends HostServerBase {
 		logger.debug("Listening thread for server socket now running port " + listener.getLocalPort());
 		try {
 			while (running) {
-				//System.out.println("Listening thread for server socket waiting for connection");
 				Socket s = listener.accept();
-				
-				HostProtocolHandler h = new HostProtocolHandler(new RemoteTCPConnection(s), keepConnected, useJSSE);
-				// before starting the background thread, register all our own listeners with this new event sender
-    			for (int i=0; i<eventsHandlers.size(); i++)
-    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) eventsHandlers.elementAt(i));
-    			// call the protocol asynchronously
-    			h.startIncomingAuthenticationThread(true);
+				startProtocol(new RemoteTCPConnection(s));
 			}
 		} catch(SocketException e) {
 			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 

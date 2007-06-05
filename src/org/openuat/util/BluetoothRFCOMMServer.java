@@ -20,8 +20,6 @@ import javax.microedition.io.StreamConnection;
 import javax.microedition.io.StreamConnectionNotifier;
 
 import org.apache.log4j.Logger;
-import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This class represents an RFCOMM service which responds to incoming authentication requests by delegating any incoming
@@ -142,13 +140,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				if (logger.isInfoEnabled())
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 							channel.getRemoteName() + "'");
-				
-				HostProtocolHandler h = new HostProtocolHandler(channel, keepConnected, useJSSE);
-				// before starting the background thread, register all our own listeners with this new event sender
-    			for (int i=0; i<eventsHandlers.size(); i++)
-    				h.addAuthenticationProgressHandler((AuthenticationProgressHandler) eventsHandlers.elementAt(i));
-    			// and asynchronously handle the connection
-    			h.startIncomingAuthenticationThread(true);
+				startProtocol(channel);
     			
     			/* It turns out that we need to add a sleep before starting the 
     			 * next acceptAndOpen after finishing the previous connection, or
