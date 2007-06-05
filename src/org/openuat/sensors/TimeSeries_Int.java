@@ -25,6 +25,16 @@ import org.apache.log4j.Logger;
 public class TimeSeries_Int implements SamplesSink_Int {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries_Int" /*TimeSeries_Int.class*/);
+	
+	/** If debugging is enabled, then estimate the sample rate every N 
+	 * samples, where N is this number.
+	 */
+	private static final int estimateSampleRateWidth = 100;
+	
+	/** If debugging is enabled, then report the estimated sample rate every
+	 * N seconds, where N is this number.
+	 */
+	private static final int reportSampleRateSeconds = 10;
 
 	/** This is the internal circular buffer used to hold the values inside the time window. */
 	private int[] circularBuffer;
@@ -83,6 +93,18 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	 * previously detected to be quiescent.
 	 */
 	private boolean isActive = false;
+	
+	/** If debugging is enabled, then this holds the last timestamp when the
+	 * sample rate was estimated (i.e. estimateSampleRateWidth number of 
+	 * samples ago).
+	 */
+	private long lastSampleRateEstimated = -1;
+	
+	/** If debugging is enabled, then this holds the last timestamp when the
+	 * sample rate was reported (i.e. reportSampleRateSeconds number of 
+	 * samples ago).
+	 */
+	private long lastSampleRateReported = -1;
 	
 	/** Initializes the time series circular buffer with the specified window size.
 	 * 
@@ -188,6 +210,25 @@ public class TimeSeries_Int implements SamplesSink_Int {
         			// and to end at the beginning of a quiescent window
         			s.segmentEnd(sampleNum-circularBuffer.length+1);
         		}
+    	}
+    	
+    	// enable the sample rate
+    	if (logger.isDebugEnabled()) {
+    		if (totalNum % estimateSampleRateWidth == 0) {
+				long curTime = System.currentTimeMillis();
+    			if (lastSampleRateEstimated >= 0) {
+    				// only print at a maximum rate
+    				if (lastSampleRateReported < 0 || 
+    					curTime - lastSampleRateReported >= reportSampleRateSeconds) {
+    					lastSampleRateReported = curTime;
+    					float sampleRate = (curTime - lastSampleRateEstimated) / (float) estimateSampleRateWidth;
+    					logger.debug("Current sample rate: " + sampleRate + " Hz");
+    				}
+    			}
+    			else
+    				// first time, initialization
+    				lastSampleRateEstimated = curTime;
+    		}
     	}
 	}
 	
