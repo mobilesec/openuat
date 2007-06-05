@@ -26,17 +26,38 @@ public abstract class AuthenticationEventSender {
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.AuthenticationEventSender" /*AuthenticationEventSender.class*/);
 
 	/** The list of listeners that are notified of authentication events. */
-    protected Vector eventsHandlers = new Vector();
+    protected Vector eventsHandlers = null;
 
     /** Register a listener for receiving events. */
     public void addAuthenticationProgressHandler(AuthenticationProgressHandler h) {
+    	if (eventsHandlers == null)
+    		eventsHandlers = new Vector();
     	if (! eventsHandlers.contains(h))
     		eventsHandlers.addElement(h);
     }
 
     /** De-register a listener for receiving events. */
     public boolean removeAuthenticationProgressHandler(AuthenticationProgressHandler h) {
+    	if (eventsHandlers == null)
+    		return false;
    		return eventsHandlers.removeElement(h);
+    }
+    
+    /** Set the list of registered handlers, if none has been registered so 
+     * far. This should only be used for initialization and will not do 
+     * anything if any listener has been registered before.
+     * @param handlers The list of events handlers to use. Elements of the
+     *                 vector <b>must</b> be of type AuthenticationProgressHandler.
+     * @return true if the list was set, false otherwise (when any listener has
+     *         been registered before, the list will not be overwritten).
+     */ 
+    public boolean setAuthenticationProgressHandlers(Vector handlers) {
+    	if (eventsHandlers != null) {
+    		logger.error("Not overwriting an already existing list of events handlers");
+    		return false;
+    	}
+    	eventsHandlers = handlers;
+    	return true;
     }
 
     /** Helper method for sending an AuthenticationSuccess event to all registered listeners (if any). */
