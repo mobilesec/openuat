@@ -109,11 +109,10 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public MotionAuthenticationProtocol1(HostServerBase server, 
+	public MotionAuthenticationProtocol1(HostServerBase server, boolean keepConnected, 
 			boolean concurrentVerificationSupported, double coherenceThreshold, 
 			int windowSize, boolean useJSSE) {
-		super(server, false, // we don't need the channel after success/failure 
-				concurrentVerificationSupported, null, useJSSE);
+		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
 		this.coherenceThreshold = coherenceThreshold;
 		this.windowSize = windowSize;
 	}
@@ -416,13 +415,14 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 		aggr_b.setSubtractTotalMean(true);
 		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		
+		boolean keepConnected = false;
 		HostServerBase s1, s2;
-		s1 = new TCPPortServer(TcpPort, false, true);
+		s1 = new TCPPortServer(TcpPort, keepConnected, true);
 		// this will not be started
-		s2 = new TCPPortServer(0, false, true); 
-		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(s1, false,
+		s2 = new TCPPortServer(0, keepConnected, true); 
+		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(s1, keepConnected, false,
 				0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
-		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(s2, false,
+		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(s2, keepConnected, false,
 				0.82, MotionAuthenticationParameters.coherenceWindowSize, true);
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);

@@ -110,7 +110,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 			int udpRecvPort, int udpSendPort, String sendAddress, String instanceId) throws IOException {
 		// TODO: set minimum entropy
 		super(udpRecvPort, udpSendPort, sendAddress, instanceId, true, false, LocalCandidateHistorySize, MatchingCandidatesHistorySize, MaximumMatchingCandidatesAge, 
-				matchThreshold, 0, (1-matchThreshold)*2/3, MinimumNumberOfRoundsForAction, useJSSE);
+				matchThreshold, 0, -1 /*(1-matchThreshold)*2/3*/, MinimumNumberOfRoundsForAction, useJSSE);
 		this.sampleRate = sampleRate;
 		this.fftPoints = fftPoints;
 		this.numQuantLevels = numQuantLevels;

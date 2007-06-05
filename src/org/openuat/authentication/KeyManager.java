@@ -229,14 +229,22 @@ public class KeyManager extends AuthenticationEventSender {
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // then extraxt the optional parameter
 	        remoteState.optionalParam = (String) res[2];
-	        // this is mostly a sanity check
-	        if (res.length < 4 || res[3] == null || 
+	        // this is mostly a sanity check - but it's unnessesary, we can have a key and use another channel for verification, after all
+	        /*if (res.length < 4 || res[3] == null || 
 	        		!(res[3] instanceof RemoteConnection) ||
 	        		res[3] != remote || !res[3].equals(remote)) {
 	        	logger.error("Did not receive a proper remote connection object in authentication success event, can not re-use connection for authentication. Aborting and wiping keys." +
 						(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	        	if (logger.isDebugEnabled()) {
+	        		logger.debug("res.length=" + res.length);
+	        		if (res.length >= 4)
+	        			logger.debug("res[3]=" + res[3] + 
+	        					", res[3] is RemoteConnection=" + (res[3] instanceof RemoteConnection) +
+	        					", res[3]==remote=" + (res[3] != remote) + ", res[3].equals(remote)=" + res[3].equals(remote));
+	        	}
 	        	failed(remoteState);
-	        }
+	        	return;
+	        }*/
 
 	    	// check that we don't have two verification runs in parallel if not supported
 	    	if (!concurrentVerificationSupported) {

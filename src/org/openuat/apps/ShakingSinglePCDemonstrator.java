@@ -348,10 +348,16 @@ public class ShakingSinglePCDemonstrator {
 	}
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
+		private final static boolean keepConnected = true;
+		private final static boolean concurrentVerificationSupported = false;
+		private final static boolean useJSSE = true;
+		
 		protected Protocol1Hooks() {
 			// samplerate/2
-			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true), false,
-					MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
+			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, keepConnected, useJSSE), 
+					keepConnected, concurrentVerificationSupported,
+					MotionAuthenticationParameters.coherenceThreshold, 
+					MotionAuthenticationParameters.coherenceWindowSize, useJSSE);
 		}
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
