@@ -25,7 +25,7 @@ import org.openuat.features.TimeSeriesUtil;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.TimeSeriesAggregator;
-import org.openuat.util.HostServerBase;
+import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
 import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
@@ -109,7 +109,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public MotionAuthenticationProtocol1(HostServerBase server, boolean keepConnected, 
+	public MotionAuthenticationProtocol1(HostAuthenticationServer server, boolean keepConnected, 
 			boolean concurrentVerificationSupported, double coherenceThreshold, 
 			int windowSize, boolean useJSSE) {
 		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
@@ -318,6 +318,9 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 
 					// now generate our message for the interlock protocol segments
 					// to keep the size of the strings down, restrict the number of digits to transmit to 4
+					
+//					need to add our own id or a random number and check that there is no mirror attack!
+					
 					StringBuffer tmp = new StringBuffer();
 					DecimalFormatSymbols fmtSym = new DecimalFormatSymbols(Locale.US);
 					DecimalFormat fmt = new DecimalFormat("0.0000", fmtSym);
@@ -416,7 +419,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		
 		boolean keepConnected = false;
-		HostServerBase s1, s2;
+		HostAuthenticationServer s1, s2;
 		s1 = new TCPPortServer(TcpPort, keepConnected, true);
 		// this will not be started
 		s2 = new TCPPortServer(0, keepConnected, true); 

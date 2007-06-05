@@ -55,7 +55,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 	
 	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
 		protected Protocol1Hooks() {
-			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true), false,
+			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true), false, false,
 					MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
 		}
 		
