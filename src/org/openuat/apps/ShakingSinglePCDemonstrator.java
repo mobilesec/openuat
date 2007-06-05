@@ -31,6 +31,7 @@ import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.WiTiltRawReader;
 import org.openuat.util.RemoteConnection;
+import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
 /** This is a simple demonstrator for the shaking authentication. It
@@ -206,7 +207,7 @@ public class ShakingSinglePCDemonstrator {
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startListening();
-		prot1_b.startAuthentication("localhost");
+		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", MotionAuthenticationProtocol1.TcpPort)), null);
 		
 		if (deviceType == 1) {
 			if (! device1.startsWith("port:")) {

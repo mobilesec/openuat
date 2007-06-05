@@ -10,8 +10,6 @@
 package org.openuat.authentication.accelerometer;
 
 import java.io.IOException;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -22,13 +20,10 @@ import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.features.Coherence;
 import org.openuat.features.TimeSeriesUtil;
-import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
-import org.openuat.util.TCPPortServer;
 
 /** This is the first variant of the motion authentication protocol. It
  * uses Diffie-Hellman key agreement with verification that the shared keys
@@ -42,9 +37,9 @@ import org.openuat.util.TCPPortServer;
  */
 public class MotionAuthenticationProtocol1 extends DHWithVerification implements SegmentsSink {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol1.class);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1" /*MotionAuthenticationProtocol1.class*/);
 
-	/** The TCP port we use for this protocol. */
+	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
 
 	/** This holds our local segment, as soon as we have received it from the
@@ -223,17 +218,6 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 		}
 	}
 	
-	/** This method only calls the base class startAuthentication method.
-	 * 
-	 * @param remoteHost The remote host with which to authentication
-	 * @throws UnknownHostException
-	 * @throws IOException
-	 */
-	public void startAuthentication(String remoteHost) throws UnknownHostException, IOException {
-		logger.info("Starting authentication with " + remoteHost);
-		startAuthentication(new RemoteTCPConnection(new Socket(remoteHost, TcpPort)), null);
-	}
-	
 	/** Sets the coherence threshold. 
 	 * @param coherenceThreshold The threshold over which a coherence value will be taken
 	 *                           as valid (i.e. shaken within the same hand). Must be
@@ -403,8 +387,9 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 	
 	
 	/////////////////// testing code begins here ///////////////
+//#if cfg.includeTestCode
 	public static void main(String[] args) throws IOException {
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
+		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
@@ -420,9 +405,9 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 		
 		boolean keepConnected = false;
 		HostAuthenticationServer s1, s2;
-		s1 = new TCPPortServer(TcpPort, keepConnected, true);
+		s1 = new org.openuat.util.TCPPortServer(TcpPort, keepConnected, true);
 		// this will not be started
-		s2 = new TCPPortServer(0, keepConnected, true); 
+		s2 = new org.openuat.util.TCPPortServer(0, keepConnected, true); 
 		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(s1, keepConnected, false,
 				0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
 		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(s2, keepConnected, false,
@@ -430,8 +415,9 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startListening();
-		ma2.startAuthentication("localhost");
+		ma2.startAuthentication(new org.openuat.util.RemoteTCPConnection(new java.net.Socket("localhost", TcpPort)), null);
 		
 		r.simulateSampling();
 	}
+//#endif
 }

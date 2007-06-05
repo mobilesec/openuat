@@ -18,7 +18,6 @@ import org.openuat.authentication.CKPOverUDP;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.features.QuantizedFFTCoefficients;
 import org.openuat.features.TimeSeriesUtil;
-import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.TimeSeriesAggregator;
 
@@ -31,7 +30,7 @@ import org.openuat.sensors.TimeSeriesAggregator;
  */
 public class MotionAuthenticationProtocol2 extends CKPOverUDP implements SamplesSink  {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(MotionAuthenticationProtocol2.class);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.MotionAuthenticationProtocol2" /*MotionAuthenticationProtocol2.class*/);
 
 	/** The TCP port we use for this protocol. */
 	public static final int UdpPort = 54322;
@@ -229,10 +228,11 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 
 
 	/////////////////// testing code begins here ///////////////
+//#if cfg.includeTestCode
 	public static void main(String[] args) throws IOException {
 		int minmatchingparts = 8;
 		
-		ParallelPortPWMReader r = new ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
+		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
@@ -261,4 +261,5 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 		
 		r.simulateSampling();
 	}
+//#endif
 }

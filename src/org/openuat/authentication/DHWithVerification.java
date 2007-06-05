@@ -181,7 +181,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * 
 	 * @see AuthenticationEventSender#addAuthenticationProgressHandler
 	 */
-	protected boolean startAuthentication(RemoteConnection remote, String param) 
+	public boolean startAuthentication(RemoteConnection remote, String param) 
 			throws IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (! isIdle()) {
 			logger.warn("Tried to start authentication with host " + remote.getRemoteName() + 
