@@ -14,6 +14,7 @@ import java.net.Socket;
 
 import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
 import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
+import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
 public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProtocolTestBase {
@@ -42,7 +43,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startListening();
-		prot1_b.startAuthentication("localhost");
+		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", MotionAuthenticationProtocol1.TcpPort)), null);
 
 		classIsReadyForTests = true;
 	}
