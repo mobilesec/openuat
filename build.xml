@@ -416,7 +416,10 @@
 				org/openuat/sensors/TimeSeriesAggregator.java org/openuat/sensors/DeviceStateListener.java
 				org/openuat/sensors/j2me/SymbianTCPAccelerometerReader.java
 				org/openuat/features/FPIntFFT.java org/openuat/features/Coherence_Int.java
+				org/openuat/features/TimeSeriesUtil.java
+				org/openuat/features/Coherence.java org/openuat/features/FFT.java org/openuat/features/Complex.java 
 				org/openuat/authentication/accelerometer/MotionAuthenticationParameters.java
+				org/openuat/authentication/accelerometer/MotionAuthenticationProtocol1.java
 				org/openuat/authentication/DHWithVerification.java" />
 		</copy>
 		<j2mepolish>

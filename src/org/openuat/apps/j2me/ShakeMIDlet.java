@@ -25,6 +25,7 @@ import net.sf.microlog.ui.LogForm;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.DHWithVerification;
+import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
@@ -116,7 +117,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 		
 		reader = new SymbianTCPAccelerometerReader();
-		// this is a test/debug sink to stream the values across Bluetooth
+		// this is a test/debug sink to stream the values across Bluetooth - THIS CAN BE DISABLED LATER ON
 		reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {
 				new TestBTStreamingSamplesHandler(0), 
 				new TestBTStreamingSamplesHandler(1), 
@@ -140,10 +141,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				MotionAuthenticationParameters.activityVarianceThreshold) *
 				(SymbianTCPAccelerometerReader.VALUE_RANGE*SymbianTCPAccelerometerReader.VALUE_RANGE)*/);
 		reader.addSink(new int[] {0, 1, 2}, aggregator.getInitialSinks_Int());
-		// also register the activity indicator
+		// also register the activity indicator - THIS CAN BE DISABLED LATER ON
 		aggregator.addNextStageSamplesSink(new ActivityHandler());
 		// and the segments listener
-		aggregator.addNextStageSegmentsSink_Int(new SegmentsHandler());
+		aggregator.addNextStageSegmentsSink_Int(protocol);
 		// finally start the reader, now that everything is registered and the time series chains are ready
 		reader.start();
 		
@@ -230,29 +231,22 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	private double[] samples = new double[3];
 
 	
-	private class ShakeAuthenticator extends DHWithVerification {
+	private class ShakeAuthenticator extends MotionAuthenticationProtocol1 {
 		ShakeMIDlet outer;
 		
 		ShakeAuthenticator(HostAuthenticationServer server, ShakeMIDlet outer) {
-			super(server, false, // the channel is not needed after authentication 
+			super(server,  
+					false, // don't keep channel open
 					true, // we support multiple authentications 
-					null, false); // no JSSE
+					0.72, 
+					32,
+					false); // no JSSE
 			this.outer = outer;
 		}
 
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
+			// I want to beep
 			toRemote = null;
-		}
-
-		protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
-			// indicate progress in the first phase
-			// min 0, max 100
-			//volumeControl.setLevel(30);
-			/*try {
-				Manager.playTone(60, 300, 30);
-			} catch (MediaException e) {
-				logger.error("Unable to play tone");
-			}*/
 		}
 
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
@@ -268,11 +262,24 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 		}
 
+		// TODO: remove me completely when no longer streaming
 		protected void resetHook(RemoteConnection remote) {
 			toRemote = null;
+			super.resetHook(remote);
 		}
 
+		// TODO: remove me completely when no longer streaming
+		// maybe only keep for the sound...
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
+			// indicate progress in the first phase
+			// min 0, max 100
+			//volumeControl.setLevel(30);
+			/*try {
+				Manager.playTone(60, 300, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
+			}*/
+
 			logger.info("Successful authentication with " + remote.getRemoteName() + 
 					", auth key is " + new String(Hex.encodeHex(sharedAuthenticationKey)));
 	        try {
@@ -288,6 +295,23 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				}
 			} catch (IOException e) {
 				logger.debug("Unable to open stream to remote: " + e);
+			}
+			
+			super.startVerificationAsync(sharedAuthenticationKey, optionalParam, remote);
+		}
+		
+		//@Override
+		public void addSegment(int[] segment, int startIndex) {
+			// fire off the normal protocol
+			super.addSegment(segment, startIndex);
+			
+			// and announce shaking complete
+			try {
+				Manager.playTone(60, 100, 30);
+				Manager.playTone(62, 100, 30);
+				Manager.playTone(64, 100, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
 			}
 		}
 	}
@@ -340,19 +364,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// announce active
 			try {
 				Manager.playTone(72, 100, 30);
-			} catch (MediaException e) {
-				logger.error("Unable to play tone");
-			}
-		}
-	}
-	
-	private class SegmentsHandler implements SegmentsSink_Int {
-		public void addSegment(int[] segment, int startIndex) {
-			// announce shaking complete
-			try {
-				Manager.playTone(60, 100, 30);
-				Manager.playTone(62, 100, 30);
-				Manager.playTone(64, 100, 30);
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
 			}

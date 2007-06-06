@@ -31,7 +31,7 @@ public class TimeSeriesUtil {
 	 *         segment2[0:len] with len being the minimum of segment1.length
 	 *         and segment2.length.
 	 */
-//#if cfg.haveFloatSupport
+//ENABLED FOR NOW       #if cfg.haveFloatSupport
 	public static double[][] cutSegmentsToEqualLength(double[] segment1, double[] segment2) {
 		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
 		logger.debug("Using " + len + " samples for coherence computation");
@@ -44,7 +44,7 @@ public class TimeSeriesUtil {
 		
 		return ret;
 	}
-//#endif
+//     #endif
 
 	/** This is the integer variant of {@link #cutSegmentsToEqualLength(double[], double[]).} */
 	public static int[][] cutSegmentsToEqualLength(int[] segment1, int[] segment2) {

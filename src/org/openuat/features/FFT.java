@@ -163,6 +163,7 @@ public class FFT {
 
 
     //////////////////// testing code begins here //////////////////
+//#if cfg.includeTestCode
     public static void main(String[] args) { 
         int N = Integer.parseInt(args[0]);
         Complex[] x = new Complex[N];
@@ -201,4 +202,5 @@ public class FFT {
         System.out.println();
 
     }
+//#endif
 }

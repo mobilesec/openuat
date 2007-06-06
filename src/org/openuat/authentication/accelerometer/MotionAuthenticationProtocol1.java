@@ -10,10 +10,6 @@
 package org.openuat.authentication.accelerometer;
 
 import java.io.IOException;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.util.Locale;
-import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.DHWithVerification;
@@ -21,6 +17,7 @@ import org.openuat.authentication.InterlockProtocol;
 import org.openuat.features.Coherence;
 import org.openuat.features.TimeSeriesUtil;
 import org.openuat.sensors.SegmentsSink;
+import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
@@ -35,7 +32,8 @@ import org.openuat.util.RemoteConnection;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol1 extends DHWithVerification implements SegmentsSink {
+public class MotionAuthenticationProtocol1 extends DHWithVerification 
+		implements SegmentsSink, SegmentsSink_Int {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1" /*MotionAuthenticationProtocol1.class*/);
 
@@ -217,7 +215,23 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 			localSegmentLock.notify();
 		}
 	}
-	
+
+	/** The implementation of SegmentsSink_Int.addSegment. It will be called whenever
+	 * a significant active segment has been sampled completely, i.e. when the
+	 * source has become quiescent again.
+	 * @see #localSegment
+	 * @see #localSegmentLock
+	 */
+	public void addSegment(int[] segment, int startIndex) {
+		logger.info("Received segment of size " + segment.length + " starting at index " + startIndex);
+		synchronized (localSegmentLock) {
+			localSegment = new double[segment.length];
+			for (int i=0; i<segment.length; i++)
+				localSegment[i] = segment[i];
+			localSegmentLock.notify();
+		}
+	}
+
 	/** Sets the coherence threshold. 
 	 * @param coherenceThreshold The threshold over which a coherence value will be taken
 	 *                           as valid (i.e. shaken within the same hand). Must be
@@ -306,8 +320,6 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 //					need to add our own id or a random number and check that there is no mirror attack!
 					
 					StringBuffer tmp = new StringBuffer();
-					DecimalFormatSymbols fmtSym = new DecimalFormatSymbols(Locale.US);
-					DecimalFormat fmt = new DecimalFormat("0.0000", fmtSym);
 					synchronized (localSegmentLock) {
 						for (int i=0; i<localSegment.length; i++) {
 							// sanity check
@@ -317,7 +329,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 								localSegment = remoteSegment = null;
 								return;
 							}
-							tmp.append(fmt.format(localSegment[i]));
+							tmp.append(Float.floatToIntBits((float) localSegment[i]));
 							if (i<localSegment.length-1)
 								tmp.append(' ');
 						}
@@ -344,22 +356,34 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification implements
 						}
 					}
 			
+					boolean decision = false;
 					// and check the received remote segment, compare it with our local segment
 					logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
-					StringTokenizer st = new StringTokenizer(new String(remotePlainText), " ");
-					remoteSegment = new double[st.countTokens()];
-					int i=0;
-					while (st.hasMoreTokens()) {
-						remoteSegment[i++] = Float.parseFloat(st.nextToken());
+					// count the tokens
+					int numBlanks = 0;
+					for (int i=0; i<remotePlainText.length; i++)
+						if (remotePlainText[i] == ' ') numBlanks++;
+					if (numBlanks == 0) {
+						logger.error("Received invalid remote segment without any blanks, aborting");
 					}
-					logger.debug("remote segment is " + remoteSegment.length + " elements long");
+					else {
+						String remoteString = new String(remotePlainText);
+						remoteSegment = new double[numBlanks+1];
+						int off=0;
+						for (int i=0; i<=numBlanks; i++) {
+							int end = remoteString.indexOf(' ', off);
+							remoteSegment[i] = Float.intBitsToFloat(Integer.parseInt((remoteString.substring(off, end))));
+							off = end+1;
+						}
+						logger.debug("remote segment is " + remoteSegment.length + " elements long");
 			
-					boolean coherence = checkCoherence();
-					System.out.println("COHERENCE MATCH: " + coherence + "(computed " + 
-							lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
+						decision = checkCoherence();
+						System.out.println("COHERENCE MATCH: " + decision + "(computed " + 
+								lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
+					}
 			
 					// final decision
-					if (coherence) { 
+					if (decision) { 
 						if (! continuousChecking)
 							verificationSuccess(null, null, Double.toString(lastCoherenceMean));
 						else
