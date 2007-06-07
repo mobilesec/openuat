@@ -363,6 +363,13 @@ public class KeyManager extends AuthenticationEventSender {
 		}
 	}
 	
+	/** Simply returns the value of concurrentVerificationSupported passed to 
+	 * the constructor.
+	 */
+	public boolean isConcurrentVerificationSupported() {
+		return concurrentVerificationSupported;
+	}
+	
 	/** Returns an implementation of AuthenticationProgressHandler that should
 	 * be registered with a HostProtocolHandler so that KeyManager will 
 	 * receive the keys that are agreed to.
