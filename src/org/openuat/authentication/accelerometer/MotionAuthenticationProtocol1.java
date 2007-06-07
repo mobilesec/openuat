@@ -39,6 +39,11 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 
 	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
+	
+	/** The maximimum time that the interlock exchange of active segments
+	 * with the remote host is allowed to take in ms.
+	 */
+	public static final int RemoteInterlockExchangeTimeout = 10000;
 
 	/** This holds our local segment, as soon as we have received it from the
 	 * segment source. It is modified by addSegment and read by AsyncInterlockHelper#run
@@ -342,7 +347,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// exchange with the remote host
 					byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
 							connectionToRemote.getInputStream(), connectionToRemote.getOutputStream(), 
-							sharedAuthenticationKey, rounds, false, 0, useJSSE);
+							sharedAuthenticationKey, rounds, false, 
+							RemoteInterlockExchangeTimeout, useJSSE);
 					if (remotePlainText == null) {
 						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 						if (! continuousChecking) {

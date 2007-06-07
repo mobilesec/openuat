@@ -331,7 +331,7 @@
 				org/openuat/util/DebugInputStream.java org/openuat/util/DebugOutputStream.java
 				org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
 				org/openuat/authentication/KeyManager.java org/openuat/util/HostAuthenticationServer.java
-				org/openuat/authentication/AuthenticationEventSender.java org/openuat/authentication/InterlockProtocol.java
+				org/openuat/authentication/AuthenticationEventSender.java
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java" />
 		</copy>
 		<!-- hack ends here -->
@@ -421,7 +421,8 @@
 				org/openuat/features/Coherence.java org/openuat/features/FFT.java org/openuat/features/Complex.java 
 				org/openuat/authentication/accelerometer/MotionAuthenticationParameters.java
 				org/openuat/authentication/accelerometer/MotionAuthenticationProtocol1.java
-				org/openuat/authentication/DHWithVerification.java" />
+				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
+				org/openuat/util/SafetyBeltTimer.java" />
 		</copy>
 		<j2mepolish>
 			<info

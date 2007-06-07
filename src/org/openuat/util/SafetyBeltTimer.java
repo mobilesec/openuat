@@ -8,6 +8,9 @@
  */
 package org.openuat.util;
 
+import java.io.IOException;
+import java.io.InputStream;
+
 import org.apache.log4j.Logger;
 
 /** This is a currently safety belt against the dongle being stuck in authentication 
@@ -25,8 +28,10 @@ import org.apache.log4j.Logger;
  */
 public class SafetyBeltTimer implements Runnable {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(SafetyBeltTimer.class);
+	private static Logger logger = Logger.getLogger("org.openuat.util.SafetyBeltTimer" /*SafetyBeltTimer.class*/);
 
+	/** This signals the event loop to exit gracefully. */
+	private boolean gracefulStop = false;
 	/** This signals the event loop to exit on its next possibility. */ 
 	private boolean timeout = false;
 	/** The time, in milliseconds, that this timer will use. */
@@ -35,10 +40,21 @@ public class SafetyBeltTimer implements Runnable {
 	 * It is created and immediately started in the constructor, and stops itself.
 	 */
 	private Thread thread;
+	/** If set, then this stream will be forcefully closed when the timer is
+	 * triggered. This can be used for enforcing timeouts on blocking reads.
+	 */ 
+	private InputStream abortStream;
 	
-	/** @param time The time, in milliseconds, that this timer will use. */
-	public SafetyBeltTimer(int time) {
+	/** 
+	 * @param time The time, in milliseconds, that this timer will use. 
+	 * @param abortStream If set, then this stream will be forcefully closed 
+	 *                    when the timer is triggered. This can be used for 
+	 *                    enforcing timeouts on blocking reads. Set to null to
+	 *                    disable this functionality.
+	 */
+	public SafetyBeltTimer(int time, InputStream abortStream) {
 		msCountdown = time;
+		this.abortStream = abortStream;
 		thread = new Thread(this);
 		thread.start();
 	}
@@ -47,7 +63,7 @@ public class SafetyBeltTimer implements Runnable {
 	public void run() {
 		logger.debug("Starting safety belt timer with " + msCountdown + "ms");
 		
-		while (!timeout) {
+		while (!timeout && !gracefulStop) {
 			try {
 				Thread.sleep(msCountdown);
 				// finished the sleep, so time out now
@@ -59,25 +75,44 @@ public class SafetyBeltTimer implements Runnable {
 				logger.debug("Safety belt timer reset to " + msCountdown + "ms");
 			}
 		}
-		
-		logger.debug("Safety belt timer triggered");
+		if (timeout) {
+			if (logger.isDebugEnabled())
+				logger.debug("Safety belt timer triggered");
+			if (abortStream != null) {
+				if (logger.isDebugEnabled())
+					logger.debug("Forcefully closing input stream to abort reads: " + abortStream);
+				try {
+					abortStream.close();
+				} catch (IOException e) {
+					logger.error("Could not forcefully close input stream: " + e);
+				}
+			}
+		}
+		else
+			if (logger.isDebugEnabled())
+				logger.debug("Safety belt timer exited gracefully");
 	}
 	
 	/** Returns true when the timer has triggered and the task should terminate. */
 	public boolean isTriggered() {
-		if (timeout)
+		if (timeout && logger.isInfoEnabled())
 			logger.info("Triggered safety belt timer just got queried - task should bail out now");
 		// no synchronization method here since it's only a boolean
 		return timeout;
 	}
 	
 	/** Allows to send a hearbeat signal to the timer by resetting it. 
-	 * This allows
-	 * to implement heartbeat like functionality where the timer can get reset
-	 * whenever some progress is being made.
+	 * This allows to implement heartbeat like functionality where the timer 
+	 * can get reset whenever some progress is being made.
 	 */
 	public void reset() {
 		// but "kill" the current timer run and reset
 		thread.interrupt();
+	}
+
+	/** This stops the safety belt timer gracefully without triggering it. */
+	public void stop() {
+		gracefulStop = true;
+		reset();
 	}
 }

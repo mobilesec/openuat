@@ -217,7 +217,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		 * (e.g. when either the other side never enters authentication mode or it has been reset for
 		 * some reason).  
 		 */
-		SafetyBeltTimer timer = new SafetyBeltTimer(MAGIC_1);
+		SafetyBeltTimer timer = new SafetyBeltTimer(MAGIC_1, null);
 		
 		while (lastCompletedRound < rounds-1 && !timer.isTriggered()) {
 			while (eventQueue.isEmpty())

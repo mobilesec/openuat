@@ -18,6 +18,7 @@ import java.util.BitSet;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.util.SafetyBeltTimer;
 
 /** This class implements the interlock protocol as first defined in
  * Ronald L. Rivest and Adi Shamir: "How to Expose an Eavesdropper", 1984.
@@ -639,7 +640,6 @@ public class InterlockProtocol {
 					"', received line '" + remoteLine + "'");
 			return null;
 		}
-		
 	}
 	
 	/** This method runs a complete interlock exchange with another host. To this end,
@@ -660,14 +660,29 @@ public class InterlockProtocol {
 	 *                   occurs. THIS IS CURRENTLY NOT IMPLEMENTED. SET TO FALSE.
 	 * @param timeoutMs If retransmit is set to true, every round will be limited to take
 	 *                  this amount of milliseconds. If the other side has not acknowledged
-	 *                  the receipt within this time, the protocol aborts. THIS IS CURRENTLY
-	 *                  NOT IMPLEMENTED.
+	 *                  the receipt within this time, the protocol aborts. The overall
+	 *                  timeout of the whole protocol is therefore defined to be a maximum
+	 *                  of timeoutMs*rounds, but a timeout error may occur earlier than 
+	 *                  this. Set to 0 to disable timeouts (which is not recommended!).
+	 *                  <br>
+	 *                  <b>Attention:</b>Because of long-standing JRE bug 4514257 (see
+	 *                  http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4514257), it is
+	 *                  impossible to cleanly interrupt the block read() on fromRemote.
+	 *                  Therefore, when a timeout is triggered while waiting for the
+	 *                  remote host to send (either the initial interlock greeting or
+	 *                  it respective round number), then <b>fromRemote will be closed</b>.
+	 *                  This is currently the only way of enforcing the timeout on 
+	 *                  blocking reads, and unfortunately makes it impossible to 
+	 *                  explicitly signal abort to the remote. In the case of toRemote
+	 *                  being closed, one must therefore assume any abort reason from the
+	 *                  remote including regular timeout aborts.
 	 * @return The message that the remote host sent, or null if the interlock protocol 
 	 *         could not be completed successfully.
-	 * @throws IOException 
+	 * @throws IOException When reading from fromRemote or writing to toRemote failed.
+	 *                     This may also be caused by a timeout that forcefully closed
+	 *                     fromRemote. 
 	 * @throws InternalApplicationException
 	 * 
-	 *  // TODO: implement handling of timeoutMS
 	 *  // TODO: implement handling of retransmit
 	 */
 	public static byte[] interlockExchange(byte[] message, InputStream fromRemote, OutputStream toRemote,
@@ -689,9 +704,14 @@ public class InterlockProtocol {
 		/* do not use a BufferedReader here because that would potentially mess up
 		 * the stream for other users of the socket (by consuming too many bytes)
 		 */
-		
+
+		// protect against timeouts, e.g. the host not responding or not sending its round
+		SafetyBeltTimer timer = null;
+		if (timeoutMs > 0)
+			timer = new SafetyBeltTimer(timeoutMs, fromRemote);
 		// first exchange length of message
-		String remoteLength = swapLine(ProtocolLine_Init, Integer.toString(message.length), fromRemote, writer);
+		String remoteLength = swapLine(ProtocolLine_Init, Integer.toString(message.length), 
+				fromRemote, writer);
 		if (remoteLength == null) {
 			logger.error("Did not receive remote message length. Can not continue.");
 			return null;
@@ -701,19 +721,20 @@ public class InterlockProtocol {
 		InterlockProtocol remoteIp = new InterlockProtocol(sharedKey, rounds, 
 				remLen*8, null, useJSSE);
 		
-		// TODO: this can be an endless loop - time for a SafetyBeltTimer
-		for (int round=0; round<rounds; round++) {
+		int round=0;
+		while (round<rounds && !(timer != null && timer.isTriggered())) {
 			if (logger.isDebugEnabled())
 				logger.debug("Sending my round " + round + ", length of part is " + localParts[round].length + " bytes");
 			StringBuffer remoteTmp = new StringBuffer();
 			remoteTmp.append(round);
 			remoteTmp.append(' ');
 			remoteTmp.append(Hex.encodeHex(localParts[round]));
+			// TODO: extend SafetyBeltTimer to also safeguard timeouts while waiting for the remote host
 			String remotePart = swapLine(ProtocolLine_Round, 
 					remoteTmp.toString(),
 					fromRemote, writer);
 			if (remotePart == null) {
-				logger.error("Did not received round " + round + " from remote. Can not continue.");
+				logger.error("Did not receive round " + round + " from remote. Can not continue.");
 				return null;
 			}
 
@@ -727,6 +748,10 @@ public class InterlockProtocol {
 					remoteIp.addMessage(part, round);
 					if (logger.isDebugEnabled())
 						logger.debug("Received " + part.length + " bytes from other host");
+					round++;
+					// successfully got a new round, reset timer
+					if (timer != null)
+						timer.reset();
 				}
 				catch (Exception e) {
 					logger.error("Could not decode remote byte array. Can not continue.");
@@ -738,10 +763,18 @@ public class InterlockProtocol {
 				return null;
 			}
 		}
-		if (logger.isDebugEnabled())
-			logger.debug("Interlock protocol completed");
+		if (round == rounds) {
+			if (timer != null)
+				timer.stop();
+			if (logger.isDebugEnabled())
+				logger.debug("Interlock protocol completed");
 		
-		return remoteIp.decrypt(remoteIp.reassemble());
+			return remoteIp.decrypt(remoteIp.reassemble());
+		}
+		else {
+			logger.error("Interlock protocol did not finish within timeout");
+			return null;
+		}
 	}
 		
 	/** Adds a message to the cipher text assemply. This is a convenience

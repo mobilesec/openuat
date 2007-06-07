@@ -461,6 +461,95 @@ public class InterlockProtocolTest extends TestCase {
 		Assert.assertTrue(SimpleKeyAgreementTest.compareByteArray(h2.myMsg, h1.remoteMsg));
 	}
 
+	// tests timeout when the remote host doesn't send anything
+	public void testExchangeHelperTimeoutAtGreeting() throws InternalApplicationException, IOException {
+		PipedOutputStream writePipe1 = new PipedOutputStream();
+		PipedOutputStream writePipe2 = new PipedOutputStream();
+		PipedInputStream readPipe1 = new PipedInputStream(writePipe2);
+		
+		final byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		final byte[] myMsg = new byte[23];
+		for (int i=0; i<myMsg.length; i++)
+			myMsg[i] = (byte) (myMsg.length-1-i);
+
+		byte[] remoteMsg = null;
+		try {
+			remoteMsg = InterlockProtocol.interlockExchange(myMsg, readPipe1, writePipe1, 
+					sharedKey, 2, false, 500, useJSSE);
+			Assert.fail();
+		} catch (IOException e) {
+			Assert.assertTrue(true);
+		}
+		Assert.assertNull(remoteMsg);
+	}
+
+	// this tests the timeout feature at the last round (because one side tries to use 10 rounds while the other wants 11)
+	public void testExchangeHelperTimeoutAtRounds() throws IOException, InterruptedException {
+		PipedOutputStream writePipe1 = new PipedOutputStream();
+		PipedOutputStream writePipe2 = new PipedOutputStream();
+		PipedInputStream readPipe1 = new PipedInputStream(writePipe2);
+		PipedInputStream readPipe2 = new PipedInputStream(writePipe1);
+		
+		final byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		
+		class Helper implements Runnable {
+			byte[] myMsg;
+			byte[] remoteMsg;
+			InputStream in;
+			OutputStream out;
+			boolean myUseJSSE;
+			int myRounds;
+			boolean iShouldFail;
+			
+			public void run() {
+				try {
+					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
+							sharedKey, myRounds, false, 500, myUseJSSE);
+					Assert.assertFalse("Should have failed, but didn't", iShouldFail);
+				} catch (IOException e) {
+					Assert.assertTrue("Should not have failed, but did", iShouldFail);
+				} catch (InternalApplicationException e) {
+					e.printStackTrace();
+					Assert.fail();
+				}
+			}
+		}
+		
+		Helper h1 = new Helper();
+		Helper h2 = new Helper();
+		h1.in = readPipe1;
+		h1.out = writePipe1;
+		h1.myMsg = new byte[25];
+		h1.myUseJSSE = useJSSE;
+		for (int i=0; i<h1.myMsg.length; i++)
+			h1.myMsg[i] = (byte) (h1.myMsg.length-1-i);
+		h1.myRounds = 11;
+		h1.iShouldFail = true;
+		h2.in = readPipe2;
+		h2.out = writePipe2;
+		h2.myMsg = new byte[27];
+		h2.myUseJSSE = useJSSE2;
+		for (int i=0; i<h1.myMsg.length; i++)
+			h1.myMsg[i] = (byte) (h1.myMsg.length-2-i);
+		h2.myRounds = 10;
+		h2.iShouldFail = false;
+
+		Thread t1 = new Thread(h1);
+		Thread t2 = new Thread(h2);
+		
+		t1.start();
+		t2.start();
+		t1.join();
+		t2.join();
+		
+		Assert.assertNull(h1.remoteMsg);
+		Assert.assertNotNull(h2.remoteMsg);
+	}
+
 	// this tries to copy the steps performed in DongleProtocolHandler
 	public void testInterlockForRelateDongleProtocol() throws InternalApplicationException {
 		final int EntropyBitsPerRound = 3;
