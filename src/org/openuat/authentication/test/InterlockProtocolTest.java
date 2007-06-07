@@ -423,7 +423,7 @@ public class InterlockProtocolTest extends TestCase {
 			
 			public void run() {
 				try {
-					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, sharedKey, 2, false, 0, myUseJSSE);
+					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, sharedKey, 2, true, false, 0, myUseJSSE);
 				} catch (Exception e) {
 					e.printStackTrace();
 					Assert.fail();
@@ -477,7 +477,7 @@ public class InterlockProtocolTest extends TestCase {
 		byte[] remoteMsg = null;
 		try {
 			remoteMsg = InterlockProtocol.interlockExchange(myMsg, readPipe1, writePipe1, 
-					sharedKey, 2, false, 500, useJSSE);
+					sharedKey, 2, true, false, 500, useJSSE);
 			Assert.fail();
 		} catch (IOException e) {
 			Assert.assertTrue(true);
@@ -508,7 +508,7 @@ public class InterlockProtocolTest extends TestCase {
 			public void run() {
 				try {
 					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
-							sharedKey, myRounds, false, 500, myUseJSSE);
+							sharedKey, myRounds, true, false, 500, myUseJSSE);
 					Assert.assertFalse("Should have failed, but didn't", iShouldFail);
 				} catch (IOException e) {
 					Assert.assertTrue("Should not have failed, but did", iShouldFail);
@@ -548,6 +548,93 @@ public class InterlockProtocolTest extends TestCase {
 		
 		Assert.assertNull(h1.remoteMsg);
 		Assert.assertNotNull(h2.remoteMsg);
+	}
+
+	private void testExchangeHelperMirrorAttack(boolean preventAttack) throws IOException, InterruptedException {
+		final boolean preventAttackF = preventAttack;
+		
+		PipedOutputStream writePipe1 = new PipedOutputStream();
+		PipedOutputStream writePipe2 = new PipedOutputStream();
+		PipedInputStream readPipe1 = new PipedInputStream(writePipe2);
+		PipedInputStream readPipe2 = new PipedInputStream(writePipe1);
+		
+		final byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		
+		class Helper implements Runnable {
+			byte[] myMsg;
+			byte[] remoteMsg;
+			InputStream in;
+			OutputStream out;
+			boolean myUseJSSE;
+			
+			public void run() {
+				try {
+					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
+							sharedKey, 2, preventAttackF, false, 0, myUseJSSE);
+				} catch (Exception e) {
+					e.printStackTrace();
+					Assert.fail();
+				}
+			}
+		}
+		
+		class MirrorAttacker implements Runnable {
+			InputStream in;
+			OutputStream out;
+
+			public void run() {
+				try {
+					int c = in.read();
+					while (c != -1) {
+						out.write(c);
+						c = in.read();
+					}
+				} catch (IOException e) {
+					// this is expected when the pipe is closed
+					Assert.assertEquals("Pipe broken", e.getMessage());
+				} catch (Exception e) {
+					e.printStackTrace();
+					Assert.fail();
+				}
+			}
+		}
+		
+		Helper h1 = new Helper();
+		MirrorAttacker h2 = new MirrorAttacker();
+		h1.in = readPipe1;
+		h1.out = writePipe1;
+		h1.myMsg = new byte[25];
+		h1.myUseJSSE = useJSSE;
+		for (int i=0; i<h1.myMsg.length; i++)
+			h1.myMsg[i] = (byte) (h1.myMsg.length-1-i);
+		h2.in = readPipe2;
+		h2.out = writePipe2;
+
+		Thread t1 = new Thread(h1);
+		Thread t2 = new Thread(h2);
+		
+		t1.start();
+		t2.start();
+		t1.join();
+		t2.join();
+
+		if (preventAttackF) {
+			Assert.assertNull("Mirror attack succeeded", h1.remoteMsg);
+		}
+		else {
+			Assert.assertNotNull("Mirror attack should have succeeded", h1.remoteMsg);
+			Assert.assertTrue("Mirror attack should have succeeded", SimpleKeyAgreementTest.compareByteArray(h1.myMsg, h1.remoteMsg));
+		}
+	}
+
+	public void testExchangeHelperMirrorAttackSuccess() throws IOException, InterruptedException {
+		testExchangeHelperMirrorAttack(false);
+	}
+
+	public void testExchangeHelperMirrorAttackPrevented() throws IOException, InterruptedException {
+		testExchangeHelperMirrorAttack(true);
 	}
 
 	// this tries to copy the steps performed in DongleProtocolHandler

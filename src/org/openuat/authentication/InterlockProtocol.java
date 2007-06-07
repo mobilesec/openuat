@@ -655,6 +655,16 @@ public class InterlockProtocol {
 	 *                  on both sides or the messages will not decrypt successfully (and 
 	 *                  this indicates a man-in-the-middle attack).
 	 * @param rounds The number of rounds to use.
+	 * @param protectAgainstMirrorAttack When set to true, an additional check will be
+	 *                  activated to protect against the "mirror attack", where a remote
+	 *                  attacker (e.g. a MITM) simply mirrors all the interlock messages,
+	 *                  to the effect that this method would return a remote message that
+	 *                  was exactly equal to the local message. The upper layers that
+	 *                  call this method may not be able to detect this case. Note that
+	 *                  this protection can currently only be enabled when message.length
+	 *                  is greater than BlockByteLength.
+	 *                  <b>It is strongly recommended to set this to true<b>, unless the
+	 *                  upper protocol layers protect against this attack.
 	 * @param retransmit Is set to true, lost messages are allowed and rounds will be
 	 *                   retransmitted until the other end acknowledges it or a timeout
 	 *                   occurs. THIS IS CURRENTLY NOT IMPLEMENTED. SET TO FALSE.
@@ -686,10 +696,13 @@ public class InterlockProtocol {
 	 *  // TODO: implement handling of retransmit
 	 */
 	public static byte[] interlockExchange(byte[] message, InputStream fromRemote, OutputStream toRemote,
-			byte[] sharedKey, int rounds, boolean retransmit, int timeoutMs, boolean useJSSE) 
+			byte[] sharedKey, int rounds, boolean protectAgainstMirrorAttack, 
+			boolean retransmit, int timeoutMs, boolean useJSSE) 
 			throws IOException, InternalApplicationException {
 		if (fromRemote == null || toRemote == null)
 			throw new IllegalArgumentException("Both input and output stream must be set");
+		if (protectAgainstMirrorAttack && message.length <= BlockByteLength)
+			throw new IllegalArgumentException("Can not protect against mirror attacks with messages of only one cipher block length");
 		if (retransmit)
 			throw new IllegalArgumentException("Retransmit is currently not implemented");
 
@@ -698,7 +711,8 @@ public class InterlockProtocol {
 		
 		InterlockProtocol myIp = new InterlockProtocol(sharedKey, rounds, 
 				message.length*8, null, useJSSE);
-		byte[][] localParts = myIp.split(myIp.encrypt(message));
+		byte[] localCiphertext = myIp.encrypt(message);
+		byte[][] localParts = myIp.split(localCiphertext);
 		
 		OutputStreamWriter writer = new OutputStreamWriter(toRemote);
 		/* do not use a BufferedReader here because that would potentially mess up
@@ -729,7 +743,6 @@ public class InterlockProtocol {
 			remoteTmp.append(round);
 			remoteTmp.append(' ');
 			remoteTmp.append(Hex.encodeHex(localParts[round]));
-			// TODO: extend SafetyBeltTimer to also safeguard timeouts while waiting for the remote host
 			String remotePart = swapLine(ProtocolLine_Round, 
 					remoteTmp.toString(),
 					fromRemote, writer);
@@ -769,7 +782,18 @@ public class InterlockProtocol {
 			if (logger.isDebugEnabled())
 				logger.debug("Interlock protocol completed");
 		
-			return remoteIp.decrypt(remoteIp.reassemble());
+			byte[] remoteCiphertext = remoteIp.reassemble();
+			if (protectAgainstMirrorAttack) {
+				boolean equals=true;
+				// the first block of both cipher texts _must_ be different, as it is a random IV
+				for (int i=0; i<BlockByteLength && equals; i++)
+					if (localCiphertext[i] != remoteCiphertext[i]) equals=false;
+				if (equals) {
+					logger.error("Mirror attack detected! Aborting interlock protocol!");
+					return null;
+				}
+			}
+			return remoteIp.decrypt(remoteCiphertext);
 		}
 		else {
 			logger.error("Interlock protocol did not finish within timeout");

@@ -347,8 +347,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// exchange with the remote host
 					byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
 							connectionToRemote.getInputStream(), connectionToRemote.getOutputStream(), 
-							sharedAuthenticationKey, rounds, false, 
-							RemoteInterlockExchangeTimeout, useJSSE);
+							sharedAuthenticationKey, rounds, true, 
+							false, RemoteInterlockExchangeTimeout, useJSSE);
 					if (remotePlainText == null) {
 						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 						if (! continuousChecking) {
