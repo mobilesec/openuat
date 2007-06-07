@@ -319,22 +319,24 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					
 //					need to add our own id or a random number and check that there is no mirror attack!
 					
-					StringBuffer tmp = new StringBuffer();
+					byte[] localPlainText = null;
 					synchronized (localSegmentLock) {
+						// sanity check
 						for (int i=0; i<localSegment.length; i++) {
-							// sanity check
 							if (localSegment[i] < 0 || localSegment[i] > 2) {
-								logger.error("Sample value out of expected range: " + localSegment[i]);
-								verificationFailure(null, null, null, null, "Interlock exchange aborted: sample value out of expected range");
-								localSegment = remoteSegment = null;
-								return;
+								logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
+								localSegment = null;
+								break;
 							}
-							tmp.append(Float.floatToIntBits((float) localSegment[i]));
-							if (i<localSegment.length-1)
-								tmp.append(' ');
 						}
+						if (localSegment != null)
+							localPlainText = TimeSeriesUtil.encodeVector(localSegment);
 					}
-					byte[] localPlainText = tmp.toString().getBytes();
+					if (localPlainText == null) {
+						verificationFailure(null, null, null, null, "Interlock exchange aborted: sample value out of expected range");
+						localSegment = remoteSegment = null;
+						return;
+					}
 					logger.debug("My segment is " + localPlainText.length + " bytes long");
 			
 					// exchange with the remote host
@@ -360,27 +362,15 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// and check the received remote segment, compare it with our local segment
 					logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 					// count the tokens
-					int numBlanks = 0;
-					for (int i=0; i<remotePlainText.length; i++)
-						if (remotePlainText[i] == ' ') numBlanks++;
-					if (numBlanks == 0) {
-						logger.error("Received invalid remote segment without any blanks, aborting");
-					}
-					else {
-						String remoteString = new String(remotePlainText);
-						remoteSegment = new double[numBlanks+1];
-						int off=0;
-						for (int i=0; i<=numBlanks; i++) {
-							int end = remoteString.indexOf(' ', off);
-							remoteSegment[i] = Float.intBitsToFloat(Integer.parseInt((remoteString.substring(off, end))));
-							off = end+1;
-						}
+					remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
+					if (remoteSegment != null) {
 						logger.debug("remote segment is " + remoteSegment.length + " elements long");
-			
 						decision = checkCoherence();
 						System.out.println("COHERENCE MATCH: " + decision + "(computed " + 
 								lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
 					}
+					else
+						decision = false;
 			
 					// final decision
 					if (decision) { 

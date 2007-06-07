@@ -38,6 +38,7 @@
 	<property name="build.midp" location="${build}/midp-work"/>
 	<property name="build.midp.temp" location="${build}/midp-tmp"/>
 	<property name="bin.midp" location="${build}/midp-bin"/>
+	<property name="compile.debug" value="true"/>
 	<property name="debug" value="false"/>
 
 	<!-- these are the target JARs -->

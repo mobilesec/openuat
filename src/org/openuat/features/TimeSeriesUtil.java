@@ -136,4 +136,51 @@ public class TimeSeriesUtil {
 		//System.out.println("Only comparing the first " + max_ind + " FFT coefficients");
 		return max_ind;
 	}
+
+	/** Encodes a double vector as byte vector so that it can be transmitted 
+	 * over the network. No assumptions should be made about the byte vector
+	 * contents, and the coding may change in future versions to optimmize 
+	 * runtime or coding size.
+	 * 
+	 * The result should be decoded wie decodeVector.
+	 * 
+	 * @see #decodeVector(byte[])
+	 */
+	public static byte[] encodeVector(double[] a) {
+		// TODO: don't use a string, but somthing denser
+		StringBuffer tmp = new StringBuffer();
+		for (int i=0; i<a.length; i++) {
+			tmp.append(Float.floatToIntBits((float) a[i]));
+			if (i<a.length-1)
+				tmp.append(' ');
+		}
+		return tmp.toString().getBytes();
+	}
+	
+	/** Encodes a byte vector as produced by encodeVector to its original
+	 * form. Some accuracy may be lost.
+	 * @see #encodeVector(double[])
+	 */ 
+	public static double[] decodeVector(byte[] b) {
+		int numBlanks = 0;
+		for (int i=0; i<b.length; i++)
+			if (b[i] == ' ') numBlanks++;
+		if (numBlanks == 0) {
+			logger.error("Received invalid encoding without any blanks, aborting");
+			return null;
+		}
+		else {
+			String remoteString = new String(b);
+			double[] a = new double[numBlanks+1];
+			int off=0;
+			for (int i=0; i<=numBlanks; i++) {
+				int end = remoteString.indexOf(' ', off);
+				if (end < 0)
+					end = remoteString.length();
+				a[i] = Float.intBitsToFloat(Integer.parseInt((remoteString.substring(off, end))));
+				off = end+1;
+			}
+			return a;
+		}
+	}
 }
