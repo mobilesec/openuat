@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.util.BitSet;
 
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.authentication.exceptions.*;
@@ -423,7 +424,9 @@ public class InterlockProtocolTest extends TestCase {
 			
 			public void run() {
 				try {
-					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, sharedKey, 2, true, false, 0, myUseJSSE);
+					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
+							sharedKey, 2, true, false, 0, myUseJSSE,
+							null, 0, 0);
 				} catch (Exception e) {
 					e.printStackTrace();
 					Assert.fail();
@@ -477,7 +480,8 @@ public class InterlockProtocolTest extends TestCase {
 		byte[] remoteMsg = null;
 		try {
 			remoteMsg = InterlockProtocol.interlockExchange(myMsg, readPipe1, writePipe1, 
-					sharedKey, 2, true, false, 500, useJSSE);
+					sharedKey, 2, true, false, 500, useJSSE,
+					null, 0, 0);
 			Assert.fail();
 		} catch (IOException e) {
 			Assert.assertTrue(true);
@@ -508,7 +512,8 @@ public class InterlockProtocolTest extends TestCase {
 			public void run() {
 				try {
 					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
-							sharedKey, myRounds, true, false, 500, myUseJSSE);
+							sharedKey, myRounds, true, false, 500, myUseJSSE,
+							null, 0, 0);
 					Assert.assertFalse("Should have failed, but didn't", iShouldFail);
 				} catch (IOException e) {
 					Assert.assertTrue("Should not have failed, but did", iShouldFail);
@@ -572,7 +577,8 @@ public class InterlockProtocolTest extends TestCase {
 			public void run() {
 				try {
 					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
-							sharedKey, 2, preventAttackF, false, 0, myUseJSSE);
+							sharedKey, 2, preventAttackF, false, 0, myUseJSSE,
+							null, 0, 0);
 				} catch (Exception e) {
 					e.printStackTrace();
 					Assert.fail();
@@ -635,6 +641,108 @@ public class InterlockProtocolTest extends TestCase {
 
 	public void testExchangeHelperMirrorAttackPrevented() throws IOException, InterruptedException {
 		testExchangeHelperMirrorAttack(true);
+	}
+
+	// this starts, from the point of view of one host, 3 parallel runs
+	private void testExchangeHelperInterlockGroup(int timeoutMs) throws IOException, InterruptedException {
+		PipedOutputStream[] myWritePipes = new PipedOutputStream[3];
+		for (int i=0; i<myWritePipes.length; i++) {
+			myWritePipes[i] = new PipedOutputStream();
+		}
+		PipedOutputStream[] theirWritePipes = new PipedOutputStream[3];
+		for (int i=0; i<theirWritePipes.length; i++) {
+			theirWritePipes[i] = new PipedOutputStream();
+		}
+		PipedInputStream[] myReadPipes = new PipedInputStream[3];
+		for (int i=0; i<myReadPipes.length; i++) {
+			myReadPipes[i] = new PipedInputStream(theirWritePipes[i]);
+		}
+		PipedInputStream[] theirReadPipes = new PipedInputStream[3];
+		for (int i=0; i<theirReadPipes.length; i++) {
+			theirReadPipes[i] = new PipedInputStream(myWritePipes[i]);
+		}
+		
+		final byte[] sharedKey = new byte[32];
+		for (int i=0; i<sharedKey.length; i++)
+			sharedKey[i] = (byte) i;
+		final int timeout = timeoutMs;
+		
+		class Helper implements Runnable {
+			byte[] myMsg;
+			byte[] remoteMsg;
+			InputStream in;
+			OutputStream out;
+			boolean myUseJSSE;
+			BitSet group = null;
+			int groupSize = 0;
+			int instanceNum = 0;
+			
+			public void run() {
+				try {
+					remoteMsg = InterlockProtocol.interlockExchange(myMsg, in, out, 
+							sharedKey, 2, true, false, timeout, myUseJSSE,
+							group, groupSize, instanceNum);
+				} catch (Exception e) {
+					e.printStackTrace();
+					Assert.fail();
+				}
+			}
+		}
+
+		final BitSet interlockGroup = new BitSet();
+		byte[] myMsg = new byte[25];
+		for (int i=0; i<myMsg.length; i++)
+			myMsg[i] = (byte) (myMsg.length-1-i);
+		Helper myHelpers[] = new Helper[3];
+		for (int i=0; i<myHelpers.length; i++) {
+			myHelpers[i] = new Helper();
+			myHelpers[i].in = myReadPipes[i];
+			myHelpers[i].out = myWritePipes[i];
+			myHelpers[i].myUseJSSE = useJSSE;
+			myHelpers[i].group = interlockGroup;
+			myHelpers[i].groupSize = 3;
+			myHelpers[i].instanceNum = i;
+			myHelpers[i].myMsg = myMsg;
+		}
+		Helper theirHelpers[] = new Helper[3];
+		for (int i=0; i<theirHelpers.length; i++) {
+			theirHelpers[i] = new Helper();
+			theirHelpers[i].in = theirReadPipes[i];
+			theirHelpers[i].out = theirWritePipes[i];
+			theirHelpers[i].myUseJSSE = useJSSE2;
+			theirHelpers[i].myMsg = new byte[27];
+			for (int j=0; j<theirHelpers[i].myMsg.length; j++)
+				theirHelpers[i].myMsg[j] = (byte) (theirHelpers[i].myMsg.length-2-j+2*i);
+		}
+
+		Thread[] threads = new Thread[6];
+		for (int i=0; i<threads.length; i++) {
+			if (i<3) threads[i] = new Thread(myHelpers[i]);
+			else threads[i] = new Thread(theirHelpers[i-3]);
+			threads[i].start();
+		}
+		for (int i=0; i<threads.length; i++) {
+			threads[i].join();
+		}
+		
+		for (int i=0; i<myHelpers.length; i++) {
+			Assert.assertNotNull("did not get their message from " + i, myHelpers[i].remoteMsg);
+		}
+		for (int i=0; i<theirHelpers.length; i++) {
+			Assert.assertNotNull("they did not get my message to " + i, theirHelpers[i].remoteMsg);
+		}
+		for (int i=0; i<myHelpers.length; i++) {
+			Assert.assertTrue("my message does not match their received " + i, SimpleKeyAgreementTest.compareByteArray(myHelpers[i].myMsg, theirHelpers[i].remoteMsg));
+			Assert.assertTrue("their message does not match my received " + i, SimpleKeyAgreementTest.compareByteArray(myHelpers[i].remoteMsg, theirHelpers[i].myMsg));
+		}
+	}
+
+	public void testExchangeHelperInterlockGroupNoTimeout() throws IOException, InterruptedException {
+		testExchangeHelperInterlockGroup(0);
+	}
+
+	public void testExchangeHelperInterlockGroupWithTimeout() throws IOException, InterruptedException {
+		testExchangeHelperInterlockGroup(500);
 	}
 
 	// this tries to copy the steps performed in DongleProtocolHandler

@@ -15,6 +15,7 @@ import java.io.OutputStreamWriter;
 import java.security.SecureRandom;
 import java.util.BitSet;
 
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -686,6 +687,26 @@ public class InterlockProtocol {
 	 *                  explicitly signal abort to the remote. In the case of toRemote
 	 *                  being closed, one must therefore assume any abort reason from the
 	 *                  remote including regular timeout aborts.
+	 * @param interlockGroup Setting this to a valid BitSet object and groupSize>=2 
+	 *                       allows for multiple instances of interlockExchange runs
+	 *                       to be synchronized. All instances will enter a barrier
+	 *                       just before transmitting their last round and will only
+	 *                       continue to transmit when <b>all</b> instances (the number
+	 *                       of instances in the group that are to be synchronized is
+	 *                       specified by groupSize) have reached this barrier. 
+	 *                       This is necessary when the same message is used in
+	 *                       multiple interlock instances to prevent an attack where
+	 *                       multiple attackers are colluding.
+	 *                       Set to null to disable when only one interlock instance
+	 *                       is used with the same message. Using this function may
+	 *                       increase the total timeout to timeoutMs*rounds*2. 
+	 * @param groupSize When interlockGroup is set, this specifies the number of instances
+	 *                  to synchronize. Must be >=2, and all instances <b>must</b> be called
+	 *                  in parallel threads with the same interlockGroup object.
+	 * @param instanceInGroup The instance number in the group that this interlock run
+	 *                        should use. No two instances may use the same number, and
+	 *                        every number in [0; groupSize-1] must be used for exactly
+	 *                        one instance.
 	 * @return The message that the remote host sent, or null if the interlock protocol 
 	 *         could not be completed successfully.
 	 * @throws IOException When reading from fromRemote or writing to toRemote failed.
@@ -697,14 +718,21 @@ public class InterlockProtocol {
 	 */
 	public static byte[] interlockExchange(byte[] message, InputStream fromRemote, OutputStream toRemote,
 			byte[] sharedKey, int rounds, boolean protectAgainstMirrorAttack, 
-			boolean retransmit, int timeoutMs, boolean useJSSE) 
+			boolean retransmit, int timeoutMs, boolean useJSSE,
+			BitSet interlockGroup, int groupSize, int instanceInGroup) 
 			throws IOException, InternalApplicationException {
 		if (fromRemote == null || toRemote == null)
 			throw new IllegalArgumentException("Both input and output stream must be set");
+		if (message == null)
+			throw new IllegalArgumentException("message can not be null");
+		if (sharedKey == null)
+			throw new IllegalArgumentException("sharedKey can not be null");
 		if (protectAgainstMirrorAttack && message.length <= BlockByteLength)
 			throw new IllegalArgumentException("Can not protect against mirror attacks with messages of only one cipher block length");
 		if (retransmit)
 			throw new IllegalArgumentException("Retransmit is currently not implemented");
+		if (interlockGroup != null && (groupSize < 2 || instanceInGroup >= groupSize))
+			throw new IllegalArgumentException("Using interlock group, but either group size is <2 or this instance number is >= group size");
 
 		logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
 				timeoutMs + "ms. My message is " + message.length + " bytes long");
@@ -766,9 +794,53 @@ public class InterlockProtocol {
 					if (timer != null)
 						timer.reset();
 				}
-				catch (Exception e) {
+				catch (DecoderException e) {
 					logger.error("Could not decode remote byte array. Can not continue.");
 					return null;
+				}
+					
+				/* When the second to last round has just been received and we are part
+				 * of an interlock group, then need to wait for all other members before
+				 * transmitting our last round. */
+				if (round==rounds-1 && interlockGroup != null) {
+					// mark ourselves as having arrived at the barrier and waiting
+					synchronized(interlockGroup) {
+						interlockGroup.set(instanceInGroup);
+						// other protocols may already be waiting for us, wake them up
+						interlockGroup.notifyAll();
+					}
+					/* But this may potentially take a lot longer than a single round 
+					 * timeout, therefore wait for the maximum possible time here. */
+					if (timer != null) {
+						timer.stop();
+						timer = new SafetyBeltTimer(timeoutMs * rounds, fromRemote);
+					}
+				
+					synchronized(interlockGroup) {
+						boolean groupSynchronized = false;
+						while (!groupSynchronized && (timer == null || !timer.isTriggered())) {
+							groupSynchronized = true;
+							for (int i=0; i<groupSize && groupSynchronized; i++)
+								if (!interlockGroup.get(i)) groupSynchronized = false;
+							// if not all interlock protocols have arrived at the barrier, wait for a change
+							if (!groupSynchronized)
+								try {
+									interlockGroup.wait(timeoutMs);
+								} catch (InterruptedException e) {
+									// just ignore if we're interrupted, we'll just re-enter the outer loop
+								}
+						}
+						if (!groupSynchronized) {
+							logger.error("Timeout while waiting for interlock group to arrive at barrier, aborting protocol");
+							return null;
+						}
+					}
+						
+					// for the last round, set the timer back to normal
+					if (timer != null) {
+						timer.stop();
+						timer = new SafetyBeltTimer(timeoutMs, fromRemote);
+					}
 				}
 			}
 			else {
