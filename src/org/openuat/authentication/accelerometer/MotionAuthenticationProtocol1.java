@@ -10,6 +10,8 @@
 package org.openuat.authentication.accelerometer;
 
 import java.io.IOException;
+import java.util.BitSet;
+import java.util.Vector;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.DHWithVerification;
@@ -25,7 +27,7 @@ import org.openuat.util.RemoteConnection;
 /** This is the first variant of the motion authentication protocol. It
  * uses Diffie-Hellman key agreement with verification that the shared keys
  * are equal on both hosts by sending the full time series segment through
- * interlock, encrypted with the shared key. THen both hosts compute the
+ * interlock, encrypted with the shared key. Then both hosts compute the
  * coherence between the received time series segment and their own and continue
  * when it exceeds a threshold. 
  * 
@@ -45,23 +47,21 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 */
 	public static final int RemoteInterlockExchangeTimeout = 10000;
 
-	/** This holds our local segment, as soon as we have received it from the
+	/** This holds our last local segment, as soon as we have received it from the
 	 * segment source. It is modified by addSegment and read by AsyncInterlockHelper#run
 	 * from two different threads. Synchronization happens via localSegmentLock.
 	 * @see #addSegment(double[], int)
 	 * @see AsyncInterlockHelper#run
 	 * @see #localSegmentLock
+	 * 
+	 * TODO: do we need to be more intelligent here, and keep a queue of local segments to
+	 * check in the interlock helpers? 
 	 */
 	private double[] localSegment = null;
 	/** This is only used as a synchronization lock for accessing localSegment from
 	 * different threads, and has no other use.
 	 */
 	private Object localSegmentLock = new Object();
-	
-	/** This holds the remote segment, as soon as it has been received via interlock
-	 * from the remote host.
-	 */
-	private double[] remoteSegment = null;
 	
 	/** The window size for the coherence computation. */
 	private int windowSize;
@@ -84,20 +84,26 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 */
 	protected double lastCoherenceMean = 0;
 	
-	/** This variable is only used for passing the connection from startVerification to the
-	 * thread that does runs the interlock protocol, AsyncInterlockHelper#run.
-	 * @see #startVerification(byte[], InetAddress, String, Socket)
-	 * @see AsyncInterlockHelper#run
-	 */
-	private RemoteConnection connectionToRemote = null;
-	
-	/** Holds the thread object that is used to run the interlock protocol asynchronously.
-	 * It is initialized and started by startVerification, and executes 
+	/** Holds the thread objects that are used to run the interlock protocols asynchronously.
+	 * If concurrentVerificationSupported=true, multiple interlock protocols may run
+	 * at the same time, and thus multiple thread objects may be registered in
+	 * this vector. If concurrentVerificationSupported=false, only one element will
+	 * be put into the vector. When this is set != null, then one or multiple
+	 * interlock protocols are running. startVerification will exit unless this
+	 * is set to null.
+	 *  
+	 * Thread objects are set and started by startVerification, and executed in 
 	 * AsyncInterlockHelper#run.
-	 * @see #startVerification(byte[], InetAddress, String, Socket)
+	 * @see #startVerification
 	 * @see AsyncInterlockHelper
 	 */
-	private Thread interlockRunner = null;
+	private Vector interlockRunners = null;
+
+	/** This is used for the synchronization of multiple concurrent interlock
+	 * protocol runs when we are trying to verify multiple devices at the same
+	 * time.
+	 */
+	private BitSet interlockGroup = null;
 	
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
@@ -113,16 +119,6 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
 		this.coherenceThreshold = coherenceThreshold;
 		this.windowSize = windowSize;
-	}
-	
-	/** Called by the base class when the object is reset to idle state. Resets 
-	 * localSegment and remoteSegment to null. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
-	protected void resetHook(RemoteConnection remote) {
-		// idle again --> no segments to compare
-		localSegment = null;
-		remoteSegment = null;
 	}
 	
 	/** Called by the base class when the whole authentication protocol succeeded. 
@@ -156,7 +152,15 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolProgressHook called");
 	}
-	
+
+	/** Called by the base class when the whole authentication protocol is reset. 
+	 * Does nothing. */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	protected void resetHook(RemoteConnection remote) {
+		// nothing to do, really
+	}
+
 	/** Called by the base class when shared keys have been established and should be verified now.
 	 * In this implementation, verification is done listening for significant motion segments and
 	 * exchanging them via interlock. 
@@ -165,20 +169,43 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	// TODO: this should be basically empty, and the thread should be running continuously
-	// or should it run when we don't have any key?? hmm
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
 			String param, RemoteConnection toRemote) {
 		logger.info("startVerification hook called with " + toRemote.getRemoteName() + ", param " + param);
 	
-		if (interlockRunner == null) {
-			this.connectionToRemote = toRemote;
-			interlockRunner = new Thread(new AsyncInterlockHelper(sharedAuthenticationKey));
-			interlockRunner.start();
-		}
-		else {
-			logger.warn("Interlock thread already running, can not process two interlock " +
+		synchronized(interlockRunners) {
+			if (interlockRunners.size() == 0) {
+				interlockGroup = null; // no synchronization necessary
+				Thread runner = new AsyncInterlockHelper(toRemote, sharedAuthenticationKey,
+						0, 0);
+				interlockRunners.addElement(runner); 
+				runner.start();
+			}
+			else {
+				logger.warn("Interlock thread already running, can not process two interlock " +
 					"protocol runs concurrently. Terminating second request.");
+			}
+		}
+	}
+	
+	protected void startVerificationAsync(byte[] sharedAuthenticationKey,
+			String param, RemoteConnection[] toRemotes) {
+		logger.info("startVerification hook called with " + toRemotes.length + " hosts concurrently, param " + param);
+		
+		synchronized(interlockRunners) {
+			if (interlockRunners.size() == 0) {
+				interlockGroup = new BitSet();
+				for (int i=0; i<toRemotes.length; i++) {
+					Thread runner = new AsyncInterlockHelper(toRemotes[i], sharedAuthenticationKey, 
+							toRemotes.length, i);
+					interlockRunners.addElement(runner); 
+					runner.start();
+				}
+			}
+			else {
+				logger.warn("Interlock thread already running, can not process two interlock " +
+					"protocol runs concurrently. Terminating second request.");
+			}
 		}
 	}
 
@@ -189,7 +216,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 *         false otherwise.
 	 * @see #coherenceThreshold
 	 */
-	private boolean checkCoherence() {
+	private boolean checkCoherence(double[] remoteSegment) {
 		if (localSegment == null || remoteSegment == null) {
 			throw new RuntimeException("Did not yet receive both segments, skipping comparing for now");
 		}
@@ -289,14 +316,36 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		return lastCoherenceMean;
 	}
 	
+	/** A small helper to clean up after a thread finishes. */
+	private void protocolRunFinished(Thread finishedThread) {
+		synchronized(interlockRunners) {
+			if (!interlockRunners.removeElement(finishedThread)) 
+				logger.error("Error: tried to remove runner object " + finishedThread +
+					" but could not find it in list. This should not happen!");
+			if (interlockRunners.size() == 0) {
+				// removed the last one now, clean up - this allows startVerification to be called again
+				interlockRunners = null;
+				// don't re-use the segment
+				localSegment = null;
+				interlockGroup = null;
+			}
+		}
+	}
+	
 	/** This is a helper class for executing the interlock protocol in the background.
 	 * It is started by startVerification.
 	 */
-	private class AsyncInterlockHelper implements Runnable {
+	private class AsyncInterlockHelper extends Thread {
 		private byte[] sharedAuthenticationKey;
+		private RemoteConnection remote;
+		private int groupSize, instanceNum;
 		
-		AsyncInterlockHelper(byte[] authKey) {
+		AsyncInterlockHelper(RemoteConnection remote, byte[] authKey,
+				int groupSize, int instanceNum) {
+			this.remote = remote;
 			this.sharedAuthenticationKey = authKey;
+			this.groupSize = groupSize;
+			this.instanceNum = instanceNum;
 		}
 		
 		public void run() {
@@ -319,47 +368,44 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// TODO: make configurable??? mabye not necessary
 					int rounds = 2;
 
-					// now generate our message for the interlock protocol segments
-					// to keep the size of the strings down, restrict the number of digits to transmit to 4
-					
-//					need to add our own id or a random number and check that there is no mirror attack!
-					
 					byte[] localPlainText = null;
 					synchronized (localSegmentLock) {
 						// sanity check
 						for (int i=0; i<localSegment.length; i++) {
 							if (localSegment[i] < 0 || localSegment[i] > 2) {
 								logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
-								localSegment = null;
-								break;
+								protocolRunFinished(this);
+								return;
 							}
 						}
 						if (localSegment != null)
 							localPlainText = TimeSeriesUtil.encodeVector(localSegment);
 					}
 					if (localPlainText == null) {
-						verificationFailure(null, null, null, null, "Interlock exchange aborted: sample value out of expected range");
-						localSegment = remoteSegment = null;
+						verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
+						protocolRunFinished(this);
 						return;
 					}
 					logger.debug("My segment is " + localPlainText.length + " bytes long");
 			
 					// exchange with the remote host
 					byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
-							connectionToRemote.getInputStream(), connectionToRemote.getOutputStream(), 
+							remote.getInputStream(), remote.getOutputStream(), 
 							sharedAuthenticationKey, rounds, true, 
-							false, RemoteInterlockExchangeTimeout, useJSSE);
+							false, RemoteInterlockExchangeTimeout, useJSSE,
+							interlockGroup, groupSize, instanceNum);
 					if (remotePlainText == null) {
 						logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 						if (! continuousChecking) {
-							verificationFailure(null, null, null, null, "Interlock protocol failed");
-							localSegment = remoteSegment = null;
+							verificationFailure(remote, null, null, null, "Interlock protocol failed");
+							protocolRunFinished(this);
 							return;
 						}
 						else {
 							// in case of checking continously, just call or own hook (for derived classes)
-							protocolFailedHook(connectionToRemote, null, null, "Interlock protocol failed");
-							localSegment = remoteSegment = null;
+							protocolFailedHook(remote, null, null, "Interlock protocol failed");
+							// need to to that here, as we don't call the cleanup/finished method in this case
+							localSegment = null;
 							continue;
 						}
 					}
@@ -368,10 +414,10 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// and check the received remote segment, compare it with our local segment
 					logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 					// count the tokens
-					remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
+					double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
 					if (remoteSegment != null) {
 						logger.debug("remote segment is " + remoteSegment.length + " elements long");
-						decision = checkCoherence();
+						decision = checkCoherence(remoteSegment);
 						System.out.println("COHERENCE MATCH: " + decision + "(computed " + 
 								lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
 					}
@@ -381,18 +427,22 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// final decision
 					if (decision) { 
 						if (! continuousChecking)
-							verificationSuccess(null, null, Double.toString(lastCoherenceMean));
-						else
-							protocolSucceededHook(connectionToRemote, null, Double.toString(lastCoherenceMean), null);
+							verificationSuccess(remote, null, Double.toString(lastCoherenceMean));
+						else {
+							protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null);
+							// need to to that here, as we don't call the cleanup/finished method in this case
+							localSegment = null;
+						}
 					}
 					else {
 						if (! continuousChecking)
 							verificationFailure(null, null, null, null, "Coherence is below threshold, time series are not similar enough");
-						else
-							protocolFailedHook(connectionToRemote, null, null, "Coherence is below threshold, time series are not similar enough");
+						else {
+							protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
+							// need to to that here, as we don't call the cleanup/finished method in this case
+							localSegment = null;
+						}
 					}
-
-					localSegment = remoteSegment = null;
 				} while (continuousChecking);
 				// HACK HACK HACK to make the application exit
 				//stopServer();
@@ -400,8 +450,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 				e.printStackTrace();
 			}
 			
-			// thread finished, so allow next one to start
-			interlockRunner = null;
+			// thread finished, so remove ourselves from the list of threads
+			protocolRunFinished(this);
 		}
 	}
 	
