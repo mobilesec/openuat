@@ -79,6 +79,14 @@ public abstract class HostServerBase extends AuthenticationEventSender
     		protocolCommandHandlers = null;
     	return removed;
     }
+    
+    /** @see HostProtocolHandler#setProtocolCommandHandlers*/
+    public boolean setProtocolCommandHandler(Hashtable handlers) {
+    	if (protocolCommandHandlers != null)
+    		return false;
+    	protocolCommandHandlers = handlers;
+    	return true;
+    }
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!

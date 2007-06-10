@@ -83,7 +83,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	
 	/** Our own authentication service. */
 	private BluetoothRFCOMMServer service;
-	
+
 	/** The peer manager for discovering other devices and their authentication
 	 * services.
 	 */
@@ -124,7 +124,22 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		
 		return singleton;
 	}
-	
+
+	/** @see HostProtocolHandler#addProtocolCommandHandler */
+    public void addProtocolCommandHandler(String command, HostProtocolHandler.ProtocolCommandHandler handler) {
+    	service.addProtocolCommandHandler(command, handler);
+    }
+
+	/** @see HostProtocolHandler#removeProtocolCommandHandler */
+    public boolean removeProtocolCommandHandler(String command) {
+    	return service.removeProtocolCommandHandler(command);
+    }
+
+    /** @see HostProtocolHandler#setProtocolCommandHandlers*/
+    public boolean setProtocolCommandHandler(Hashtable handlers) {
+    	return service.setProtocolCommandHandler(handlers);
+    }
+    
 	/** Starts the local authentication service and the background discovery 
 	 * of remote devices and their authentication services. As soon as another
 	 * authentication service is discovered, this class will try to connect to 
