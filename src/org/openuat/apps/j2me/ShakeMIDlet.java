@@ -24,7 +24,7 @@ import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
-import org.openuat.authentication.DHWithVerification;
+import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.SegmentsSink_Int;
@@ -105,6 +105,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		try {
 			protocol = new ShakeAuthenticator(BluetoothOpportunisticConnector.getInstance(), this);
+			// need to register the protocol command handler to support split phases
+			BluetoothOpportunisticConnector.getInstance().addProtocolCommandHandler(
+					MotionAuthenticationProtocol1.MotionVerificationCommand, protocol.getCommandHandler());
 			protocol.startListening();
 			
 			// keep the socket connected for now
@@ -304,6 +307,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public void addSegment(int[] segment, int startIndex) {
 			// fire off the normal protocol
 			super.addSegment(segment, startIndex);
+			// and try to verify with all hosts in that state
+			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
+			startConcurrentVerifications(hostsWaitingForVerification);
 			
 			// and announce shaking complete
 			try {
