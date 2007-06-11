@@ -63,6 +63,14 @@ public class RemoteTCPConnection implements RemoteConnection {
 	public String getRemoteName() {
 		return socket.getInetAddress().getCanonicalHostName();
 	}
+	
+	/** Implementation of RemoteConnection.open, will always return false in
+	 * this implementation.
+	 * @see RemoteConnection.open
+	 */
+	public boolean open() throws IOException {
+		return false;
+	}
 
 	/** Implementation of RemoteConnection.close.
 	 * @see RemoteConnection.close

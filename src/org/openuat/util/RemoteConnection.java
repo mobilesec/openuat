@@ -34,6 +34,12 @@ public interface RemoteConnection {
 	/** Returns the address of the remote host as appropriate object. */
 	Object getRemoteAddress() throws IOException;
 	
+	/** (Re-)Opens the underlying connection. This may not be possible,
+	 * depending on the implementation.
+	 * @return true if the connection could be (re-)opened, false otherwise.
+	 */
+	boolean open() throws IOException;
+	
 	/** Closes the underlying connection cleanly and frees any resources
 	 * held by it.
 	 */

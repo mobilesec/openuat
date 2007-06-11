@@ -182,7 +182,7 @@ try {
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
-	public void open() throws IOException {
+	public boolean open() throws IOException {
 		if (connection != null) {
 			throw new IOException("Channel has already been opened");
 		}
@@ -195,6 +195,7 @@ try {
 		connection = (StreamConnection) Connector.open(serviceURL);
 		fromRemote = connection.openInputStream();
 		toRemote = connection.openOutputStream();
+		return true;
 	}
 	
 	/** Closes the channel to the endpoint given to the constructor. It may be
@@ -415,6 +416,12 @@ btspp://0001234567AB:3
 //#if cfg.includeTestCode
 	///////////////////////////////////////// test code begins here //////////////////////
 	private static class TempHandler implements org.openuat.authentication.AuthenticationProgressHandler {
+		private boolean performMirrorAttack;
+		
+		TempHandler(boolean attack) {
+			this.performMirrorAttack = attack;
+		}
+		
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 			System.out.println("DH with " + remote + " failed: " + e + "/" + msg);
 			System.exit(1);
@@ -441,11 +448,15 @@ btspp://0001234567AB:3
 	        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
 			
 	        InputStream i;
+	        OutputStream o;
 			try {
 				i = connectionToRemote.getInputStream();
+				o = connectionToRemote.getOutputStream();
 		        int tmp = i.read();
 				while (tmp != -1) {
 					System.out.print((char) tmp);
+					if (performMirrorAttack)
+						o.write(tmp);
 				  	tmp = i.read();
 				}
 			} catch (IOException e) {
@@ -465,8 +476,12 @@ btspp://0001234567AB:3
 		  c.open();
 		  
 		  if (args.length > 2 && args[2].equals("DH")) {
+			  boolean attack = false;
+			  if (args.length > 3 && args[3].equals("mirror"))
+				  attack = true;
 			  // this is our test client, keep connected, and use JSSE (interoperability tests...)
-			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(c, new TempHandler(), true, null, true);
+			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(
+					 c, new TempHandler(attack), true, null, true);
 			  System.out.println("Waiting for protocol to run in the background");
 			  while (true) Thread.sleep(500);
 		  }
