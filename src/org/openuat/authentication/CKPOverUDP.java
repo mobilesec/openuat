@@ -352,6 +352,19 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @see #broadcastCandidates
 	 */
 	protected void addCandidates(byte[][] keyParts, float entropy) throws InternalApplicationException, IOException {
+/* 2) In step I.2 suppose that there is some weak candidate key part h^i
+which Eve can compute by a brute force search (this key part has a weak
+entropy for Eve and we suppose that it will be validated in step I.3). If
+Eve can determine such a weak candidate on the fly then she can simply put
+random values for all other h^j, i!=j, in step I.2 ensuring in this way
+that only the value h^i known to her will be choose in step I.3. I think
+that one must ensure that there are no key parts with weak entropy from
+Eve’s point of view sent in step I.2. Also it seems that step I.4 in
+which matches are exchanged may help an attacker since now it can decide
+on what key parts to run a brute force search.
+
+Bogdan Groza, 2007-04-19 */
+		
 		// this is synchronized so that handleMessage will not try to match while we 
 		synchronized (globalLock) {
 			{
@@ -773,6 +786,24 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		}
 		else {
 			cand.foundMatchingKey = foundKey;
+			
+			/* 1) It seems that in step II.4 (key acknowledgment) any attacker can send
+the confirmation kh~ and create in this way a false acknowledgment, making
+A and B believe that they agree upon a key even when they can not find a
+key candidate (kh~ is known to the intruder from step II.2 when kh is
+exchanged). In order to improve on this I suggest that in step II.4
+instead of sending  kh~ to send an acknowledgment key k_ack which is
+computed using a key derivation function from the commonly known secret of
+session II.3, i.e. x such that H(x) = kh~. For example compute k_ack =
+KD(x) (here x is the shared secret and KD is the key derivation function,
+for example set KD(x)=H(salt|x)) - in this way an attacker can not forge
+the acknowledgment key to create false acknowledgments and both A and B
+can test the correctness of k_ack since they are in possession of secret x
+(if secret x is uniformly distributed then the key derivation process
+should reveal nothing about x). 
+
+Suggestion by Bogdan Groza, 2007-04-19
+*/
 
 			String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
 			logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
