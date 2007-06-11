@@ -309,7 +309,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			super.addSegment(segment, startIndex);
 			// and try to verify with all hosts in that state
 			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
-			startConcurrentVerifications(hostsWaitingForVerification);
+			// let the channels be opened in the background threads instead of doing it here
+			startConcurrentVerifications(hostsWaitingForVerification, true);
 			
 			// and announce shaking complete
 			try {

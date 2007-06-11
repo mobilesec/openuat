@@ -190,7 +190,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		synchronized(interlockRunners) {
 			if (interlockRunners.size() == 0) {
 				interlockGroup = null; // no synchronization necessary
-				Thread runner = new AsyncInterlockHelper(toRemote, sharedAuthenticationKey,
+				Thread runner = new AsyncInterlockHelper(toRemote, false, sharedAuthenticationKey,
 						0, 0);
 				interlockRunners.addElement(runner); 
 				runner.start();
@@ -204,8 +204,11 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	
 	/** Starts multiple concurrent verifications in an interlock group. All
 	 * hosts specified in toRemotes must be in state STATE_VERIFICATION.
+	 * @param toRemotes The remote hosts to try and verify with.
+	 * @param openChannels If set to true, then the channels will be opened
+	 *                     before using them. 
 	 */
-	protected void startConcurrentVerifications(RemoteConnection[] toRemotes) {
+	protected void startConcurrentVerifications(RemoteConnection[] toRemotes, boolean openChannels) {
 		logger.info("startVerification hook called with " + toRemotes.length + " hosts concurrently");
 		
 		synchronized(interlockRunners) {
@@ -222,7 +225,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 				}
 				
 				for (int i=0; i<toRemotes.length; i++) {
-					Thread runner = new AsyncInterlockHelper(toRemotes[i], 
+					Thread runner = new AsyncInterlockHelper(toRemotes[i], openChannels, 
 							keyManager.getAuthenticationKey(toRemotes[i]),
 							groupSize, instanceNum++);
 					interlockRunners.addElement(runner); 
@@ -483,13 +486,15 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		private byte[] sharedAuthenticationKey;
 		private RemoteConnection remote;
 		private int groupSize, instanceNum;
+		private boolean openChannel;
 		
-		AsyncInterlockHelper(RemoteConnection remote, byte[] authKey,
+		AsyncInterlockHelper(RemoteConnection remote, boolean openChannel, byte[] authKey,
 				int groupSize, int instanceNum) {
 			this.remote = remote;
 			this.sharedAuthenticationKey = authKey;
 			this.groupSize = groupSize;
 			this.instanceNum = instanceNum;
+			this.openChannel = openChannel;
 		}
 		
 		public void run() {
@@ -509,13 +514,20 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					}
 					logger.debug("Local segment sampled, starting interlock protocol");
 					
+					if (openChannel)
+						remote.open();
+					
 					if (!keyVerification(remote, sharedAuthenticationKey,
 							groupSize, instanceNum, this))
 						return;
 				} while (continuousChecking);
 				// HACK HACK HACK to make the application exit
 				//stopServer();
-			} catch (Exception e) {
+			} catch (IOException e) {
+				logger.error("Background verification thread aborted with: " + e);
+				e.printStackTrace();
+			} catch (InternalApplicationException e) {
+				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 			}
 			
