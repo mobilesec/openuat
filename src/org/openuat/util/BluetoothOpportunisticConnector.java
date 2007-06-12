@@ -111,6 +111,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		manager.setAdaptiveSleepTime(true);
 		manager.setAutomaticServiceDiscoveryUUID(serviceUUID);
 		manager.addListener(new BluetoothPeerEventsHandler());
+		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, keepConnected, useJSSE);
+		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
 	}
 	
 	/** Returns the local instance of BluetoothOpportunisticConnector. 
@@ -127,6 +129,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
     public void addProtocolCommandHandler(String command, HostProtocolHandler.ProtocolCommandHandler handler) {
+    	if (service == null)
     	service.addProtocolCommandHandler(command, handler);
     }
 
@@ -147,10 +150,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 * @throws IOException
 	 */
 	public void start() throws IOException {
-		if (service == null) {
+		if (!service.isRunning()) {
 			logger.debug("Starting RFCOMM service and background inquiries");
-			service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, keepConnected, useJSSE);
-			service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
 			service.start();
 			manager.startInquiry(true);
 		}
@@ -160,12 +161,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	
 	/** Stops the local authentication service and the background inquiry. */
 	public void stop() {
-		if (service != null) {
+		if (service.isRunning()) {
 			logger.debug("Stopping RFCOMM service and background inquiries");
 			try {
 				manager.stopInquiry();
 				service.stop();
-				service = null;
 			} 
 			catch (InternalApplicationException e) {
 				logger.error("Could not properly close RFCOMM service socket: " + e);

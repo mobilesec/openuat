@@ -121,6 +121,11 @@ public abstract class HostServerBase extends AuthenticationEventSender
 			logger.debug("Stopped listening thread for server socket");
 		}
 	}
+	
+	/** Returns true if the server is running, false otherwise. */
+	public boolean isRunning() {
+		return running;
+	}
 
 	/** This is a small helper function that derived classes should call after
 	 * accepting an incoming connection. It fires off a HostProtocolHandler in
