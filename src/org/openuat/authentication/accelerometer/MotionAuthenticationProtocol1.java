@@ -252,7 +252,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		}
 
 		double[][] equalizedSeries = TimeSeriesUtil.cutSegmentsToEqualLength(localSegment, remoteSegment);
-		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, MotionAuthenticationParameters.coherenceWindowOverlap);
+		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, 
+				(int) (MotionAuthenticationParameters.coherenceWindowOverlapFactor * windowSize));
 		if (coherence == null) {
 			logger.warn("Coherence not computed, no match");
 			return false;
@@ -417,7 +418,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		// exchange with the remote host
 		byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
 				remote.getInputStream(), remote.getOutputStream(), 
-				sharedAuthenticationKey, rounds, true, 
+				sharedAuthenticationKey, rounds, false, 
 				false, RemoteInterlockExchangeTimeout, useJSSE,
 				interlockGroup, groupSize, instanceNum);
 		if (remotePlainText == null) {
