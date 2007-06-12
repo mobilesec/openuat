@@ -111,7 +111,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 * @see #startVerification
 	 * @see AsyncInterlockHelper
 	 */
-	private Vector interlockRunners = null;
+	private Vector interlockRunners = new Vector();
 
 	/** This is used for the synchronization of multiple concurrent interlock
 	 * protocol runs when we are trying to verify multiple devices at the same
@@ -398,15 +398,14 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 				protocolRunFinished(myThread);
 				return false;
 			}
-			for (int i=0; i<localSegment.length; i++) {
+/*			for (int i=0; i<localSegment.length; i++) {
 				if (localSegment[i] < 0 || localSegment[i] > 2) {
 					logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
 					protocolRunFinished(myThread);
 					return false;
 				}
-			}
-			if (localSegment != null)
-				localPlainText = TimeSeriesUtil.encodeVector(localSegment);
+			}*/
+			localPlainText = TimeSeriesUtil.encodeVector(localSegment);
 		}
 		if (localPlainText == null) {
 			verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");

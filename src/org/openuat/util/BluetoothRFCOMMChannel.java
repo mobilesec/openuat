@@ -11,6 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 
 import javax.bluetooth.RemoteDevice;
 import javax.microedition.io.Connector;
@@ -416,10 +417,11 @@ btspp://0001234567AB:3
 //#if cfg.includeTestCode
 	///////////////////////////////////////// test code begins here //////////////////////
 	private static class TempHandler implements org.openuat.authentication.AuthenticationProgressHandler {
-		private boolean performMirrorAttack;
+		private boolean performMirrorAttack, requestSensorStream;
 		
-		TempHandler(boolean attack) {
+		TempHandler(boolean attack, boolean requestStream) {
 			this.performMirrorAttack = attack;
+			this.requestSensorStream = requestStream;
 		}
 		
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
@@ -452,6 +454,13 @@ btspp://0001234567AB:3
 			try {
 				i = connectionToRemote.getInputStream();
 				o = connectionToRemote.getOutputStream();
+				OutputStreamWriter ow = new OutputStreamWriter(o);
+				
+				if (requestSensorStream) {
+					ow.write("DEBG_Stream\n");
+					ow.flush();
+				}
+				
 		        int tmp = i.read();
 				while (tmp != -1) {
 					System.out.print((char) tmp);
@@ -476,12 +485,14 @@ btspp://0001234567AB:3
 		  c.open();
 		  
 		  if (args.length > 2 && args[2].equals("DH")) {
-			  boolean attack = false;
+			  boolean attack = false, requestStream = false;
 			  if (args.length > 3 && args[3].equals("mirror"))
 				  attack = true;
+			  if (args.length > 3 && args[3].equals("stream"))
+				  requestStream = true;
 			  // this is our test client, keep connected, and use JSSE (interoperability tests...)
 			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(
-					 c, new TempHandler(attack), true, null, true);
+					 c, new TempHandler(attack, requestStream), true, null, true);
 			  System.out.println("Waiting for protocol to run in the background");
 			  while (true) Thread.sleep(500);
 		  }

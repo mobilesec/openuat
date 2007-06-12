@@ -24,10 +24,10 @@ import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
-import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothOpportunisticConnector;
@@ -36,6 +36,8 @@ import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
+	private final static String Command_Debug_Streaming = "DEBG_Stream";
+	
 	List main_list;
 
 	Command exit;
@@ -55,9 +57,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 	SymbianTCPAccelerometerReader reader;
 	TimeSeriesAggregator aggregator;
-	
-	RemoteConnection connectionToRemote = null;
-	OutputStreamWriter toRemote = null;
 	
 	// this is used for controlling the volume
 	Player player;
@@ -104,10 +103,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		try {
-			protocol = new ShakeAuthenticator(BluetoothOpportunisticConnector.getInstance(), this);
+			BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
+			protocol = new ShakeAuthenticator(bt, this);
 			// need to register the protocol command handler to support split phases
-			BluetoothOpportunisticConnector.getInstance().addProtocolCommandHandler(
-					MotionAuthenticationProtocol1.MotionVerificationCommand, protocol.getCommandHandler());
+			bt.addProtocolCommandHandler(
+					MotionAuthenticationProtocol1.MotionVerificationCommand, 
+					protocol.getCommandHandler());
+			bt.addProtocolCommandHandler(Command_Debug_Streaming, 
+					new TestBTStreamingCommandHandler());
 			protocol.startListening();
 			
 			// keep the socket connected for now
@@ -249,7 +252,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
 			// I want to beep
-			toRemote = null;
 		}
 
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
@@ -265,39 +267,18 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 		}
 
-		// TODO: remove me completely when no longer streaming
-		protected void resetHook(RemoteConnection remote) {
-			toRemote = null;
-			super.resetHook(remote);
-		}
-
-		// TODO: remove me completely when no longer streaming
+		// TODO: remove me?
 		// maybe only keep for the sound...
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
-			// indicate progress in the first phase
-			// min 0, max 100
-			//volumeControl.setLevel(30);
-			/*try {
-				Manager.playTone(60, 300, 30);
-			} catch (MediaException e) {
-				logger.error("Unable to play tone");
-			}*/
-
 			logger.info("Successful authentication with " + remote.getRemoteName() + 
 					", auth key is " + new String(Hex.encodeHex(sharedAuthenticationKey)));
-	        try {
-				toRemote = new OutputStreamWriter(remote.getOutputStream());
-				
-				// finished DH and connected to the remote
-				Display.getDisplay(outer).vibrate(800); // for 800ms
-				try {
-					Manager.playTone(62, 100, 30);
-					Manager.playTone(60, 100, 30);
-				} catch (MediaException e) {
-					logger.error("Unable to play tone");
-				}
-			} catch (IOException e) {
-				logger.debug("Unable to open stream to remote: " + e);
+			// finished DH and connected to the remote
+			Display.getDisplay(outer).vibrate(800); // for 800ms
+			try {
+				Manager.playTone(62, 100, 30);
+				Manager.playTone(60, 100, 30);
+			} catch (MediaException e) {
+				logger.error("Unable to play tone");
 			}
 			
 			super.startVerificationAsync(sharedAuthenticationKey, optionalParam, remote);
@@ -308,10 +289,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// fire off the normal protocol
 			super.addSegment(segment, startIndex);
 			// and try to verify with all hosts in that state
-			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
+/*			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
 			// let the channels be opened in the background threads instead of doing it here
 			startConcurrentVerifications(hostsWaitingForVerification, true);
-			
+*/			
 			// and announce shaking complete
 			try {
 				Manager.playTone(60, 100, 30);
@@ -323,6 +304,17 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 	}
 
+	OutputStreamWriter toRemote = null;
+	private class TestBTStreamingCommandHandler implements HostProtocolHandler.ProtocolCommandHandler {
+		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
+			try {
+				toRemote = new OutputStreamWriter(remote.getOutputStream());
+			} catch (IOException e) {
+				logger.debug("Unable to open stream to remote: " + e);
+			}
+			return false;
+		}
+	}
 	private class TestBTStreamingSamplesHandler implements SamplesSink_Int {
 		private int dim;
 		
@@ -347,7 +339,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public void segmentEnd(int index) {
 			// not interested in segments when only forwarding to BT
 		}
-
 		public void segmentStart(int index) {
 			// not interested in segments when only forwarding to BT
 		}
