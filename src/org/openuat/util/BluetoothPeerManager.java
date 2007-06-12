@@ -512,9 +512,16 @@ public class BluetoothPeerManager {
 					}
 				}
 				
-				if (logger.isInfoEnabled())
-					logger.info("Discovery completed, found " + newDevices.size() + 
-						" new devices, forwarding to " + listeners.size() + " listeners");
+				if (newDevices.size() == 0) {
+					if (logger.isDebugEnabled())
+						logger.debug("Discovery completed, found " + newDevices.size() + 
+								" new devices, forwarding to " + listeners.size() + " listeners");
+				}
+				else {
+					if (logger.isInfoEnabled())
+						logger.info("Discovery completed, found " + newDevices.size() + 
+								" new devices, forwarding to " + listeners.size() + " listeners");
+				}
 				for (int i=0; i<listeners.size(); i++)
 					((PeerEventsListener) listeners.elementAt(i)).inquiryCompleted(newDevices);
 				
