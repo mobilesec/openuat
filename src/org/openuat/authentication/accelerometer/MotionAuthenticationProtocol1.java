@@ -417,7 +417,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 
 		// exchange with the remote host
 		byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
-				remote.getInputStream(), remote.getOutputStream(), 
+				remote.getInputStream(), remote.getOutputStream(),
+				// TODO: enable mirror attack prevention after testing
 				sharedAuthenticationKey, rounds, false, 
 				false, RemoteInterlockExchangeTimeout, useJSSE,
 				interlockGroup, groupSize, instanceNum);

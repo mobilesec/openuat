@@ -114,6 +114,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			protocol.startListening();
 			
 			// keep the socket connected for now
+			// TODO: remove this block once testing is done
 			/*rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
@@ -184,6 +185,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		if (com == exit) { //exit triggered from the main form
 			if (protocol != null)
 				protocol.stopListening();
+			// TODO: remove this block once testing is done
 			/*if (rfcommServer != null)
 				try {
 					rfcommServer.stop();
@@ -289,9 +291,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// fire off the normal protocol
 			super.addSegment(segment, startIndex);
 			// and try to verify with all hosts in that state
-/*			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
+			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
 			// let the channels be opened in the background threads instead of doing it here
-			startConcurrentVerifications(hostsWaitingForVerification, true);
+/*			startConcurrentVerifications(hostsWaitingForVerification, true);
 */			
 			// and announce shaking complete
 			try {

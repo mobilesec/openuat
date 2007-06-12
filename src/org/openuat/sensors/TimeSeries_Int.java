@@ -191,7 +191,7 @@ public class TimeSeries_Int implements SamplesSink_Int {
     				", threshold is " + activeVarianceThreshold);
     	if (activeVarianceThreshold > 0 && getWindowVariance() >= activeVarianceThreshold
     			&& !isActive) {
-    		logger.info("Detected transition to active at index " + sampleNum);
+    		logger.debug("Detected transition to active at index " + sampleNum);
     		isActive = true;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
@@ -202,7 +202,7 @@ public class TimeSeries_Int implements SamplesSink_Int {
     	}
     	if (activeVarianceThreshold > 0 && getWindowVariance() < activeVarianceThreshold
     			&& isActive) {
-    		logger.info("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
+    		logger.debug("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
     		isActive = false;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
