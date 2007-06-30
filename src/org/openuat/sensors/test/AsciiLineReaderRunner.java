@@ -264,7 +264,7 @@ public class AsciiLineReaderRunner {
 								int windowOverlap = (int) (coherence_windowSize*windowOverlapFactors[i4]);
 								// these are the defaults when not searching for parameters
 								if (!paramSearch_coherence) {
-									windowOverlap = MotionAuthenticationParameters.coherenceWindowOverlap;
+									windowOverlap = (int) (MotionAuthenticationParameters.coherenceWindowOverlapFactor * MotionAuthenticationParameters.coherenceWindowSize);
 									i4=windowOverlapFactors.length;
 								}
 
