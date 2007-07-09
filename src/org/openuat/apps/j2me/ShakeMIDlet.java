@@ -106,10 +106,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
 			protocol = new ShakeAuthenticator(bt, this);
 			bt.setKeyManager(protocol.getKeyManager());
-			// need to register the protocol command handler to support split phases
-			bt.addProtocolCommandHandler(
-					MotionAuthenticationProtocol1.MotionVerificationCommand, 
-					protocol.getCommandHandler());
+			// this is an additional command handler for streaming the acceleration values
 			bt.addProtocolCommandHandler(Command_Debug_Streaming, 
 					new TestBTStreamingCommandHandler());
 			protocol.startListening();

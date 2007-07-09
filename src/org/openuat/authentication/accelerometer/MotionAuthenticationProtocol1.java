@@ -131,6 +131,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			boolean concurrentVerificationSupported, double coherenceThreshold, 
 			int windowSize, boolean useJSSE) {
 		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
+		// also register our command handler for split phase operation
+		server.addProtocolCommandHandler(MotionVerificationCommand, new MotionVerificationCommandHandler());
 		this.coherenceThreshold = coherenceThreshold;
 		this.windowSize = windowSize;
 	}
@@ -345,10 +347,6 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 */
 	public double getLastCoherenceMean() {
 		return lastCoherenceMean;
-	}
-	
-	public HostProtocolHandler.ProtocolCommandHandler getCommandHandler() {
-		return new MotionVerificationCommandHandler();
 	}
 	
 	/** A small helper to clean up after a thread finishes. */

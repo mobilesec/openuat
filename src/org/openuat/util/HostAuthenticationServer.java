@@ -11,6 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 
 import org.openuat.authentication.AuthenticationProgressHandler;
+import org.openuat.authentication.HostProtocolHandler.ProtocolCommandHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This interface represents the minimum requirement for server parts that
@@ -42,4 +43,20 @@ public interface HostAuthenticationServer {
 	 *         handler object was not registered).
 	 */
 	public boolean removeAuthenticationProgressHandler(AuthenticationProgressHandler handler);
+
+    /** Adds a protocol command handler.
+     * 
+     * @param command The command to react to.
+     * @param handler The handler that will be called to handle the protocol 
+     *                session when it is started with command.
+     */
+    public void addProtocolCommandHandler(String command, ProtocolCommandHandler handler);
+    
+    /** Removes a protocol command handler.
+     * 
+     * @param command The command to stop reacting to.
+     * @return true if the command handler was removed, false otherwise (if
+     *         no handler was previously registered for this command).
+     */
+    public boolean removeProtocolCommandHandler(String command);    
 }
