@@ -176,7 +176,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      *         been registered before, the list will not be overwritten).
      */ 
     public void setProtocolCommandHandlers(Hashtable handlers) {
-    	protocolCommandHandlers = handlers;
+    	if (protocolCommandHandlers == null) 
+    		protocolCommandHandlers = handlers;
+    	else
+    		logger.error("Not overwriting already initialized list of protocol command handlers");
     }
     
     /** Helper method used for closing the streams connected to the socket
