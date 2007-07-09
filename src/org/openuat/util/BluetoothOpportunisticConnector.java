@@ -16,6 +16,7 @@ import java.util.TimerTask;
 import java.util.Vector;
 
 import javax.bluetooth.DataElement;
+import javax.bluetooth.LocalDevice;
 import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
@@ -47,6 +48,21 @@ import org.openuat.util.BluetoothPeerManager;
  * upon AuthenticationSuccessEvent, proceed to verify the peer device. 
  * KeyManager would be a good option to register as a listener.
  * 
+ * <b>Note</b>: Due to a circular dependency, for best operation (read: in the
+ * normal case when you don't know exactly why it should be otherwise), a 
+ * KeyManager object needs to be registered twice with the 
+ * BluetoothOpportunisticConnector singleton. First, it needs to be registered
+ * as an AuthenticationProgressHandler by calling the method 
+ * addAuthenticationProgressHandler(keyManager.getHostAuthenticationHandler()).
+ * This enabled the KeyManager to react to HostAuthentication events and 
+ * therefore manage the keys that are agreed to by (incoming or outgoing)
+ * HostProtocolHandler runs. Second, the same KeyManager objects needs to be
+ * set by a call to setKeyManager(keyManager), so that outgoing connection
+ * attempts will be prevented when the respective remote device already has a
+ * known state (i.e. a key agreement is running or has already finished).
+ * Both calls should be made before starting the RFCOMM service and the 
+ * background inquiry with start().
+ * 
  * @author Rene Mayrhofer
  * @version 1.0
  */
@@ -58,23 +74,23 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** This is the Bluetooth service UUID used for the opportunistic 
 	 * authentication service.
 	 */
-	public static UUID serviceUUID = new UUID("c9cb7b4591ee46e392f50933394f613e", false);
+	public final static UUID serviceUUID = new UUID("c9cb7b4591ee46e392f50933394f613e", false);
 	
 	/** The Bluetooth service will be advertised under this friendly name. */
-	public static String serviceName = "OpenUAT Opportunistic Authentication";
+	public final static String serviceName = "OpenUAT Opportunistic Authentication";
 	
 	/** The maximum number of connection attempts for a service that 
 	 * advertises the serviceUUID.
 	 */
-	public static int maxConnectionRetries = 3;
+	public final static int maxConnectionRetries = 3;
 	
 	/** The sleep time before re-attempting a connection in ms. */
-	public static int retryConnectionDelay = 5000;
+	public final static int retryConnectionDelay = 5000;
 	
 	// TODO: make me configurable - maybe with setters/getters?
-	public static boolean keepConnected = true;
-	public static boolean useJSSE = false;
-	public static String optionalParameter = null;
+	public final static boolean keepConnected = true;
+	public final static boolean useJSSE = false;
+	public final static String optionalParameter = null;
 	
 	/** The singleton instance of this class, created when getInstance() is
 	 * called for the first time.
@@ -89,13 +105,19 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 */
 	private BluetoothPeerManager manager;
 	
-	/** This is a queue of connections that could not be established for some
-	 * reason and that should be re-tried. Keys are of type String (connection
-	 * URLs), values of type Integer (the number of retries). A special case 
-	 * is that the number of retries may be negative, which signifies that a
-	 * connection is currently attempted.
+	/** This reference to the key manager, if set, is used only for making 
+	 * sure that we don't start another key agreement when a key with a remote 
+	 * device is already known.
+	 */
+	private KeyManager keyManager;
+	
+	/** This is a queue of connections that should be established (either for
+	 * the first time or re-tried after failure). Keys are of type String 
+	 * (connection URLs), values of type Integer (the number of retries). A 
+	 * special case is that the number of retries may be negative, which 
+	 * signifies that a connection is currently attempted.
 	 */ 
-	private Hashtable failedConnections = new Hashtable();
+	private Hashtable connectionsQueue = new Hashtable();
 	
 	/** Failed connections will be re-scheduled using this timer object. */
 	private Timer connectionRetryTimer = null;
@@ -115,8 +137,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
 	}
 	
-	/** Returns the local instance of BluetoothOpportunisticConnector. 
-	 * @throws IOException 
+	/** Returns the local instance of BluetoothOpportunisticConnector.
 	 * @throws IOException */
 	public static BluetoothOpportunisticConnector getInstance() throws IOException {
 		if (singleton == null) {
@@ -129,7 +150,6 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
     public void addProtocolCommandHandler(String command, HostProtocolHandler.ProtocolCommandHandler handler) {
-    	if (service == null)
     	service.addProtocolCommandHandler(command, handler);
     }
 
@@ -141,6 +161,23 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
     /** @see HostProtocolHandler#setProtocolCommandHandlers*/
     public boolean setProtocolCommandHandler(Hashtable handlers) {
     	return service.setProtocolCommandHandler(handlers);
+    }
+    
+    /** Sets the keyManager object that should be used for preventing to start
+     * new connections when hosts are already known (by the keyManager).
+     * @param keyManager This object will be queried for known keys before 
+     *        attempting a new connection.
+     *        
+     * TODO: This interface is a bit ugly and should probably be refactored.
+     *       But the problem is the circular dependency DHWithVerification
+     *       -> HostServerBase (the latter needs to be given to the former's
+     *       constructor) and BluetoothOpportunisticConnector -> KeyManager
+     *       (where the former implements the HostServerBase interface, but
+     *       needs access to the keyManager object contained within the e.g.
+     *       DHWithVerification).
+     */
+    public void setKeyManager(KeyManager keyManager) {
+    	this.keyManager = keyManager;
     }
     
 	/** Starts the local authentication service and the background discovery 
@@ -192,9 +229,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		BluetoothRFCOMMChannel channel;
 		int numRetries = -1;
 
-		synchronized (failedConnections) {
-			if (failedConnections.contains(connectionURL)) {
-				numRetries = ((Integer) failedConnections.get(connectionURL)).intValue();
+		synchronized (connectionsQueue) {
+			if (connectionsQueue.contains(connectionURL)) {
+				numRetries = ((Integer) connectionsQueue.get(connectionURL)).intValue();
 				if (numRetries < 0) {
 					// this is the sign that a connection attempt is already running in parallel!
 					logger.warn("Connection attempt to '" + connectionURL + 
@@ -204,12 +241,71 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			}
 			else 
 				// we are about to start a connection attempt, so create the lock
-				failedConnections.put(connectionURL, new Integer(-1));
+				connectionsQueue.put(connectionURL, new Integer(-1));
+		}
+
+		String localAddress, remoteAddress;
+		try {
+			channel = new BluetoothRFCOMMChannel(connectionURL);
+			localAddress = LocalDevice.getLocalDevice().getBluetoothAddress();
+			remoteAddress = channel.getRemoteAddressString();
+		} catch (IOException e) {
+			logger.error("Can't initialize Bluetooth subsystem and/or get local address", e);
+			return false;
+		}
+
+		// sanity check
+		if (localAddress.equals(remoteAddress)) {
+			logger.error("Can't talk to myself - not connecting to Bluetooth address '" + 
+					remoteAddress + "'");
+			return false;
+		}
+		
+		// don't run a key agreement if we already have a key with that host
+		if (keyManager != null) {
+			try {
+				int stateWithRemote = keyManager.getState(new BluetoothRFCOMMChannel(remoteAddress));
+				if (stateWithRemote != KeyManager.STATE_NONEXISTANT &&
+						stateWithRemote != KeyManager.STATE_IDLE) {
+					logger.info("Already in state " + stateWithRemote + " with remote '" +
+							remoteAddress + "', not running another key agreement, aborting");
+					synchronized (connectionsQueue) {
+						connectionsQueue.remove(connectionURL);
+					}
+					return false;
+				}
+			} catch (IOException e) {
+				logger.error("Can't initialize Bluetooth subsystem - this should not happen when we get to here!", e);
+				return false;
+			}
+		}
+		else
+			logger.warn("Can not check for existing state with remote, as we don't have a valid KeyManager");
+
+		/* This is a small but hopefully effective hack to prevent two devices 
+		 * from trying to contact each other at the same time: the higher MAC 
+		 * address backs off for the first try, and will only try if not contacted
+		 * in the mean time.
+		 */
+		if (numRetries == 0) {
+			if (localAddress.compareToIgnoreCase(remoteAddress) > 0) {
+				if (logger.isInfoEnabled())
+					logger.info("My Bluetooth address '" + localAddress +
+						"' is higher than the remote address to connect to '" + 
+						remoteAddress + "', backing off and waiting for remote to connect");
+				// but this counts as a failed attempt, or we would never do it...
+				connectionsQueue.put(connectionURL, new Integer(numRetries++));
+				return false;
+			}
 		}
 		
 		try {
-			channel = new BluetoothRFCOMMChannel(connectionURL);
+			if (logger.isDebugEnabled())
+				logger.debug("Attempting to connect to '" + connectionURL + "' with " +
+					numRetries + " failures so far");
 			channel.open();
+			if (logger.isDebugEnabled())
+				logger.debug("Connection to '" + connectionURL + "' established, starting key agreement");
 			HostProtocolHandler.startAuthenticationWith(channel, 
 					new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
 			logger.info("Discovered remote device  " + 
@@ -217,42 +313,56 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					channel.getRemoteName() + 
 					"' which advertises opportunistic authentication, started key agreement");
 			// if we get here, the connection itself succeeded
-			synchronized (failedConnections) {
-				failedConnections.remove(connectionURL);
+			synchronized (connectionsQueue) {
+				connectionsQueue.remove(connectionURL);
 			}
 			return true;
 		} catch (IOException e) {
 			// check if we can (re-)schedule
-			synchronized (failedConnections) {
+			synchronized (connectionsQueue) {
 				if (numRetries >= maxConnectionRetries) {
 					// no more retries for this one
 					logger.warn("Could not connect to '" + connectionURL +
 							"' after " + maxConnectionRetries + " tries, aborting");
-					failedConnections.remove(connectionURL);
+					connectionsQueue.remove(connectionURL);
 					// maybe we can stop the timer now, if there are no more scheduled attempts
-					if (failedConnections.isEmpty()) {
-						logger.debug("Removed the last scheduled connection, stopping timer task");
-						connectionRetryTimer.cancel();
-						connectionRetryTimer = null;
-					}
+					stopTimer();
 					return false;
 				}
 				else if (numRetries == -1)
 					// first failed attempt, so start counter there
-					failedConnections.put(connectionURL, new Integer(1));
+					connectionsQueue.put(connectionURL, new Integer(1));
 				else
-					failedConnections.put(connectionURL, new Integer(numRetries++));
+					connectionsQueue.put(connectionURL, new Integer(numRetries++));
 			}
 			logger.warn("Could not connect to remote service '" + connectionURL + 
 					"', will retry in " + retryConnectionDelay + "ms");
 			// if we get here, we have re-scheduled, so maybe need to start the timer
-			if (connectionRetryTimer == null) {
-				logger.debug("No retry timer task running, starting it now");
-				connectionRetryTimer = new Timer();
-				connectionRetryTimer.scheduleAtFixedRate(new ConnectionRetryTask(), 
-						retryConnectionDelay, retryConnectionDelay);
-			}
+			startTimer();
 			return false;
+		}
+	}
+	
+	/** Small helper function for starting a regular timer if it isn't running. */
+	private void startTimer() {
+		if (connectionRetryTimer == null) {
+			logger.debug("No retry timer task running, starting it now");
+			connectionRetryTimer = new Timer();
+			connectionRetryTimer.scheduleAtFixedRate(new ConnectionRetryTask(), 
+					retryConnectionDelay, retryConnectionDelay);
+		}
+	}
+	
+	/** Small helper function for stopping the timer if it is running. */
+	private void stopTimer() {
+		if (connectionRetryTimer == null) {
+			logger.error("Can not stop timer when no one is running. Ignoring, but this should not happen!");
+			return;
+		}
+		if (connectionsQueue.isEmpty()) {
+			logger.debug("Removed the last scheduled connection, stopping timer task");
+			connectionRetryTimer.cancel();
+			connectionRetryTimer = null;
 		}
 	}
 	
@@ -261,11 +371,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		public void run() {
-			synchronized (failedConnections) {
-				if (!failedConnections.isEmpty()) {
-					logger.debug("Timer task running, re-attempting " +
-							failedConnections.size() + " connections");
-					Enumeration urls = failedConnections.keys();
+			synchronized (connectionsQueue) {
+				if (!connectionsQueue.isEmpty()) {
+					logger.debug("Timer task running, (re-)attempting " +
+							connectionsQueue.size() + " connections");
+					Enumeration urls = connectionsQueue.keys();
 					while (urls.hasMoreElements()) {
 						String url = (String) urls.nextElement();
 						logger.info("Retrying connection to '" + url + "'");
@@ -297,7 +407,12 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 							"', expected '" + serviceName + "'");
 				}
 				else {
-					attemptConnection(sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+					// ok, service known, schedule for connection
+					synchronized (connectionsQueue) {
+						connectionsQueue.put(sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false), 
+								new Integer(0)); // with 0 failed attempts so far
+					}
+					startTimer();
 				}
 			}
 		}
@@ -334,6 +449,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		// yes, we support concurrent verification here for this test
 		KeyManager km = new KeyManager(true, "the one and only");
 		c.addAuthenticationProgressHandler(km.getHostAuthenticationHandler());
+		c.setKeyManager(km);
+		if (args.length > 1 && args[1].equals("mirror"))
+			km.addVerificationHandler(new BluetoothRFCOMMChannel.TempHandler(true, false));
 		c.start();
 		System.in.read();
 		c.stop();

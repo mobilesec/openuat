@@ -105,6 +105,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		try {
 			BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
 			protocol = new ShakeAuthenticator(bt, this);
+			bt.setKeyManager(protocol.getKeyManager());
 			// need to register the protocol command handler to support split phases
 			bt.addProtocolCommandHandler(
 					MotionAuthenticationProtocol1.MotionVerificationCommand, 
@@ -250,6 +251,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					32,
 					false); // no JSSE
 			this.outer = outer;
+		}
+		
+		KeyManager getKeyManager() {
+			return keyManager;
 		}
 
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
