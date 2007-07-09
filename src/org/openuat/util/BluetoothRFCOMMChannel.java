@@ -83,6 +83,11 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
+	 * 
+	 * Note: This constructor, along with a dummy remoteChannelNumber (i.e. -1), 
+	 * can be used as a reference object to compare against, e.g. when querying
+	 * KeyManager for a key with a remote Bluetooth device.
+	 * 
 	 * @param remoteDeviceAddress The Bluetooth MAC address to connect to, in format
 	 *                            "AABBCCDDEEFF".
 	 * @param remoteChannelNumber The SDP RFCOMM channel number to connect to, usually between
@@ -116,66 +121,6 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		fromRemote = connection.openInputStream();
 		toRemote = connection.openOutputStream();
 	}
-	
-/*
-btl2cap://hostname:[PSM | UUID];parameters
-
-   
-  
-The URL format for an RFCOMMStreamConnection:
-btspp://hostname:[CN | UUID];parameters
-
-   
-  
-Where:
-btl2cap is the URL scheme for an L2CAPConnection.
-btspp is the URL scheme for an RFCOMM StreamConnection.
-hostname is either localhost to set up a server connection, or the Bluetooth address to create a client connection.
-PSMis the Protocol/Service Multiplexer value, used by a clientconnecting to a server. This is similar in concept to a TCP/IP port.
-CN is the Channel Number value, used by a client connecting to a server – also similar in concept to a TCP/IP port.
-UUID is the UUID value used when setting up a service on a server.
-parameters include name to describe the service name, and the security parameters authenticate, authorize, and encrypt. 
-*/
-/*
-btspp://hostname:[CN | UUID];authenticate=true;authorize=true;encrypt=true
-
-   
-  
-Where:
-authenticate verifies the identity of a connecting device.
-authorize verifies whether access is granted by a connecting (identified) device.
-encrypt specifies that the connection must be encrypted.
-You've already seen that a client wishing to connect to a service can retrieve the service's connection URL by calling the method ServiceRecord.getConnectionURL(). One of this method's arguments, requiredSecurity, specifies whether the returned connection URL should include the optional authenticate and encrypt security parameters. The valid values for requiredSecurity are: 
-ServiceRecord.NOAUTHENTICATE_NOENCRYPTindicates authenticate=false; encrypt=false.
-ServiceRecord.AUTHENTICATE_NOENCRYPT indicates authenticate=true; encrypt=false.
-ServiceRecord.AUTHENTICATE_ENCRYPTindicates authenticate=true; encrypt=true. 
-*/
-	
-	/*
-...
-// (assuming we have the service record)
-// use record to retrieve a connection URL
-String url =
-    record.getConnectionURL(
-        record.NOAUTHENTICATE_NOENCRYPT, false);
-// open a connection to the server
-StreamConnection connection =
-    (StreamConnection) Connector.open(url);
-// Send/receive data
-try {
-    byte buffer[] = new byte[100];
-    String msg = "hello there, server";
-    InputStream is = connection.openInputStream();
-    OutputStream os = connection.openOutputStream();
-    // send data to the server
-    os.write(msg.getBytes);
-    // read data from the server
-    is.read(buffer);
-    connection.close();
-} catch(IOException e) {
-  e.printStackTrace();
-}
-...	 */
 	
 	/** Opens a channel to the endpoint given to the constructor.
 	 * @throws IOException On Bluetooth errors.
@@ -277,11 +222,19 @@ try {
 			/* But the JSR82 API makes the RemoteDevice(String) constructor 
 			   protected, so can't use it. The best option is to simply return
 			   a string object. */
+			// TODO: do something about this! return something sensible!
 			// no, don't do it! some callers may depend on this being a RemoteDevice object
 			//return remoteDeviceAddress;
 			return null;
 		else
 			return null;
+	}
+	
+	/** This returns the remote device address as a string, as e.g. parsed
+	 * by the constructor taking a connection URL. 
+	 */
+	public String getRemoteAddressString() {
+		return remoteDeviceAddress;
 	}
 
 	/** Implementation of RemoteConnection.getRemoteName.
@@ -321,14 +274,23 @@ try {
 		}
 		
 		// not connected, compare serviceURL (because this will be used in open()
-		if (serviceURL != null && o.serviceURL != null) {
+		// however, only compare serviceURL if both have a valid remote channel number
+		if (serviceURL != null && o.serviceURL != null && 
+				remoteChannelNumber != -1 && o.remoteChannelNumber != -1) {
 			logger.debug("Both serviceURL objects set, comparing serviceURL=" + 
 					serviceURL + ", o.serviceURL=" + serviceURL);
 			return serviceURL.equals(o.serviceURL);
 		}
 		
+		// ok, neither connected, nor do we have full serviceURLs, only compare device addresses (if available)
+		if (remoteDeviceAddress != null && o.remoteDeviceAddress != null) {
+			logger.debug("Both remoteDeviceAddress objects set, comparing remoteDeviceAddress=" +
+					remoteDeviceAddress + ", o.remoteDeviceAddress=" + o.remoteDeviceAddress);
+			return remoteDeviceAddress.equals(o.remoteDeviceAddress);
+		}
+		
 		// don't know...
-		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL set. For what I know, they are different.");
+		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL or remoteDeviceAddress set. For what I know, they are different.");
 		return false;
 	}
 	
@@ -339,8 +301,10 @@ try {
 			} catch (IOException e) {
 				return "BluetoothRFCOMMChannel connected, but unable to resolve address: " + e;
 			}
-		else if (serviceURL != null)
+		else if (serviceURL != null && remoteChannelNumber != -1)
 			return "BluetoothRFCOMMChannel with URL " + serviceURL;
+		else if (remoteDeviceAddress != null)
+			return "BluetoothRFCOMMChannel with remote device " + remoteDeviceAddress;
 		else
 			return "BluetoothRFCOMMChannel with invalid/unknown endpoint";
 	}
@@ -405,18 +369,11 @@ try {
 	   }*/
 
 	
-/*
- * StreamConnection con =(StreamConnection)Connector.open(url);
- * 
- * String connectionURL = serviceRecord.getConnectionURL(0, false);
-StreamConnection con =(StreamConnection)Connector.open(connectionURL);
-
-btspp://0001234567AB:3
- */
-
 //#if cfg.includeTestCode
 	///////////////////////////////////////// test code begins here //////////////////////
-	private static class TempHandler implements org.openuat.authentication.AuthenticationProgressHandler {
+	protected static class TempHandler implements 
+			org.openuat.authentication.AuthenticationProgressHandler,
+			org.openuat.authentication.KeyManager.VerificationHandler {
 		private boolean performMirrorAttack, requestSensorStream;
 		
 		TempHandler(boolean attack, boolean requestStream) {
@@ -448,7 +405,15 @@ btspp://0001234567AB:3
 	        // then extraxt the optional parameter
 	        //String param = (String) res[2];
 	        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
-			
+	        
+	        inVerificationPhase(connectionToRemote);
+		}
+
+		public void startVerification(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection toRemote) {
+			inVerificationPhase(toRemote);
+		}
+		
+		private void inVerificationPhase(RemoteConnection connectionToRemote) {
 	        InputStream i;
 	        OutputStream o;
 			try {
