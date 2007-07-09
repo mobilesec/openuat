@@ -239,9 +239,12 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					return false;
 				}
 			}
-			else 
+			else {
+				logger.warn("attemptConnection called with '" + connectionURL +
+						"' which was not found in connectionsQueue. This should not happen!");
 				// we are about to start a connection attempt, so create the lock
 				connectionsQueue.put(connectionURL, new Integer(-1));
+			}
 		}
 
 		String localAddress, remoteAddress;
@@ -264,7 +267,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		// don't run a key agreement if we already have a key with that host
 		if (keyManager != null) {
 			try {
-				int stateWithRemote = keyManager.getState(new BluetoothRFCOMMChannel(remoteAddress));
+				int stateWithRemote = keyManager.getState(new BluetoothRFCOMMChannel(remoteAddress, -1));
 				if (stateWithRemote != KeyManager.STATE_NONEXISTANT &&
 						stateWithRemote != KeyManager.STATE_IDLE) {
 					logger.info("Already in state " + stateWithRemote + " with remote '" +
