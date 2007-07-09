@@ -329,6 +329,7 @@
 				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
 				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
 				org/openuat/util/DebugInputStream.java org/openuat/util/DebugOutputStream.java
+				org/openuat/util/ProtocolCommandHandler.java 
 				org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
 				org/openuat/authentication/KeyManager.java org/openuat/util/HostAuthenticationServer.java
 				org/openuat/authentication/AuthenticationEventSender.java

@@ -33,6 +33,7 @@ import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothOpportunisticConnector;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.HostAuthenticationServer;
+import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
@@ -309,7 +310,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	}
 
 	OutputStreamWriter toRemote = null;
-	private class TestBTStreamingCommandHandler implements HostProtocolHandler.ProtocolCommandHandler {
+	private class TestBTStreamingCommandHandler implements ProtocolCommandHandler {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());

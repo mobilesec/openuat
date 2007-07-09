@@ -11,7 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 
 import org.openuat.authentication.AuthenticationProgressHandler;
-import org.openuat.authentication.HostProtocolHandler.ProtocolCommandHandler;
+import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This interface represents the minimum requirement for server parts that

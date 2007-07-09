@@ -25,6 +25,7 @@ import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.util.HostAuthenticationServer;
+import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 /** This is the first variant of the motion authentication protocol. It
@@ -543,7 +544,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 * The client part is activated by first connecting the appropriate
 	 * RemoteConnection and then calling startVerificationAsync on it.
 	 */
-	private class MotionVerificationCommandHandler implements HostProtocolHandler.ProtocolCommandHandler {
+	private class MotionVerificationCommandHandler implements ProtocolCommandHandler {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			// sanity check
 			if (! firstLine.startsWith(MotionVerificationCommand)) {

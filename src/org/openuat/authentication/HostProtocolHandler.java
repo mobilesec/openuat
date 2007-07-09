@@ -14,6 +14,7 @@ import java.io.OutputStreamWriter;
 import java.util.Hashtable;
 
 import org.openuat.authentication.exceptions.*;
+import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 import org.apache.commons.codec.DecoderException;
@@ -91,22 +92,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      * of type ProtocolCommandHandler.
      */
     private Hashtable protocolCommandHandlers = null;
-    
-    /** This interface describes custom protocol command handlers that react
-     * to specific commands with which they are registered.
-     */
-    public interface ProtocolCommandHandler {
-    	/** Delegates handling of a sub-protocol.
-    	 * 
-    	 * @param firstLine The first line of the sub-protocol. This by 
-    	 *                  definition starts with the command (word) for 
-    	 *                  which this protocol handler has been registered.
-    	 * @param remote The channel to use for communication. 
-    	 * @return true if the sub-protocol finished successfully, false 
-    	 *         otherwise.
-    	 */
-    	boolean handleProtocol(String firstLine, RemoteConnection remote);
-    }
     
     /** This class should only be instantiated by HostServerSocket for incoming
 	 * connections or with the static startAuthenticatingWith method for

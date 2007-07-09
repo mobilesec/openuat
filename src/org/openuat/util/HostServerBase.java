@@ -64,7 +64,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	}
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
-    public void addProtocolCommandHandler(String command, HostProtocolHandler.ProtocolCommandHandler handler) {
+    public void addProtocolCommandHandler(String command, ProtocolCommandHandler handler) {
     	if (protocolCommandHandlers == null)
     		protocolCommandHandlers = new Hashtable();
     	protocolCommandHandlers.put(command, handler);

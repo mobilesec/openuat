@@ -149,7 +149,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	}
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
-    public void addProtocolCommandHandler(String command, HostProtocolHandler.ProtocolCommandHandler handler) {
+    public void addProtocolCommandHandler(String command, ProtocolCommandHandler handler) {
     	service.addProtocolCommandHandler(command, handler);
     }
 
@@ -288,7 +288,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		 * in the mean time.
 		 */
 		if (numRetries == 0) {
-			if (localAddress.compareToIgnoreCase(remoteAddress) > 0) {
+			if (localAddress.compareTo(remoteAddress) > 0) {
 				if (logger.isInfoEnabled())
 					logger.info("My Bluetooth address '" + localAddress +
 						"' is higher than the remote address to connect to '" + 
