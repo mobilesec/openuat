@@ -1,3 +1,7 @@
 Additional methods that should be implemented within OpenUAT:
 - "A Gesture-based Authentication Scheme for Untrusted Public Terminals" 
   to authenticate a user interface device to a personal mobile device.
+- Seeing-is-Believing and extension
+- Loud-and-Clear and HAPADEP
+- Amigo
+- Infrared
