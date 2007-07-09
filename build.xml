@@ -543,6 +543,13 @@
         		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 		</exec>
+		<exec executable="obexftp">
+			<arg line="-b 00:18:0F:A3:A1:D4"/>
+			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
+			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
+        		<!-- can add as many as necessary -->
+		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
+		</exec>
 	</target>
 
 	<!-- ATTENTION: when changing this task, need to copy to the copy in the coverage report below! -->
