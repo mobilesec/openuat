@@ -191,6 +191,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				} catch (InternalApplicationException e) {
 					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
 				}*/
+			
+			// in case we are streaming, stop that
+			if (toRemote != null) {
+				try {
+					toRemote.close();
+				} catch (IOException e) {
+					// just ignore here - we're shutting down anyways
+				}
+				toRemote = null;
+			}
 				
 			reader.stop();
 			destroyApp(false);
@@ -306,6 +316,19 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
 			}
+			// if debugging is active, also push that segment
+			if (toRemote != null) {
+				StringBuffer tmp = new StringBuffer();
+				for (int i=0; i<segment.length; i++)
+					tmp.append(segment[i] + " ");
+				tmp.append('\n');
+				try {
+					toRemote.write(tmp.toString());
+					toRemote.flush();
+				} catch (IOException e) {
+					logger.error("Could not push segment to debug stream");
+				}
+			}
 		}
 	}
 
@@ -315,10 +338,18 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());
 				logger.info("Opened output stream for debugging");
+				// just wait in this incoming handler thread
+				while (toRemote != null) {
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						// just ignore
+					}
+				}
 			} catch (IOException e) {
 				logger.debug("Unable to open stream to remote: " + e);
 			}
-			return false;
+			return true;
 		}
 	}
 	private class TestBTStreamingSamplesHandler implements SamplesSink_Int {
