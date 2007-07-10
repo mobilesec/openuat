@@ -422,7 +422,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 				OutputStreamWriter ow = new OutputStreamWriter(o);
 				
 				if (requestSensorStream) {
-					ow.write("DEBG_Stream\n");
+					ow.write(org.openuat.apps.j2me.ShakeMIDlet.Command_Debug_Streaming + "\n");
 					ow.flush();
 				}
 				
@@ -463,6 +463,13 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		  }
 		  else {
 			  InputStream i = c.getInputStream();
+			  if (args.length > 2 && args[2].equals("stream")) {
+				  OutputStream o = c.getOutputStream();
+				  OutputStreamWriter ow = new OutputStreamWriter(o);
+				  ow.write(org.openuat.apps.j2me.ShakeMIDlet.Command_Debug_Streaming + "\n");
+				  ow.flush();
+			  }
+				  
 			  int tmp = i.read();
 			  while (tmp != -1) {
 				  System.out.print((char) tmp);

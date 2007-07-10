@@ -37,7 +37,7 @@ import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
-	private final static String Command_Debug_Streaming = "DEBG_Stream";
+	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
 	List main_list;
 
@@ -314,6 +314,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());
+				logger.info("Opened output stream for debugging");
 			} catch (IOException e) {
 				logger.debug("Unable to open stream to remote: " + e);
 			}

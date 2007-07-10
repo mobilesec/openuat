@@ -237,26 +237,27 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            
 	 * @return The complete parameter line on success, null otherwise.
 	 */
-    private String helper_getAuthenticationParamLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException
-    {
+    private String helper_getAuthenticationParamLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
     	String msg = readLine();
-        if (msg == null)
-        {
+        if (msg == null) {
         	logger.warn("helper_getAuthenticationParamLine called with null argument");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: no message received");
             return null;
         }
 
         // try to extract the remote key from it
-        if (!msg.startsWith(expectedMsg))
-        {
+        if (!msg.startsWith(expectedMsg)) {
+        	logger.debug("Received non-standard command line '" + msg + "'");
         	if (protocolCommandHandlers != null && allowOtherCommands) {
         		// we have registered handlers, maybe one can deal with the first word
         		String command = msg;
         		int firstSpace = msg.indexOf(' ');
         		if (firstSpace > 0)
         			command = msg.substring(0, firstSpace);
+        		logger.debug("Checking " + protocolCommandHandlers.size() + 
+        				" registered protocol command handlers for '" + command + "'");
         		if (protocolCommandHandlers.containsKey(command)) {
+        			logger.debug("Command handler is known, calling it");
         			// yes, a handler is known, delegate here
         			if (! ((ProtocolCommandHandler) protocolCommandHandlers.get(command)).handleProtocol(
         					msg, remote)) {
@@ -264,6 +265,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         						"', registered handler returned error");
         			}
         		}
+        		else
+        			logger.debug("No command handler known, ignoring and aborting protocol run");
         		// already handled in here, stop processing
         		return null;
         	}
@@ -399,8 +402,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (serverSide) {
             	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection, true);
                 remotePubKey = helper_extractPublicKey(paramLine, Protocol_AuthenticationRequest, connection);
-                if (remotePubKey == null)
-                {
+                if (remotePubKey == null) {
                     shutdownConnectionCleanly();
                     return;
                 }
