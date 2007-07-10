@@ -358,7 +358,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 							"' after " + (numRetries-1) + " previously failed attempts, will retry in " + 
 							retryConnectionDelay + "ms");
 					// if we get here, we have re-scheduled, so maybe need to start the timer
-					startTimer();
+					startTimer(false);
 				}
 			}
 			success = false;
@@ -372,11 +372,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	}
 	
 	/** Small helper function for starting a regular timer if it isn't running. */
-	private void startTimer() {
+	private void startTimer(boolean now) {
 		if (connectionRetryTimer == null) {
 			logger.debug("No retry timer task running, starting it now");
 			connectionRetryTimer = new Timer();
-			connectionRetryTimer.schedule(new ConnectionRetryTask(), retryConnectionDelay);
+			connectionRetryTimer.schedule(new ConnectionRetryTask(), now ? 10 : retryConnectionDelay);
 		}
 	}
 	
@@ -446,7 +446,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 						connectionsQueue.put(sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false), 
 								new Integer(0)); // with 0 failed attempts so far
 					}
-					startTimer();
+					startTimer(true);
 				}
 			}
 		}
