@@ -85,7 +85,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	public final static int maxConnectionRetries = 3;
 	
 	/** The sleep time before re-attempting a connection in ms. */
-	public final static int retryConnectionDelay = 5000;
+	public final static int retryConnectionDelay = 10000;
 	
 	// TODO: make me configurable - maybe with setters/getters?
 	public final static boolean keepConnected = true;
@@ -230,7 +230,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		int numRetries = -1;
 
 		synchronized (connectionsQueue) {
-			if (connectionsQueue.contains(connectionURL)) {
+			if (connectionsQueue.containsKey(connectionURL)) {
 				numRetries = ((Integer) connectionsQueue.get(connectionURL)).intValue();
 				if (numRetries < 0) {
 					// this is the sign that a connection attempt is already running in parallel!
@@ -302,6 +302,21 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			}
 		}
 		
+		// before trying to connect, need to stop background inquiry and wait for it to finish
+		boolean wasRunning = manager.isInquiryActive();
+		if (wasRunning) {
+			if (!manager.stopInquiry())
+				logger.info("Unable to stop background inquiry, connection attempt may fail");
+		}
+		try {
+			if (!manager.waitForBackgroundSearchToFinish(retryConnectionDelay))
+				logger.info("Unable to wait for background search to finish, connection attempt may fail");
+		}
+		catch (InterruptedException e) {
+			// just ignore, doesn't matter
+		}
+		
+		boolean success;
 		try {
 			if (logger.isDebugEnabled())
 				logger.debug("Attempting to connect to '" + connectionURL + "' with " +
@@ -319,7 +334,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			synchronized (connectionsQueue) {
 				connectionsQueue.remove(connectionURL);
 			}
-			return true;
+			success = true;
 		} catch (IOException e) {
 			// check if we can (re-)schedule
 			synchronized (connectionsQueue) {
@@ -330,20 +345,30 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					connectionsQueue.remove(connectionURL);
 					// maybe we can stop the timer now, if there are no more scheduled attempts
 					stopTimer();
-					return false;
 				}
-				else if (numRetries == -1)
-					// first failed attempt, so start counter there
-					connectionsQueue.put(connectionURL, new Integer(1));
-				else
-					connectionsQueue.put(connectionURL, new Integer(numRetries++));
+				else {
+					if (numRetries == -1) {
+						// first failed attempt, so start counter there
+						connectionsQueue.put(connectionURL, new Integer(1));
+						numRetries = 1;
+					}
+					else
+						connectionsQueue.put(connectionURL, new Integer(numRetries++));
+					logger.warn("Could not connect to remote service '" + connectionURL + 
+							"' after " + numRetries + " previously failed attempts, will retry in " + 
+							retryConnectionDelay + "ms");
+					// if we get here, we have re-scheduled, so maybe need to start the timer
+					startTimer();
+				}
 			}
-			logger.warn("Could not connect to remote service '" + connectionURL + 
-					"', will retry in " + retryConnectionDelay + "ms");
-			// if we get here, we have re-scheduled, so maybe need to start the timer
-			startTimer();
-			return false;
+			success = false;
 		}
+		finally {
+			// don't forget to activate background inquiry again
+			if (wasRunning)
+				manager.startInquiry(true);
+		}
+		return success;
 	}
 	
 	/** Small helper function for starting a regular timer if it isn't running. */
@@ -351,8 +376,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		if (connectionRetryTimer == null) {
 			logger.debug("No retry timer task running, starting it now");
 			connectionRetryTimer = new Timer();
-			connectionRetryTimer.scheduleAtFixedRate(new ConnectionRetryTask(), 
-					retryConnectionDelay, retryConnectionDelay);
+			connectionRetryTimer.schedule(new ConnectionRetryTask(), retryConnectionDelay);
 		}
 	}
 	
@@ -381,10 +405,17 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					Enumeration urls = connectionsQueue.keys();
 					while (urls.hasMoreElements()) {
 						String url = (String) urls.nextElement();
-						logger.info("Retrying connection to '" + url + "'");
+						logger.info("(Re-)trying connection to '" + url + "'");
 						attemptConnection(url);
 					}
 				}
+
+				// if there are still some connections left, reschedule
+				if (!connectionsQueue.isEmpty())
+					connectionRetryTimer.schedule(new ConnectionRetryTask(), retryConnectionDelay);
+				// otherwise, we stop...
+				else
+					connectionRetryTimer = null;
 			}
 		}
 	}

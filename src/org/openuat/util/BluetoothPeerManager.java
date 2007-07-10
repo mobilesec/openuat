@@ -258,6 +258,51 @@ public class BluetoothPeerManager {
 			return false;
 	}
 	
+	/** Returns true if the inquiry thread is currently running. */
+	public boolean isInquiryActive() {
+		return inquiryThread != null;
+	}
+	
+	/** Wait for any background inquiry or service search that may be running
+	 * to finish. It is advisable to call stopInquiry() before this method...
+	 * @param timeoutMs The maximum amount of time to wait in milliseconds.
+	 * @return true if, within timeoutMs milliseconds, no background task is 
+	 *         running any more, false otherwise (i.e. if something is still
+	 *         running).
+	 * @throws InterruptedException
+	 */ 
+	public boolean waitForBackgroundSearchToFinish(int timeoutMs) throws InterruptedException {
+		long startWait = System.currentTimeMillis();
+		while (eventsHandler.isInquiryRunning() && 
+			   System.currentTimeMillis()-startWait <= timeoutMs) {
+			logger.debug("Waiting for background inquiry to finish...");
+			Thread.sleep(100);
+		}
+		if (eventsHandler.isInquiryRunning()) {
+			logger.error("Timeout while waiting for background inquiry to finish: still running after " +
+					timeoutMs + "ms, aborting wait");
+			return false;
+		}
+		logger.debug("Background inquiry finished");
+		
+		synchronized (foundDevices) {
+			for (Enumeration devices = foundDevices.elements(); devices.hasMoreElements(); ) {
+				RemoteDeviceDetail dev = (RemoteDeviceDetail) devices.nextElement();
+				while (!dev.serviceSearchFinished && 
+					   System.currentTimeMillis()-startWait <= timeoutMs) {
+					logger.debug("Waiting for service search to finish...");
+					Thread.sleep(100);
+				}
+				if (!dev.serviceSearchFinished) {
+					logger.error("Timeout while waiting for service search to finish: still running after " +
+							timeoutMs + "ms, aborting wait");
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	
 	/** Start to search for the list of services on a remote device. This 
 	 * should not be done when automaticServiceDiscovery=true for performance
 	 * reasons (but does not hurt if it is called). Calling this method empties
@@ -503,6 +548,8 @@ public class BluetoothPeerManager {
 										// but also start it if the last search finished with an error
 										!entry.serviceSearchFinished) {
 									entry.numNoServiceScans = 1;
+									// TODO: is this the cause of service scan (busy) errors on J2ME? 
+									// does inquiryCompleted need to return before we can start service searches? 
 									startServiceSearch(device, automaticServiceDiscoveryUUID);
 								}
 								else
