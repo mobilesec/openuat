@@ -345,7 +345,7 @@ public class KeyManager extends AuthenticationEventSender {
 	/** Returns the current state of a remote host. */
 	public int getState(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warn("getState called for unknown host '" + 
+			logger.info("getState called for unknown host '" + 
 					host.getRemoteName() + "', return nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return STATE_NONEXISTANT;
