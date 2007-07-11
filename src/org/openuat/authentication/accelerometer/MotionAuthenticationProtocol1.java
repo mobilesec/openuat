@@ -241,6 +241,21 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			}
 		}
 	}
+	
+	private static double coherence(double[] segment1, double[] segment2, int windowSize) {
+		if (segment1 == null || segment2 == null) {
+			throw new RuntimeException("Did not yet receive both segments, skipping comparing for now");
+		}
+
+		double[][] equalizedSeries = TimeSeriesUtil.cutSegmentsToEqualLength(segment1, segment2);
+		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, 
+				(int) (MotionAuthenticationParameters.coherenceWindowOverlapFactor * windowSize));
+		if (coherence == null) {
+			logger.warn("Coherence not computed, no match");
+			return -1;
+		}
+		return Coherence.mean(coherence, MotionAuthenticationParameters.coherenceCutOffFrequency);
+	}
 
 	/** This helper function calls Coherence.cohere on localSegment and remoteSegment,
 	 * but only on the first part of both with the minimum length. That is, it trims the
@@ -250,19 +265,11 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 * @see #coherenceThreshold
 	 */
 	private boolean checkCoherence(double[] remoteSegment) {
-		if (localSegment == null || remoteSegment == null) {
-			throw new RuntimeException("Did not yet receive both segments, skipping comparing for now");
-		}
-
-		double[][] equalizedSeries = TimeSeriesUtil.cutSegmentsToEqualLength(localSegment, remoteSegment);
-		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, 
-				(int) (MotionAuthenticationParameters.coherenceWindowOverlapFactor * windowSize));
-		if (coherence == null) {
-			logger.warn("Coherence not computed, no match");
+		double c = coherence(localSegment, remoteSegment, windowSize);
+		if (c < 0)
 			return false;
-		}
 		
-		lastCoherenceMean = Coherence.mean(coherence, MotionAuthenticationParameters.coherenceCutOffFrequency);
+		lastCoherenceMean = c;
 		System.out.println("Coherence mean: " + lastCoherenceMean);
 		
 		return lastCoherenceMean > coherenceThreshold;
@@ -597,6 +604,13 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	/////////////////// testing code begins here ///////////////
 //#if cfg.includeTestCode
 	public static void main(String[] args) throws IOException {
+		if (args.length == 4 && args[0].equals("check")) {
+			double[] segment1 = TimeSeriesUtil.decodeVector(args[1].getBytes());
+			double[] segment2 = TimeSeriesUtil.decodeVector(args[2].getBytes());
+			System.out.println(coherence(segment1, segment2, Integer.parseInt(args[3])));
+			return;
+		}
+		
 		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
 		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
 		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
