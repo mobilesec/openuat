@@ -181,7 +181,7 @@
 	<!-- And a task for creating installer packages for Windows -->
 	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
 	<!-- This is a task for checkstyle -->
-	<taskdef resource="checkstyletask.properties" classpath="lib/checkstyle-4.3.jar"/>
+	<taskdef resource="checkstyletask.properties" classpath="${lib}/checkstyle-4.3.jar:${lib}/commons-beanutils-core.jar:${lib}/commons-logging.jar:${lib}/antlr.jar"/>
 
 
 	<target name="enableDebug" 
