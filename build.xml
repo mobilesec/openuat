@@ -21,6 +21,11 @@
 	<property name="reports" location="reports"/>
 	<property name="reports.tests" location="${reports}/tests"/>
 	<property name="reports.coverage" location="${reports}/coverage"/>
+	<property name="reports.checkstyle" location="${reports}/checkstyle_errors.xml"/>
+	<property name="checkstyle.suppressions.file" location="${src}/suppressions.xml"/>
+	<property name="checkstyle.header.file" location="${src}/java.header"/>
+	<property name="checkstyle.importcontrol.file" location="${src}/import-control.xml"/>
+	<property name="translation.severity" value="warning"/>
 	<property name="thirdparty" location="thirdparty"/>
 	<property name="thirdparty-BC-core" location="${thirdparty}/bouncycastle-core-deps"/>
 	<property name="bin-BC-core" location="${build}/bin-bouncycastle-core"/>
@@ -175,6 +180,8 @@
 	/>
 	<!-- And a task for creating installer packages for Windows -->
 	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
+	<!-- This is a task for checkstyle -->
+	<taskdef resource="checkstyletask.properties" classpath="lib/checkstyle-4.3.jar"/>
 
 
 	<target name="enableDebug" 
@@ -623,6 +630,14 @@
 				<fileset dir="${src}">
 				</fileset>
 		</cobertura-report>
+	</target>
+	
+	<target name="check" description="Check source code for style">
+		<checkstyle config="${src}/checkstyle_checks.xml">
+			<fileset dir="${src}" includes="**/*.java"/>
+			<formatter type="plain"/>
+			<formatter type="xml" toFile="${reports.checkstyle}"/>
+		</checkstyle>
 	</target>
 	
 	<target name="run" depends="jar" description="Run jar file">
