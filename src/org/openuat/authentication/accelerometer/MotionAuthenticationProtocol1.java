@@ -49,7 +49,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	/** The maximimum time that the interlock exchange of active segments
 	 * with the remote host is allowed to take in ms.
 	 */
-	public static final int RemoteInterlockExchangeTimeout = 10000;
+	public static final int RemoteInterlockExchangeTimeout = 20000;
 	
 	/** Keep an incoming key verification connection open for this long when
 	 * no local segment is available [ms].

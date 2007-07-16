@@ -297,7 +297,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 						"' is higher than the remote address to connect to '" + 
 						remoteAddress + "', backing off and waiting for remote to connect");
 				// but this counts as a failed attempt, or we would never do it...
-				connectionsQueue.put(connectionURL, new Integer(numRetries++));
+				connectionsQueue.put(connectionURL, new Integer(++numRetries));
 				return false;
 			}
 		}

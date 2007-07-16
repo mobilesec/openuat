@@ -360,11 +360,11 @@ public class BluetoothPeerManager {
 				dev.serviceSearchTransId = agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
 				return true;
 			} catch (BluetoothStateException e) {
-				logger.error("Could not initiate inquiry: " + e);
+				logger.error("Could not initiate service search: " + e);
 				e.printStackTrace();
 				return false;
 			} catch (IllegalArgumentException e) {
-				logger.error("Could not initiate inquiry: " + e);
+				logger.error("Could not initiate service search: " + e);
 				e.printStackTrace();
 				return false;
 			}
@@ -532,6 +532,7 @@ public class BluetoothPeerManager {
 				// find out which of the devices are new
 				Vector newDevices = new Vector();
 				synchronized (foundDevices) {
+					boolean searchStarted = false;
 					for (Enumeration devices = foundDevices.keys(); devices.hasMoreElements(); ) {
 						RemoteDevice device = (RemoteDevice) devices.nextElement();
 						RemoteDeviceDetail entry = (RemoteDeviceDetail) foundDevices.get(device);
@@ -546,11 +547,12 @@ public class BluetoothPeerManager {
 							if (automaticServiceDiscovery) {
 								if (entry.numNoServiceScans >= SCAN_SERVICES_FACTOR || entry.numNoServiceScans == 0 ||
 										// but also start it if the last search finished with an error
-										!entry.serviceSearchFinished) {
+										!entry.serviceSearchFinished && !searchStarted) {
 									entry.numNoServiceScans = 1;
 									// TODO: is this the cause of service scan (busy) errors on J2ME? 
 									// does inquiryCompleted need to return before we can start service searches? 
 									startServiceSearch(device, automaticServiceDiscoveryUUID);
+									searchStarted = true;
 								}
 								else
 									entry.numNoServiceScans++;
