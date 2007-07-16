@@ -760,7 +760,7 @@ public class BluetoothPeerManager {
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
-				logger.info("Inquiry cancelled");
+				logger.info("Service search cancelled");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
