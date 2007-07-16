@@ -56,6 +56,11 @@ public class BluetoothPeerManager {
 	 */
 	public final static int MINIMUM_SLEEP_TIME = 10000;
 	
+	/** The maximum time we wait for a service search to finish in milliseconds.
+	 * After this time, the service search request is cancelled.
+	 */
+	public final static int TIMEOUT_SERVICE_SEARCH = 5000;
+	
 	/** Re-scan services every nth time that a device is discovered by the
 	 * inquiry process.
 	 */
@@ -104,6 +109,14 @@ public class BluetoothPeerManager {
 	
 	/** Use for randomized sleeps. */
 	private Random random = new Random();
+	
+	/** After discovering new devices (or for renewing their list of services),
+	 * their Bluetooth addresses are added to this queue (at the end with 
+	 * addElement) and removed by the inquiryThread to start service searches
+	 * (from the beginning with remove(0)). Elements of the queue are of type
+	 * RemoteDevice.
+	 */
+	private Vector serviceSearchQueue = new Vector();
 	
 	public BluetoothPeerManager() throws IOException {
 		if (! BluetoothSupport.init()) {
@@ -216,23 +229,7 @@ public class BluetoothPeerManager {
 			return startInquiry();
 		}
 		else {
-			inquiryThread = new Thread(new Runnable() { public void run() {
-				while (inquiryThread != null) {
-					if (!startInquiry())
-						return;
-					try {
-						// before starting the next inquire run, wait for this one to finish
-						synchronized (eventsHandler) {
-							while (eventsHandler.isInquiryRunning())
-								eventsHandler.wait();
-						}
-						// and sleep
-						Thread.sleep((sleepBetweenInquiries*8 + random.nextInt(sleepBetweenInquiries*4))/10);
-					} catch (InterruptedException e) { 
-						// just ignore when we are being interrupted - will only shorten the wait time but is non-critical
-					}
-				}
-			}});
+			inquiryThread = new Thread(new InquiryThread() );
 			inquiryThread.start();
 			return true;
 		}
@@ -288,16 +285,8 @@ public class BluetoothPeerManager {
 		synchronized (foundDevices) {
 			for (Enumeration devices = foundDevices.elements(); devices.hasMoreElements(); ) {
 				RemoteDeviceDetail dev = (RemoteDeviceDetail) devices.nextElement();
-				while (!dev.serviceSearchFinished && 
-					   System.currentTimeMillis()-startWait <= timeoutMs) {
-					logger.debug("Waiting for service search to finish...");
-					Thread.sleep(100);
-				}
-				if (!dev.serviceSearchFinished) {
-					logger.error("Timeout while waiting for service search to finish: still running after " +
-							timeoutMs + "ms, aborting wait");
+				if (!waitForServiceSearch(dev, timeoutMs, startWait))
 					return false;
-				}
 			}
 		}
 		return true;
@@ -465,6 +454,47 @@ public class BluetoothPeerManager {
 		 */
 		public void serviceListFound(RemoteDevice remoteDevice, Vector services);
 	}
+	
+	private class InquiryThread implements Runnable {
+		public void run() {
+			while (inquiryThread != null) {
+				if (!startInquiry())
+					return;
+				try {
+					// before starting the next inquire run, wait for this one to finish
+					synchronized (eventsHandler) {
+						while (eventsHandler.isInquiryRunning())
+							eventsHandler.wait();
+					}
+					// if necessary, go through the service scan queue
+					synchronized (serviceSearchQueue) {
+						for (int i=0; i<serviceSearchQueue.size(); i++) {
+							RemoteDevice device = (RemoteDevice) serviceSearchQueue.elementAt(i);
+							startServiceSearch(device, automaticServiceDiscoveryUUID);
+							// wait for the previous service scan to finish before starting the next
+							long startWait = System.currentTimeMillis();
+							RemoteDeviceDetail dev = getDeviceDetail(device);
+							if (!waitForServiceSearch(dev, TIMEOUT_SERVICE_SEARCH, startWait)) {
+								logger.info("Service search on " + device.getBluetoothAddress() +
+										" timed out, aborting it");
+								if (dev.serviceSearchTransId > -1)
+									agent.cancelServiceSearch(dev.serviceSearchTransId);
+								else
+									logger.error("Tried to cancel service search on " + 
+											device.getBluetoothAddress() + 
+											", but no transaction ID known, can not cancel");
+							}
+						}
+						serviceSearchQueue.removeAllElements();
+					}
+					// and sleep
+					Thread.sleep((sleepBetweenInquiries*8 + random.nextInt(sleepBetweenInquiries*4))/10);
+				} catch (InterruptedException e) { 
+					// just ignore when we are being interrupted - will only shorten the wait time but is non-critical
+				}
+			}
+		}		
+	}
 
 	/** This is only a small structure for keeping together the things we
 	 * remember about a discovered remote device. 
@@ -532,7 +562,6 @@ public class BluetoothPeerManager {
 				// find out which of the devices are new
 				Vector newDevices = new Vector();
 				synchronized (foundDevices) {
-					boolean searchStarted = false;
 					for (Enumeration devices = foundDevices.keys(); devices.hasMoreElements(); ) {
 						RemoteDevice device = (RemoteDevice) devices.nextElement();
 						RemoteDeviceDetail entry = (RemoteDeviceDetail) foundDevices.get(device);
@@ -547,12 +576,12 @@ public class BluetoothPeerManager {
 							if (automaticServiceDiscovery) {
 								if (entry.numNoServiceScans >= SCAN_SERVICES_FACTOR || entry.numNoServiceScans == 0 ||
 										// but also start it if the last search finished with an error
-										!entry.serviceSearchFinished && !searchStarted) {
+										!entry.serviceSearchFinished) {
 									entry.numNoServiceScans = 1;
-									// TODO: is this the cause of service scan (busy) errors on J2ME? 
-									// does inquiryCompleted need to return before we can start service searches? 
-									startServiceSearch(device, automaticServiceDiscoveryUUID);
-									searchStarted = true;
+									// add to the service search queue so that it will be scanned
+									synchronized (serviceSearchQueue) {
+										serviceSearchQueue.addElement(device);
+									}
 								}
 								else
 									entry.numNoServiceScans++;
@@ -603,6 +632,9 @@ public class BluetoothPeerManager {
 			}
 			synchronized (this) {
 				// in any instance, inquiry is no longer active
+				/* This will also wake up the inquiryThread (if running), and
+				 * thus trigger going through the service search queue.
+				 */ 
 				isFinished = true;
 				// signal the waiting background thread (if there is one)
 				this.notify();
@@ -686,6 +718,9 @@ public class BluetoothPeerManager {
 					dev.serviceSearchFinished = true;
 					
 					services = dev.services;
+					
+					// finished with that service, wake up when we are waiting for it
+					dev.notifyAll();
 				}
 
 				synchronized (services) { 
@@ -776,6 +811,29 @@ public class BluetoothPeerManager {
 			}
 		}
 		return dev;
+	}
+	
+	/** This is only a small helper to wait for a service search at a device
+	 * to finish.
+	 * @return true if no search is running, false if wait was not successful
+	 *         (something is still running).
+	 * @throws InterruptedException 
+	 */
+	private boolean waitForServiceSearch(RemoteDeviceDetail dev, int timeoutMs, long startWait) throws InterruptedException {
+		synchronized (dev) {
+			while (!dev.serviceSearchFinished && 
+					System.currentTimeMillis()-startWait <= timeoutMs) {
+				logger.debug("Waiting for service search to finish...");
+				dev.wait(500);
+			}
+			if (!dev.serviceSearchFinished) {
+				logger.warn("Timeout while waiting for service search to finish: still running after " +
+						timeoutMs + "ms, aborting wait");
+				return false;
+			}
+			else
+				return true;
+		}
 	}
 	
 	/** This is a helper function for resolving a remote device name. If the
