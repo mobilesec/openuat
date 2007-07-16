@@ -752,14 +752,15 @@ public class BluetoothPeerManager {
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
-				logger.error("No records returned");
+				logger.info("No matching records returned for service search on " +
+						currentRemoteDevice.getBluetoothAddress());
 				synchronized (dev) {
 					// in this case, service search was actually finished correctly (even if we didn't get any records)
 					dev.serviceSearchFinished = true;
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
-				logger.error("Inquiry cancelled");
+				logger.info("Inquiry cancelled");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
