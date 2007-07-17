@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.Vector;
 
 import javax.bluetooth.RemoteDevice;
 import javax.microedition.io.Connector;
@@ -29,6 +30,15 @@ import org.apache.log4j.Logger;
 public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMChannel" /*BluetoothRFCOMMChannel.class*/);
+	
+	/** This is used to hold the list of all concurrently open (or trying to
+	 * be opened) RFCOMM channels. open() will add channels to this list,
+	 * close() will remove them, elements are of type BluetoothRFCOMMChannel.
+	 * This is mainly there for cleanup purposes, to close all channels when
+	 * exiting the application (and thus e.g. getting rid of hanging MIDlet
+	 * states).
+	 */
+	private static Vector openChannels = new Vector();
 	
 	/** The remote device address string, as passed to the constructor. */
 	private String remoteDeviceAddress;
@@ -50,6 +60,19 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Initialized by @see #open.
 	 */
 	private OutputStream toRemote = null;
+	
+	/** Returns all BluetoothRFCOMMChannel objects whose channel is currently
+	 * open or is being tried to be opened.
+	 * @return The array may be of length 0 when no channels are open, but 
+	 *         will be != null.
+	 */
+	public static BluetoothRFCOMMChannel[] getOpenChannels() {
+		BluetoothRFCOMMChannel[] ret = new BluetoothRFCOMMChannel[openChannels.size()];
+		for (int i=0; i<openChannels.size(); i++)
+			ret[i] = (BluetoothRFCOMMChannel) openChannels.elementAt(i);
+		logger.info("Returning " + ret.length + " open BluetoothRFCOMMChannel objects");
+		return ret;
+	}
 	
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
@@ -123,12 +146,14 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	}
 	
 	/** Opens a channel to the endpoint given to the constructor.
+	 * The method is synchronized, because opening might block for some time
+	 * and we don't want to do it twice for the same host.
 	 * @throws IOException On Bluetooth errors.
 	 * @throws IOException When the channel has already been opened.
 	 */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
-	public boolean open() throws IOException {
+	public synchronized boolean open() throws IOException {
 		if (connection != null) {
 			throw new IOException("Channel has already been opened");
 		}
@@ -137,7 +162,19 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		logger.debug("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber + " with URL '" + serviceURL + "'");
-		
+
+		// before blocking, add to our list
+		synchronized (openChannels) {
+			// sanity check
+			if (openChannels.contains(this)) {
+				logger.error("This BluetoothRFCOMMChannel object to " + 
+						remoteDeviceAddress + 
+						" does not seem to have an open connection, but is already in openChannels. This should not happen, aborting open!");
+				return false;
+			}
+			openChannels.addElement(this);
+		}
+		// this can take some time...
 		connection = (StreamConnection) Connector.open(serviceURL);
 		fromRemote = connection.openInputStream();
 		toRemote = connection.openOutputStream();
@@ -167,6 +204,18 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
    			logger.error("Unable to close streams cleanly", e);
+		}
+		finally {
+			// remove from the list of open channels again
+			synchronized (openChannels) {
+				if (!openChannels.contains(this)) {
+					logger.error("This BluetoothRFCOMMChannel object to " + 
+							remoteDeviceAddress + 
+							" seems to have an open connection, but is not in openChannels. This should not happen!");
+				}
+				else
+					openChannels.removeElement(this);
+			}
 		}
 		fromRemote = null;
 		toRemote = null;
@@ -222,8 +271,8 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			/* But the JSR82 API makes the RemoteDevice(String) constructor 
 			   protected, so can't use it. The best option is to simply return
 			   a string object. */
-			// TODO: do something about this! return something sensible!
-			// no, don't do it! some callers may depend on this being a RemoteDevice object
+			// TODO: do something about this! return something sensible! 
+			// but callers may depend on this being of type RemoteDevice...
 			//return remoteDeviceAddress;
 			return null;
 		else
