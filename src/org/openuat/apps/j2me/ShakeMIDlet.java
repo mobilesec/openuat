@@ -31,6 +31,7 @@ import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothOpportunisticConnector;
+import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.ProtocolCommandHandler;
@@ -98,9 +99,74 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			logger.error("Unable to get volume control: " + e);
 		}
 		
+		if (!startBackgroundTasks())
+			return;
+		
+		main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
+		exit = new Command("Exit", Command.EXIT, 1);
+		back = new Command("Back", Command.BACK, 1);
+		log = new Command("Log", Command.ITEM, 2);
+
+		main_list.addCommand(exit);
+		main_list.addCommand(log);
+		main_list.setCommandListener(this);
+
+		//main_list.append("Find Devices", null);
+			
+		// announce that we are up and about
+		try {
+			Manager.playTone(72, 500, 30);
+		} catch (MediaException e) {
+			logger.error("Unable to play tone");
+		}
+	}
+
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	public void startApp() {
+		logForm.setPreviousScreen(main_list);
+		display.setCurrent(main_list);
+	}
+
+	public void commandAction(Command com, Displayable dis) {
+		if (com == exit) { //exit triggered from the main form
+			stopBackgroundTasks();
+			
+			// and MIDlet closing sequence
+			destroyApp(false);
+			notifyDestroyed();
+		}
+		else if (com == List.SELECT_COMMAND) {
+			if (dis == main_list) { //select triggered from the main from
+				if (main_list.getSelectedIndex() >= 0) { //find devices
+				}
+			}
+		}
+		else if (com == back) {
+			// TODO: clean me up here - what should our interface be?
+		}
+		else if (com == log) {
+			display.setCurrent(logForm);
+		}
+
+	}
+
+	private void do_alert(String msg, int time_out) {
+		if (display.getCurrent() instanceof Alert) {
+			((Alert) display.getCurrent()).setString(msg);
+			((Alert) display.getCurrent()).setTimeout(time_out);
+		} else {
+			Alert alert = new Alert("Bluetooth");
+			alert.setString(msg);
+			alert.setTimeout(time_out);
+			display.setCurrent(alert);
+		}
+	}
+	
+	private boolean startBackgroundTasks() {
 		if (! BluetoothSupport.init()) {
 			do_alert("Could not initialize Bluetooth API", Alert.FOREVER);
-			return;
+			return false;
 		}
 
 		try {
@@ -120,6 +186,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());*/
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
+			return false;
 		}
 		
 		reader = new SymbianTCPAccelerometerReader();
@@ -154,83 +221,35 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		// finally start the reader, now that everything is registered and the time series chains are ready
 		reader.start();
 		
-			main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
-			exit = new Command("Exit", Command.EXIT, 1);
-			back = new Command("Back", Command.BACK, 1);
-			log = new Command("Log", Command.ITEM, 2);
-
-			main_list.addCommand(exit);
-			main_list.addCommand(log);
-			main_list.setCommandListener(this);
-
-			//main_list.append("Find Devices", null);
-			
-			// announce that we are up and about
+		return true;
+	}
+	
+	private void stopBackgroundTasks() {
+		if (protocol != null)
+			protocol.stopListening();
+		// TODO: remove this block once testing is done
+		/*if (rfcommServer != null)
 			try {
-				Manager.playTone(72, 500, 30);
-			} catch (MediaException e) {
-				logger.error("Unable to play tone");
+				rfcommServer.stop();
+			} catch (InternalApplicationException e) {
+				do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
+			}*/
+		
+		// in case we are streaming, stop that
+		if (toRemote != null) {
+			try {
+				toRemote.close();
+			} catch (IOException e) {
+				// just ignore here - we're shutting down anyways
 			}
-	}
-
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
-	public void startApp() {
-		logForm.setPreviousScreen(main_list);
-		display.setCurrent(main_list);
-	}
-
-	public void commandAction(Command com, Displayable dis) {
-		if (com == exit) { //exit triggered from the main form
-			if (protocol != null)
-				protocol.stopListening();
-			// TODO: remove this block once testing is done
-			/*if (rfcommServer != null)
-				try {
-					rfcommServer.stop();
-				} catch (InternalApplicationException e) {
-					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
-				}*/
-			
-			// in case we are streaming, stop that
-			if (toRemote != null) {
-				try {
-					toRemote.close();
-				} catch (IOException e) {
-					// just ignore here - we're shutting down anyways
-				}
-				toRemote = null;
-			}
-				
-			reader.stop();
-			destroyApp(false);
-			notifyDestroyed();
+			toRemote = null;
 		}
-		else if (com == List.SELECT_COMMAND) {
-			if (dis == main_list) { //select triggered from the main from
-				if (main_list.getSelectedIndex() >= 0) { //find devices
-				}
-			}
-		}
-		else if (com == back) {
-			// TODO: clean me up here - what should our interface be?
-		}
-		else if (com == log) {
-			display.setCurrent(logForm);
-		}
-
-	}
-
-	public void do_alert(String msg, int time_out) {
-		if (display.getCurrent() instanceof Alert) {
-			((Alert) display.getCurrent()).setString(msg);
-			((Alert) display.getCurrent()).setTimeout(time_out);
-		} else {
-			Alert alert = new Alert("Bluetooth");
-			alert.setString(msg);
-			alert.setTimeout(time_out);
-			display.setCurrent(alert);
-		}
+		// proper shutdown all open channels
+		BluetoothRFCOMMChannel[] openChannels = BluetoothRFCOMMChannel.getOpenChannels();
+		for (int i=0; i<openChannels.length; i++)
+			openChannels[i].close();
+		// stop reading from the Symbian accelerometer wrapper
+		reader.stop();
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
