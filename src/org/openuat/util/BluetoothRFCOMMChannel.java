@@ -189,16 +189,18 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 * @throws IOException When the channel has not yet been opened.
 	 */
 	public void close() {
-		if (connection == null || toRemote == null || fromRemote == null) {
-			logger.error("RFCOMM channel has not been openend properly or been close already, can not close");
+		if (connection == null) {
+			logger.error("RFCOMM channel has not been opened properly or been closed already, can not close");
 			return;
 		}
 		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber);
 		
     	try {
-    		fromRemote.close();
-    		toRemote.close();
+    		if (fromRemote != null)
+    			fromRemote.close();
+    		if (toRemote != null)
+    			toRemote.close();
     		connection.close();
 		}
 		catch (IOException e) {
@@ -314,6 +316,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		BluetoothRFCOMMChannel o = (BluetoothRFCOMMChannel) other;
 		
+		System.out.println("1: " + connection + ", " + o.connection);
 		// already connected? if yes, this has precedence
 		if (connection != null && o.connection != null) {
 			if (logger.isDebugEnabled())
@@ -324,6 +327,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		
 		// not connected, compare serviceURL (because this will be used in open()
 		// however, only compare serviceURL if both have a valid remote channel number
+		System.out.println("2: " + serviceURL + ", " + o.serviceURL + ", " + remoteChannelNumber + ", " + o.remoteChannelNumber);
 		if (serviceURL != null && o.serviceURL != null && 
 				remoteChannelNumber != -1 && o.remoteChannelNumber != -1) {
 			logger.debug("Both serviceURL objects set, comparing serviceURL=" + 
@@ -332,6 +336,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		
 		// ok, neither connected, nor do we have full serviceURLs, only compare device addresses (if available)
+		System.out.println("3: " + remoteDeviceAddress + ", " + o.remoteDeviceAddress);
 		if (remoteDeviceAddress != null && o.remoteDeviceAddress != null) {
 			logger.debug("Both remoteDeviceAddress objects set, comparing remoteDeviceAddress=" +
 					remoteDeviceAddress + ", o.remoteDeviceAddress=" + o.remoteDeviceAddress);
