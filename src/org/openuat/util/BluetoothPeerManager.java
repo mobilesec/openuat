@@ -236,6 +236,11 @@ public class BluetoothPeerManager {
 	}
 
 	/** Stops a background inquiry.
+	 * @param force If set to true, then any inquiry or service search that 
+	 *              may be running in the background will be cancelled. If
+	 *              set to false, they will be left running (and 
+	 *              waitForBackgroundSearchToFinish can be used to wait for 
+	 *              them to finish).
 	 * @return true it stopped successfully, false if no background inquiry
 	 *         was running.
 	 */
