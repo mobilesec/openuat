@@ -59,7 +59,7 @@ public class BluetoothPeerManager {
 	/** The maximum time we wait for a service search to finish in milliseconds.
 	 * After this time, the service search request is cancelled.
 	 */
-	public final static int TIMEOUT_SERVICE_SEARCH = 5000;
+	public final static int TIMEOUT_SERVICE_SEARCH = 10000;
 	
 	/** Re-scan services every nth time that a device is discovered by the
 	 * inquiry process.
@@ -239,7 +239,7 @@ public class BluetoothPeerManager {
 	 * @return true it stopped successfully, false if no background inquiry
 	 *         was running.
 	 */
-	public boolean stopInquiry() {
+	public boolean stopInquiry(boolean force) {
 		if (inquiryThread != null) {
 			Thread tmp = inquiryThread;
 			inquiryThread = null;
@@ -249,6 +249,27 @@ public class BluetoothPeerManager {
 			} catch (InterruptedException e) {
 				// stopping anyway, don't care when interrupted
 			}
+			
+			if (force) {
+				// if running, try to cancel an active inquiry
+				if (eventsHandler.isInquiryRunning()) {
+					logger.info("Inquiry currently running, aborting now");
+					agent.cancelInquiry(eventsHandler);
+				}
+			
+				// and also cancel any service searches that might still be running
+				RemoteDevice[] devs = getPeers();
+				for (int i=0; i<devs.length; i++) {
+					RemoteDeviceDetail dev = getDeviceDetail(devs[i]);
+					if (dev.serviceSearchTransId > -1) {
+						logger.info("Service search on device " + 
+								devs[i].getBluetoothAddress() +
+								"currently running, aborting now");
+						agent.cancelServiceSearch(dev.serviceSearchTransId);
+					}
+				}
+			}
+			
 			return true;
 		}
 		else
@@ -474,7 +495,10 @@ public class BluetoothPeerManager {
 							// wait for the previous service scan to finish before starting the next
 							long startWait = System.currentTimeMillis();
 							RemoteDeviceDetail dev = getDeviceDetail(device);
-							if (!waitForServiceSearch(dev, TIMEOUT_SERVICE_SEARCH, startWait)) {
+							// if already shutting down, don't wait but cancel immediately
+							if (!waitForServiceSearch(dev, 
+									(inquiryThread != null ? TIMEOUT_SERVICE_SEARCH : -1), 
+									startWait)) {
 								logger.info("Service search on " + device.getBluetoothAddress() +
 										" timed out, aborting it");
 								if (dev.serviceSearchTransId > -1)
@@ -487,8 +511,9 @@ public class BluetoothPeerManager {
 						}
 						serviceSearchQueue.removeAllElements();
 					}
-					// and sleep
-					Thread.sleep((sleepBetweenInquiries*8 + random.nextInt(sleepBetweenInquiries*4))/10);
+					// and sleep (but only if not exiting)
+					if (inquiryThread != null)
+						Thread.sleep((sleepBetweenInquiries*8 + random.nextInt(sleepBetweenInquiries*4))/10);
 				} catch (InterruptedException e) { 
 					// just ignore when we are being interrupted - will only shorten the wait time but is non-critical
 				}
@@ -913,7 +938,7 @@ public class BluetoothPeerManager {
 		m.startInquiry(true);
 		System.out.println("Press any key to stop background inquiry");
 		System.in.read();
-		m.stopInquiry();
+		m.stopInquiry(true);
 	}
 //#endif
 }
