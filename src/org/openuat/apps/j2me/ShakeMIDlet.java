@@ -11,6 +11,9 @@ package org.openuat.apps.j2me;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+import javax.bluetooth.BluetoothStateException;
+import javax.bluetooth.LocalDevice;
+import javax.bluetooth.UUID;
 import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
@@ -24,7 +27,6 @@ import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
-import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
@@ -32,12 +34,23 @@ import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
 import org.openuat.util.BluetoothOpportunisticConnector;
 import org.openuat.util.BluetoothRFCOMMChannel;
+import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
+	private final static boolean FIXED_DEMO_MODE = false;
+	private final static String FIXED_DEMO_UUID = "b76a37e5e5404bf09c2a1ae3159a02d8";
+	private final static int FIXED_DEMO_CHANNELNUM = 7;
+	private final static byte[] FIXED_DEMO_SHAREDKEY = {
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+	};
+	private final static String FIXED_DEMO_PEER_1 = "00180FA4C997";
+	private final static String FIXED_DEMO_PEER_2 = "00180FA3A1D4";
+	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
 	List main_list;
@@ -51,6 +64,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	Display display;
 	
 	ShakeAuthenticator protocol;
+	
+	// these are only needed for fixed demo mode...
+	BluetoothRFCOMMServer rfcommServer;
+	DemoModeConnector connector;
+	boolean connected = false;
 	
 	LogForm logForm;
 
@@ -170,20 +188,25 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		try {
-			BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
-			protocol = new ShakeAuthenticator(bt, this);
-			bt.setKeyManager(protocol.getKeyManager());
-			// this is an additional command handler for streaming the acceleration values
-			bt.addProtocolCommandHandler(Command_Debug_Streaming, 
-					new TestBTStreamingCommandHandler());
-			protocol.startListening();
-			
-			// keep the socket connected for now
-			// TODO: remove this block once testing is done
-			/*rfcommServer = new BluetoothRFCOMMServer(null, new UUID("b76a37e5e5404bf09c2a1ae3159a02d8", false), "J2ME Test Service", true, false);
-			rfcommServer.addAuthenticationProgressHandler(this);
-			rfcommServer.start();
-			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());*/
+			if (!FIXED_DEMO_MODE) {
+				BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
+				protocol = new ShakeAuthenticator(bt, this);
+				bt.setKeyManager(protocol.getKeyManager());
+				// this is an additional command handler for streaming the acceleration values
+				bt.addProtocolCommandHandler(Command_Debug_Streaming, 
+						new TestBTStreamingCommandHandler());
+				protocol.startListening();
+			}
+			else {
+				// hard-code a simple RFCOMM server that stays connected
+/*				rfcommServer = new BluetoothRFCOMMServer(new Integer(FIXED_DEMO_CHANNELNUM), 
+						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", true, false);
+				protocol = new ShakeAuthenticator(rfcommServer, this);
+				protocol.startLIstening();
+				logger.info("Finished starting SDP service for demo mode at " + rfcommServer.getRegisteredServiceURL());*/
+/*				connector = new DemoModeConnector();
+				connector.start();*/
+			}
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 			return false;
@@ -227,13 +250,17 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	private void stopBackgroundTasks() {
 		if (protocol != null)
 			protocol.stopListening();
-		// TODO: remove this block once testing is done
-		/*if (rfcommServer != null)
+		
+		if (FIXED_DEMO_MODE) {
+			Thread tmp = connector;
+			connector = null;
+			tmp.interrupt();
 			try {
-				rfcommServer.stop();
-			} catch (InternalApplicationException e) {
-				do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
-			}*/
+				tmp.join();
+			} catch (InterruptedException e) {
+				// don't care
+			}
+		}
 		
 		// in case we are streaming, stop that
 		if (toRemote != null) {
@@ -272,12 +299,15 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		
 		ShakeAuthenticator(HostAuthenticationServer server, ShakeMIDlet outer) {
 			super(server,  
-					false, // don't keep channel open
+					FIXED_DEMO_MODE, // don't keep channel open (unless in demo mode)
 					true, // we support multiple authentications 
 					0.72, 
 					32,
 					false); // no JSSE
 			this.outer = outer;
+			setContinuousChecking(FIXED_DEMO_MODE);
+			if (FIXED_DEMO_MODE)
+				this.staticAuthenticationKey = FIXED_DEMO_SHAREDKEY;
 		}
 		
 		KeyManager getKeyManager() {
@@ -350,7 +380,61 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 		}
 	}
-
+	
+	private class DemoModeConnector extends Thread {
+		BluetoothRFCOMMChannel conn = null;
+		
+		public void run() {
+			String localAddr = null, remoteAddr = null;
+			try {
+				localAddr = LocalDevice.getLocalDevice().getBluetoothAddress();
+				if (localAddr.equals(FIXED_DEMO_PEER_1))
+					remoteAddr = FIXED_DEMO_PEER_2;
+				else if (localAddr.equals(FIXED_DEMO_PEER_2))
+					remoteAddr = FIXED_DEMO_PEER_1;
+				else {
+					logger.error("Aieh, my own address (" + localAddr + 
+							") is neither " + FIXED_DEMO_PEER_1 + " nor " +
+							FIXED_DEMO_PEER_2 + ", can't orient - aborting demo mode");
+					return;
+				}
+			} catch (BluetoothStateException e1) {
+				logger.error("Can't get my own address, aborting demo mode");
+			}
+			
+			logger.info("Starting in demo mode as " + localAddr +
+					", trying to connect to peer " + remoteAddr);
+			
+			while (conn != null && !connected && connector != null) {
+				logger.info("Trying to connect to " + remoteAddr + 
+						" channel " + FIXED_DEMO_CHANNELNUM);
+				try {
+					conn = new BluetoothRFCOMMChannel(remoteAddr, FIXED_DEMO_CHANNELNUM);
+					conn.open();
+					// ok, connected - get the host into verification mode
+					OutputStreamWriter w = new OutputStreamWriter(conn.getOutputStream());
+					w.write(MotionAuthenticationProtocol1.MotionVerificationCommand);
+					w.flush();
+					// and start verifying
+					protocol.startVerificationAsync(FIXED_DEMO_SHAREDKEY, 
+							null, conn);
+					connected = true;
+					logger.info("Successfully opened channel to " + remoteAddr +
+							", demo mode connector thread now exiting");
+				} catch (IOException e) {
+					logger.error("Unable to connect to " + remoteAddr + 
+							" and start verification: " + e);
+					conn = null;
+				}
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					// don't care
+				}
+			}
+		}
+	}
+	
 	OutputStreamWriter toRemote = null;
 	private class TestBTStreamingCommandHandler implements ProtocolCommandHandler {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
