@@ -101,6 +101,7 @@
 		<include name="log4j-1.2.jar"/>
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
+		<include name="avetanaBT.jar"/>
 	</fileset>
     
 	<!-- these can be used in a refid for classpaths -->
