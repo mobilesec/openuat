@@ -201,7 +201,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		if (service.isRunning()) {
 			logger.debug("Stopping RFCOMM service and background inquiries");
 			try {
-				manager.stopInquiry();
+				manager.stopInquiry(true);
 				service.stop();
 			} 
 			catch (InternalApplicationException e) {
@@ -267,7 +267,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		// don't run a key agreement if we already have a key with that host
 		if (keyManager != null) {
 			try {
+				System.out.println("------------------- start compare -----");
 				int stateWithRemote = keyManager.getState(new BluetoothRFCOMMChannel(remoteAddress, -1));
+				System.out.println("------------------- stop compare -----");
 				if (stateWithRemote != KeyManager.STATE_NONEXISTANT &&
 						stateWithRemote != KeyManager.STATE_IDLE) {
 					logger.info("Already in state " + stateWithRemote + " with remote '" +
@@ -305,7 +307,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		// before trying to connect, need to stop background inquiry and wait for it to finish
 		boolean wasRunning = manager.isInquiryActive();
 		if (wasRunning) {
-			if (!manager.stopInquiry())
+			if (!manager.stopInquiry(false))
 				logger.info("Unable to stop background inquiry, connection attempt may fail");
 		}
 		try {
@@ -324,6 +326,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			channel.open();
 			if (logger.isDebugEnabled())
 				logger.debug("Connection to '" + connectionURL + "' established, starting key agreement");
+			// TODO
+			// TODO
+			// TODO
+			// TODO: also enable a timeout for this outgoing request, and abort when the class terminates!
+			// this seems to prevent proper application shutdown at the moment!
 			HostProtocolHandler.startAuthenticationWith(channel, 
 					new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
 			logger.info("Discovered remote device  " + 
@@ -405,7 +412,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					Enumeration urls = connectionsQueue.keys();
 					while (urls.hasMoreElements()) {
 						String url = (String) urls.nextElement();
-						logger.info("(Re-)trying connection to '" + url + "'");
+						logger.debug("(Re-)trying connection to '" + url + "'");
 						attemptConnection(url);
 					}
 				}
@@ -489,6 +496,10 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		c.start();
 		System.in.read();
 		c.stop();
+		// proper shutdown
+		BluetoothRFCOMMChannel[] openChannels = BluetoothRFCOMMChannel.getOpenChannels();
+		for (int i=0; i<openChannels.length; i++)
+			openChannels[i].close();
 	}
 //#endif
 }
