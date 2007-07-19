@@ -15,7 +15,6 @@ import java.util.Vector;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.DHWithVerification;
-import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -92,6 +91,11 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 * "real-world" operation!
 	 */
 	private boolean continuousChecking = false;
+	/** In continuousChecking mode, this may be set to a static key for
+	 * <b>demonstration purposes only</b>. If set, it will be used instead
+	 * of any key from KeyManager;
+	 */ 
+	protected byte[] staticAuthenticationKey;
 	
 	/** This is only used to remember the coherence mean that has been computed last.
 	 * It should only be used for debugging, because the decision if verification 
@@ -525,11 +529,9 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 						remote.open();
 					
 					if (!keyVerification(remote, sharedAuthenticationKey,
-							groupSize, instanceNum, this))
+							groupSize, instanceNum, this) && !continuousChecking)
 						return;
 				} while (continuousChecking);
-				// HACK HACK HACK to make the application exit
-				//stopServer();
 			} catch (IOException e) {
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
@@ -584,12 +586,27 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 				}
 			}
 			
-			// incoming key verification, so need to retrieve the authentication key
-			byte[] authKey = keyManager.getAuthenticationKey(remote);
 			try {
-				keyVerification(remote, authKey, 
+				if (!continuousChecking) {
+					// incoming key verification, so need to retrieve the authentication key
+					byte[] authKey = keyManager.getAuthenticationKey(remote);
+					keyVerification(remote, authKey, 
 						0, 0, // incoming request, so it can't be an interlock group
 						null);
+				}
+				else {
+					byte[] authKey;
+					if (staticAuthenticationKey != null) {
+						logger.warn("Using static authentication key for continuous checking mode");
+						authKey = staticAuthenticationKey;
+					}
+					else
+						authKey = keyManager.getAuthenticationKey(remote);
+					// this is rather hackish, but stay connected and verifying...
+					AsyncInterlockHelper h = new AsyncInterlockHelper(remote, false, 
+							authKey, 0, 0);
+					h.run();
+				}
 				return true;
 			} catch (IOException e) {
 				logger.error("IOException while running incoming key verification: " + e);
