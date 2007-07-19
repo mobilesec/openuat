@@ -167,10 +167,9 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		synchronized (openChannels) {
 			// sanity check
 			if (openChannels.contains(this)) {
-				logger.error("This BluetoothRFCOMMChannel object to " + 
+				logger.warn("This BluetoothRFCOMMChannel object to " + 
 						remoteDeviceAddress + 
-						" does not seem to have an open connection, but is already in openChannels. This should not happen, aborting open!");
-				return false;
+						" does not seem to have an open connection, but is already in openChannels. This should not happen, but ignoring for now!");
 			}
 			openChannels.addElement(this);
 		}
