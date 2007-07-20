@@ -15,6 +15,7 @@ import java.io.OutputStreamWriter;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.HostAuthenticationServer;
+import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
 /** This is an abstract class that implements the basics of all protocols
@@ -287,16 +288,8 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 			 * the stream for other users of the socket (by consuming too many bytes)
 			 */
     		InputStream fromRemote = remote.getInputStream();
-    		String remoteStatus = "";
-    		int ch = fromRemote.read();
-    		while (ch != -1 && ch != '\n') {
-    			// TODO: check if this is enough to deal with line ending problems
-    			if (ch != '\r')
-    				remoteStatus += (char) ch;
-   				ch = fromRemote.read();
-    		}
-	    	logger.debug("Received remote status: '" + remoteStatus + "', exited with " + 
-	    			(ch == -1 ? "end of stream" : "new line") +
+    		String remoteStatus = LineReaderWriter.readLine(fromRemote);
+	    	logger.debug("Received remote status: '" + remoteStatus + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		if (remoteStatus.length() == 0) {
     			logger.error("Could not get status message from remote host" + 

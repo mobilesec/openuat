@@ -9,7 +9,6 @@
 package org.openuat.apps.j2me;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.Vector;
 
 import javax.microedition.midlet.*;
@@ -26,6 +25,7 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
+import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
 public class BluetoothDemo extends MIDlet implements CommandListener,
@@ -233,9 +233,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
         		" and optional parameter '" + param + "'");
         RemoteConnection connectionToRemote = (RemoteConnection) res[3];
         try {
-        	OutputStreamWriter toRemote = new OutputStreamWriter(connectionToRemote.getOutputStream());
-       		toRemote.write("Finished DH key agreement - now start to verify\n");
-       		toRemote.flush();
+        	LineReaderWriter.println(connectionToRemote.getOutputStream(), 
+        			"Finished DH key agreement - now start to verify");
 		} catch (IOException e) {
 			logger.debug("Unable to open stream to remote: " + e);
 		}

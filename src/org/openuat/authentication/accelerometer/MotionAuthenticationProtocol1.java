@@ -538,6 +538,9 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			} catch (InternalApplicationException e) {
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
+			} catch (Exception e) {
+				logger.error("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
+				e.printStackTrace();
 			}
 			
 			// thread finished, so remove ourselves from the list of threads
@@ -576,7 +579,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 						// just ignore - it will drop into the loop and try again
 					}
 				}
-				if (localSegment == null) {
+				if (localSegment == null && !continuousChecking) {
 					logger.error("Incoming motion key verification request from " +
 							remote + ", but no local segment available after "+
 							IncomingConnectionWaitForLocalSegmentTimeout + "ms, aborting");

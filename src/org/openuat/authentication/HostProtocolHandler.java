@@ -9,11 +9,12 @@
 package org.openuat.authentication;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.util.Hashtable;
 
 import org.openuat.authentication.exceptions.*;
+import org.openuat.util.LineReaderWriter;
 import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
@@ -84,7 +85,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     /** The stream to send messages to the remote end. */
     private OutputStreamWriter toRemote;
     /** The stream to receive messages from the remote end. */
-    private InputStreamReader fromRemote;
+    private InputStream fromRemote;
     
     /** There may be additional handlers to call, depending on the first line
      * that is received from the other side. Keys are of type String and 
@@ -202,20 +203,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     }
     
     private String readLine() throws IOException {
-		String line = "";
-		int buf = fromRemote.read();
-		while (buf != -1 && buf != '\n') {
-			if (buf != '\r')
-				line += (char) buf;
-			buf = fromRemote.read();
-		}
-		return line;
+    	return LineReaderWriter.readLine(fromRemote);
     }
     
     private void println(String line) throws IOException {
-		toRemote.write(line + "\n");
-		toRemote.flush();
-    	
+    	LineReaderWriter.println(toRemote, line);
     }
     
     /** Tries to receive a properly formatted parameter line from the remote host.
@@ -366,25 +358,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         
         try
         {
-        	fromRemote = new InputStreamReader(connection.getInputStream());
+        	fromRemote = connection.getInputStream();
             // this enables auto-flush
             toRemote = new OutputStreamWriter(connection.getOutputStream());
             
-            // debugging code for testing the connection
-/*            for (int j = 0; j < 10; j++) {
-				for (int i = 0; i < 10; i++) {
-					int c = fromRemote.read();
-					toRemote.write(c);
-					toRemote.flush();
-				}
-				toRemote.write("Received");
-				toRemote.flush();
-			}
-            
-            logger.debug("Starting host protocol");
-            Thread.sleep(10000);
-            logger.debug("Really now");*/
-          
             if (serverSide) {
             	println(Protocol_Hello);
             }

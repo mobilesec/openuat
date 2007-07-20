@@ -12,9 +12,9 @@ package org.openuat.apps;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 
 import org.apache.log4j.Logger;
+import org.openuat.util.LineReaderWriter;
 
 /** This is a helper class for streaming binary blocks over some (byte-safe) connection.
  * It can e.g. be used to stream a file over a TCP connection that has been opened previsouly.
@@ -78,10 +78,7 @@ public class BinaryBlockStreamer {
 		}
 		
 		logger.info("Sending binary block with " + size + "B named '" + blockName + "'");
-		OutputStreamWriter lineWriter = new OutputStreamWriter(output);
-		lineWriter.write(BinaryStreamCommand + " " + size + " " + blockName + "\n");
-		lineWriter.flush();
-		lineWriter = null;
+		LineReaderWriter.println(output, BinaryStreamCommand + " " + size + " " + blockName);
 		for (int i=0; i<size; i++)
 			output.write(block.read());
 		output.flush();
@@ -120,13 +117,7 @@ public class BinaryBlockStreamer {
 		/* do not use a BufferedReader here because that would potentially mess up
 		 * the stream for other users of the socket (by consuming too many bytes)
 		 */
-		String prefixLine = "";
-		int buf = input.read();
-		while (buf != -1 && buf != '\n') {
-			if (buf != '\r')
-				prefixLine += (char) buf;
-			buf = input.read();
-		}
+		String prefixLine = LineReaderWriter.readLine(input);
 		if (prefixLine == null || ! prefixLine.startsWith(BinaryStreamCommand)) {
 			logger.error("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
 			return -1;
@@ -137,7 +128,7 @@ public class BinaryBlockStreamer {
 		int intendedSize = Integer.parseInt(prefixLine.substring(BinaryStreamCommand.length()+1, offset));
 		blockName.append(prefixLine.substring(offset+1, prefixLine.length()));
 		logger.info("Receiving binary block with " + intendedSize + "B named '" + blockName + "'");
-		int i=0;
+		int i=0, buf;
 		do {
 			buf = input.read();
 			if (buf != -1)
