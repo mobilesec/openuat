@@ -120,9 +120,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			logger.error("Unable to get volume control: " + e);
 		}
 		
-		if (!startBackgroundTasks())
-			return;
-		
 		mainForm = new Form("Shake Me");
 		exit = new Command("Exit", Command.EXIT, 1);
 		log = new Command("Log", Command.ITEM, 2);
@@ -130,13 +127,18 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		mainForm.addCommand(log);
 		mainForm.setCommandListener(this);
 
-		status = new StringItem("Status:", "unconnected");
+		status = new StringItem("Status:", "initializing");
 		status.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_TOP);
 		mainForm.append(status);
 		
 		lastMatch = new Gauge("Last match", false, 99, 0);
 		lastMatch.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
 		mainForm.append(lastMatch);
+		
+		if (!startBackgroundTasks())
+			return;
+		
+		status.setText("unconnected");
 		
 		// announce that we are up and about
 		try {
