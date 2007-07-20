@@ -101,7 +101,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
 		logForm = new LogForm();
 		logForm.setDisplay(display);
-		logBackend.addAppender(new FormAppender(logForm));
+		FormAppender appender = new FormAppender(logForm);
+		logBackend.addAppender(appender);
 		//logBackend.addAppender(new RecordStoreAppender());
 		logBackend.setLogLevel(Level.INFO);
 		logger.info("Microlog initialized");
