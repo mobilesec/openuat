@@ -56,9 +56,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
+	public final static float CoherenceThreshold = 0.45f;
+	
 	Form mainForm;
 	
-	StringItem status;
+	StringItem status, lastValue, threshold;
 	
 	Gauge lastMatch;
 	
@@ -134,6 +136,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		lastMatch = new Gauge("Last match", false, 99, 0);
 		lastMatch.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
 		mainForm.append(lastMatch);
+		lastValue = new StringItem("Last value:", "");
+		lastValue.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
+		mainForm.append(lastValue);
+		threshold = new StringItem("Threshold:", Float.toString(CoherenceThreshold*100));
+		threshold.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
+		mainForm.append(threshold);
 		
 		if (!startBackgroundTasks())
 			return;
@@ -301,7 +309,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			super(server,  
 					FIXED_DEMO_MODE, // don't keep channel open (unless in demo mode)
 					true, // we support multiple authentications 
-					0.72, 
+					CoherenceThreshold, 
 					32,
 					false); // no JSSE
 			this.outer = outer;
@@ -317,12 +325,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
 			status.setText("FAILURE");
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
+			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100));
 			// I want to beep
 		}
 
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
 			status.setText("SUCCESS");
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
+			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100));
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
