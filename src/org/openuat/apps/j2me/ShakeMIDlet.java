@@ -41,9 +41,9 @@ import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
-	private final static boolean FIXED_DEMO_MODE = false;
+	private final static boolean FIXED_DEMO_MODE = true;
 	private final static String FIXED_DEMO_UUID = "b76a37e5e5404bf09c2a1ae3159a02d8";
-	private final static int FIXED_DEMO_CHANNELNUM = 7;
+	private final static int FIXED_DEMO_CHANNELNUM = 2;
 	private final static byte[] FIXED_DEMO_SHAREDKEY = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -199,13 +199,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 			else {
 				// hard-code a simple RFCOMM server that stays connected
-/*				rfcommServer = new BluetoothRFCOMMServer(new Integer(FIXED_DEMO_CHANNELNUM), 
+				// ATTENTION! setting the channel number will make startListening() crash
+				rfcommServer = new BluetoothRFCOMMServer(null, /*new Integer(FIXED_DEMO_CHANNELNUM),*/ 
 						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", true, false);
 				protocol = new ShakeAuthenticator(rfcommServer, this);
-				protocol.startLIstening();
-				logger.info("Finished starting SDP service for demo mode at " + rfcommServer.getRegisteredServiceURL());*/
-/*				connector = new DemoModeConnector();
-				connector.start();*/
+				protocol.startListening();
+				logger.info("Finished starting SDP service for demo mode at " + rfcommServer.getRegisteredServiceURL());
+				connector = new DemoModeConnector();
+				connector.start();
 			}
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
@@ -254,11 +255,13 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		if (FIXED_DEMO_MODE) {
 			Thread tmp = connector;
 			connector = null;
-			tmp.interrupt();
-			try {
-				tmp.join();
-			} catch (InterruptedException e) {
-				// don't care
+			if (tmp != null) {
+				tmp.interrupt();
+				try {
+					tmp.join();
+				} catch (InterruptedException e) {
+					// don't care
+				}
 			}
 		}
 		

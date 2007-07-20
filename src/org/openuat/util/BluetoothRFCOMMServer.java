@@ -69,7 +69,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 
 		// construct the Bluetooth service URL
 		serviceURL = "btspp://localhost:" + serviceUUID + 
-			(channel != null ? ":" + channel : "") + ";name=" + serviceName + 
+			(channel != null ? ":" + channel.intValue() : "") + ";name=" + serviceName + 
 			";authenticate=false;encrypt=false;authorize=false;master=false";
 		// the service itself will be created later when calling startListening
 	}
