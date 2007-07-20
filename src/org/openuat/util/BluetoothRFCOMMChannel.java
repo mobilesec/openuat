@@ -169,14 +169,25 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			if (openChannels.contains(this)) {
 				logger.warn("This BluetoothRFCOMMChannel object to " + 
 						remoteDeviceAddress + 
-						" does not seem to have an open connection, but is already in openChannels. This should not happen, but ignoring for now!");
+						" does not seem to have an open connection, but is already in openChannels. This should not happen, aborting connection attempt!");
+				return false;
 			}
 			openChannels.addElement(this);
 		}
-		// this can take some time...
-		connection = (StreamConnection) Connector.open(serviceURL);
-		fromRemote = connection.openInputStream();
-		toRemote = connection.openOutputStream();
+		try {
+			// this can take some time...
+			connection = (StreamConnection) Connector.open(serviceURL);
+			fromRemote = connection.openInputStream();
+			toRemote = connection.openOutputStream();
+		}
+		catch (IOException e) {
+			logger.warn("Could not establish connection to '" + serviceURL +
+					"', removing from list of open connections again");
+			synchronized (openChannels) {
+				openChannels.removeElement(this);
+			}
+			throw e;
+		}
 		return true;
 	}
 	
