@@ -458,7 +458,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		if (remoteSegment != null) {
 			logger.debug("remote segment is " + remoteSegment.length + " elements long");
 			decision = checkCoherence(remoteSegment);
-			System.out.println("COHERENCE MATCH: " + decision + "(computed " + 
+			logger.info("COHERENCE MATCH: " + decision + "(computed " + 
 					lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
 		}
 		else
@@ -466,7 +466,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 
 		// final decision
 		if (decision) { 
-			if (myThread == null || !continuousChecking)
+			if (myThread == null && !continuousChecking)
 				verificationSuccess(remote, null, Double.toString(lastCoherenceMean));
 			else {
 				protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null);
@@ -477,7 +477,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			}
 		}
 		else {
-			if (myThread == null || !continuousChecking)
+			if (myThread == null && !continuousChecking)
 				verificationFailure(remote, null, null, null, "Coherence is below threshold, time series are not similar enough");
 			else {
 				protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
@@ -564,7 +564,12 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 						MotionVerificationCommand + "'. This should not happen!");
 				return false;
 			}
-			
+
+			if (!incomingVerificationRequestHook(remote)) {
+				logger.error("incomfingVerificationRequestHook returned false, aborting verification");
+				return true;
+			}
+				
 			synchronized(localSegmentLock) {
 				/* If we don't have a local segment (yet) when being contacted, 
 				 * wait for some time before aborting. The segment may just be
@@ -619,6 +624,17 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 				return false;
 			}
 		}
+	}
+
+	/** This hook is called when an incoming verification request has been
+	 * received, but before starting the verification in terms of interlock
+	 * exchange. The implementation in here does nothing, but derived classes
+	 * may use this for pre-processing or a "veto" of an incoming connection.
+	 * @param remote The remote host requesting verification.
+	 * @return true if verification should succeed, false to abort.
+	 */
+	protected boolean incomingVerificationRequestHook(RemoteConnection remote) {
+		return true;
 	}
 	
 	/////////////////// testing code begins here ///////////////

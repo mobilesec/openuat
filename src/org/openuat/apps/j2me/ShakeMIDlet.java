@@ -56,14 +56,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
-	List main_list;
-
-	Command exit;
-
-	Command back;
-
-	Command log;
-
+	Form mainForm;
+	
+	StringItem status;
+	
+	Gauge lastMatch;
+	
+	Command exit, log;
+	
 	Display display;
 	
 	ShakeAuthenticator protocol;
@@ -123,17 +123,21 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		if (!startBackgroundTasks())
 			return;
 		
-		main_list = new List("Select Operation", Choice.IMPLICIT); //the main menu
+		mainForm = new Form("Shake Me");
 		exit = new Command("Exit", Command.EXIT, 1);
-		back = new Command("Back", Command.BACK, 1);
 		log = new Command("Log", Command.ITEM, 2);
+		mainForm.addCommand(exit);
+		mainForm.addCommand(log);
+		mainForm.setCommandListener(this);
 
-		main_list.addCommand(exit);
-		main_list.addCommand(log);
-		main_list.setCommandListener(this);
-
-		//main_list.append("Find Devices", null);
-			
+		status = new StringItem("Status:", "unconnected");
+		status.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_TOP);
+		mainForm.append(status);
+		
+		lastMatch = new Gauge("Last match", false, 99, 0);
+		lastMatch.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
+		mainForm.append(lastMatch);
+		
 		// announce that we are up and about
 		try {
 			Manager.playTone(72, 500, 30);
@@ -145,8 +149,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void startApp() {
-		logForm.setPreviousScreen(main_list);
-		display.setCurrent(main_list);
+		logForm.setPreviousScreen(mainForm);
+		display.setCurrent(mainForm);
 	}
 
 	public void commandAction(Command com, Displayable dis) {
@@ -156,15 +160,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// and MIDlet closing sequence
 			destroyApp(false);
 			notifyDestroyed();
-		}
-		else if (com == List.SELECT_COMMAND) {
-			if (dis == main_list) { //select triggered from the main from
-				if (main_list.getSelectedIndex() >= 0) { //find devices
-				}
-			}
-		}
-		else if (com == back) {
-			// TODO: clean me up here - what should our interface be?
 		}
 		else if (com == log) {
 			display.setCurrent(logForm);
@@ -318,10 +313,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
+			status.setText("FAILURE");
+			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
 			// I want to beep
 		}
 
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
+			status.setText("SUCCESS");
+			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
@@ -337,8 +336,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		// TODO: remove me?
 		// maybe only keep for the sound...
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
-			logger.info("Successful authentication with " + remote.getRemoteName() + 
+			logger.info("Successful key agreement with " + remote.getRemoteName() + 
 					", auth key is " + new String(Hex.encodeHex(sharedAuthenticationKey)));
+			status.setText("key agreed");
 			// finished DH and connected to the remote
 			Display.getDisplay(outer).vibrate(800); // for 800ms
 			try {
@@ -353,14 +353,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		
 		//@Override
 		public void addSegment(int[] segment, int startIndex) {
-			// fire off the normal protocol
-			super.addSegment(segment, startIndex);
-			// and try to verify with all hosts in that state
-			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
-			// let the channels be opened in the background threads instead of doing it here
-/*			startConcurrentVerifications(hostsWaitingForVerification, true);
-*/			
-			// and announce shaking complete
+			// announce shaking complete
+			status.setText("verifying");
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
@@ -368,6 +362,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
 			}
+
 			// if debugging is active, also push that segment
 			if (toRemote != null) {
 				StringBuffer tmp = new StringBuffer();
@@ -381,6 +376,21 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					logger.error("Could not push segment to debug stream");
 				}
 			}
+
+			// and fire off the normal protocol
+			super.addSegment(segment, startIndex);
+			// and try to verify with all hosts in that state
+			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
+			// let the channels be opened in the background threads instead of doing it here
+/*			startConcurrentVerifications(hostsWaitingForVerification, true);
+*/			
+		}
+
+		//@Override
+		protected boolean incomingVerificationRequestHook(RemoteConnection remote) {
+			connected = true;
+			status.setText("connected");
+			return true;
 		}
 	}
 	
@@ -423,6 +433,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					 * seems to generate a "feature not supported" exception
 					 * from Symbian
 					 */
+					status.setText("connecting");
 					String serviceURL = "btspp://" + remoteAddr + ":" + 
 						FIXED_DEMO_CHANNELNUM + ";authenticate=false;encrypt=false";
 					conn = new BluetoothRFCOMMChannel(serviceURL);
@@ -435,6 +446,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					protocol.startVerificationAsync(FIXED_DEMO_SHAREDKEY, 
 							null, conn);
 					connected = true;
+					status.setText("connected");
 					logger.info("Successfully opened channel to " + remoteAddr +
 							", demo mode connector thread now exiting");
 				} catch (IOException e) {
@@ -458,6 +470,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());
 				logger.info("Opened output stream for debugging");
+				status.setText("DEBUG streaming");
 				// just wait in this incoming handler thread
 				while (toRemote != null) {
 					try {
@@ -502,12 +515,15 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	}
 	
 	private class ActivityHandler implements SamplesSink_Int {
+		String previousStatus = "";
+		
 		public void addSample(int sample, int index) {
 			// ignore
 		}
 
 		public void segmentEnd(int index) {
 			// announce quiescent
+			status.setText("previousStatus");
 			try {
 				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
@@ -517,6 +533,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		public void segmentStart(int index) {
 			// announce active
+			previousStatus = status.getText();
+			status.setText("moving");
 			try {
 				Manager.playTone(72, 100, 30);
 			} catch (MediaException e) {
