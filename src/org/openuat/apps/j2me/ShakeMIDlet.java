@@ -294,9 +294,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		// nothing special to do, resources will be freed automatically
 	}
 
-	private double[] samples = new double[3];
-
-	
 	private class ShakeAuthenticator extends MotionAuthenticationProtocol1 {
 		ShakeMIDlet outer;
 		
@@ -404,19 +401,32 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			} catch (BluetoothStateException e1) {
 				logger.error("Can't get my own address, aborting demo mode");
 			}
+			if (localAddr.compareTo(remoteAddr) > 0) {
+				if (logger.isInfoEnabled())
+					logger.info("My Bluetooth address '" + localAddr +
+						"' is higher than the remote address to connect to '" + 
+						remoteAddr + "', aborting and waiting for remote to connect");
+				return;
+			}
 			
 			logger.info("Starting in demo mode as " + localAddr +
 					", trying to connect to peer " + remoteAddr);
 			
-			while (conn != null && !connected && connector != null) {
+			while (conn == null && !connected && connector != null) {
 				logger.info("Trying to connect to " + remoteAddr + 
 						" channel " + FIXED_DEMO_CHANNELNUM);
 				try {
-					conn = new BluetoothRFCOMMChannel(remoteAddr, FIXED_DEMO_CHANNELNUM);
+					/* construct our own serviceURL, because "master=true"
+					 * seems to generate a "feature not supported" exception
+					 * from Symbian
+					 */
+					String serviceURL = "btspp://" + remoteAddr + ":" + 
+						FIXED_DEMO_CHANNELNUM + ";authenticate=false;encrypt=false";
+					conn = new BluetoothRFCOMMChannel(serviceURL);
 					conn.open();
 					// ok, connected - get the host into verification mode
 					OutputStreamWriter w = new OutputStreamWriter(conn.getOutputStream());
-					w.write(MotionAuthenticationProtocol1.MotionVerificationCommand);
+					w.write(MotionAuthenticationProtocol1.MotionVerificationCommand + "\n");
 					w.flush();
 					// and start verifying
 					protocol.startVerificationAsync(FIXED_DEMO_SHAREDKEY, 
@@ -426,7 +436,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 							", demo mode connector thread now exiting");
 				} catch (IOException e) {
 					logger.error("Unable to connect to " + remoteAddr + 
-							" and start verification: " + e);
+							" and start verification (will retry): " + e);
 					conn = null;
 				}
 				try {
@@ -438,6 +448,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 	}
 	
+	private double[] samples = new double[3];
 	OutputStreamWriter toRemote = null;
 	private class TestBTStreamingCommandHandler implements ProtocolCommandHandler {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {

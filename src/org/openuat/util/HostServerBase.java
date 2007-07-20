@@ -138,6 +138,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 		h.setAuthenticationProgressHandlers(eventsHandlers);
 		h.setProtocolCommandHandlers(protocolCommandHandlers);
 		// call the protocol asynchronously
+		logger.debug("Accepted incoming channel, now starting host protocol");
 		h.startIncomingAuthenticationThread(true);
 	}
 }
