@@ -525,7 +525,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		public void segmentEnd(int index) {
 			// announce quiescent
-			status.setText("previousStatus");
+			status.setText(previousStatus);
 			try {
 				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
