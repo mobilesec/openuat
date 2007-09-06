@@ -169,6 +169,7 @@ public class ShakingSinglePCDemonstrator {
 		// need two aggregators, because the first protocols works with 5s-slices
 		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
 		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
+		// these can use segments of arbitrary length
 		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		aggr1_a.setOffset(0);

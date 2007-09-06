@@ -704,7 +704,7 @@ Bogdan Groza, 2007-04-19 */
 				return true;
 			}
 			else {
-				logger.warn("Received candidate key from remote host " + remoteHost.getHostAddress() +
+				logger.info("Received candidate key from remote host " + remoteHost.getHostAddress() +
 						" and successfully generated matching key, but local criteria for key generation " +
 						"are not yet fulfilled. Ignoring this candidate key." +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -867,7 +867,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 		byte[] realSharedKey = null;
 		if (cand.foundMatchingKey != null) {
 			logger.info("Received an acknowledge for a locally generated key, and already " +
-					"found and acknowledged a key matching a remote candidate key." + 
+					"found and acknowledged a key matching a remote candidate key. " + 
 					"Thus using the combination of both." +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 
@@ -1049,7 +1049,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 						int numParts = Integer.parseInt(st.nextToken());
 						// now the key hash
 						byte[] candKeyHash = Hex.decodeHex(st.nextToken().toCharArray());
-						// and, from this host's view, the remote and local encoded indix tuples
+						// and, from this host's view, the remote and local encoded index tuples
 						int[][] remoteIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
 						int[][] localIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
 						if (logger.isDebugEnabled())

@@ -42,7 +42,8 @@ import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
-	private final static boolean FIXED_DEMO_MODE = true;
+	/** Code for the Ubicomp 2007 Demo. Will be ignored if the preprocessor defines are not set. */
+	private static boolean FIXED_DEMO_MODE = false;
 	private final static String FIXED_DEMO_UUID = "b76a37e5e5404bf09c2a1ae3159a02d8";
 	private final static int FIXED_DEMO_CHANNELNUM = 2;
 	private final static byte[] FIXED_DEMO_SHAREDKEY = {
@@ -51,8 +52,15 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
 		0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
 	};
-	private final static String FIXED_DEMO_PEER_1 = "00180FA4C997";
-	private final static String FIXED_DEMO_PEER_2 = "00180FA3A1D4";
+	private static String FIXED_DEMO_PEER_1;
+	private static String FIXED_DEMO_PEER_2;
+	static {
+//#if cfg.shakingDemoMode
+		FIXED_DEMO_MODE = true;
+		//#= FIXED_DEMO_PEER_1 = "${ demo.peer1 }";
+		//#= FIXED_DEMO_PEER_2 = "${ demo.peer2 }";
+//#endif
+	}
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
@@ -97,15 +105,17 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
             //Ignore this exception. It is already initiated.
         }
 		logger.configure(GlobalProperties.getInstance());*/
-		
-		net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
-		logForm = new LogForm();
-		logForm.setDisplay(display);
-		FormAppender appender = new FormAppender(logForm);
-		logBackend.addAppender(appender);
-		//logBackend.addAppender(new RecordStoreAppender());
-		logBackend.setLogLevel(Level.INFO);
-		logger.info("Microlog initialized");
+
+		if (!FIXED_DEMO_MODE) {
+			net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
+			logForm = new LogForm();
+			logForm.setDisplay(display);
+			FormAppender appender = new FormAppender(logForm);
+			logBackend.addAppender(appender);
+			//logBackend.addAppender(new RecordStoreAppender());
+			logBackend.setLogLevel(Level.INFO);
+			logger.info("Microlog initialized");
+		}
 		
 		// need to get the player and volumeControl objects
 		try {
@@ -125,9 +135,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		
 		mainForm = new Form("Shake Me");
 		exit = new Command("Exit", Command.EXIT, 1);
-		log = new Command("Log", Command.ITEM, 2);
 		mainForm.addCommand(exit);
-		mainForm.addCommand(log);
+		if (!FIXED_DEMO_MODE) {
+			log = new Command("Log", Command.ITEM, 2);
+			mainForm.addCommand(log);
+		}
 		mainForm.setCommandListener(this);
 
 		status = new StringItem("Status:", "initializing");
@@ -160,7 +172,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void startApp() {
-		logForm.setPreviousScreen(mainForm);
+		if (logForm != null) {
+			logForm.setPreviousScreen(mainForm);
+		}
 		display.setCurrent(mainForm);
 	}
 

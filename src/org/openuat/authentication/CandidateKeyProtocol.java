@@ -1072,7 +1072,7 @@ public class CandidateKeyProtocol {
 	 * @param remoteHost An identifier for the remote host. Refer to 
 	 *                   @see #matchCandidates for more details.
 	 * @param hash The hash received from the remote host.
-	 * @param localIndices The list of index tuples (<round,candidate)
+	 * @param localIndices The list of index tuples (round,candidate)
 	 *                     that reference the parts that have been used
 	 *                     to construct the key with the given hash. This
 	 *                     list is using the indices of this host. Parts
@@ -1082,7 +1082,7 @@ public class CandidateKeyProtocol {
 	 *                     or the one in remoteIndices <b>must</b> be set
 	 *                     to something >= 0 (this always applies to both
 	 *                     numbers in the tuple).
-	 * @param remoteIndices The list of index tuples (<round,candidate)
+	 * @param remoteIndices The list of index tuples (round,candidate)
 	 *                      that reference the parts that have been used
 	 *                      to construct the key with the given hash. This
 	 *                      list is using the indices of the remote host. Parts
@@ -1159,21 +1159,31 @@ public class CandidateKeyProtocol {
 			MatchingKeyPart foundPart = null;
 			if (localIndices[i][0] >= 0 && localIndices[i][1] >= 0) {
 				// use our own index tuple
+				if (logger.isDebugEnabled())
+					logger.debug("Position " + i + ": using local index tuple in key parts search: " + 
+						localIndices[i][0] + "/" + localIndices[i][1] + " with " + matchList.parts.length + " in match list");
 				for (int j=0; j<matchList.parts.length && foundPart == null; j++) { 
 					if (matchList.parts[j] != null &&
 						matchList.parts[j].round == localIndices[i][0] &&
 						matchList.parts[j].candidateNumber == localIndices[i][1]) {
 						foundPart = matchList.parts[j];
+						if (logger.isDebugEnabled())
+							logger.debug("Found key part in match list at position " + j);
 					}
 				}
 			}
 			else if (remoteIndices[i][0] >= 0 && remoteIndices[i][1] >= 0) {
 				// use the remote index tuple
+				if (logger.isDebugEnabled())
+					logger.debug("Position " + i + ": using remote index tuple in key parts search: " + 
+						remoteIndices[i][0] + "/" + remoteIndices[i][1] + " with " + matchList.parts.length + " in match list");
 				for (int j=0; j<matchList.parts.length && foundPart == null; j++) { 
 					if (matchList.parts[j] != null &&
 						matchList.parts[j].remoteRound == remoteIndices[i][0] &&
 						matchList.parts[j].remoteCandidateNumber == remoteIndices[i][1]) {
 						foundPart = matchList.parts[j];
+						if (logger.isDebugEnabled())
+							logger.debug("Found key part in match list at position " + j);
 					}
 				}
 			}
@@ -1185,7 +1195,8 @@ public class CandidateKeyProtocol {
 			}
 			if (foundPart == null) {
 				// another problem: could not find the reported numbers
-				logger.error("Unable to locate matching key part at position " + i + ". Can not construct a key" +
+				logger.error("Unable to locate matching key part at position " + i + ". Can not construct a key" + 
+						" (Maybe the matchList was recently wiped?)" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
 			}
