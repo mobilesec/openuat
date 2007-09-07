@@ -69,6 +69,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	Form mainForm;
 	
 	StringItem status, lastValue, threshold;
+	String previousStatus = "";
 	
 	Gauge lastMatch;
 	
@@ -339,6 +340,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
 			status.setText("FAILURE");
+			previousStatus = "FAILURE";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
 			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100));
 			// I want to beep
@@ -346,6 +348,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
 			status.setText("SUCCESS");
+			previousStatus = "SUCCESS";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
 			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100));
 			try {
@@ -382,6 +385,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public void addSegment(int[] segment, int startIndex) {
 			// announce shaking complete
 			status.setText("verifying");
+			// and be sure to overwrite the status when we don't reach a conclusion
+			previousStatus = "NO PEER DEVICE";
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
@@ -542,8 +547,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	}
 	
 	private class ActivityHandler implements SamplesSink_Int {
-		String previousStatus = "";
-		
+
 		public void addSample(int sample, int index) {
 			// ignore
 		}
