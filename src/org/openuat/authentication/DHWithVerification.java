@@ -303,10 +303,10 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     			return remoteStatus;
         }
         catch (IOException e) {
-        	logger.error("Could not report success to remote host or get status message from remote host: " + e + 
+        	logger.error("Could not report success/failure to remote host or get status message from remote host: " + e + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	authenticationFailed(remote, optionalVerificationId, e, 
-        			"Could not report success to remote host or get status message from remote host" + 
+        			"Could not report success/failure to remote host or get status message from remote host" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	return null;
         }
