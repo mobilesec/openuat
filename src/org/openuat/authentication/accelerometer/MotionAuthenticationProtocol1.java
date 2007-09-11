@@ -48,7 +48,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	/** The maximimum time that the interlock exchange of active segments
 	 * with the remote host is allowed to take in ms.
 	 */
-	public static final int RemoteInterlockExchangeTimeout = 20000;
+	public static final int RemoteInterlockExchangeTimeout = 10000;
 	
 	/** Keep an incoming key verification connection open for this long when
 	 * no local segment is available [ms].
@@ -194,8 +194,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			String param, RemoteConnection toRemote) {
 		logger.info("startVerification hook called with " + toRemote.getRemoteName() + ", param " + param);
 	
-		synchronized(interlockRunners) {
-			if (interlockRunners.size() == 0) {
+		synchronized (interlockRunners) {
+			if (interlockRunners.isEmpty()) {
 				interlockGroup = null; // no synchronization necessary
 				Thread runner = new AsyncInterlockHelper(toRemote, false, sharedAuthenticationKey,
 						0, 0);
@@ -218,8 +218,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	protected void startConcurrentVerifications(RemoteConnection[] toRemotes, boolean openChannels) {
 		logger.info("startVerification hook called with " + toRemotes.length + " hosts concurrently");
 		
-		synchronized(interlockRunners) {
-			if (interlockRunners.size() == 0) {
+		synchronized (interlockRunners) {
+			if (interlockRunners.isEmpty()) {
 				interlockGroup = new BitSet();
 				int groupSize = toRemotes.length, instanceNum=0;
 				// sanity check
@@ -361,24 +361,12 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		return lastCoherenceMean;
 	}
 	
-	/** A small helper to clean up after a thread finishes. */
-	private void protocolRunFinished(Thread finishedThread) {
-		if (finishedThread != null) {
-			logger.debug("No local thread to remove, assuming incoming connection");
-			return;
-		}
-		
-		synchronized(interlockRunners) {
-			if (!interlockRunners.removeElement(finishedThread)) 
-				logger.error("Error: tried to remove runner object " + finishedThread +
-					" but could not find it in list. This should not happen!");
-			if (interlockRunners.size() == 0) {
-				// removed the last one now, clean up - this allows startVerification to be called again
-				interlockRunners = null;
-				// don't re-use the segment
-				localSegment = null;
-				interlockGroup = null;
-			}
+	/** Returns true if (at least) one protocol instance is currently running 
+	 * (i.e. interlockRunners has an entry).
+	 */
+	public boolean isAsyncProtocolRunning() {
+		synchronized (interlockRunners) {
+			return !interlockRunners.isEmpty();
 		}
 	}
 	
@@ -386,18 +374,15 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 * local and remote segments via interlock* and uses coherence to check their
 	 * similarity. It will call all the necessary hooks, but expects localSegment
 	 * to be set.
-	 * @param myThread If set (for outgoing connections executed 
-	 *                 asynchronously), then protocolRunFinished will
-	 *                 remove this thread from the list upon finishing 
-	 *                 and do some cleanup. May be null for incoming
-	 *                 verification requests.
 	 * @return true if continous checking should continue, false on a fatal error.
+	 *         <b>Note</b>: This is <b>not</b> the decision! If authentication
+	 *         failed or succeeded will be communicated with events.
 	 * @throws InternalApplicationException 
 	 * @throws IOException 
 	 */
 	private boolean keyVerification(RemoteConnection remote, 
-			byte[] sharedAuthenticationKey, int groupSize, int instanceNum, 
-			Thread myThread) throws IOException, InternalApplicationException {
+			byte[] sharedAuthenticationKey, int groupSize, int instanceNum) 
+			throws IOException, InternalApplicationException {
 		// TODO: make configurable??? mabye not necessary
 		int rounds = 2;
 
@@ -406,7 +391,6 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			// sanity checks
 			if (localSegment == null) {
 				logger.error("keyVerification called without localSegment being set. This should not happen!");
-				protocolRunFinished(myThread);
 				return false;
 			}
 /*			for (int i=0; i<localSegment.length; i++) {
@@ -420,7 +404,6 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 		}
 		if (localPlainText == null) {
 			verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
-			protocolRunFinished(myThread);
 			return false;
 		}
 		logger.debug("My segment is " + localPlainText.length + " bytes long");
@@ -434,20 +417,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 				interlockGroup, groupSize, instanceNum);
 		if (remotePlainText == null) {
 			logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
-			if (myThread == null || !continuousChecking) {
-				verificationFailure(remote, null, null, null, "Interlock protocol failed");
-				protocolRunFinished(myThread);
-				return false;
-			}
-			else {
-				// in case of checking continously, just call or own hook (for derived classes)
-				protocolFailedHook(remote, null, null, "Interlock protocol failed");
-				// need to to that here, as we don't call the cleanup/finished method in this case
-				synchronized (localSegmentLock) {
-					localSegment = null;
-				}
-				return true;
-			}
+			verificationFailure(remote, null, null, null, "Interlock protocol failed");
+			return false;
 		}
 
 		boolean decision = false;
@@ -466,9 +437,11 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 
 		// final decision
 		if (decision) { 
-			if (myThread == null && !continuousChecking)
+			if (!continuousChecking)
+				// "productive" case
 				verificationSuccess(remote, null, Double.toString(lastCoherenceMean));
 			else {
+				// demo-only case!
 				protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null);
 				// need to to that here, as we don't call the cleanup/finished method in this case
 				synchronized (localSegmentLock) {
@@ -477,9 +450,11 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			}
 		}
 		else {
-			if (myThread == null && !continuousChecking)
+			if (!continuousChecking)
+				// "productive" case
 				verificationFailure(remote, null, null, null, "Coherence is below threshold, time series are not similar enough");
 			else {
+				// demo-only case!
 				protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
 				// need to to that here, as we don't call the cleanup/finished method in this case
 				synchronized (localSegmentLock) {
@@ -529,22 +504,41 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 						remote.open();
 					
 					if (!keyVerification(remote, sharedAuthenticationKey,
-							groupSize, instanceNum, this) && !continuousChecking)
-						return;
+							groupSize, instanceNum) && !continuousChecking) {
+						/* If keyVerification returns false, then it will already
+						 * have fired an AuthenticationFailure event and closed
+						 * fromRemote. So any derived classes can already react
+						 * to this, just close the thread cleanly here.
+						 */
+						break;
+					}
 				} while (continuousChecking);
 			} catch (IOException e) {
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
+				verificationFailure(remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
 			} catch (InternalApplicationException e) {
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
+				verificationFailure(remote, null, null, e, "Background verification aborted");
 			} catch (Exception e) {
 				logger.error("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
 				e.printStackTrace();
+				verificationFailure(remote, null, null, e, "Background verification aborted");
 			}
 			
 			// thread finished, so remove ourselves from the list of threads
-			protocolRunFinished(this);
+			synchronized (interlockRunners) {
+				if (!interlockRunners.removeElement(this)) 
+					logger.error("Error: tried to remove runner object " + this +
+						" but could not find it in list. This should not happen!");
+				if (interlockRunners.isEmpty()) {
+					// removed the last one now, clean up - this allows startVerification to be called again
+					// don't re-use the segment
+					localSegment = null;
+					interlockGroup = null;
+				}
+			}
 		}
 	}
 
@@ -599,8 +593,8 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 					// incoming key verification, so need to retrieve the authentication key
 					byte[] authKey = keyManager.getAuthenticationKey(remote);
 					keyVerification(remote, authKey, 
-						0, 0, // incoming request, so it can't be an interlock group
-						null);
+						0, 0 // incoming request, so it can't be an interlock group
+						);
 				}
 				else {
 					byte[] authKey;
