@@ -27,6 +27,7 @@ import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
@@ -230,6 +231,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				protocol.startListening();
 				logger.info("Finished starting SDP service for demo mode at " + rfcommServer.getRegisteredServiceURL());
 				connector = new DemoModeConnector();
+				// register the connector for (failure) events so that it will get notified when disconnection happens
+				protocol.addAuthenticationProgressHandler(connector);
 				connector.start();
 			}
 		} catch (IOException e) {
@@ -426,7 +429,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 	}
 	
-	private class DemoModeConnector extends Thread {
+	private class DemoModeConnector extends Thread implements AuthenticationProgressHandler {
 		BluetoothRFCOMMChannel conn = null;
 		
 		public void run() {
@@ -457,7 +460,15 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			logger.info("Starting in demo mode as " + localAddr +
 					", trying to connect to peer " + remoteAddr);
 			
-			while (conn == null && !connected && connector != null) {
+			while (connector != null) {
+				// if already connected, wait until disconnection
+				while (connector != null && (connected || protocol.isAsyncProtocolRunning()))
+					try {
+						sleep(500);
+					} catch (InterruptedException e1) {
+						// ignore
+					}
+				
 				logger.info("Trying to connect to " + remoteAddr + 
 						" channel " + FIXED_DEMO_CHANNELNUM);
 				try {
@@ -480,7 +491,17 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					connected = true;
 					status.setText("connected");
 					logger.info("Successfully opened channel to " + remoteAddr +
-							", demo mode connector thread now exiting");
+							", demo mode connector thread now waiting for connection to terminate");
+					
+					while (connector != null && connected && conn.isOpen()) {
+						try {
+							Thread.sleep(500);
+						} catch (InterruptedException e) {
+							// ignore
+						}
+					}
+					logger.info("Connection to " + remoteAddr + " has been closed");
+					connected = false;
 				} catch (IOException e) {
 					logger.error("Unable to connect to " + remoteAddr + 
 							" and start verification (will retry): " + e);
@@ -492,6 +513,20 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					// don't care
 				}
 			}
+		}
+
+		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+			logger.warn("Disconnected from " + remote + ": " + msg);
+			// on authentication failure, the remote connection is terminated, so may need to reconnect
+			connected = false;
+		}
+
+		public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+			// not interested in this method
+		}
+
+		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+			// not interested in this method - the hook will be called anyway
 		}
 	}
 	
