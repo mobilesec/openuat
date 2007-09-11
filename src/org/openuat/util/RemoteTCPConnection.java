@@ -91,7 +91,12 @@ public class RemoteTCPConnection implements RemoteConnection {
    			logger.error("Unable to close streams cleanly", e);
 		}
 	}
-	
+
+	/** Implementation of RemoteConnection.isOpen. */
+	public boolean isOpen() {
+		return socket != null && socket.isConnected();
+	}
+
 	/** Returns the underlying reference to the Socket object. This method 
 	 * should generally not be used if it can be avoided!
 	 */

@@ -45,6 +45,13 @@ public interface RemoteConnection {
 	 */
 	void close();
 	
+	/** Returns true if the unterlying connection is open in both directions,
+	 * false otherwise.
+	 * @return true if the connection can be used for sending and receiving,
+	 *         false if either (or both) of the channels is unusable (closed).
+	 */
+	boolean isOpen();
+	
 	/** This must be implemented properly so that KeyManager can deal with
 	 * keys for different hosts. End point descriptions should be compared, 
 	 * e.g. IP address and port or Bluetooth MAC address and RFCOMM channel 

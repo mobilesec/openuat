@@ -234,6 +234,23 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		connection = null;
 	}
 	
+	/** Implementation of RemoteConnection.isOpen. */
+	public boolean isOpen() {
+		if (connection == null || fromRemote == null || toRemote == null) {
+			logger.info(this + " is not open because connection, fromRemote, or toRemote are null");
+			return false;
+		}
+		try {
+			fromRemote.available();
+			toRemote.flush();
+		}
+		catch (IOException e) {
+			logger.info(this + " is not open because fromRemote.available or toRemote.flush throw an exception: " + e);
+			return false;
+		}
+		return true;
+	}
+	
 	/** Returns the InputStream object for reading from the remote Bluetooth device.
 	 * It is also an mplementation of RemoteConnection.getInputStream.
 	 * @see RemoteConnection.getInputStream
