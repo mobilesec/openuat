@@ -1195,7 +1195,8 @@ public class CandidateKeyProtocol {
 			}
 			if (foundPart == null) {
 				// another problem: could not find the reported numbers
-				logger.error("Unable to locate matching key part at position " + i + ". Can not construct a key" + 
+				// but this can happen (genuinely) when the state was wiped very recently
+				logger.info("Unable to locate matching key part at position " + i + ". Can not construct a key" + 
 						" (Maybe the matchList was recently wiped?)" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
@@ -1365,12 +1366,12 @@ public class CandidateKeyProtocol {
 						alreadyCopied = true;
 						if (!extractAllCombinations) {
 							if (matchList.parts[i].round == initialCombination[j].round)
-								logger.warn("Local round " + initialCombination[j].round + " has two matching candidates: " +
+								logger.info("Local round " + initialCombination[j].round + " has two matching candidates: " +
 										initialCombination[j].candidateNumber + " and " +
 										matchList.parts[i].candidateNumber + ", skipping latter" +
 										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 							else
-								logger.warn("Remote round " + initialCombination[j].remoteRound + " has two matching candidates: " +
+								logger.info("Remote round " + initialCombination[j].remoteRound + " has two matching candidates: " +
 										initialCombination[j].remoteCandidateNumber + " and " +
 										matchList.parts[i].remoteCandidateNumber + ", skipping latter" +
 										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));

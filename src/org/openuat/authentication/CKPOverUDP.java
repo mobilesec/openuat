@@ -233,6 +233,17 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 */
 		private byte[] foundMatchingKey;
 		
+		/** The number of times that overwriting a previous key in 
+		 * foundMatchingKey has been prevented already. If this exceeds
+		 * MaximumOverwriteBlockedCnt, then foundMatchingKey will be 
+		 * overwritten anyways because our own candidate key message
+		 * may have been lost in transit. Overwriting in this case starts a
+		 * new phase 1 and may therefore help to proceed.
+		 */
+		private int overwriteBlockedCnt = 0;
+		
+		private final static int MaximumOverwriteBlockedCnt = 20;
+		
 		GeneratedKeyCandidates() {
 			// and keep a history of the last generated keys (this is for each host)
 			list = new CandidateKey[generatedKeysPerHostBufferSize];
@@ -696,8 +707,9 @@ Bogdan Groza, 2007-04-19 */
 			
 			// also check if our local criteria for generating a key are fulfilled
 			if (checkKeyCriteria(remoteHost)) {
-				logger.info("Generated local key that matches candidate key identifier " +
-						new String(Hex.encodeHex(candKey.key)) + " received from " + remoteHost.getHostAddress() + " " +
+				logger.info("Generated local key " +
+						new String(Hex.encodeHex(candKey.key)) + " that matches candidate key identifier " +  
+						new String(Hex.encodeHex(candKey.hash)) + " received from " + remoteHost.getHostAddress() + " " +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				// this sends a key acknowledge message to the remote host
 				authenticationSucceededStage1(remoteHost, candKey.hash, candKey.key);
@@ -779,12 +791,33 @@ Bogdan Groza, 2007-04-19 */
 		}
 
 		GeneratedKeyCandidates cand = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
+		boolean sendAck = false;
 		if (cand.foundMatchingKey != null) {
-			logger.warn("Not overwriting the found matching key for remote host " + remoteHost +
+			if (! Arrays.equals(cand.foundMatchingKey, foundKey)) {
+				logger.warn("Not overwriting the found matching key for remote host " + remoteHost +
 					", because stage 2 not entered yet." + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+			else { 
+				if (logger.isDebugEnabled())
+					logger.debug("Received candidate key message and generated the same matching key as before for " + remoteHost +
+						", which has not yet been acknowledged. Ignoring now." + 
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+			}
+			
+			if (++cand.overwriteBlockedCnt > GeneratedKeyCandidates.MaximumOverwriteBlockedCnt) {
+				logger.warn("Now overwriting the found matching key for remote host " + remoteHost +
+						", as it has been blocked in stage 1 for " + GeneratedKeyCandidates.MaximumOverwriteBlockedCnt +
+						" incoming candidate key messages. Maybe the local host's candidate key message got lost?" +
+						(instanceId != null ? " [" + instanceId + "]" : ""));
+				cand.overwriteBlockedCnt=0;
+				sendAck = true;
+			}
 		}
-		else {
+		else
+			sendAck = true;
+		
+		if (sendAck) {
 			cand.foundMatchingKey = foundKey;
 			
 			/* 1) It seems that in step II.4 (key acknowledgment) any attacker can send
@@ -806,7 +839,8 @@ Suggestion by Bogdan Groza, 2007-04-19
 */
 
 			String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
-			logger.debug("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
+			if (logger.isInfoEnabled())
+				logger.info("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
 					+ " to remote host " + remoteHostAddress + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			channel.sendTo(ackPacket.getBytes(), remoteHost);

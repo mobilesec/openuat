@@ -383,7 +383,10 @@ public class ShakingSinglePCDemonstrator {
 			logger.info("Protocol variant 1 failed with " + remote  + ": " + e + ", " + message); 
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
-					coherenceField.setBackground(new Color(Display.getDefault(), 255, 0, 0));
+					if (lastCoherenceMean >= 0.6)
+						coherenceField.setBackground(new Color(Display.getDefault(), 255, 255, 0));
+					else
+						coherenceField.setBackground(new Color(Display.getDefault(), 255, 0, 0));
 					coherenceValue.setText(Double.toString(lastCoherenceMean));
 				}
 			});
