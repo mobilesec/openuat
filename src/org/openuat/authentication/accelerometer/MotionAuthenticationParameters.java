@@ -37,7 +37,7 @@ public class MotionAuthenticationParameters {
 
 	public final static int coherenceCutOffFrequency = 40; // Hz
 	
-	public final static float coherenceThreshold = 0.72f;
+	public final static float coherenceThreshold = 0.5f; //0.72f;
 	
 	public final static int fftMatchesWindowSize = samplerate;
 
