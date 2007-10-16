@@ -5,3 +5,9 @@ Additional methods that should be implemented within OpenUAT:
 - Loud-and-Clear and HAPADEP
 - Amigo
 - Infrared
+
+* ordentlicher Shutdown
+* warum wird Kanal nach DH nicht geschlossen beim MIDlet?
+* mirror mir Neuaufbauen des Kanals
+* zwischen Handies mit Neuaufbauen des Kanals
+* beide Optionen im ShakeMIDlet konfiguierbar
