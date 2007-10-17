@@ -27,10 +27,36 @@ public class MarinPerianuComparison {
 	public static final int stepSize = 16;
 	/** With a sample rate of 8Hz. */
 	public static final int sampleRate = 8;
+	/** Samples are represented by just 1 Byte. */
+	public static final int bitsPerSample = 8;
 	
 	/** For correlation coefficients > 0.5, the devices are assumed to be
 	 * together, for correlation coefficients <= 0.5, they are assumed to 
 	 * be separate.
 	 */
 	public static final float correlationCoefficientThreshold = 0.5f;
+	
+	// TODO: implement their incremental approach and integrate with MotionAuthenticationProtocol1 and interlock:
+	// run DH phase, and then in each interlock phase exchange stepSize samples 
+	// (that might fit in 256 Bits, i.e. the block length when 8 Bits accuracy are sufficient)
+	// then, after at least 8 such interlock exchanges (i.e. when windowSize is full),
+	// start with the incremental correlation coefficient computations and do it until
+	// it reaches the threshold (or a configurable number of maximum failures to abort)
+	
+	// incremental:
+	/* sumA, sumB = sum over current sample window
+	 * sum2A, sum2B = square (a[i]*a[i] sum over current sample window
+	 * sumAB = cross (a[i]*b[i]) sum over current sample window
+	 * initialize sumA, sumB, sum2A, sum2B, sumAB, varA, varB, cov, mA, mB with 0
+	 * after each interlock exchange:
+	 * last_sumA = sumA; last_sumB = sumB; last_sum2A = sum2A; last_sum2B = sum2B; last_sumAB = sumAB;
+	 * recompute sumA, sumB, sum2A, sum2B, sumAB
+	 * last_mA = ma; last_mB = mB;
+	 * mA = mA + (sumA - last_sumA)/windowSize;
+	 * mB = mB+ (sumB - last_sumB)/windowSize;
+	 * varA = varA + (sum2A - last_sum2A)/windowSize - (mA*mA - last_mA*last_mA); 
+	 * varB = varB + (sum2B - last_sum2B)/windowSize - (mB*mB - last_mB*last_mB);
+	 * cov = voc + (sumAB - last_sumAB)/windowSize - (mA*mB - last_mA*last_mB);
+	 * corrcoeff = cov/sqrt(varA*varB); 
+	 */
 }
