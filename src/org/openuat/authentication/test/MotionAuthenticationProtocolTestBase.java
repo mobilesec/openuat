@@ -19,7 +19,7 @@ import java.util.zip.GZIPInputStream;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.TimeSeriesAggregator;
@@ -38,16 +38,16 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void setUp() throws IOException {
-		aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-		aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		aggr_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+		aggr_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1 / 128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1 / 128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		
 		numSucceeded = 0;
 		numFailed = 0;
@@ -69,7 +69,7 @@ public class MotionAuthenticationProtocolTestBase extends TestCase {
 			int timeout = (dataSetLength + MAX_PROTOCOL_LATENCY_SECONDS) * 1000;
 			// just read from the file
 			FileInputStream in = new FileInputStream(filename);
-			AsciiLineReaderBase reader1 = new ParallelPortPWMReader(new GZIPInputStream(in), MotionAuthenticationParameters.samplerate);
+			AsciiLineReaderBase reader1 = new ParallelPortPWMReader(new GZIPInputStream(in), ShakeWellBeforeUseParameters.samplerate);
 
 			reader1.addSink(new int[] { 0, 1, 2 }, aggr_a.getInitialSinks());
 			reader1.addSink(new int[] { 4, 5, 6 }, aggr_b.getInitialSinks());

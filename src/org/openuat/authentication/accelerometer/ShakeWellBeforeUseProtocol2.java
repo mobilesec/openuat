@@ -28,9 +28,9 @@ import org.openuat.sensors.TimeSeriesAggregator;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol2 extends CKPOverUDP implements SamplesSink  {
+public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSink  {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.MotionAuthenticationProtocol2" /*MotionAuthenticationProtocol2.class*/);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2" /*ShakeWellBeforeUseProtocol2.class*/);
 
 	/** The TCP port we use for this protocol. */
 	public static final int UdpPort = 54322;
@@ -76,7 +76,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 *                Lightweight API classes will be used.
 	 * @throws IOException 
 	 */
-	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
+	public ShakeWellBeforeUseProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
 			int cutOffFrequency, int windowOverlap, float matchThreshold,
 			int minMatchingParts, boolean useJSSE) throws IOException {
 		this(sampleRate, fftPoints, numQuantLevels, numCandidates, cutOffFrequency, windowOverlap, 
@@ -85,13 +85,13 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
-	 * @param sampleRate A good value is @see MotionAuthenticationParameters.samplerate
-	 * @param fftPoints A good value is @see MotionAuthenticationParameters.fftMatchesWindowSize
-	 * @param numQuantLevels A good value is @see MotionAuthenticationParameters.fftMatchesQuantizationLevels
-	 * @param numCandidates A good value is @see MotionAuthenticationParameters.fftMatchesCandidatesPerRound
-	 * @param cutOffFrequency A good value is @see MotionAuthenticationParameters.fftMatchesCutOffFrequenecy
-	 * @param windowOverlap A good value is @see MotionAuthenticationParameters.fftMatchesWindowOverlap
-	 * @param matchThreshold A good value is @see MotionAuthenticationParameters.fftMatchesThreshold
+	 * @param sampleRate A good value is @see ShakeWellBeforeUseParameters.samplerate
+	 * @param fftPoints A good value is @see ShakeWellBeforeUseParameters.fftMatchesWindowSize
+	 * @param numQuantLevels A good value is @see ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels
+	 * @param numCandidates A good value is @see ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound
+	 * @param cutOffFrequency A good value is @see ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy
+	 * @param windowOverlap A good value is @see ShakeWellBeforeUseParameters.fftMatchesWindowOverlap
+	 * @param matchThreshold A good value is @see ShakeWellBeforeUseParameters.fftMatchesThreshold
 	 * @param minMatchingParts
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
@@ -103,7 +103,7 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	 * 
 	 * // TODO: implement handling of minMatchingParts 
 	 */
-	public MotionAuthenticationProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
+	public ShakeWellBeforeUseProtocol2(int sampleRate, int fftPoints, int numQuantLevels, int numCandidates,
 			int cutOffFrequency, int windowOverlap, float matchThreshold,
 			int minMatchingParts, boolean useJSSE, 
 			int udpRecvPort, int udpSendPort, String sendAddress, String instanceId) throws IOException {
@@ -232,29 +232,29 @@ public class MotionAuthenticationProtocol2 extends CKPOverUDP implements Samples
 	public static void main(String[] args) throws IOException {
 		int minmatchingparts = 8;
 		
-		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], ShakeWellBeforeUseParameters.samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		
-		MotionAuthenticationProtocol2 ma1 = new MotionAuthenticationProtocol2(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
-				MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
-				MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
-				MotionAuthenticationParameters.fftMatchesThreshold,
+		ShakeWellBeforeUseProtocol2 ma1 = new ShakeWellBeforeUseProtocol2(ShakeWellBeforeUseParameters.samplerate, ShakeWellBeforeUseParameters.fftMatchesWindowSize,
+				ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels, ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound,
+				ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy, ShakeWellBeforeUseParameters.fftMatchesWindowOverlap,
+				ShakeWellBeforeUseParameters.fftMatchesThreshold,
 				minmatchingparts, true); 
-		MotionAuthenticationProtocol2 ma2 = new MotionAuthenticationProtocol2(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
-				MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
-				MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
-				MotionAuthenticationParameters.fftMatchesThreshold,
+		ShakeWellBeforeUseProtocol2 ma2 = new ShakeWellBeforeUseProtocol2(ShakeWellBeforeUseParameters.samplerate, ShakeWellBeforeUseParameters.fftMatchesWindowSize,
+				ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels, ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound,
+				ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy, ShakeWellBeforeUseParameters.fftMatchesWindowOverlap,
+				ShakeWellBeforeUseParameters.fftMatchesThreshold,
 				minmatchingparts, true); 
 		aggr_a.addNextStageSamplesSink(ma1);
 		aggr_b.addNextStageSamplesSink(ma2);

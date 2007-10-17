@@ -29,7 +29,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.KeyManager;
-import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
@@ -259,8 +259,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		 * THIS DEPENDS HEAVILY ON THE WINDOW SIZE SET ABOVE IN THE CONSTRUCTOR
 		 */
 		aggregator.setActiveVarianceThreshold(1500
-				/*(MotionAuthenticationParameters.activityVarianceThreshold*
-				MotionAuthenticationParameters.activityVarianceThreshold) *
+				/*(ShakeWellBeforeUseParameters.activityVarianceThreshold*
+				ShakeWellBeforeUseParameters.activityVarianceThreshold) *
 				(SymbianTCPAccelerometerReader.VALUE_RANGE*SymbianTCPAccelerometerReader.VALUE_RANGE)*/);
 		reader.addSink(new int[] {0, 1, 2}, aggregator.getInitialSinks_Int());
 		// also register the activity indicator - THIS CAN BE DISABLED LATER ON
@@ -319,7 +319,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		// nothing special to do, resources will be freed automatically
 	}
 
-	private class ShakeAuthenticator extends MotionAuthenticationProtocol1 {
+	private class ShakeAuthenticator extends ShakeWellBeforeUseProtocol1 {
 		ShakeMIDlet outer;
 		
 		ShakeAuthenticator(HostAuthenticationServer server, ShakeMIDlet outer) {
@@ -480,7 +480,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					conn = new BluetoothRFCOMMChannel(serviceURL);
 					conn.open();
 					// ok, connected - get the host into verification mode
-					LineReaderWriter.println(conn.getOutputStream(), MotionAuthenticationProtocol1.MotionVerificationCommand);
+					LineReaderWriter.println(conn.getOutputStream(), ShakeWellBeforeUseProtocol1.MotionVerificationCommand);
 					// and consume its first line
 					LineReaderWriter.readLine(conn.getInputStream());
 					// and start verifying

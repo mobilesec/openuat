@@ -10,8 +10,8 @@ package org.openuat.authentication.test;
 
 import java.io.IOException;
 
-import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
-import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol2;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2;
 
 public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProtocolTestBase {
 	private Protocol2Hooks prot2_a, prot2_b;
@@ -40,12 +40,12 @@ public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProto
 		runCase("tests/motionauth/specialcases/outofmemory.gz");
 	}
 	
-	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
+	private class Protocol2Hooks extends ShakeWellBeforeUseProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
-			super(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
-					MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
-					MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
-					MotionAuthenticationParameters.fftMatchesThreshold,
+			super(ShakeWellBeforeUseParameters.samplerate, ShakeWellBeforeUseParameters.fftMatchesWindowSize,
+					ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels, ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound,
+					ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy, ShakeWellBeforeUseParameters.fftMatchesWindowOverlap,
+					ShakeWellBeforeUseParameters.fftMatchesThreshold,
 					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		

@@ -28,6 +28,8 @@ Version 0.10, released 2007-07-
   
   New classes for authentication:
   * authentication.KeyManager
+  * authentication.accelerometer.MarinPerianuComparison
+  * authentication.accelerometer.MartiniSynchProtocol
   
   New utility classes for communication:
   * util.BluetoothRFCOMMServer
@@ -55,6 +57,11 @@ Version 0.10, released 2007-07-
   All classes that previously dealt directly with Socket/InetAddress objects
   have now been changed to use the RemoteConnection interface instead, where
   applicable.
+
+  Renamed classes:
+  * authentication.accelerometer.MotionAuthenticationProtocol1 -> ShakeWellBeforeUseProtocol1
+  * authentication.accelerometer.MotionAuthenticationProtocol2 -> ShakeWellBeforeUseProtocol2
+  * authentication.accelerometer.MotionAuthenticationParameters -> ShakeWellBeforeUseParameters
     
   New applications:
   * (J2ME) apps.j2me.HelloProporty

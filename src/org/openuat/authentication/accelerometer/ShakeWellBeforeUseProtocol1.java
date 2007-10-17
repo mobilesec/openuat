@@ -37,10 +37,10 @@ import org.openuat.util.RemoteConnection;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationProtocol1 extends DHWithVerification 
+public class ShakeWellBeforeUseProtocol1 extends DHWithVerification 
 		implements SegmentsSink, SegmentsSink_Int {
 	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1" /*MotionAuthenticationProtocol1.class*/);
+	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1" /*ShakeWellBeforeUseProtocol1.class*/);
 
 	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
@@ -132,7 +132,7 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public MotionAuthenticationProtocol1(HostAuthenticationServer server, boolean keepConnected, 
+	public ShakeWellBeforeUseProtocol1(HostAuthenticationServer server, boolean keepConnected, 
 			boolean concurrentVerificationSupported, double coherenceThreshold, 
 			int windowSize, boolean useJSSE) {
 		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
@@ -253,12 +253,12 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 
 		double[][] equalizedSeries = TimeSeriesUtil.cutSegmentsToEqualLength(segment1, segment2);
 		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, 
-				(int) (MotionAuthenticationParameters.coherenceWindowOverlapFactor * windowSize));
+				(int) (ShakeWellBeforeUseParameters.coherenceWindowOverlapFactor * windowSize));
 		if (coherence == null) {
 			logger.warn("Coherence not computed, no match");
 			return -1;
 		}
-		return Coherence.mean(coherence, MotionAuthenticationParameters.coherenceCutOffFrequency);
+		return Coherence.mean(coherence, ShakeWellBeforeUseParameters.coherenceCutOffFrequency);
 	}
 
 	/** This helper function calls Coherence.cohere on localSegment and remoteSegment,
@@ -641,29 +641,29 @@ public class MotionAuthenticationProtocol1 extends DHWithVerification
 			return;
 		}
 		
-		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], MotionAuthenticationParameters.samplerate);
-		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
-		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
+		org.openuat.sensors.SamplesSource r = new org.openuat.sensors.ParallelPortPWMReader(args[0], ShakeWellBeforeUseParameters.samplerate);
+		TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.coherenceSegmentSize, ShakeWellBeforeUseParameters.coherenceSegmentSize);
+		TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.coherenceSegmentSize, ShakeWellBeforeUseParameters.coherenceSegmentSize);
 		r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 		r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		
 		boolean keepConnected = false;
 		HostAuthenticationServer s1, s2;
 		s1 = new org.openuat.util.TCPPortServer(TcpPort, keepConnected, true);
 		// this will not be started
 		s2 = new org.openuat.util.TCPPortServer(0, keepConnected, true); 
-		MotionAuthenticationProtocol1 ma1 = new MotionAuthenticationProtocol1(s1, keepConnected, false,
-				0.82, MotionAuthenticationParameters.coherenceWindowSize, true); 
-		MotionAuthenticationProtocol1 ma2 = new MotionAuthenticationProtocol1(s2, keepConnected, false,
-				0.82, MotionAuthenticationParameters.coherenceWindowSize, true);
+		ShakeWellBeforeUseProtocol1 ma1 = new ShakeWellBeforeUseProtocol1(s1, keepConnected, false,
+				0.82, ShakeWellBeforeUseParameters.coherenceWindowSize, true); 
+		ShakeWellBeforeUseProtocol1 ma2 = new ShakeWellBeforeUseProtocol1(s2, keepConnected, false,
+				0.82, ShakeWellBeforeUseParameters.coherenceWindowSize, true);
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startListening();

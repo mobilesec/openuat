@@ -22,9 +22,9 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 
-import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
-import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
-import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol2;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2;
 import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SamplesSink;
@@ -167,15 +167,15 @@ public class ShakingSinglePCDemonstrator {
 		sShell.open();
 		
 		// need two aggregators, because the first protocols works with 5s-slices
-		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
-		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.coherenceSegmentSize, MotionAuthenticationParameters.coherenceSegmentSize);
+		final TimeSeriesAggregator aggr1_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.coherenceSegmentSize, ShakeWellBeforeUseParameters.coherenceSegmentSize);
+		final TimeSeriesAggregator aggr1_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.coherenceSegmentSize, ShakeWellBeforeUseParameters.coherenceSegmentSize);
 		// these can use segments of arbitrary length
-		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-		aggr1_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
-		aggr1_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
-		aggr2_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
-		aggr2_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
+		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+		aggr1_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr1_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr2_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr2_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		// including our listeners for the device status
 		devState1 = new StateListener(0);
 		devState2 = new StateListener(1);
@@ -186,7 +186,7 @@ public class ShakingSinglePCDemonstrator {
 		/* 2: construct the two prototol instances: two different variants, each with two sides */
 		prot1_a = new Protocol1Hooks();
 		prot1_b = new Protocol1Hooks();
-		// TODO: move this threshold into MotionAuthenticationProtocol2
+		// TODO: move this threshold into ShakeWellBeforeUseProtocol2
 		prot2_a = new Protocol2Hooks(5, 56789, 56798, "A");
 		prot2_b = new Protocol2Hooks(5, 56798, 56789, "B");
 		
@@ -200,12 +200,12 @@ public class ShakingSinglePCDemonstrator {
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startListening();
-		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", MotionAuthenticationProtocol1.TcpPort)), null);
+		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", ShakeWellBeforeUseProtocol1.TcpPort)), null);
 		
 		if (deviceType == 1) {
 			if (! device1.startsWith("port:")) {
 				// just read from the file
-				reader1 = new ParallelPortPWMReader(device1, MotionAuthenticationParameters.samplerate);
+				reader1 = new ParallelPortPWMReader(device1, ShakeWellBeforeUseParameters.samplerate);
 				aggr1_a.setParameters(reader1.getParameters());
 				aggr1_b.setParameters(reader1.getParameters());
 				aggr2_a.setParameters(reader1.getParameters());
@@ -234,7 +234,7 @@ public class ShakingSinglePCDemonstrator {
 								Socket sock = serv.accept();
 								logger.info("Client " + sock.getRemoteSocketAddress() + " connected");
 								try {
-									reader1 = new ParallelPortPWMReader(sock.getInputStream(), MotionAuthenticationParameters.samplerate);
+									reader1 = new ParallelPortPWMReader(sock.getInputStream(), ShakeWellBeforeUseParameters.samplerate);
 									aggr1_a.setParameters(reader1.getParameters());
 									aggr1_b.setParameters(reader1.getParameters());
 									aggr2_a.setParameters(reader1.getParameters());
@@ -338,17 +338,17 @@ public class ShakingSinglePCDemonstrator {
 		System.exit(0);
 	}
 	
-	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
+	private class Protocol1Hooks extends ShakeWellBeforeUseProtocol1 {
 		private final static boolean keepConnected = true;
 		private final static boolean concurrentVerificationSupported = false;
 		private final static boolean useJSSE = true;
 		
 		protected Protocol1Hooks() {
 			// samplerate/2
-			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, keepConnected, useJSSE), 
+			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, keepConnected, useJSSE), 
 					keepConnected, concurrentVerificationSupported,
-					MotionAuthenticationParameters.coherenceThreshold, 
-					MotionAuthenticationParameters.coherenceWindowSize, useJSSE);
+					ShakeWellBeforeUseParameters.coherenceThreshold, 
+					ShakeWellBeforeUseParameters.coherenceWindowSize, useJSSE);
 		}
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
@@ -390,12 +390,12 @@ public class ShakingSinglePCDemonstrator {
 		}		
 	}
 
-	private class Protocol2Hooks extends MotionAuthenticationProtocol2 {
+	private class Protocol2Hooks extends ShakeWellBeforeUseProtocol2 {
 		protected Protocol2Hooks(int numMatches, int udpRecvPort, int udpSendPort, String instanceId) throws IOException {
-			super(MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesWindowSize,
-					MotionAuthenticationParameters.fftMatchesQuantizationLevels, MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
-					MotionAuthenticationParameters.fftMatchesCutOffFrequenecy, MotionAuthenticationParameters.fftMatchesWindowOverlap,
-					MotionAuthenticationParameters.fftMatchesThreshold,
+			super(ShakeWellBeforeUseParameters.samplerate, ShakeWellBeforeUseParameters.fftMatchesWindowSize,
+					ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels, ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound,
+					ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy, ShakeWellBeforeUseParameters.fftMatchesWindowOverlap,
+					ShakeWellBeforeUseParameters.fftMatchesThreshold,
 					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		

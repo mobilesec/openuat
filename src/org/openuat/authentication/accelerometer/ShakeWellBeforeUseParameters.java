@@ -19,7 +19,7 @@ package org.openuat.authentication.accelerometer;
  * @author Rene Mayrhofer
  * @version 1.0
  */
-public class MotionAuthenticationParameters {
+public class ShakeWellBeforeUseParameters {
 	public final static int samplerate = 256; // Hz
 	
 	public final static int activityDetectionWindowSize = samplerate/2; // 1/2 s

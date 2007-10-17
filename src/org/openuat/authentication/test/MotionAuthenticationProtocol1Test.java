@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 
-import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
-import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
 import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
@@ -43,7 +43,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startListening();
-		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", MotionAuthenticationProtocol1.TcpPort)), null);
+		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", ShakeWellBeforeUseProtocol1.TcpPort)), null);
 
 		classIsReadyForTests = true;
 	}
@@ -54,10 +54,10 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		prot1_a.stopListening();
 	}
 	
-	private class Protocol1Hooks extends MotionAuthenticationProtocol1 {
+	private class Protocol1Hooks extends ShakeWellBeforeUseProtocol1 {
 		protected Protocol1Hooks() {
-			super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true), false, false,
-					MotionAuthenticationParameters.coherenceThreshold, MotionAuthenticationParameters.coherenceWindowSize, false);
+			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, false, true), false, false,
+					ShakeWellBeforeUseParameters.coherenceThreshold, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!

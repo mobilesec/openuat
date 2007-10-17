@@ -13,7 +13,7 @@ import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.KeyManager;
-import org.openuat.authentication.accelerometer.MotionAuthenticationProtocol1;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
 import org.openuat.util.RemoteConnection;
 import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
@@ -167,7 +167,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 */
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
 				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) {
-		super(new TCPPortServer(MotionAuthenticationProtocol1.TcpPort, false, true),
+		super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, false, true),
 				keepSocketConnected, false, serialPort, useJSSE);
 		
 		if (!simulation) {

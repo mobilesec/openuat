@@ -25,7 +25,7 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.openuat.authentication.accelerometer.MotionAuthenticationParameters;
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.features.Coherence;
 import org.openuat.features.QuantizedFFTCoefficients;
 import org.openuat.features.TimeSeriesUtil;
@@ -169,13 +169,13 @@ public class AsciiLineReaderRunner {
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
-			maxSegmentLength = 3; // this is in seconds while MotionAuthenticationParameters.coherenceSegmentSize; is in samples (and thus not usable here)
+			maxSegmentLength = 3; // this is in seconds while ShakeWellBeforeUseParameters.coherenceSegmentSize; is in samples (and thus not usable here)
 			segmentSkip = maxSegmentLength; // seconds
 		} else {
 			samplerates = new int[] {128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1/2f}; 
-			varthresholdMin = MotionAuthenticationParameters.activityVarianceThreshold;
-			varthresholdMax = MotionAuthenticationParameters.activityVarianceThreshold;
+			varthresholdMin = ShakeWellBeforeUseParameters.activityVarianceThreshold;
+			varthresholdMax = ShakeWellBeforeUseParameters.activityVarianceThreshold;
 			varthresholdStep = 0.005;
 			coherence_windowSizes = samplerates;
 		}
@@ -190,7 +190,7 @@ public class AsciiLineReaderRunner {
 			int samplerate = samplerates[i1];
 			// these are the defaults when not searching for parameters
 			if (!paramSearch_coherence && !paramSearch_matches) {
-				samplerate = MotionAuthenticationParameters.samplerate; // Hz
+				samplerate = ShakeWellBeforeUseParameters.samplerate; // Hz
 				i1=samplerates.length; // makes the loop exit after this run
 			}
 
@@ -200,10 +200,10 @@ public class AsciiLineReaderRunner {
 			for (int i2=0; i2<windowsizeFactors.length; i2++) {
 				int windowsize = (int) (samplerate*windowsizeFactors[i2]);
 				// this is not yet searched, but restrict the minimum significant segment size to Xs
-				int minsegmentsize = 3*samplerate; //MotionAuthenticationParameters.activityMinimumSegmentSize;
+				int minsegmentsize = 3*samplerate; //ShakeWellBeforeUseParameters.activityMinimumSegmentSize;
 				// these are the defaults when not searching for parameters
 				if (!paramSearch_coherence && !paramSearch_matches) {
-					windowsize = MotionAuthenticationParameters.activityDetectionWindowSize;
+					windowsize = ShakeWellBeforeUseParameters.activityDetectionWindowSize;
 					i2=windowsizeFactors.length; // makes the loop exit after this run
 				}
 				
@@ -211,7 +211,7 @@ public class AsciiLineReaderRunner {
 						varthreshold+=(paramSearch_coherence ? varthresholdStep : varthresholdMax)) {
 					// these are the defaults when not searching for parameters
 					if (!paramSearch_coherence) {
-						varthreshold = MotionAuthenticationParameters.activityVarianceThreshold;
+						varthreshold = ShakeWellBeforeUseParameters.activityVarianceThreshold;
 					}
 					
 					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
@@ -254,7 +254,7 @@ public class AsciiLineReaderRunner {
 						for (int i3=0; i3<coherence_windowSizes.length; i3++) {
 							int coherence_windowSize = coherence_windowSizes[i3];
 							if (!paramSearch_coherence) {
-								coherence_windowSize = MotionAuthenticationParameters.coherenceWindowSize;
+								coherence_windowSize = ShakeWellBeforeUseParameters.coherenceWindowSize;
 								i3=coherence_windowSizes.length; // makes the loop exit after this run
 							}
 
@@ -262,7 +262,7 @@ public class AsciiLineReaderRunner {
 								int windowOverlap = (int) (coherence_windowSize*windowOverlapFactors[i4]);
 								// these are the defaults when not searching for parameters
 								if (!paramSearch_coherence) {
-									windowOverlap = (int) (MotionAuthenticationParameters.coherenceWindowOverlapFactor * MotionAuthenticationParameters.coherenceWindowSize);
+									windowOverlap = (int) (ShakeWellBeforeUseParameters.coherenceWindowOverlapFactor * ShakeWellBeforeUseParameters.coherenceWindowSize);
 									i4=windowOverlapFactors.length;
 								}
 
@@ -278,7 +278,7 @@ public class AsciiLineReaderRunner {
 											cutOffFrequency+=(paramSearch_coherence ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 												// these are the defaults when not searching for parameters
 												if (!paramSearch_coherence) {
-													cutOffFrequency = MotionAuthenticationParameters.coherenceCutOffFrequency;
+													cutOffFrequency = ShakeWellBeforeUseParameters.coherenceCutOffFrequency;
 												}
 												int max_ind = TimeSeriesUtil.getMaxInd(coherence_windowSize, samplerate, cutOffFrequency);
 										
@@ -319,21 +319,21 @@ public class AsciiLineReaderRunner {
 								int numQuantLevels = quantLevels[i4];
 								// these are the defaults when not searching for parameters
 								if (!paramSearch_matches) {
-									numQuantLevels = MotionAuthenticationParameters.fftMatchesQuantizationLevels;
+									numQuantLevels = ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels;
 									i4 = quantLevels.length;
 								}
 								for (int numCandidates=numCandidatesMin; numCandidates<=numCandidatesMax; 
 									numCandidates+=(paramSearch_matches ? numCandidatesStep : numCandidatesMax)) {
 									// these are the defaults when not searching for parameters
 									if (!paramSearch_matches) {
-										numCandidates = MotionAuthenticationParameters.fftMatchesCandidatesPerRound;
+										numCandidates = ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound;
 									}
 
 									for (int cutOffFrequency=cutOffFrequencyMin; cutOffFrequency<=cutOffFrequencyMax; 
 										cutOffFrequency+=(paramSearch_matches ? cutOffFrequencyStep : cutOffFrequencyMax)) {
 										// these are the defaults when not searching for parameters
 										if (!paramSearch_matches) {
-											cutOffFrequency = MotionAuthenticationParameters.fftMatchesCutOffFrequenecy; // Hz
+											cutOffFrequency = ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy; // Hz
 										}
 
 										int numMatchesVariantA=0;
@@ -413,37 +413,37 @@ public class AsciiLineReaderRunner {
 						AsciiLineReaderBase r = null;
 						if (runClassName.equals("ParallelPortPWMReader"))
 							r = new ParallelPortPWMReader(new GZIPInputStream(is), 
-									MotionAuthenticationParameters.samplerate);
+									ShakeWellBeforeUseParameters.samplerate);
 						else {
 							System.err.println("Unknown derived class name or not supported for WiTilt right now!");
 							System.exit(200);
 						}
 
 						SegmentSink.segs = new double[2][];
-						TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-						TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
+						TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+						TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
 						r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 						r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 						aggr_a.addNextStageSegmentsSink(new SegmentSink(0));
 						aggr_b.addNextStageSegmentsSink(new SegmentSink(1));
 						aggr_a.setParameters(r.getParameters());
 						aggr_b.setParameters(r.getParameters());
-						aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
-						aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
+						aggr_a.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
+						aggr_b.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 						r.simulateSampling();
 						is.close();
 
-						int fftpoints = MotionAuthenticationParameters.fftMatchesWindowSize; 
-						int windowOverlap = MotionAuthenticationParameters.fftMatchesWindowOverlap;
+						int fftpoints = ShakeWellBeforeUseParameters.fftMatchesWindowSize; 
+						int windowOverlap = ShakeWellBeforeUseParameters.fftMatchesWindowOverlap;
 						for (int device=0; device<2; device++) {
 							if (SegmentSink.segs[device] != null) {
 								for (int offset=0; offset<SegmentSink.segs[device].length-fftpoints+1; offset+=fftpoints-windowOverlap) {
 									int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(
 											SegmentSink.segs[device], offset, 
-											MotionAuthenticationParameters.fftMatchesWindowSize,
-											TimeSeriesUtil.getMaxInd(fftpoints, MotionAuthenticationParameters.samplerate, MotionAuthenticationParameters.fftMatchesCutOffFrequenecy),
-											MotionAuthenticationParameters.fftMatchesQuantizationLevels,
-											MotionAuthenticationParameters.fftMatchesCandidatesPerRound,
+											ShakeWellBeforeUseParameters.fftMatchesWindowSize,
+											TimeSeriesUtil.getMaxInd(fftpoints, ShakeWellBeforeUseParameters.samplerate, ShakeWellBeforeUseParameters.fftMatchesCutOffFrequenecy),
+											ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels,
+											ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound,
 											true, true);
 									for (int m=0; m<cand.length; m++) {
 										vectorsPerSubjPerHandPerDev[i][k][device].put(

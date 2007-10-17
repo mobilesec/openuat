@@ -36,7 +36,7 @@ public class MarinPerianuComparison {
 	 */
 	public static final float correlationCoefficientThreshold = 0.5f;
 	
-	// TODO: implement their incremental approach and integrate with MotionAuthenticationProtocol1 and interlock:
+	// TODO: implement their incremental approach and integrate with ShakeWellBeforeUseProtocol1 and interlock:
 	// run DH phase, and then in each interlock phase exchange stepSize samples 
 	// (that might fit in 256 Bits, i.e. the block length when 8 Bits accuracy are sufficient)
 	// then, after at least 8 such interlock exchanges (i.e. when windowSize is full),
