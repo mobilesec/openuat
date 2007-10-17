@@ -106,8 +106,10 @@ public class AsciiLineReaderRunner {
 	
 	private static void plotTimeSeries(String runClassName, String filename) throws IOException {
 		AsciiLineReaderBase r = null;
-		if (runClassName.equals("ParallelPortPWMReader"))
-			r = new ParallelPortPWMReader(filename, 100);
+		if (runClassName.equals("ParallelPortPWMReader")) {
+			FileInputStream is = new FileInputStream(filename);
+			r = new ParallelPortPWMReader(new GZIPInputStream(is), 100);
+		}
 		else if (runClassName.equals("WiTiltRawReader")) {
 			r = new WiTiltRawReader();
 			((WiTiltRawReader) r).openSerial(filename, false);
@@ -215,8 +217,10 @@ public class AsciiLineReaderRunner {
 					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
 							", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
 					AsciiLineReaderBase r2 = null;
-					if (runClassName.equals("ParallelPortPWMReader"))
-						r2 = new ParallelPortPWMReader(filename, samplerate);
+					if (runClassName.equals("ParallelPortPWMReader")) {
+						FileInputStream is = new FileInputStream(filename);
+						r2 = new ParallelPortPWMReader(new GZIPInputStream(is), samplerate);
+					}
 					else {
 						System.err.println("Unknown derived class name or not supported for WiTilt right now!");
 						System.exit(200);
