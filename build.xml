@@ -37,6 +37,7 @@
 	<property name="bin-apache-bzip2" location="${build}/bin-apache-bzip2"/>
 	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
+	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
 	<property name="bin-microlog" location="${build}/bin-microlog"/>
 	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
 	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
@@ -183,6 +184,8 @@
 	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
 	<!-- This is a task for checkstyle -->
 	<taskdef resource="checkstyletask.properties" classpath="${lib}/checkstyle-4.3.jar:${lib}/commons-beanutils-core.jar:${lib}/commons-logging.jar:${lib}/antlr.jar"/>
+	<!-- This is a task for findbugs -->
+	<taskdef name="findbugs" classpath="${findbugs.home}/lib/findbugs-ant.jar" classname="edu.umd.cs.findbugs.anttask.FindBugsTask"/>
 
 
 	<target name="enableDebug" 
@@ -748,6 +751,16 @@
 			<formatter type="plain"/>
 			<formatter type="xml" toFile="${reports.checkstyle}"/>
 		</checkstyle>
+	</target>
+	
+	<target name="findbugs" depends="jar">
+		<findbugs home="${findbugs.home}"
+			output="xml"
+			outputFile="${reports}/findbugs.xml" >
+			<auxClasspath path="${jarfile.distbundle}" />
+			<sourcePath path="${src}" />
+			<class location="${jarfile.core}:${jarfile.channels}:${jarfile.apps}" />
+		</findbugs>
 	</target>
 	
 	<target name="run" depends="jar" description="Run jar file">
