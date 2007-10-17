@@ -35,7 +35,8 @@ public class TimeSeries implements SamplesSink {
 		public float getOffset();
 	}
 
-	/** This is the internal circular buffer used to hold the values inside the time window. */
+	/** This is the internal circular buffer used to hold the values inside the time window.
+	 * These values are already normalized. */
 	private double[] circularBuffer;
 	/** The current position inside the circular buffer. This marks the position where the next sample will be written to. */
 	private int index = 0;
@@ -54,12 +55,12 @@ public class TimeSeries implements SamplesSink {
 	/** Keeps a running sum over all squared samples pf the current time window. */
 	private double windowSum2 = 0;
 
-	/** This offset is added to all sample values before passing them on to the next stage.
+	/** This offset is added to all sample values for normalization.
 	 * @see #setOffset(double)
 	 * @see #getOffset() 
 	 */
 	private double offset = 0;
-	/** All sample values are multiplied with this factor before passing them on to the next stage.
+	/** All sample values are multiplied with this factor for normalization.
 	 * @see #setOffset(double)
 	 * @see #getOffset() 
 	 */
@@ -134,6 +135,9 @@ public class TimeSeries implements SamplesSink {
 					+ "(" + totalNum + ")");
 		}
 		
+		// first of all, normalize the incoming values to our internal range
+		sample = sample * multiplicator + offset; 
+		
 		// if circular buffer is already full, remove oldest (i.e. update statistics
 		if (full) {
 			windowSum -= circularBuffer[index];
@@ -162,8 +166,6 @@ public class TimeSeries implements SamplesSink {
 			nextStageSample -= getWindowMean();
 		else if (subtractTotalMean)
 			nextStageSample -= getTotalMean();
-		// and then apply optional linear transformation
-		nextStageSample = nextStageSample * multiplicator + offset;
 		if (logger.isTraceEnabled())
 			logger.trace("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
@@ -265,7 +267,8 @@ public class TimeSeries implements SamplesSink {
 		return getVariance(windowSum, windowSum2, full ? circularBuffer.length : index); 
 	}
 	
-	/** Returns all samples currently contained in the time window. */
+	/** Returns all samples currently contained in the time window. 
+	 * These are already normalized. */
 	public double[] getSamplesInWindow() {
 		// TODO: this can be optimized with 2 System.ArrayCopy calls
 		int startInd = full ? index : 0;
@@ -279,6 +282,8 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Gets the current value of offset.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #offset
 	 * @return The current value of offset.
 	 */
@@ -287,6 +292,8 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Sets the current value of offset.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #offset
 	 * @param offset The current value of offset.
 	 */
@@ -295,6 +302,8 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Gets the current value of multiplicator.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #multiplicator
 	 * @return The current value of multiplicator.
 	 */
@@ -303,6 +312,8 @@ public class TimeSeries implements SamplesSink {
 	}
 	
 	/** Sets the current value of multiplicator.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #multiplicator
 	 * @param multiplicator The current value of multiplicator.
 	 */
@@ -351,6 +362,8 @@ public class TimeSeries implements SamplesSink {
 	}
 
 	/** Gets the current value of activeVarianceThreshold.
+	 * Note that this threshold applies to the normalized, not the original
+	 * value range.
 	 * @see #activeVarianceThreshold
 	 * @return The current value of activeVarianceThreshold.
 	 */
@@ -359,6 +372,8 @@ public class TimeSeries implements SamplesSink {
 	}
 
 	/** Sets the current value of activeVarianceThreshold.
+	 * Note that this threshold applies to the normalized, not the original
+	 * value range.
 	 * @see #activeVarianceThreshold
 	 * @param activeVarianceThreshold The current value of activeVarianceThreshold.
 	 */

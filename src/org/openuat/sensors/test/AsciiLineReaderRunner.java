@@ -125,7 +125,7 @@ public class AsciiLineReaderRunner {
 		for (int i=0; i<r.getMaxNumLines(); i++) {
 			t[i] = new TimeSeries(50);
 			t[i].setParameters(r.getParameters());
-			t[i].setActiveVarianceThreshold(350);
+			t[i].setActiveVarianceThreshold(0.02136f);
 			s[i] = new XYSink();
 			t[i].addNextStageSink(s[i]);
 			
@@ -161,9 +161,9 @@ public class AsciiLineReaderRunner {
 		if (paramSearch_coherence) {
 			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
-			varthresholdMin = 50;
-			varthresholdMax = 1000;
-			varthresholdStep = 50;
+			varthresholdMin = 0.003052f;
+			varthresholdMax = 0.061035f;
+			varthresholdStep = 0.003052f;
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
@@ -174,7 +174,7 @@ public class AsciiLineReaderRunner {
 			windowsizeFactors = new double[] {1/2f}; 
 			varthresholdMin = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdMax = MotionAuthenticationParameters.activityVarianceThreshold;
-			varthresholdStep = 50;
+			varthresholdStep = 0.003052f;
 			coherence_windowSizes = samplerates;
 		}
 		int[] quantLevels = new int[] {2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20};

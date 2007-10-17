@@ -25,7 +25,7 @@ public class MotionAuthenticationParameters {
 	public final static int activityDetectionWindowSize = samplerate/2; // 1/2 s
 	
 	// this is very robust
-	public final static int activityVarianceThreshold = 750; // this depends on samplerate, update when changing!
+	public final static float activityVarianceThreshold = 0.0457f; // this depends on samplerate, update when changing!
 	
 	public final static int activityMinimumSegmentSize = 3*samplerate; // 3 s
 	

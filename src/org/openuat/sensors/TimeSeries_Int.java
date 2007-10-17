@@ -52,7 +52,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	 */
 	private static final int reportSampleRateSeconds = 10;
 
-	/** This is the internal circular buffer used to hold the values inside the time window. */
+	/** This is the internal circular buffer used to hold the values inside the time window. 
+	 * These values are already normalized. */
 	private int[] circularBuffer;
 	/** The current position inside the circular buffer. This marks the position where the next sample will be written to. */
 	private int index = 0;
@@ -71,17 +72,17 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	/** Keeps a running sum over all squared samples pf the current time window. */
 	private int windowSum2 = 0;
 
-	/** This offset is added to all sample values before passing them on to the next stage.
+	/** This offset is added to all sample values for normalization.
 	 * @see #setOffset(int)
 	 * @see #getOffset() 
 	 */
 	private int offset = 0;
-	/** All sample values are multiplied with this factor before passing them on to the next stage.
+	/** All sample values are multiplied with this factor for normalization.
 	 * @see #setOffset(int)
 	 * @see #getOffset() 
 	 */
 	private int multiplicator = 1;
-	/** All sample values are divided this factor before passing them on to the next stage.
+	/** All sample values are divided this factor for normalization.
 	 * @see #setOffset(int)
 	 * @see #getOffset() 
 	 */
@@ -168,6 +169,9 @@ public class TimeSeries_Int implements SamplesSink_Int {
 					+ "(" + totalNum + ")");
 		}
 		
+		// first of all, normalize the incoming values to our internal range
+		sample = sample * multiplicator / divisor + offset; 
+		
 		// if circular buffer is already full, remove oldest (i.e. update statistics
 		if (full) {
 			windowSum -= circularBuffer[index];
@@ -196,8 +200,6 @@ public class TimeSeries_Int implements SamplesSink_Int {
 			nextStageSample -= getWindowMean();
 		else if (subtractTotalMean)
 			nextStageSample -= getTotalMean();
-		// and then apply optional linear transformation
-		nextStageSample = nextStageSample * multiplicator / divisor + offset;
 		if (logger.isTraceEnabled())
 			logger.trace("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
@@ -318,7 +320,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 		return getVariance(windowSum, windowSum2, full ? circularBuffer.length : index); 
 	}
 	
-	/** Returns all samples currently contained in the time window. */
+	/** Returns all samples currently contained in the time window.
+	 * These are already normalized. */
 	public int[] getSamplesInWindow() {
 		// TODO: this can be optimized with 2 System.ArrayCopy calls
 		int startInd = full ? index : 0;
@@ -332,6 +335,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 	
 	/** Gets the current value of offset.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #offset
 	 * @return The current value of offset.
 	 */
@@ -340,6 +345,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 	
 	/** Sets the current value of offset.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #offset
 	 * @param offset The current value of offset.
 	 */
@@ -348,6 +355,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 	
 	/** Gets the current value of multiplicator.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #multiplicator
 	 * @return The current value of multiplicator.
 	 */
@@ -356,6 +365,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 	
 	/** Sets the current value of multiplicator.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #multiplicator
 	 * @param multiplicator The current value of multiplicator.
 	 */
@@ -364,6 +375,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 	
 	/** Gets the current value of divisor.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #divisor
 	 * @return The current value of divisor.
 	 */
@@ -372,6 +385,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 	
 	/** Sets the current value of divisor.
+	 * This will be applied to all incoming values <b>before</b> they are 
+	 * stored in the buffer, i.e. all consecutive processing steps.
 	 * @see #divisor
 	 * @param multiplicator The current value of divisor.
 	 */
@@ -420,6 +435,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 
 	/** Gets the current value of activeVarianceThreshold.
+	 * Note that this threshold applies to the normalized, not the original
+	 * value range.
 	 * @see #activeVarianceThreshold
 	 * @return The current value of activeVarianceThreshold.
 	 */
@@ -428,6 +445,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	}
 
 	/** Sets the current value of activeVarianceThreshold.
+	 * Note that this threshold applies to the normalized, not the original
+	 * value range.
 	 * @see #activeVarianceThreshold
 	 * @param activeVarianceThreshold The current value of activeVarianceThreshold.
 	 */
