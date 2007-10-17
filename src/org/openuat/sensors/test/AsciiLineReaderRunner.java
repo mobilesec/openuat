@@ -161,9 +161,9 @@ public class AsciiLineReaderRunner {
 		if (paramSearch_coherence) {
 			samplerates = new int[] {64, 128, 256, 512}; // different sample rates
 			windowsizeFactors = new double[] {1 , 1/2f, 1/4f};  // 1 second, 1/2 second or 1/4 second for active detection 
-			varthresholdMin = 0.003052f;
-			varthresholdMax = 0.061035f;
-			varthresholdStep = 0.003052f;
+			varthresholdMin = 0.005;
+			varthresholdMax = 0.1;
+			varthresholdStep = 0.005;
 			coherence_windowSizes = new int[] {32, 64, 128, 256, 512, 1024};
 			cutOffFrequencyStep = 5;
 			cutOffFrequencyMax = 40;
@@ -174,7 +174,7 @@ public class AsciiLineReaderRunner {
 			windowsizeFactors = new double[] {1/2f}; 
 			varthresholdMin = MotionAuthenticationParameters.activityVarianceThreshold;
 			varthresholdMax = MotionAuthenticationParameters.activityVarianceThreshold;
-			varthresholdStep = 0.003052f;
+			varthresholdStep = 0.005;
 			coherence_windowSizes = samplerates;
 		}
 		int[] quantLevels = new int[] {2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20};
