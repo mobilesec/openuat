@@ -349,4 +349,10 @@ public abstract class SamplesSource {
 	 * @return true if more samples are available, false otherwise.
 	 */
 	protected abstract boolean handleSample();
+
+	/** Each time samples source must be able to provide the appropriate 
+	 * parameters for normalizing its values to the [-1;1] range.
+	 */
+	public abstract TimeSeries.Parameters getParameters();
+	public abstract TimeSeries_Int.Parameters getParameters_Int();
 }

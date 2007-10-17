@@ -23,12 +23,15 @@ import org.apache.log4j.Logger;
 public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger(MainboardAccelerometerReader_Linux.class);
-
+	
 	/** Path to the HDAPS (IBM/Lenovo Thinkpads) sensor pseudo-file. */ 
 	private static final String hdapsSensorFile = "/sys/bus/platform/devices/hdaps/position";
 	
 	/** Path to the applesmc (Apple Macbook (Pro) and iBook/Powerbook) sensor pseudo-file. */ 
 	private static final String applesmcSensorFile = "/sys/bus/platform/devices/applesmc/position";
+	
+	// TODO: what is my real value??
+	public final static int VALUE_RANGE=1;
 	
 	/** Initializes the XXXXXXXXXXXXXXX. It only saves the
 	 * passed parameters and opens the 
@@ -77,5 +80,39 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 		for (int i=0; i<3; i++)
 			sample[i] = Integer.parseInt(st.nextToken());
 		emitSample(sample);
+	}
+
+	/** Provides appropriate parameters for interpreting the values to 
+	 * normalize to the [-1;1] range.
+	 */
+	// TODO: enable again when j2mepolish can deal with it
+	//@Override
+	public TimeSeries.Parameters getParameters() {
+		return new TimeSeries.Parameters() {
+			public float getMultiplicator() {
+				return 2f/VALUE_RANGE;
+			}
+
+			public float getOffset() {
+				return -1f;
+			}
+		};
+	}
+	/** Instead of to [-1;1], these integer parameters map to [-1024;1024],
+	 * i.e. MAXIMUM_RANGE in TimeSeries_Int. */
+	public TimeSeries_Int.Parameters getParameters_Int() {
+		return new TimeSeries_Int.Parameters() {
+			public int getMultiplicator() {
+				return 2*TimeSeries_Int.MAXIMUM_VALUE;
+			}
+
+			public int getDivisor() {
+				return VALUE_RANGE;
+			}
+
+			public int getOffset() {
+				return -TimeSeries_Int.MAXIMUM_VALUE;
+			}
+		};
 	}
 }

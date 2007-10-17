@@ -251,13 +251,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				SymbianTCPAccelerometerReader.SAMPLERATE/2, // this should be about 1/2s 
 				SymbianTCPAccelerometerReader.SAMPLERATE*4, // use segments of 4s length 
 				SymbianTCPAccelerometerReader.SAMPLERATE*4);
-		// the values are already zero-based
-		aggregator.setOffset(0);
-		aggregator.setSubtractTotalMean(true);
+		aggregator.setParameters(reader.getParameters_Int());
 		/* The integer TimeSeriesAggregator part does _not_ take the square 
 		 * roots when computing the magnitudes, so expect to square the 
 		 * threshold as well. Additionally, we don't use signals in the range
-		 * [-1;1] but ca. [-300;300].
+		 * [-1;1] but [-1024;1024]. The variance threshold is computed over
 		 * THIS DEPENDS HEAVILY ON THE WINDOW SIZE SET ABOVE IN THE CONSTRUCTOR
 		 */
 		aggregator.setActiveVarianceThreshold(100

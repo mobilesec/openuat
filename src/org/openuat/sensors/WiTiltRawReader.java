@@ -66,6 +66,8 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	 */
 	private final static int BAUDRATE = 57600;
 	
+	public final static int VALUE_RANGE = 1024;
+	
 	private final static String MENU_HEADER = "WiTilt Firmware v3 - Configuration Menu:";
 	
 	/** The serial port object when connecting via method 1 (serial port). */
@@ -356,6 +358,39 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 		}
 	}
 	
+	/** Provides appropriate parameters for interpreting the values to 
+	 * normalize to the [-1;1] range.
+	 */
+	// TODO: enable again when j2mepolish can deal with it
+	//@Override
+	public TimeSeries.Parameters getParameters() {
+		return new TimeSeries.Parameters() {
+			public float getMultiplicator() {
+				return 2f/VALUE_RANGE;
+			}
+
+			public float getOffset() {
+				return -1f;
+			}
+		};
+	}
+	/** Instead of to [-1;1], these integer parameters map to [-1024;1024],
+	 * i.e. MAXIMUM_RANGE in TimeSeries_Int. */
+	public TimeSeries_Int.Parameters getParameters_Int() {
+		return new TimeSeries_Int.Parameters() {
+			public int getMultiplicator() {
+				return 2*TimeSeries_Int.MAXIMUM_VALUE;
+			}
+
+			public int getDivisor() {
+				return VALUE_RANGE;
+			}
+
+			public int getOffset() {
+				return -TimeSeries_Int.MAXIMUM_VALUE;
+			}
+		};
+	}
 	
 	/////////////////////////// test code begins here //////////////////////////////
 	private static class TestSamplesSink implements SamplesSink {

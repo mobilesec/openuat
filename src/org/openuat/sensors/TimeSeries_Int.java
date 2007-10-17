@@ -26,6 +26,22 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries_Int" /*TimeSeries_Int.class*/);
 	
+	/** This interface represents the parameters that <b>must</b> be reasonably
+	 * set when initializing a time series that reads from sensors instead of
+	 * from other time series. Sensors objects should implement a method 
+	 * getParameters() to yield an object that will provide the appropriate values.
+	 * These parameters are used to normalize the values to the [-1024;1024] range, 
+	 * thus giving 10 Bits accuracy at the moment.
+	 * @author Rene Mayrhofer
+	 */
+	public interface Parameters {
+		public int getMultiplicator();
+		public int getDivisor();
+		public int getOffset();
+	}
+	
+	public final static int MAXIMUM_VALUE = 1024;
+	
 	/** If debugging is enabled, then estimate the sample rate every N 
 	 * samples, where N is this number.
 	 */
@@ -65,6 +81,11 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	 * @see #getOffset() 
 	 */
 	private int multiplicator = 1;
+	/** All sample values are divided this factor before passing them on to the next stage.
+	 * @see #setOffset(int)
+	 * @see #getOffset() 
+	 */
+	private int divisor = 1;
 	/** If set to true, the window mean will be subtracted before passing a sample on to the next stage.
 	 * @see #setSubtractWindowMean(boolean)
 	 * @see #getSubtractWindowMean()
@@ -176,7 +197,7 @@ public class TimeSeries_Int implements SamplesSink_Int {
 		else if (subtractTotalMean)
 			nextStageSample -= getTotalMean();
 		// and then apply optional linear transformation
-		nextStageSample = nextStageSample * multiplicator + offset;
+		nextStageSample = nextStageSample * multiplicator / divisor + offset;
 		if (logger.isTraceEnabled())
 			logger.trace("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
@@ -342,6 +363,22 @@ public class TimeSeries_Int implements SamplesSink_Int {
 		this.multiplicator = multiplicator;
 	}
 	
+	/** Gets the current value of divisor.
+	 * @see #divisor
+	 * @return The current value of divisor.
+	 */
+	public int getDisivsor() {
+		return divisor;
+	}
+	
+	/** Sets the current value of divisor.
+	 * @see #divisor
+	 * @param multiplicator The current value of divisor.
+	 */
+	public void setDivisor(int divisor) {
+		this.multiplicator = divisor;
+	}
+	
 	/** Gets the current value of subtractWindowMean.
 	 * @see #subtractWindowMean
 	 * @return The current value of subtractWindowMean.
@@ -398,5 +435,13 @@ public class TimeSeries_Int implements SamplesSink_Int {
 		this.activeVarianceThreshold = activeVarianceThreshold;
 	}
 	
-	// TODO: provide default parameter values, but allow to override them
+	/** Sets the multiplicator, divisor, and the offset according to the given
+	 * parameters object.
+	 * @param pars An object that can be queried for the values to be set.
+	 */
+	public void setParameters(Parameters pars) {
+		setMultiplicator(pars.getMultiplicator());
+		setDivisor(pars.getDivisor());
+		setOffset(pars.getOffset());
+	}
 }

@@ -469,6 +469,7 @@ public class TimeSeriesAggregator {
 	 * @see TimeSeries#setSubtractWindowMean(boolean)
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
+		logger.warn("Switching window mean subtraction on for all individual dimensions. This is probably not what you want!");
 		for (int i=0; i<curSampleReceived.length; i++) {
 //#if cfg.haveFloatSupport
 			firstStageSeries[i].setSubtractWindowMean(subtractWindowMean);
@@ -481,6 +482,7 @@ public class TimeSeriesAggregator {
 	 * @see TimeSeries#setSubtractTotalMean(boolean)
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
+		logger.warn("Switching total mean subtraction on for all individual dimensions. This is probably not what you want!");
 		for (int i=0; i<curSampleReceived.length; i++) {
 //#if cfg.haveFloatSupport
 			firstStageSeries[i].setSubtractTotalMean(subtractTotalMean);
@@ -501,6 +503,20 @@ public class TimeSeriesAggregator {
 	public void setActiveVarianceThreshold(int activeVarianceThreshold) {
 		for (int i=0; i<firstStageSeries_Int.length; i++)
 			firstStageSeries_Int[i].setActiveVarianceThreshold(activeVarianceThreshold);
+	}
+
+	/** Sets the parameters for all internally kept time series.
+	 * @see TimeSeries#setParameters
+	 */
+//#if cfg.haveFloatSupport
+	public void setParameters(TimeSeries.Parameters pars) {
+		for (int i=0; i<firstStageSeries.length; i++)
+			firstStageSeries[i].setParameters(pars);
+	}
+//#endif
+	public void setParameters(TimeSeries_Int.Parameters pars) {
+		for (int i=0; i<firstStageSeries_Int.length; i++)
+			firstStageSeries_Int[i].setParameters(pars);
 	}
 
 	/** Registers a sink which will receive all active segments when they are complete.

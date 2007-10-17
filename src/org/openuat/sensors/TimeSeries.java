@@ -22,6 +22,18 @@ import org.apache.log4j.Logger;
 public class TimeSeries implements SamplesSink {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries" /*TimeSeries.class*/);
+	
+	/** This interface represents the parameters that <b>must</b> be reasonably
+	 * set when initializing a time series that reads from sensors instead of
+	 * from other time series. Sensors objects should implement a method 
+	 * getParameters() to yield an object that will provide the appropriate values.
+	 * These parameters are used to normalize the values to the [-1;1] range; 
+	 * @author Rene Mayrhofer
+	 */
+	public interface Parameters {
+		public float getMultiplicator();
+		public float getOffset();
+	}
 
 	/** This is the internal circular buffer used to hold the values inside the time window. */
 	private double[] circularBuffer;
@@ -354,5 +366,12 @@ public class TimeSeries implements SamplesSink {
 		this.activeVarianceThreshold = activeVarianceThreshold;
 	}
 	
-	// TODO: provide default parameter values, but allow to override them
+	/** Sets both the multiplicator and the offset according to the given
+	 * parameters object.
+	 * @param pars An object that can be queried for the values to be set.
+	 */
+	public void setParameters(Parameters pars) {
+		setMultiplicator(pars.getMultiplicator());
+		setOffset(pars.getOffset());
+	}
 }

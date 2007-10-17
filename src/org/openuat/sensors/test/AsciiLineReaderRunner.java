@@ -124,9 +124,7 @@ public class AsciiLineReaderRunner {
 		int[] linesToAdd = new int[r.getMaxNumLines()];
 		for (int i=0; i<r.getMaxNumLines(); i++) {
 			t[i] = new TimeSeries(50);
-			t[i].setOffset(0);
-			t[i].setMultiplicator(1/128f);
-			t[i].setSubtractTotalMean(true);
+			t[i].setParameters(r.getParameters());
 			t[i].setActiveVarianceThreshold(350);
 			s[i] = new XYSink();
 			t[i].addNextStageSink(s[i]);
@@ -230,13 +228,9 @@ public class AsciiLineReaderRunner {
 					r2.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 					aggr_a.addNextStageSegmentsSink(new SegmentSink(0));
 					aggr_b.addNextStageSegmentsSink(new SegmentSink(1));
-					aggr_a.setOffset(0);
-					aggr_a.setMultiplicator(1/128f);
-					aggr_a.setSubtractTotalMean(true);
+					aggr_a.setParameters(r2.getParameters());
+					aggr_b.setParameters(r2.getParameters());
 					aggr_a.setActiveVarianceThreshold(varthreshold);
-					aggr_b.setOffset(0);
-					aggr_b.setMultiplicator(1/128f);
-					aggr_b.setSubtractTotalMean(true);
 					aggr_b.setActiveVarianceThreshold(varthreshold);
 					r2.simulateSampling();
 
@@ -428,13 +422,9 @@ public class AsciiLineReaderRunner {
 						r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 						aggr_a.addNextStageSegmentsSink(new SegmentSink(0));
 						aggr_b.addNextStageSegmentsSink(new SegmentSink(1));
-						aggr_a.setOffset(0);
-						aggr_a.setMultiplicator(1/128f);
-						aggr_a.setSubtractTotalMean(true);
+						aggr_a.setParameters(r.getParameters());
+						aggr_b.setParameters(r.getParameters());
 						aggr_a.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
-						aggr_b.setOffset(0);
-						aggr_b.setMultiplicator(1/128f);
-						aggr_b.setSubtractTotalMean(true);
 						aggr_b.setActiveVarianceThreshold(MotionAuthenticationParameters.activityVarianceThreshold);
 						r.simulateSampling();
 						is.close();
@@ -534,9 +524,9 @@ public class AsciiLineReaderRunner {
 		}
 		
 		/////// test 2: plot the 2 extracted segments from the first and the second device		int[] samplerates;
-		/*if (!estimateEntropy)
+		if (!estimateEntropy)
 			computeSimilarityMeasures(runClassName, filename, paramSearch_coherence, paramSearch_matches, graph);
 		else
-			estimateEntropy(runClassName, filename);*/
+			estimateEntropy(runClassName, filename);
 	}
 }
