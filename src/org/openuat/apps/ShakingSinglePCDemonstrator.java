@@ -172,17 +172,9 @@ public class ShakingSinglePCDemonstrator {
 		// these can use segments of arbitrary length
 		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
 		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, MotionAuthenticationParameters.activityDetectionWindowSize, MotionAuthenticationParameters.activityMinimumSegmentSize, -1);
-		aggr1_a.setOffset(0);
-		aggr1_a.setSubtractTotalMean(true);
 		aggr1_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
-		aggr1_b.setOffset(0);
-		aggr1_b.setSubtractTotalMean(true);
 		aggr1_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
-		aggr2_a.setOffset(0);
-		aggr2_a.setSubtractTotalMean(true);
 		aggr2_a.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
-		aggr2_b.setOffset(0);
-		aggr2_b.setSubtractTotalMean(true);
 		aggr2_b.setActiveVarianceThreshold((double) MotionAuthenticationParameters.activityVarianceThreshold);
 		// including our listeners for the device status
 		devState1 = new StateListener(0);
@@ -214,11 +206,10 @@ public class ShakingSinglePCDemonstrator {
 			if (! device1.startsWith("port:")) {
 				// just read from the file
 				reader1 = new ParallelPortPWMReader(device1, MotionAuthenticationParameters.samplerate);
-				// since the sensor value range is between 0 and 255
-				aggr1_a.setMultiplicator(1/128f);
-				aggr1_b.setMultiplicator(1/128f);
-				aggr2_a.setMultiplicator(1/128f);
-				aggr2_b.setMultiplicator(1/128f);
+				aggr1_a.setParameters(reader1.getParameters());
+				aggr1_b.setParameters(reader1.getParameters());
+				aggr2_a.setParameters(reader1.getParameters());
+				aggr2_b.setParameters(reader1.getParameters());
 
 				reader1.addSink(new int[] {0, 1, 2}, aggr1_a.getInitialSinks());
 				reader1.addSink(new int[] {4, 5, 6}, aggr1_b.getInitialSinks());
@@ -244,11 +235,10 @@ public class ShakingSinglePCDemonstrator {
 								logger.info("Client " + sock.getRemoteSocketAddress() + " connected");
 								try {
 									reader1 = new ParallelPortPWMReader(sock.getInputStream(), MotionAuthenticationParameters.samplerate);
-									// since the sensor value range is between 0 and 255
-									aggr1_a.setMultiplicator(1/128f);
-									aggr1_b.setMultiplicator(1/128f);
-									aggr2_a.setMultiplicator(1/128f);
-									aggr2_b.setMultiplicator(1/128f);
+									aggr1_a.setParameters(reader1.getParameters());
+									aggr1_b.setParameters(reader1.getParameters());
+									aggr2_a.setParameters(reader1.getParameters());
+									aggr2_b.setParameters(reader1.getParameters());
 									reader1.addSink(new int[] {0, 1, 2}, aggr1_a.getInitialSinks());
 									reader1.addSink(new int[] {4, 5, 6}, aggr1_b.getInitialSinks());
 									reader1.addSink(new int[] {0, 1, 2}, aggr2_a.getInitialSinks());
@@ -280,11 +270,10 @@ public class ShakingSinglePCDemonstrator {
 				((WiTiltRawReader) reader1).openBluetooth(device1, false);
 				((WiTiltRawReader) reader2).openBluetooth(device2, false);
 			}
-			// since the sensor value range is between 0 and 1023
-			aggr1_a.setMultiplicator(1/512f);
-			aggr1_b.setMultiplicator(1/512f);
-			aggr2_a.setMultiplicator(1/512f);
-			aggr2_b.setMultiplicator(1/512f);
+			aggr1_a.setParameters(reader1.getParameters());
+			aggr1_b.setParameters(reader1.getParameters());
+			aggr2_a.setParameters(reader1.getParameters());
+			aggr2_b.setParameters(reader1.getParameters());
 
 			reader1.addSink(new int[] {0, 1, 2}, aggr1_a.getInitialSinks());
 			reader2.addSink(new int[] {0, 1, 2}, aggr1_b.getInitialSinks());
