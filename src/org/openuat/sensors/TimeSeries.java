@@ -42,6 +42,8 @@ public class TimeSeries implements SamplesSink {
 	private int index = 0;
 	/** This is a boolean because once filled, we never expect it to be contain less elements again. So using a boolean, the checking is faster.*/
 	private boolean full = false;
+	/** If set to true, the values forwarded to the next stage will be difference values. */
+	private boolean differencing = false;
 	
 	/** Keeps a running total sum over all samples added to this time series so far (not only the current time window). */
 	private double totalSum = 0;
@@ -359,6 +361,22 @@ public class TimeSeries implements SamplesSink {
 			return;
 		}
 		this.subtractTotalMean = subtractTotalMean;
+	}
+
+	/** Gets the current value of differencing.
+	 * @see #differencing
+	 * @return The current value of differencing.
+	 */
+	public boolean getDifferencing() {
+		return differencing;
+	}
+	
+	/** Sets the current value of differencing.
+	 * @see #differencing
+	 * @param differencing The current value of differencing.
+	 */
+	public void setDifferencing(boolean differencing) {
+		this.differencing = differencing;
 	}
 
 	/** Gets the current value of activeVarianceThreshold.
