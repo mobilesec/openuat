@@ -74,7 +74,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	Image good, bad;
 	ImageItem goodOrBad; 
-	StringItem status, lastValue, threshold;
+	StringItem status, lastValue;
 	String previousStatus = "";
 	
 	Gauge lastMatch;
@@ -158,18 +158,15 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		} catch (IOException e1) {
 			logger.warn("Could not load image: " + e1);
 		}
-		goodOrBad = new ImageItem("", bad, Item.LAYOUT_RIGHT | Item.LAYOUT_TOP, "good or bad");
+		goodOrBad = new ImageItem(null, bad, Item.LAYOUT_DEFAULT, null);
 		mainForm.append(goodOrBad);
 		
 		lastMatch = new Gauge("Last match", false, 99, 0);
-		lastMatch.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
+		lastMatch.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_AFTER);
 		mainForm.append(lastMatch);
-		lastValue = new StringItem("Last value:", "");
-		lastValue.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
+		lastValue = new StringItem("Last value:", "0 / " + Float.toString(CoherenceThreshold*100));
+		lastValue.setLayout(Item.LAYOUT_DEFAULT);
 		mainForm.append(lastValue);
-		threshold = new StringItem("Threshold:", Float.toString(CoherenceThreshold*100));
-		threshold.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
-		mainForm.append(threshold);
 		
 		if (!startBackgroundTasks())
 			return;
@@ -264,14 +261,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				SymbianTCPAccelerometerReader.SAMPLERATE/2, // this should be about 1/2s 
 				SymbianTCPAccelerometerReader.SAMPLERATE*4, // use segments of 4s length 
 				SymbianTCPAccelerometerReader.SAMPLERATE*4);
-		aggregator.setParameters(reader.getParameters_Int());
+		aggregator.setOffset(0); //
+		aggregator.setSubtractTotalMean(true); //
+		//aggregator.setParameters(reader.getParameters_Int());
 		/* The integer TimeSeriesAggregator part does _not_ take the square 
 		 * roots when computing the magnitudes, so expect to square the 
 		 * threshold as well. Additionally, we don't use signals in the range
 		 * [-1;1] but [-1024;1024]. The variance threshold is computed over
 		 * THIS DEPENDS HEAVILY ON THE WINDOW SIZE SET ABOVE IN THE CONSTRUCTOR
 		 */
-		aggregator.setActiveVarianceThreshold(1500
+		aggregator.setActiveVarianceThreshold(100 // >1500?
 				/*(ShakeWellBeforeUseParameters.activityVarianceThreshold*
 				ShakeWellBeforeUseParameters.activityVarianceThreshold) *
 				(SymbianTCPAccelerometerReader.VALUE_RANGE*SymbianTCPAccelerometerReader.VALUE_RANGE)*/);
@@ -357,7 +356,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			status.setText("FAILURE");
 			previousStatus = "FAILURE";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
-			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100));
+			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + Float.toString(CoherenceThreshold*100));
 			// I want to beep
 		}
 
@@ -366,7 +365,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			status.setText("SUCCESS");
 			previousStatus = "SUCCESS";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
-			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100));
+			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + Float.toString(CoherenceThreshold*100));
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
