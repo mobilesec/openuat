@@ -247,15 +247,23 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	public TimeSeries_Int.Parameters getParameters_Int() {
 		return new TimeSeries_Int.Parameters() {
 			public int getMultiplicator() {
-				return 2*TimeSeries_Int.MAXIMUM_VALUE;
+				/* We would set this to TimeSeries_Int.MAXIMUM_VALUE (1024), 
+				 * but this appears to lead to integer range overflows. 
+				 * Therefore already divide by VALUE_RANGE (which would be set
+				 * as divisor below) to avoid this.
+				 */ 
+				return 2;
 			}
 
 			public int getDivisor() {
-				return VALUE_RANGE;
+				/* We would set this to VALUE_RANGE, but see above for the 
+				 * reason why we return 1 here.
+				 */ 
+				return 1;
 			}
 
 			public int getOffset() {
-				return -TimeSeries_Int.MAXIMUM_VALUE;
+				return 0;
 			}
 		};
 	}
