@@ -61,6 +61,8 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	private boolean full = false;
 	/** If set to true, the values forwarded to the next stage will be difference values. */
 	private boolean differencing = false;
+        /** Stores the last value, used only when differencing=true. */
+        private int lastSample;
 	
 	/** Keeps a running total sum over all samples added to this time series so far (not only the current time window). */
 	private int totalSum = 0;
@@ -174,6 +176,21 @@ public class TimeSeries_Int implements SamplesSink_Int {
 		// first of all, normalize the incoming values to our internal range
 		sample = sample * multiplicator / divisor + offset; 
 		
+                // and if differencing is enabled, do it right now so that it is used for all other stages
+                // (so that even the buffer will already hold difference values)
+                if (differencing) {
+                    if (index>0 || full) {
+                        int tmp = sample;
+                        sample -= lastSample;
+                        lastSample = tmp;
+                    }
+                    else {
+                        // if this is the first sample, can only use 0
+                        lastSample = sample;
+                        sample = 0;
+                    }
+                }
+
 		// if circular buffer is already full, remove oldest (i.e. update statistics
 		if (full) {
 			windowSum -= circularBuffer[index];
