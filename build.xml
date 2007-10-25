@@ -11,6 +11,7 @@
 
 <project name="openuat" default="junit" basedir=".">
 	<property name="src" location="src"/>
+	<property name="resources" location="resources"/>
 	<property name="build" location="build"/>
 	<property name="bin" location="${build}/bin"/>
 	<property name="lib" location="lib"/>
@@ -431,8 +432,8 @@
 				org/openuat/features/FPIntFFT.java org/openuat/features/Coherence_Int.java
 				org/openuat/features/TimeSeriesUtil.java
 				org/openuat/features/Coherence.java org/openuat/features/FFT.java org/openuat/features/Complex.java 
-				org/openuat/authentication/accelerometer/MotionAuthenticationParameters.java
-				org/openuat/authentication/accelerometer/MotionAuthenticationProtocol1.java
+				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
+				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
 				org/openuat/util/SafetyBeltTimer.java" />
 		</copy>
@@ -478,6 +479,7 @@
 					<parameter name="optimize" value="false" />
 				</obfuscator>
 				<resources>
+					<fileset dir="${resources}" includes="button_*.png" />
 					<fileset dir="${src}" includes="microlog.properties" />
 				</resources>
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
@@ -527,6 +529,7 @@
 					<parameter name="optimize" value="false" />
 				</obfuscator>
 				<resources>
+					<fileset dir="${resources}" includes="button_*.png" />
 					<fileset dir="${src}" includes="microlog.properties" />
 				</resources>
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
@@ -574,6 +577,7 @@
 					<parameter name="optimize" value="false" />
 				</obfuscator>
 				<resources>
+					<fileset dir="${resources}" includes="button_*.png" />
 					<fileset dir="${src}" includes="microlog.properties" />
 				</resources>
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />

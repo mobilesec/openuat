@@ -43,6 +43,9 @@ import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
+	private final static String IMAGE_GOOD = "/button_ok.png";
+	private final static String IMAGE_BAD = "/button_cancel.png";
+	
 	/** Code for the Ubicomp 2007 Demo. Will be ignored if the preprocessor defines are not set. */
 	private static boolean FIXED_DEMO_MODE = false;
 	private final static String FIXED_DEMO_UUID = "b76a37e5e5404bf09c2a1ae3159a02d8";
@@ -69,6 +72,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	Form mainForm;
 	
+	Image good, bad;
+	ImageItem goodOrBad; 
 	StringItem status, lastValue, threshold;
 	String previousStatus = "";
 	
@@ -145,8 +150,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		mainForm.setCommandListener(this);
 
 		status = new StringItem("Status:", "initializing");
-		status.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_TOP);
+		status.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_TOP);
 		mainForm.append(status);
+		try {
+			good = Image.createImage(IMAGE_GOOD);
+			bad = Image.createImage(IMAGE_BAD);
+		} catch (IOException e1) {
+			logger.warn("Could not load image: " + e1);
+		}
+		goodOrBad = new ImageItem("", bad, Item.LAYOUT_RIGHT | Item.LAYOUT_TOP, "good or bad");
+		mainForm.append(goodOrBad);
 		
 		lastMatch = new Gauge("Last match", false, 99, 0);
 		lastMatch.setLayout(Item.LAYOUT_CENTER | Item.LAYOUT_BOTTOM);
@@ -340,6 +353,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
+			goodOrBad.setImage(bad);
 			status.setText("FAILURE");
 			previousStatus = "FAILURE";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
@@ -348,6 +362,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
+			goodOrBad.setImage(good);
 			status.setText("SUCCESS");
 			previousStatus = "SUCCESS";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
