@@ -538,6 +538,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 			// not interested in this method - the hook will be called anyway
 		}
+
+		public void AuthenticationStarted(Object sender, Object remote) {
+			// not interested in this method for the demo mode 
+		}
 	}
 	
 	private double[] samples = new double[3];

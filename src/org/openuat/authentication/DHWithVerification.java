@@ -460,6 +460,14 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	        // also call the hook of derived classes
 	        protocolProgressHook(((RemoteConnection) remote), cur, max, msg);
 	    }
+
+		public void AuthenticationStarted(Object sender, Object remote) {
+	        logger.debug("Received host authentication started event with " + remote + 
+					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	        raiseAuthenticationStartedEvent(remote);
+	        // also call the hook of derived classes
+	        protocolStartedHook(((RemoteConnection) remote));
+		}
 	}
 
 	/** This helper class is only there for visibility purposes: it calls the
@@ -554,4 +562,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	protected abstract void protocolProgressHook(RemoteConnection remote,
 			 int cur, int max, String message);
+
+	/** This hook will be called when the whole authentication protocol has
+	 * been started. Derived classes should implement it to react to 
+	 * this progress.
+	 * @param remote The remote host with which the key exchange started.
+	 */
+	protected abstract void protocolStartedHook(RemoteConnection remote);
 }

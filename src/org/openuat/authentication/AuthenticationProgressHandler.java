@@ -14,8 +14,7 @@ package org.openuat.authentication;
  * @version 1.0
  */
 public interface AuthenticationProgressHandler {
-	/**
-	 * Upon successful authentication, the established shared key can be used
+	/** Upon successful authentication, the established shared key can be used
 	 * with the remote host. The type of the remoteHost object depends on the sender
 	 * of the event, e.g. an InetAddress object for HostProtocolHandler generated
 	 * events, but an Integer for DongleProtocolHandler generated events (encapsulating
@@ -23,7 +22,7 @@ public interface AuthenticationProgressHandler {
 	 * 
 	 * @param sender The object which sent this event.
 	 * 
-	 * @param remoteHost The remote end with which the authentication is performed. 
+	 * @param remote The remote end with which the authentication is performed. 
 	 * Depends on the sender of the event.
 	 * 
 	 * @param result The result, if any, of the successful authentication. This can
@@ -37,8 +36,8 @@ public interface AuthenticationProgressHandler {
 	 message might have been created.
 	 * @param sender The object which sent this event.
 	 * 
-	 @param e Reason for the failue, can be null.
-	 @param msg Reaseon for the failue, can be null */
+	 * @param e Reason for the failue, can be null.
+	 * @param msg Reaseon for the failue, can be null */
 	public void AuthenticationFailure(Object sender, Object remote, Exception e,
 			String msg);
 
@@ -53,4 +52,14 @@ public interface AuthenticationProgressHandler {
 	 */
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max,
 			String msg);
+	
+	/** This event is raised when the authentication protocol is started, to 
+	 * indicate that further events might follow.
+	 *
+	 * @param sender The object which sent this event.
+	 * 
+	 * @param remote The remote end with which the authentication is performed. 
+	 * Depends on the sender of the event.
+	 */
+	public void AuthenticationStarted(Object sender, Object remote);
 }

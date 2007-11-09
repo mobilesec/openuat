@@ -660,21 +660,22 @@
        		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
-			<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>
+			<!--<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>-->
+			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
 		</exec>
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A3:A1:D4"/>
-			<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>
+			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
 		</exec>
 
-		<exec executable="obexftp">
+<!--		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A3:A1:D7"/>
 			<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET2.jar"/>
 		</exec>
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A3:A1:D0"/>
 			<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET2.jar"/>
-		</exec>
+		</exec>-->
 	</target>
 
 	<!-- ATTENTION: when changing this task, need to copy to the copy in the coverage report below! -->

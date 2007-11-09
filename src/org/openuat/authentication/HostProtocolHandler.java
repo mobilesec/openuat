@@ -486,6 +486,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
 	public void startIncomingAuthenticationThread(boolean asynchronousCall) {
 		logger.debug("Starting incoming authentication thread handler");
+		/* The very first thing to do is to fire off the respective started event.
+		 * This is done even before starting a potential background thread 
+		 * (and thus not in performAuthenticationProtocol, but with code 
+		 * duplication here and below) to minimize potential for race 
+		 * conditions on application level.
+		 */
+		// This will e.g. trigger the creation of a State object in KeyManager, when used.
+		raiseAuthenticationStartedEvent(connection);
+		
 		if (asynchronousCall) {
 			new Thread(new AsynchronousCallHelper(this) {
 				public void run() {
@@ -544,6 +553,14 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
 		tmpProtocolHandler.optionalParameter = optionalParameter;
+		/* The very first thing to do is to fire off the respective started event.
+		 * This is done even before starting a potential background thread 
+		 * (and thus not in performAuthenticationProtocol, but with code 
+		 * duplication here and above) to minimize potential for race 
+		 * conditions on application level.
+		 */
+		// This will e.g. trigger the creation of a State object in KeyManager, when used.
+		tmpProtocolHandler.raiseAuthenticationStartedEvent(remote);
 		
 		// start the authentication protocol in the background
 		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(

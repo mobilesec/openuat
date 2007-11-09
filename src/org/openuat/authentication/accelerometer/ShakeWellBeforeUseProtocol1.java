@@ -174,6 +174,11 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		logger.debug("protocolProgressHook called");
 	}
 
+	protected void protocolStartedHook(RemoteConnection remote) {
+		// nothing special to do, events have already been emitted by the base class
+		logger.debug("protocolStartedHook called");
+	}
+
 	/** Called by the base class when the whole authentication protocol is reset. 
 	 * Does nothing. */
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!

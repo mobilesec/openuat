@@ -476,6 +476,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			raiseAuthenticationProgressEvent(remote, cur, max, msg);
 		}
 
+		public void AuthenticationStarted(Object sender, Object remote) {
+			logger.debug("Authentication started with " + remote);
+			raiseAuthenticationStartedEvent(remote);
+		}
+		
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 			logger.debug("Successfully agreed to key with " + remote);
 			raiseAuthenticationSuccessEvent(remote, result);

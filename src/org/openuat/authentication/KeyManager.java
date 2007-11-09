@@ -159,12 +159,16 @@ public class KeyManager extends AuthenticationEventSender {
 	 * Its main purpose is to react to the AuthenticationSuccess event of
 	 * HostAuthenticationProtocol (i.e. key agreement). It remembers the
 	 * data passed to the AuthenticationSuccess event and wipes all key
-	 * material in case of an AuthenticationFailure event. */
+	 * material in case of an AuthenticationFailure event.
+	 * It also records AuthenticationStarted events so as to mark a remote 
+	 * host as being active and therefore prevent multiple concurrent key
+	 * agreements with the same host (e.g. one incoming, one outgoing). 
+	 */
 	private class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
 		/** A small helper function to retreive the state for the remote or 
 		 * create one if it's not there.
 		 */
-		private State retreiveState(Object sender, Object remote) {
+		private State retreiveState(Object sender, Object remote, boolean allowImplicitTransition) {
 	    	if (! (remote instanceof RemoteConnection)) {
 	    		logger.error("Received host authentication event from " + sender + " with remote object of unknown type '" + 
 	    				remote + "', ignoring" +
@@ -177,21 +181,22 @@ public class KeyManager extends AuthenticationEventSender {
 	    		logger.debug("Received host authentication event from " + sender + " in nonexistant state - assuming to be the server." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState = new State();
-	    		remoteState.state = STATE_KEY_AGREEMENT;
+	    		remoteState.state = STATE_IDLE;
 	    		if (hosts.put(host, remoteState) != null)
 	    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 	    	}
 	    	else
 	    		remoteState = (State) hosts.get(host);
 	    	
-	    	if (remoteState.state == STATE_IDLE) {
-	    		logger.debug("Received host authentication event from " + sender + " in idle state - assuming to be the server." + 
+	    	if (remoteState.state == STATE_IDLE && allowImplicitTransition) {
+	    		logger.debug("Received host authentication started event from " + sender + " in idle state - assuming to be the server." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState.state = STATE_KEY_AGREEMENT;
 	    	}
 	    	if (remoteState.state != STATE_KEY_AGREEMENT) {
-	    		logger.error("Received host authentication success event with remote host " + remote + 
-	    				" while not expecting one! This event will be ignored." +
+	    		logger.error("Received some host authentication event with remote host " + remote + 
+	    				" while not expecting one (currently in state " + remoteState.state + 
+	    				")! This event will be ignored." +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return null;
 	    	}
@@ -211,7 +216,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        logger.info("Received host authentication success event with " + remote +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
-	        State remoteState = retreiveState(sender, remote);
+	        State remoteState = retreiveState(sender, remote, false);
 	    	if (remoteState == null) return;
 
 	    	// first of all remember all the parameters for later use
@@ -272,7 +277,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        logger.info("Received host authentication failure with " + remote +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
-	        State remoteState = retreiveState(sender, remote);
+	        State remoteState = retreiveState(sender, remote, false);
 	    	if (remoteState == null) return;
 
 	    	failed(remoteState);
@@ -281,7 +286,7 @@ public class KeyManager extends AuthenticationEventSender {
 	            logger.info("Exception: " + e);
 	        if (msg != null)
 	            logger.info("Message: " + msg);
-	        // this will also call the derived classes hook
+	        // forward this event onwards, as an abort is global for the respective host
 	        raiseAuthenticationFailureEvent(remote, e, msg);
 	    }
 
@@ -289,12 +294,25 @@ public class KeyManager extends AuthenticationEventSender {
 	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
-	        State remoteState = retreiveState(sender, remote);
+	        State remoteState = retreiveState(sender, remote, false);
 	    	if (remoteState == null) return;
 			
-	        // also call the hook of derived classes
+	        // forward the progress event onwards
 	        raiseAuthenticationProgressEvent(remote, cur, max, msg);
 	    }
+
+		public void AuthenticationStarted(Object sender, Object remote) {
+	        logger.debug("Received host authentication started event with " + remote + 
+	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+
+	        // this basically makes sure that a state object is created for this protocol run
+	        // and only in this event do we allow an implicit transition from IDLE to KEY_AGREEMENT
+	        State remoteState = retreiveState(sender, remote, true);
+	    	if (remoteState == null) return;
+			
+	        // forward the started event onwards
+	        raiseAuthenticationStartedEvent(remote);
+		}
 	}
 	
 	/** All known hosts and key states. Keys are of type RemoteConnection,
@@ -458,7 +476,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 * been in STATE_IDLE at the time this method is called. The method should 
 	 * be called upon outgoing connections, while the state will be automatically
 	 * updated to STATE_KEY_AGREEMENT for incoming connections. When the host 
-	 * reference is unknown when the method is calles, it will be created.
+	 * reference is unknown when the method is called, it will be created.
 	 * @param host The host to reset.
 	 * @return true if successful, false if the host is nonexistant or not in
 	 *              STATE_IDLE.

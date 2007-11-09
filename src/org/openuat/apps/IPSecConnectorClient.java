@@ -229,8 +229,9 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		 * in the beginning the object is an IP4NetAddress... and changes then to the remote address.
 		 */
 		guiHandler.progress(null, remote.toString(), -1, cur, max, msg);
-		
-		
+	}
+	public void AuthenticationStarted(Object sender, Object remote) {
+		// just ignore for now, but should update the GUI
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {

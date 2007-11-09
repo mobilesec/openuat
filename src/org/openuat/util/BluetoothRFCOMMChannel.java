@@ -471,6 +471,10 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			System.out.println("DH with " + remote + " progress: " + cur + "/" + max + ": " + msg);
 		}
 
+		public void AuthenticationStarted(Object sender, Object remote) {
+			System.out.println("DH with " + remote + " started");
+		}
+
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 			System.out.println("DH with " + remote + " SUCCESS");
 

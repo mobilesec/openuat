@@ -107,4 +107,20 @@ public abstract class AuthenticationEventSender {
     			}
     		}
     }
+
+    /** Helper method for sending an AuthenticationStarted event to all registered listeners (if any). */
+    protected void raiseAuthenticationStartedEvent(Object remote) {
+    	if (eventsHandlers != null)
+    		for (int i = 0; i < eventsHandlers.size(); i++) {
+    			AuthenticationProgressHandler h = (AuthenticationProgressHandler) eventsHandlers.elementAt(i); 
+    			try {
+    				h.AuthenticationStarted(this, remote);
+    			}
+    			catch (Exception e) {
+    				logger.error("Authentication started handler '" + h + 
+    						"' caused exception '" + e + "', ignoring it here");
+    				LoggingHelper.debugWithException(logger, null, e);
+    			}
+    		}
+    }
 }
