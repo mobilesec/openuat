@@ -165,8 +165,9 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			logger.error("Can't update progress bar", e);
 		}
 	}
-	public void AuthenticationStarted(Object sender, Object remote) {
+	public boolean AuthenticationStarted(Object sender, Object remote) {
 		// just ignore for now, but should update the GUI
+		return true;
 	}
 	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {

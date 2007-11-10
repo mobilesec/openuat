@@ -301,17 +301,18 @@ public class KeyManager extends AuthenticationEventSender {
 	        raiseAuthenticationProgressEvent(remote, cur, max, msg);
 	    }
 
-		public void AuthenticationStarted(Object sender, Object remote) {
+		public boolean AuthenticationStarted(Object sender, Object remote) {
 	        logger.debug("Received host authentication started event with " + remote + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
 	        // this basically makes sure that a state object is created for this protocol run
 	        // and only in this event do we allow an implicit transition from IDLE to KEY_AGREEMENT
 	        State remoteState = retreiveState(sender, remote, true);
-	    	if (remoteState == null) return;
+	        // and if it wasn't IDLE (or nonexistant) before, veto right here
+	    	if (remoteState == null) return false;
 			
 	        // forward the started event onwards
-	        raiseAuthenticationStartedEvent(remote);
+	        return raiseAuthenticationStartedEvent(remote);
 		}
 	}
 	

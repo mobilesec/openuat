@@ -109,12 +109,14 @@ public abstract class AuthenticationEventSender {
     }
 
     /** Helper method for sending an AuthenticationStarted event to all registered listeners (if any). */
-    protected void raiseAuthenticationStartedEvent(Object remote) {
+    protected boolean raiseAuthenticationStartedEvent(Object remote) {
     	if (eventsHandlers != null)
     		for (int i = 0; i < eventsHandlers.size(); i++) {
     			AuthenticationProgressHandler h = (AuthenticationProgressHandler) eventsHandlers.elementAt(i); 
     			try {
-    				h.AuthenticationStarted(this, remote);
+    				// on the first "veto", abort
+    				if (!h.AuthenticationStarted(this, remote))
+    					return false;
     			}
     			catch (Exception e) {
     				logger.error("Authentication started handler '" + h + 
@@ -122,5 +124,6 @@ public abstract class AuthenticationEventSender {
     				LoggingHelper.debugWithException(logger, null, e);
     			}
     		}
+    	return true;
     }
 }

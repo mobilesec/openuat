@@ -218,8 +218,9 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 		// just ignore for this demo application 
 	}
-	public void AuthenticationStarted(Object sender, Object remote) {
-		// just ignore for this demo application 
+	public boolean AuthenticationStarted(Object sender, Object remote) {
+		// just ignore for this demo application
+		return true;
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {

@@ -38,6 +38,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		int numSucceededHookCalled = 0;
 		int numFailedHookCalled = 0;
 		int numProgressHookCalled = 0;
+		int numStartedHookCalled = 0;
 		byte[] sharedAuthKey = null;
 		byte[] sharedSessKey = null;
 		private boolean succeed;
@@ -88,6 +89,10 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
 			numProgressHookCalled++;
 		}
+
+		protected void protocolStartedHook(RemoteConnection remote) {
+			numStartedHookCalled++;
+		}
 		
 		public void startAuthentication(String parm) throws UnknownHostException, IOException {
 			this.startAuthentication(new RemoteTCPConnection(new Socket("127.0.0.1", tcpPort)), parm);
@@ -126,6 +131,8 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			Thread.sleep(50);
 		}
 		
+		Assert.assertEquals(1, helper1.numStartedHookCalled);
+		Assert.assertEquals(1, helper2.numStartedHookCalled);
 		Assert.assertEquals(1, helper1.numSucceededHookCalled);
 		Assert.assertEquals(1, helper2.numSucceededHookCalled);
 		Assert.assertEquals(0, helper1.numFailedHookCalled);
@@ -175,6 +182,8 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			Thread.sleep(50);
 		}
 		
+		Assert.assertEquals(1, helper1.numStartedHookCalled);
+		Assert.assertEquals(1, helper2.numStartedHookCalled);
 		Assert.assertEquals(0, helper1.numSucceededHookCalled);
 		Assert.assertEquals(0, helper2.numSucceededHookCalled);
 		Assert.assertEquals(1, helper1.numFailedHookCalled);
@@ -217,6 +226,8 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			Thread.sleep(50);
 		}
 		
+		Assert.assertEquals(1, helper1.numStartedHookCalled);
+		Assert.assertEquals(1, helper2.numStartedHookCalled);
 		Assert.assertEquals("assert 1", 0, helper1.numSucceededHookCalled);
 		Assert.assertEquals("assert 2", 0, helper2.numSucceededHookCalled);
 		Assert.assertEquals("assert 3", 1, helper1.numFailedHookCalled);
@@ -259,6 +270,8 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			Thread.sleep(50);
 		}
 		
+		Assert.assertEquals(1, helper1.numStartedHookCalled);
+		Assert.assertEquals(1, helper2.numStartedHookCalled);
 		Assert.assertEquals(0, helper1.numSucceededHookCalled);
 		Assert.assertEquals(0, helper2.numSucceededHookCalled);
 		Assert.assertEquals(1, helper1.numFailedHookCalled);

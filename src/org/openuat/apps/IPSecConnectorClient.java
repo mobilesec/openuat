@@ -230,8 +230,9 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		 */
 		guiHandler.progress(null, remote.toString(), -1, cur, max, msg);
 	}
-	public void AuthenticationStarted(Object sender, Object remote) {
+	public boolean AuthenticationStarted(Object sender, Object remote) {
 		// just ignore for now, but should update the GUI
+		return true;
 	}
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {

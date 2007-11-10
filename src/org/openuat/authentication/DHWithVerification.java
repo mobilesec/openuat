@@ -461,12 +461,13 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	        protocolProgressHook(((RemoteConnection) remote), cur, max, msg);
 	    }
 
-		public void AuthenticationStarted(Object sender, Object remote) {
+		public boolean AuthenticationStarted(Object sender, Object remote) {
 	        logger.debug("Received host authentication started event with " + remote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	        raiseAuthenticationStartedEvent(remote);
+	        boolean ret = raiseAuthenticationStartedEvent(remote);
 	        // also call the hook of derived classes
 	        protocolStartedHook(((RemoteConnection) remote));
+	        return ret;
 		}
 	}
 

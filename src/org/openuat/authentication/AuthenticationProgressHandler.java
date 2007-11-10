@@ -60,6 +60,11 @@ public interface AuthenticationProgressHandler {
 	 * 
 	 * @param remote The remote end with which the authentication is performed. 
 	 * Depends on the sender of the event.
+	 * 
+	 * @return true if the handler accepts this authentication to be started,
+	 *         false to "veto" it. If any of the registered handlers (which are
+	 *         called in the order in which they were registered) returns 
+	 *         false, the (incoming or outgoing) authentication is aborted.
 	 */
-	public void AuthenticationStarted(Object sender, Object remote);
+	public boolean AuthenticationStarted(Object sender, Object remote);
 }

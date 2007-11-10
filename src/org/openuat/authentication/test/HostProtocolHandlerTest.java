@@ -100,6 +100,7 @@ public class HostProtocolHandlerTest extends TestCase {
         }
         Assert.assertEquals(0, h.getReceivedFailures());
         Assert.assertEquals(8, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
         Assert.assertTrue(h.areSharedSecretsEqual());
@@ -124,6 +125,7 @@ public class HostProtocolHandlerTest extends TestCase {
         }
         Assert.assertEquals(0, h.getReceivedFailures());
         Assert.assertEquals(8, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
         Assert.assertTrue(h.areSharedSecretsEqual());
@@ -151,6 +153,7 @@ public class HostProtocolHandlerTest extends TestCase {
         }
         Assert.assertEquals(0, h.getReceivedFailures());
         Assert.assertEquals(8, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
         Assert.assertTrue(h.areSharedSecretsEqual());
@@ -165,7 +168,7 @@ public class HostProtocolHandlerTest extends TestCase {
     
     private class EventHelper implements AuthenticationProgressHandler
     {
-        private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0;
+        private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0, receivedStarted = 0;
         private byte[][] sharedSessionKeys = new byte[2][], sharedAuthenticationKeys = new byte[2][];
         private String[] optionalParameters = new String[2];
         private Socket[] sockets = new Socket[2];
@@ -200,6 +203,15 @@ public class HostProtocolHandlerTest extends TestCase {
             }
         }
 
+        public boolean AuthenticationStarted(Object sender, Object remote)
+        {
+            synchronized (this)
+            {
+                receivedStarted++;
+            }
+            return true;
+        }
+
         int getReceivedSecrets()
         {
                 return receivedSecrets;
@@ -213,6 +225,11 @@ public class HostProtocolHandlerTest extends TestCase {
         int getReceivedProgress()
         {
                 return receivedProgress;
+        }
+
+        int getReceivedStarted()
+        {
+                return receivedStarted;
         }
 
         boolean areSharedSecretsEqual()

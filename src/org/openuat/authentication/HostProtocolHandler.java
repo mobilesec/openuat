@@ -493,7 +493,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		 * conditions on application level.
 		 */
 		// This will e.g. trigger the creation of a State object in KeyManager, when used.
-		raiseAuthenticationStartedEvent(connection);
+		if (!raiseAuthenticationStartedEvent(connection)) {
+			logger.warn("Some AuthenticationStarted event handler vetoed the incoming authentication request from " +
+					connection + ". Aborting it now, not starting authentication protocol");
+		}
 		
 		if (asynchronousCall) {
 			new Thread(new AsynchronousCallHelper(this) {
@@ -560,7 +563,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		 * conditions on application level.
 		 */
 		// This will e.g. trigger the creation of a State object in KeyManager, when used.
-		tmpProtocolHandler.raiseAuthenticationStartedEvent(remote);
+		if (!tmpProtocolHandler.raiseAuthenticationStartedEvent(remote)) {
+			logger.warn("Some AuthenticationStarted event handler vetoed the outgoing authentication request to " +
+					remote + ". Aborting it now, not starting authentication protocol");
+		}
 		
 		// start the authentication protocol in the background
 		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(

@@ -377,6 +377,10 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 				cur, max, message);
 		}
 	}
+	protected void protocolStartedHook(RemoteConnection remote) {
+		logger.debug("protocolStartedHook called at port " + serialPort + " with " + 
+				remote);
+	}
 	
 	/** Called by the base class when shared keys have been established and should be verified now.
 	 * In this implementation, verification is done by starting a DongleAuthenticationProtocol. 
@@ -524,6 +528,17 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	        			HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        			msg);
 	    }
+
+	    public boolean AuthenticationStarted(Object sender, Object remote) {
+	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
+	    		logger.error("Received dongle authentication started event with remote id " + remote + 
+	    			" from " + sender + " while not expecting one! This event will be ignored.");
+	    		return false;
+	    	}
+			
+	        logger.debug("Received dongle authentication progress event at port " + serialPort + " with id " + remote);
+	        return raiseAuthenticationStartedEvent(remote);
+	    }
 	}
 
 
@@ -658,7 +673,13 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
    						((org.eclipse.swt.widgets.ProgressBar) pb).setMaximum(m); ((org.eclipse.swt.widgets.ProgressBar) pb).setSelection(c); }});
    				}
    			}
-   		}
+
+   			public boolean AuthenticationStarted(Object sender, Object remote)
+   			{
+   				logger.info("Received relate authentication started event from " + sender + " with " + remote);
+   				return true;
+   			}
+		}
     
    		boolean useJSSEServer = true;
    		boolean useJSSEClient = true;

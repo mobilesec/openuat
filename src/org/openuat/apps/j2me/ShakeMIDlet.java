@@ -539,8 +539,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// not interested in this method - the hook will be called anyway
 		}
 
-		public void AuthenticationStarted(Object sender, Object remote) {
-			// not interested in this method for the demo mode 
+		public boolean AuthenticationStarted(Object sender, Object remote) {
+			// not interested in this method for the demo mode
+			return true;
 		}
 	}
 	
