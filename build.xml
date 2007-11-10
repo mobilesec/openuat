@@ -487,6 +487,7 @@
 		</j2mepolish>
 
 		<!-- need to build afresh, because the source code is changed by the precompiler (and we patch in the Bluetooth MACs) -->
+		<!-- disabled for now, demo no longer used
 		<delete dir="${build.midp.work}"/>
 		<delete dir="${bin.midp}"/>
         <mkdir dir="${build.midp.work}"/>
@@ -582,7 +583,8 @@
 				</resources>
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
 			</build>
-		</j2mepolish>		
+		</j2mepolish> 
+		-->
 		
 		<!-- create JAD files -->
 <!--		<wtkjad jadfile="${build}/HelloProperty.jad"
