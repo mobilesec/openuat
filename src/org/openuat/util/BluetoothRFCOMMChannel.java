@@ -91,9 +91,11 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		 * getRemoteAddress will work even before opening the connection */
 		if (serviceURL.startsWith("btspp://") &&
 				serviceURL.indexOf(':', 8) == 20 &&
-				serviceURL.indexOf(';') >= 22) {
+				(serviceURL.indexOf(';') >= 22 || 
+				 (serviceURL.length() <= 23 && serviceURL.indexOf(';') == -1))) {
 			this.remoteDeviceAddress = serviceURL.substring(8, 20);
-			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(21, serviceURL.indexOf(';')));
+			int end = serviceURL.indexOf(';') > 0 ? serviceURL.indexOf(';') : serviceURL.length(); 
+			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(21, end));
 			if (logger.isDebugEnabled())
 				logger.debug("Parsed remote device address '" + remoteDeviceAddress + 
 					"' and channel " + remoteChannelNumber + " from URL '" +
@@ -289,21 +291,21 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 
 	/** Implementation of RemoteConnection.getRemoteAddress.
 	 * @see RemoteConnection.getRemoteAddress
-	 * @return A RemoteDevice object representing the Bluetooth device.
+	 * @return A String object with the remote Bluetooth device address. It
+	 *         would be nicer to return a RemoteDevice object in every case, 
+	 *         but we can't due to the RemoteDevice(String) constructor being
+	 *         protected in the JSR81 API. Go complain to its authors.
 	 */
 	public Object getRemoteAddress() throws IOException {
 		if (connection != null)
 			// connection already open, get the RemoteDevice object from it
-			return RemoteDevice.getRemoteDevice(connection);
+			return RemoteDevice.getRemoteDevice(connection).getBluetoothAddress();
 		else if (remoteDeviceAddress != null)
 			// No connection open, need to work with remoteDeviceAddress here.
 			/* But the JSR82 API makes the RemoteDevice(String) constructor 
 			   protected, so can't use it. The best option is to simply return
 			   a string object. */
-			// TODO: do something about this! return something sensible! 
-			// but callers may depend on this being of type RemoteDevice...
-			//return remoteDeviceAddress;
-			return null;
+			return remoteDeviceAddress;
 		else
 			return null;
 	}
@@ -321,7 +323,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	public String getRemoteName() {
 		try {
 			if (connection != null)
-				return BluetoothPeerManager.resolveName((RemoteDevice) getRemoteAddress());
+				return BluetoothPeerManager.resolveName(RemoteDevice.getRemoteDevice(connection));
 			else
 				return remoteDeviceAddress;
 		} catch (IOException e) {
@@ -343,7 +345,6 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		BluetoothRFCOMMChannel o = (BluetoothRFCOMMChannel) other;
 		
-		System.out.println("1: " + connection + ", " + o.connection);
 		// already connected? if yes, this has precedence
 		if (connection != null && o.connection != null) {
 			if (logger.isDebugEnabled())
@@ -354,16 +355,17 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		
 		// not connected, compare serviceURL (because this will be used in open()
 		// however, only compare serviceURL if both have a valid remote channel number
-		System.out.println("2: " + serviceURL + ", " + o.serviceURL + ", " + remoteChannelNumber + ", " + o.remoteChannelNumber);
+		// also ignore the parameters in the serviceURL
 		if (serviceURL != null && o.serviceURL != null && 
 				remoteChannelNumber != -1 && o.remoteChannelNumber != -1) {
 			logger.debug("Both serviceURL objects set, comparing serviceURL=" + 
 					serviceURL + ", o.serviceURL=" + serviceURL);
-			return serviceURL.equals(o.serviceURL);
+			String s1 = serviceURL.indexOf(';') > 0 ? serviceURL.substring(0, serviceURL.indexOf(';')) : serviceURL;
+			String s2 = o.serviceURL.indexOf(';') > 0 ? o.serviceURL.substring(0, o.serviceURL.indexOf(';')) : o.serviceURL;
+			return s1.equals(s2);
 		}
 		
 		// ok, neither connected, nor do we have full serviceURLs, only compare device addresses (if available)
-		System.out.println("3: " + remoteDeviceAddress + ", " + o.remoteDeviceAddress);
 		if (remoteDeviceAddress != null && o.remoteDeviceAddress != null) {
 			logger.debug("Both remoteDeviceAddress objects set, comparing remoteDeviceAddress=" +
 					remoteDeviceAddress + ", o.remoteDeviceAddress=" + o.remoteDeviceAddress);
@@ -374,7 +376,30 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL or remoteDeviceAddress set. For what I know, they are different.");
 		return false;
 	}
-	
+
+	/** Override hashCode so as to provide the same integer when two objects 
+	 * are equal as defined by the overrode equals implementation. In this 
+	 * case, simply return the hashcode of the Bluetooth MAC address (as 
+	 * String), or 0 if no address is known.
+	 */
+	// TODO: activate me again when J2ME polish can deal with Java5 sources!
+	//@Override
+	public int hashCode() {
+		String remoteAddr = null;
+		try {
+			remoteAddr = (String) getRemoteAddress();
+		}
+		catch (IOException e) {
+			logger.error("Couldn't query remote address of connection while trying to generate hash code, will return 0");
+		}
+		
+		if (remoteAddr == null)
+			// no address known - let the hashtable call equals if necessary...
+			return 0;
+		else
+			return remoteAddr.hashCode();
+	}
+
 	public String toString() {
 		if (connection != null)
 			try {

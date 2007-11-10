@@ -267,9 +267,10 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		// don't run a key agreement if we already have a key with that host
 		if (keyManager != null) {
 			try {
-				System.out.println("------------------- start compare -----");
+				// TODO
+				logger.error("------------------- start compare -----");
 				int stateWithRemote = keyManager.getState(new BluetoothRFCOMMChannel(remoteAddress, -1));
-				System.out.println("------------------- stop compare -----");
+				logger.error("------------------- stop compare -----");
 				if (stateWithRemote != KeyManager.STATE_NONEXISTANT &&
 						stateWithRemote != KeyManager.STATE_IDLE) {
 					logger.info("Already in state " + stateWithRemote + " with remote '" +
