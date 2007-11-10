@@ -175,10 +175,14 @@ public class KeyManager extends AuthenticationEventSender {
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return null;
 	    	}
+	    	if (logger.isDebugEnabled())
+	    		logger.debug("Trying to retrieve key state object for remote " + remote);
+	    	
 	    	RemoteConnection host = (RemoteConnection) remote;
 	    	State remoteState;
 	    	if (! hosts.containsKey(host)) {
-	    		logger.debug("Received host authentication event from " + sender + " in nonexistant state - assuming to be the server." + 
+		    	if (logger.isDebugEnabled())
+		    		logger.debug("Received host authentication event from " + sender + " in nonexistant state, creating IDLE object." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState = new State();
 	    		remoteState.state = STATE_IDLE;
@@ -189,7 +193,8 @@ public class KeyManager extends AuthenticationEventSender {
 	    		remoteState = (State) hosts.get(host);
 	    	
 	    	if (remoteState.state == STATE_IDLE && allowImplicitTransition) {
-	    		logger.debug("Received host authentication started event from " + sender + " in idle state - assuming to be the server." + 
+		    	if (logger.isDebugEnabled())
+		    		logger.debug("Received host authentication started event from " + sender + " in idle state, transitioning to KEY_AGREEMENT." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState.state = STATE_KEY_AGREEMENT;
 	    	}
@@ -225,7 +230,8 @@ public class KeyManager extends AuthenticationEventSender {
 	        remoteState.sessionKey = (byte[]) res[0];
 	        // and extract the shared authentication key for phase 2
 	        remoteState.authenticationKey = (byte[]) res[1];
-	        logger.debug("Host " + remote + ": shared session key is now '" + 
+	    	if (logger.isDebugEnabled())
+	    		logger.debug("Host " + remote + ": shared session key is now '" + 
 	        		new String(Hex.encodeHex(remoteState.sessionKey)) + 
 	        		"' with length " + remoteState.sessionKey.length + 
 	        		", shared authentication key is now '" + 
@@ -277,10 +283,9 @@ public class KeyManager extends AuthenticationEventSender {
 	        logger.info("Received host authentication failure with " + remote +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
-	        State remoteState = retreiveState(sender, remote, false);
-	    	if (remoteState == null) return;
-
-	    	failed(remoteState);
+	        // only fail here in keyManager when the object is known, but don't abort - need to forward the event
+	    	if (hosts.containsKey(remote))
+	    		failed((State) hosts.get(remote));
 			
 	        if (e != null)
 	            logger.info("Exception: " + e);
@@ -291,7 +296,8 @@ public class KeyManager extends AuthenticationEventSender {
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
-	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
+	    	if (logger.isDebugEnabled())
+	    		logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
 	        State remoteState = retreiveState(sender, remote, false);
@@ -302,7 +308,8 @@ public class KeyManager extends AuthenticationEventSender {
 	    }
 
 		public boolean AuthenticationStarted(Object sender, Object remote) {
-	        logger.debug("Received host authentication started event with " + remote + 
+	    	if (logger.isDebugEnabled())
+	    		logger.debug("Received host authentication started event with " + remote + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
 	        // this basically makes sure that a state object is created for this protocol run
