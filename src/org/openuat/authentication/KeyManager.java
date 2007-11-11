@@ -108,6 +108,7 @@ public class KeyManager extends AuthenticationEventSender {
 		 * This is used for cleanup after long periods of inactivity (e.g. a timeout 
 		 * on STATE_VERIFICATION or STATE_KEY_AGREEMENT).
 		 */
+		// TODO: make use of this for resets!
 		long lastStateChange = System.currentTimeMillis();
 		
 		/** If the state is STATE_VERIFICATION, this contains
@@ -321,11 +322,21 @@ public class KeyManager extends AuthenticationEventSender {
 	    		logger.debug("Received host authentication started event with " + remote + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
+	    	/* No: don't veto - we don't start an outgoing request if we have 
+	    	 * a state already (check in BluetoothOpportunisticConnector, e.g.). 
+	    	 * But we need to allow incoming new key agreement runs at any time;
+	    	 * the remote host state may have changed (e.g. application/device
+	    	 * restart). So the best is to reset if we receive a new key agreement
+	    	 * start.
+	    	 */
+			if (hosts.containsKey(remote))
+				reset((RemoteConnection) remote);
 	        // this basically makes sure that a state object is created for this protocol run
 	        // and only in this event do we allow an implicit transition from IDLE to KEY_AGREEMENT
-	        State remoteState = retreiveState(sender, remote, true);
-	        // and if it wasn't IDLE (or nonexistant) before, veto right here
-	    	if (remoteState == null) return false;
+	        retreiveState(sender, remote, true);
+	        // No - don't do that anymore. 
+	        // (Was: and if it wasn't IDLE (or nonexistant) before, veto right here)
+	    	/*if (remoteState == null) return false;*/
 			
 	        // forward the started event onwards
 	        return raiseAuthenticationStartedEvent(remote);

@@ -228,6 +228,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		try {
 			if (!FIXED_DEMO_MODE) {
+				// using split phases, disconnect the channel after host authentication
+				BluetoothOpportunisticConnector.setKeepConnected(false);
 				BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
 				protocol = new ShakeAuthenticator(bt, this);
 				bt.setKeyManager(protocol.getKeyManager());
