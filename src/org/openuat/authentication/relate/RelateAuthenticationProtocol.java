@@ -76,7 +76,10 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	private static Logger statisticsLogger = Logger.getLogger("statistics.relateauthentication");
 
 	public static final int TcpPort = 54321;
-	
+
+	/** Allow the (incoming) key agreement to take at maximum this amout of ms. */
+	public static final int KeyAgreementProtocolTimeout = 10000;
+
 	// TODO: remove me now that it should be simple to implement a dummy protocol that works like this
 	// class with simulation = true
 	/** If set to true, then all the code will run without communicating with a dongle. This is helpful
@@ -167,7 +170,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 */
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
 				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) {
-		super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, false, true),
+		super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, KeyAgreementProtocolTimeout, false, true),
 				keepSocketConnected, false, serialPort, useJSSE);
 		
 		if (!simulation) {
@@ -280,7 +283,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 		
 		// create the optional parameter object to pass, consisting of the relate id and the number of rounds
 		String param = Integer.toString(localRelateId) + " " + Integer.toString(rounds);
-		if (!startAuthentication(new RemoteTCPConnection(new Socket(remoteHost, TcpPort)), param)) {
+		if (!startAuthentication(new RemoteTCPConnection(new Socket(remoteHost, TcpPort)), KeyAgreementProtocolTimeout, param)) {
 			logger.error("Could not start authentication with " + remoteHost + ", relate id " + remoteRelateId);
 			return false;
 		}

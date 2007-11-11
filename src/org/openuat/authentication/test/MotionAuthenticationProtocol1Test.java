@@ -43,7 +43,9 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startListening();
-		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", ShakeWellBeforeUseProtocol1.TcpPort)), null);
+		prot1_b.startAuthentication(new RemoteTCPConnection(
+				new Socket("localhost", ShakeWellBeforeUseProtocol1.TcpPort)), 
+				ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, null);
 
 		classIsReadyForTests = true;
 	}
@@ -56,7 +58,9 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 	
 	private class Protocol1Hooks extends ShakeWellBeforeUseProtocol1 {
 		protected Protocol1Hooks() {
-			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, false, true), false, false,
+			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
+					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, false, true), 
+					false, false,
 					ShakeWellBeforeUseParameters.coherenceThreshold, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		

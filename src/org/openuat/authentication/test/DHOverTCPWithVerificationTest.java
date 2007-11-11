@@ -28,7 +28,7 @@ import org.openuat.util.TCPPortServer;
 public class DHOverTCPWithVerificationTest extends TestCase {
 	private class TestHelper extends DHWithVerification {
 		protected TestHelper(int tcpPort, boolean keepConnected, String instanceId, boolean useJSSE, boolean succeed) {
-			super(new TCPPortServer(tcpPort, keepConnected, useJSSE), false, keepConnected, instanceId, useJSSE);
+			super(new TCPPortServer(tcpPort, 10000, keepConnected, useJSSE), false, keepConnected, instanceId, useJSSE);
 			this.succeed = succeed;
 			this.tcpPort = tcpPort;
 		}
@@ -95,7 +95,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		}
 		
 		public void startAuthentication(String parm) throws UnknownHostException, IOException {
-			this.startAuthentication(new RemoteTCPConnection(new Socket("127.0.0.1", tcpPort)), parm);
+			this.startAuthentication(new RemoteTCPConnection(new Socket("127.0.0.1", tcpPort)), 10000, parm);
 		}
 	}
 

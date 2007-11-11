@@ -78,7 +78,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		}
 
 		try {
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "J2ME Test Service", true, false);
+			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "J2ME Test Service", 
+					10000, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());

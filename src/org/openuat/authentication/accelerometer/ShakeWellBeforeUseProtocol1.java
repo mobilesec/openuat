@@ -45,6 +45,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
 	
+	/** Allow the (incoming) key agreement to take at maximum this amout of ms. */
+	public static final int KeyAgreementProtocolTimeout = 10000;
+	
 	/** The maximimum time that the interlock exchange of active segments
 	 * with the remote host is allowed to take in ms.
 	 */
@@ -633,6 +636,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * @return true if verification should succeed, false to abort.
 	 */
 	protected boolean incomingVerificationRequestHook(RemoteConnection remote) {
+		logger.info("Accepting incoming verification request from " + remote);
 		return true;
 	}
 	
@@ -654,17 +658,17 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		
 		boolean keepConnected = false;
 		HostAuthenticationServer s1, s2;
-		s1 = new org.openuat.util.TCPPortServer(TcpPort, keepConnected, true);
+		s1 = new org.openuat.util.TCPPortServer(TcpPort, KeyAgreementProtocolTimeout, keepConnected, true);
 		// this will not be started
-		s2 = new org.openuat.util.TCPPortServer(0, keepConnected, true); 
+		s2 = new org.openuat.util.TCPPortServer(0, KeyAgreementProtocolTimeout, keepConnected, true); 
 		ShakeWellBeforeUseProtocol1 ma1 = new ShakeWellBeforeUseProtocol1(s1, keepConnected, false,
 				0.82, ShakeWellBeforeUseParameters.coherenceWindowSize, true); 
 		ShakeWellBeforeUseProtocol1 ma2 = new ShakeWellBeforeUseProtocol1(s2, keepConnected, false,
@@ -672,7 +676,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startListening();
-		ma2.startAuthentication(new org.openuat.util.RemoteTCPConnection(new java.net.Socket("localhost", TcpPort)), null);
+		ma2.startAuthentication(new org.openuat.util.RemoteTCPConnection(
+				new java.net.Socket("localhost", TcpPort)), KeyAgreementProtocolTimeout, null);
 		
 		r.simulateSampling();
 	}

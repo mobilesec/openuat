@@ -200,7 +200,9 @@ public class ShakingSinglePCDemonstrator {
 		prot1_a.setContinuousChecking(true);
 		prot1_b.setContinuousChecking(true);
 		prot1_a.startListening();
-		prot1_b.startAuthentication(new RemoteTCPConnection(new Socket("localhost", ShakeWellBeforeUseProtocol1.TcpPort)), null);
+		prot1_b.startAuthentication(new RemoteTCPConnection(
+				new Socket("localhost", ShakeWellBeforeUseProtocol1.TcpPort)), 
+				ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, null);
 		
 		if (deviceType == 1) {
 			if (! device1.startsWith("port:")) {
@@ -345,7 +347,9 @@ public class ShakingSinglePCDemonstrator {
 		
 		protected Protocol1Hooks() {
 			// samplerate/2
-			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, keepConnected, useJSSE), 
+			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
+					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout,
+					keepConnected, useJSSE), 
 					keepConnected, concurrentVerificationSupported,
 					ShakeWellBeforeUseParameters.coherenceThreshold, 
 					ShakeWellBeforeUseParameters.coherenceWindowSize, useJSSE);

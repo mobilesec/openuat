@@ -48,7 +48,7 @@ public class HostProtocolHandlerTest extends TestCase {
         if (socketWasAlreadyOpen)
             Thread.sleep(100);
 
-        server = new TCPPortServer(PORT, true, useJSSEServer);
+        server = new TCPPortServer(PORT, 10000, true, useJSSEServer);
         server.start();
         socketWasAlreadyOpen = true;
     }
@@ -89,7 +89,7 @@ public class HostProtocolHandlerTest extends TestCase {
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
         Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, false, "", useJSSEClient);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -114,7 +114,7 @@ public class HostProtocolHandlerTest extends TestCase {
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
         Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, false, "TEST_PARAMETER", useJSSEClient);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 10000, false, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -142,7 +142,7 @@ public class HostProtocolHandlerTest extends TestCase {
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
         Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, true, "TEST_PARAMETER", useJSSEClient);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 10000, true, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;

@@ -87,6 +87,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** The sleep time before re-attempting a connection in ms. */
 	public final static int retryConnectionDelay = 10000;
 	
+	/** The maximum duration, in ms, that we allow a key agreement to take. */
+	public final static int maximumKeyAgreementRuntime = 10000;
+	
 	// TODO: make me configurable - maybe with setters/getters?
 	public final static boolean keepConnected = true;
 	public final static boolean useJSSE = false;
@@ -133,7 +136,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		manager.setAdaptiveSleepTime(true);
 		manager.setAutomaticServiceDiscoveryUUID(serviceUUID);
 		manager.addListener(new BluetoothPeerEventsHandler());
-		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, keepConnected, useJSSE);
+		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, maximumKeyAgreementRuntime, keepConnected, useJSSE);
 		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
 	}
 	
@@ -324,13 +327,9 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			channel.open();
 			if (logger.isDebugEnabled())
 				logger.debug("Connection to '" + connectionURL + "' established, starting key agreement");
-			// TODO
-			// TODO
-			// TODO
-			// TODO: also enable a timeout for this outgoing request, and abort when the class terminates!
-			// this seems to prevent proper application shutdown at the moment!
 			HostProtocolHandler.startAuthenticationWith(channel, 
-					new AuthenticationEventsHandler(false), keepConnected, optionalParameter, useJSSE);
+					new AuthenticationEventsHandler(false), maximumKeyAgreementRuntime,
+					keepConnected, optionalParameter, useJSSE);
 			logger.info("Discovered remote device  " + 
 					channel.getRemoteAddress() + "/'" + 
 					channel.getRemoteName() + 

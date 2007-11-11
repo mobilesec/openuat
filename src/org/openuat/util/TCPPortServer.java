@@ -49,9 +49,13 @@ public class TCPPortServer extends HostServerBase {
 	 *                           registered HostProtocolHandler has finished. This allows the socket to be
 	 *                           reused for additional communication after the first authentication
 	 *                           protocol has been completed.
+	 * @param protocolTimeoutMs
+	 * 			  The maximum duration in milliseconds that this authentication
+	 * 			  protocol may take before it will abort with an AuthenticationFailed
+	 * 			  exception. Set to -1 to disable the timeout.
 	 */
-	public TCPPortServer(int port, boolean keepConnected, boolean useJSSE) {
-		super(keepConnected, useJSSE);
+	public TCPPortServer(int port, int protocolTimeoutMs, boolean keepConnected, boolean useJSSE) {
+		super(keepConnected, useJSSE, protocolTimeoutMs);
 		this.port = port;
 	}
 

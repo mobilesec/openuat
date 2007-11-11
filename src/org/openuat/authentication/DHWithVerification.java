@@ -177,12 +177,16 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @param remote An already open connection to the remote host.
 	 * @param param An optional parameter that should be exchanged with the host, usually describing
 	 *              some parameter(s) of the subsequent verification step.
-	 * 
+ 	 * @param protocolTimeoutMs
+	 * 			  The maximum duration in milliseconds that this authentication
+	 * 			  protocol may take before it will abort with an AuthenticationFailed
+	 * 			  exception. Set to -1 to disable the timeout.
+
 	 * @return true if the authentication could be started, false otherwise.
 	 * 
 	 * @see AuthenticationEventSender#addAuthenticationProgressHandler
 	 */
-	public boolean startAuthentication(RemoteConnection remote, String param) 
+	public boolean startAuthentication(RemoteConnection remote, int protocolTimeoutMs, String param) 
 			throws IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (! isIdle()) {
 			logger.warn("Tried to start authentication with host " + remote.getRemoteName() + 
@@ -207,9 +211,9 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		 * be garbage collected when its background authentication thread
 		 * finishes. */
 		try {
-			HostProtocolHandler.startAuthenticationWith(remote, 
+			HostProtocolHandler.startAuthenticationWith(remote,
 					keyManager.getHostAuthenticationHandler(), 
-					true, param, useJSSE);
+					protocolTimeoutMs, true, param, useJSSE);
 		} 
 		catch (IOException e) {
 			// when we can't start here, be sure to reset to a clean state

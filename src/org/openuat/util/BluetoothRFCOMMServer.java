@@ -59,9 +59,14 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	 *                           registered HostProtocolHandler has finished. This allows the socket to be
 	 *                           reused for additional communication after the first authentication
 	 *                           protocol has been completed.
+	 * @param protocolTimeoutMs
+	 * 			  The maximum duration in milliseconds that this authentication
+	 * 			  protocol may take before it will abort with an AuthenticationFailed
+	 * 			  exception. Set to -1 to disable the timeout.
 	 */
-	public BluetoothRFCOMMServer(Integer channel, UUID serviceUUID, String serviceName, boolean keepConnected, boolean useJSSE) throws IOException {
-		super(keepConnected, useJSSE);
+	public BluetoothRFCOMMServer(Integer channel, UUID serviceUUID, String serviceName, 
+			int protocolTimeoutMs, boolean keepConnected, boolean useJSSE) throws IOException {
+		super(keepConnected, useJSSE, protocolTimeoutMs);
 
 		if (! BluetoothSupport.init()) {
 			throw new IOException("Local Bluetooth stack was not initialized properly, can not construct channel objects");
@@ -172,7 +177,8 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 //#if cfg.includeTestCode
 	////////////////////// test code begins here ////////////////
 	public static void main(String[] args) throws NullPointerException, IllegalArgumentException, IOException, InternalApplicationException {
-		BluetoothRFCOMMServer s = new BluetoothRFCOMMServer(null, new UUID("1089a94a47044480adc9576fd41a04b2", false), "Test Service", false, false);
+		BluetoothRFCOMMServer s = new BluetoothRFCOMMServer(null, new UUID("1089a94a47044480adc9576fd41a04b2", false), "Test Service", 
+				10000, false, false);
 		// for the test, make sure to be discoverable
 		LocalDevice.getLocalDevice().setDiscoverable(DiscoveryAgent.GIAC);
 		s.start();

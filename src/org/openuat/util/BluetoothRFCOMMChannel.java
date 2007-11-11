@@ -568,7 +568,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 				  requestStream = true;
 			  // this is our test client, keep connected, and use JSSE (interoperability tests...)
 			  org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(
-					 c, new TempHandler(attack, requestStream), true, null, true);
+					 c, new TempHandler(attack, requestStream), 20000, true, null, true);
 			  System.out.println("Waiting for protocol to run in the background");
 			  while (true) Thread.sleep(500);
 		  }

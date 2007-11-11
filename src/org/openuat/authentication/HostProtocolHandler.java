@@ -17,6 +17,7 @@ import org.openuat.authentication.exceptions.*;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
+import org.openuat.util.SafetyBeltTimer;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -68,7 +69,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	private boolean useJSSE;
-
+	
+	/** If != -1 and the protocol has been running for longer than this, it will be aborted. */
+	private int timeoutMs = -1;
+	
     /** The (already opened) connection used to communicate with the remote end, for both incoming and outgoing connections. */
     private RemoteConnection connection;
     /** If set to false, connection will be closed after the protocol finished. 
@@ -107,6 +111,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            the methods of this class) lies in the asynchronity: the 
 	 *            protocol handler methods are called in background threads 
 	 *            and must therefore dispose the objects before exiting.
+	 *
+	 * @param timeoutMs
+	 * 			  The maximum duration in milliseconds that this authentication
+	 * 			  protocol may take before it will abort with an AuthenticationFailed
+	 * 			  exception. Set to -1 to disable the timeout.
 	 *            
 	 * @param keepConnected
 	 *            If set to true, the opened connection con is passed to the
@@ -119,10 +128,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-    public HostProtocolHandler(RemoteConnection con, boolean keepConnected, boolean useJSSE) {
+    public HostProtocolHandler(RemoteConnection con, int timeoutMs, 
+    		boolean keepConnected, boolean useJSSE) {
 		this.connection = con;
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
+		this.timeoutMs = timeoutMs;
     }
 
     /** Adds a protocol command handler.
@@ -340,7 +351,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
         if (logger.isDebugEnabled()) {
         	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        	logger.debug("Remote name is " + remoteName);
+        	logger.debug("Remote name is " + remoteName + ", with timeout " + timeoutMs + "ms");
         }
 
         if (serverSide) {
@@ -356,12 +367,17 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         if (logger.isDebugEnabled())
         	logger.debug(inOrOut + " connection to authentication service with " + remoteName);
         
+        SafetyBeltTimer timer = null;
         try
         {
         	fromRemote = connection.getInputStream();
             // this enables auto-flush
             toRemote = new OutputStreamWriter(connection.getOutputStream());
-            
+
+            // now that we have the InputStream, bind our timer to it
+            if (timeoutMs > 0)
+            	timer = new SafetyBeltTimer(timeoutMs, fromRemote);
+
             if (serverSide) {
             	println(Protocol_Hello);
             }
@@ -448,7 +464,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			// case, report it to listeners
             // so that they can clean up their state of this authentication
 			// (identified by the remote)
-            raiseAuthenticationFailureEvent(connection, null, "Client closed connection unexpectedly\n");
+            raiseAuthenticationFailureEvent(connection, null, "Client closed connection unexpectedly or hit timeout");
             shutdownConnectionCleanly();
         }
         catch (Exception e)
@@ -460,6 +476,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         finally {
             if (ka != null)
                 ka.wipe();
+            // this is not strictly necessary, but clean up properly
+            if (timer != null)
+            	timer.stop();
             if (logger.isDebugEnabled())
             	logger.debug("Ended " + inOrOut + " authentication connection with " + remoteName);
         }
@@ -528,6 +547,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            null, it will be registered with a new HostProtocolHandler
 	 *            object before starting the authentication protocol so that it
 	 *            is guaranteed that all events are posted to the event handler.
+	 * @param timeoutMs
+	 * 			  The maximum duration in milliseconds that this authentication
+	 * 			  protocol may take before it will abort with an AuthenticationFailed
+	 * 			  exception. Set to -1 to disable the timeout.
 	 * @param keepConnected
 	 *            When set to true, the connection created in this method is not
 	 *            closed but passed to the authentation success event for
@@ -545,13 +568,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     static public void startAuthenticationWith(RemoteConnection remote,
 			AuthenticationProgressHandler eventHandler,
+			int timeoutMs,
 			boolean keepConnected, String optionalParameter,
 			boolean useJSSE) throws IOException {
     	if (logger.isInfoEnabled())
     		logger.info("Starting authentication with " + 
     				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(remote, keepConnected, useJSSE);
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(remote, 
+				timeoutMs, keepConnected, useJSSE);
 		tmpProtocolHandler.useJSSE = useJSSE;
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);

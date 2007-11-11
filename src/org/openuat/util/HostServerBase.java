@@ -42,6 +42,9 @@ public abstract class HostServerBase extends AuthenticationEventSender
 
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
+	
+	/** If =! 1, specifies a timeout for the (incoming) protocol runs started in the background. */
+	protected int protocolTimeoutMs;
 
 	/** This only keeps the command handlers so that they can be pre-registered
 	 * and then be passed onto HostProtocolHandler objects when they are 
@@ -57,10 +60,15 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 *                           registered HostProtocolHandler has finished. This allows the socket to be
 	 *                           reused for additional communication after the first authentication
 	 *                           protocol has been completed.
+	 * @param protocolTimeoutMs
+	 * 			  The maximum duration in milliseconds that this authentication
+	 * 			  protocol may take before it will abort with an AuthenticationFailed
+	 * 			  exception. Set to -1 to disable the timeout.
 	 */
-	public HostServerBase(boolean keepConnected, boolean useJSSE) {
+	public HostServerBase(boolean keepConnected, boolean useJSSE, int protocolTimeoutMs) {
 		this.keepConnected = keepConnected;
 		this.useJSSE = useJSSE;
+		this.protocolTimeoutMs = protocolTimeoutMs;
 	}
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
@@ -133,7 +141,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 * @param remote The (already opened) remote connection to use.
 	 */
 	protected void startProtocol(RemoteConnection remote) {
-		HostProtocolHandler h = new HostProtocolHandler(remote, keepConnected, useJSSE);
+		HostProtocolHandler h = new HostProtocolHandler(remote, protocolTimeoutMs, keepConnected, useJSSE);
 		// before starting the background thread, register all our own listeners with this new event sender
 		h.setAuthenticationProgressHandlers(eventsHandlers);
 		h.setProtocolCommandHandlers(protocolCommandHandlers);

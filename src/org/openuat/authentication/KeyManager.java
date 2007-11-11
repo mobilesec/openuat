@@ -104,6 +104,12 @@ public class KeyManager extends AuthenticationEventSender {
 		 */
 		int state = STATE_IDLE;
 		
+		/** The time stamp, in milliseconds, at which the state has been changed last.
+		 * This is used for cleanup after long periods of inactivity (e.g. a timeout 
+		 * on STATE_VERIFICATION or STATE_KEY_AGREEMENT).
+		 */
+		long lastStateChange = System.currentTimeMillis();
+		
 		/** If the state is STATE_VERIFICATION, this contains
 		 * the secret authentication key shared with the other device.
 		 */
@@ -152,6 +158,7 @@ public class KeyManager extends AuthenticationEventSender {
 			wipeAuthenticationKey();
 			wipeSessionKey();
 			state = STATE_IDLE;
+			lastStateChange = System.currentTimeMillis();
 		}
 	}
 	
@@ -185,7 +192,6 @@ public class KeyManager extends AuthenticationEventSender {
 		    		logger.debug("Received host authentication event from " + sender + " in nonexistant state, creating IDLE object." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState = new State();
-	    		remoteState.state = STATE_IDLE;
 	    		if (hosts.put(host, remoteState) != null)
 	    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 	    	}
@@ -197,6 +203,7 @@ public class KeyManager extends AuthenticationEventSender {
 		    		logger.debug("Received host authentication started event from " + sender + " in idle state, transitioning to KEY_AGREEMENT." + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		remoteState.state = STATE_KEY_AGREEMENT;
+	    		remoteState.lastStateChange = System.currentTimeMillis();
 	    	}
 	    	if (remoteState.state != STATE_KEY_AGREEMENT) {
 	    		logger.error("Received some host authentication event with remote host " + remote + 
@@ -212,6 +219,7 @@ public class KeyManager extends AuthenticationEventSender {
 		private void failed(State remoteState) {
 			remoteState.wipe();
 			remoteState.state = STATE_FAILED;
+			remoteState.lastStateChange = System.currentTimeMillis();
 		}
 		
 		/** This implementation of AuthenticationProgressHandler.AuthenticationSuccess
@@ -274,6 +282,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        
 	        // finally change state and fire off the key verification
         	remoteState.state = STATE_VERIFICATION;
+			remoteState.lastStateChange = System.currentTimeMillis();
         	for (int i=0; i<verificationHandlers.size(); i++)
         		((VerificationHandler) verificationHandlers.elementAt(i)).startVerification(
         				remoteState.authenticationKey, remoteState.optionalParam, (RemoteConnection) remote);
@@ -468,6 +477,7 @@ public class KeyManager extends AuthenticationEventSender {
 		State s = (State) hosts.get(host);
 		if (s.state == STATE_VERIFICATION) {
 			s.state = STATE_SUCCEEDED;
+			s.lastStateChange = System.currentTimeMillis();
 			// but wipe the authentication key, we no longer need it
 			s.wipeAuthenticationKey();
 			return true;
@@ -495,7 +505,6 @@ public class KeyManager extends AuthenticationEventSender {
 			logger.info("Host '" + host.getRemoteName() + "' is nonexistant when trying to start, creating its state object" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		remoteState = new State();
-    		remoteState.state = STATE_IDLE;
     		if (hosts.put(host, remoteState) != null)
     			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 		}
@@ -504,6 +513,7 @@ public class KeyManager extends AuthenticationEventSender {
 
 		if (remoteState.state == STATE_IDLE) {
 			remoteState.state = STATE_KEY_AGREEMENT;
+			remoteState.lastStateChange = System.currentTimeMillis();
 			return true;
 		}
 		else {
@@ -532,6 +542,7 @@ public class KeyManager extends AuthenticationEventSender {
 		s.wipe();
 		// but set state correctly, because wipe() will set to idle
 		s.state = STATE_FAILED;
+		s.lastStateChange = System.currentTimeMillis();
 		return true;
 	}
 	

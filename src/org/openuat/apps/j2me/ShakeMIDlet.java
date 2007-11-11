@@ -236,7 +236,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				// hard-code a simple RFCOMM server that stays connected
 				// ATTENTION! setting the channel number will make startListening() crash
 				rfcommServer = new BluetoothRFCOMMServer(null, /*new Integer(FIXED_DEMO_CHANNELNUM),*/ 
-						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", true, false);
+						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", 
+						ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, true, false);
 				protocol = new ShakeAuthenticator(rfcommServer, this);
 				protocol.startListening();
 				logger.info("Finished starting SDP service for demo mode at " + rfcommServer.getRegisteredServiceURL());
