@@ -214,7 +214,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     }
     
     private String readLine() throws IOException {
-    	return LineReaderWriter.readLine(fromRemote);
+    	return LineReaderWriter.readLine(fromRemote, timeoutMs);
     }
     
     private void println(String line) throws IOException {
@@ -346,12 +346,19 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     private void performAuthenticationProtocol(boolean serverSide) {
     		SimpleKeyAgreement ka = null;
-        String inOrOut, serverToClient, clientToServer,
-        	remoteName = connection.getRemoteName();
+        String inOrOut, serverToClient, clientToServer, remoteAddr=null;
+        int totalTransferTime=0, totalCryptoTime=0;
+        long timestamp=0;
+        
+        try {
+			remoteAddr = (String) connection.getRemoteAddress();
+		} catch (IOException e1) {
+			logger.error("Can not get address of remote. This should not happen!");
+		}
 
         if (logger.isDebugEnabled()) {
         	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        	logger.debug("Remote name is " + remoteName + ", with timeout " + timeoutMs + "ms");
+        	logger.debug("Remote is " + remoteAddr + ", with timeout " + timeoutMs + "ms");
         }
 
         if (serverSide) {
@@ -365,7 +372,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         
         if (logger.isDebugEnabled())
-        	logger.debug(inOrOut + " connection to authentication service with " + remoteName);
+        	logger.debug(inOrOut + " connection to authentication service with " + remoteAddr);
         
         SafetyBeltTimer timer = null;
         try
@@ -391,6 +398,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         	}
             raiseAuthenticationProgressEvent(connection, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
+            if (logger.isInfoEnabled())
+            	timestamp = System.currentTimeMillis();
             byte[] remotePubKey = null;
             if (serverSide) {
             	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection, true);
@@ -401,23 +410,41 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 }
                 int optParamOff = paramLine.indexOf(Protocol_AuthenticationRequest_Param);
                 if (optParamOff != -1) {
-                		optionalParameter = paramLine.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
-                		if (logger.isDebugEnabled())
-                			logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
+                	optionalParameter = paramLine.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
+                	if (logger.isDebugEnabled())
+                		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
                 }
+                if (logger.isInfoEnabled())
+                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             else {
-            		// now send my first message, but already need the public key for it
-            		ka = new SimpleKeyAgreement(useJSSE);
-            		println(Protocol_AuthenticationRequest + new String(Hex.encodeHex(ka.getPublicKey())) +
-            				(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
+            	// now send my first message, but already need the public key for it
+            	ka = new SimpleKeyAgreement(useJSSE);
+            	String myPubKey = new String(Hex.encodeHex(ka.getPublicKey()));
+                if (logger.isInfoEnabled()) {
+                	totalCryptoTime += System.currentTimeMillis()-timestamp;
+                	timestamp = System.currentTimeMillis();
+                }
+            	println(Protocol_AuthenticationRequest + myPubKey +
+            			(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
+                if (logger.isInfoEnabled())
+                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             raiseAuthenticationProgressEvent(connection, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
+            if (logger.isInfoEnabled())
+            	timestamp = System.currentTimeMillis();
             if (serverSide) {
                 // for performance reasons: only now start the DH phase
-                ka = new SimpleKeyAgreement(useJSSE);
-                	println(Protocol_AuthenticationAcknowledge + new String(Hex.encodeHex(ka.getPublicKey())));
+            	ka = new SimpleKeyAgreement(useJSSE);
+            	String myPubKey = new String(Hex.encodeHex(ka.getPublicKey()));
+                if (logger.isInfoEnabled()) {
+                	totalCryptoTime += System.currentTimeMillis()-timestamp;
+                	timestamp = System.currentTimeMillis();
+                }
+            	println(Protocol_AuthenticationAcknowledge + myPubKey);
+                if (logger.isInfoEnabled())
+                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             else {
             	remotePubKey = helper_extractPublicKey(
@@ -428,10 +455,20 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     shutdownConnectionCleanly();
                     return;
                 }
+                if (logger.isInfoEnabled())
+                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             raiseAuthenticationProgressEvent(connection, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
+            if (logger.isInfoEnabled())
+            	timestamp = System.currentTimeMillis();
             ka.addRemotePublicKey(remotePubKey);
+            Object sessKey = ka.getSessionKey();
+            Object authKey = ka.getAuthenticationKey();
+            if (logger.isInfoEnabled()) {
+            	totalCryptoTime += System.currentTimeMillis()-timestamp;
+            	timestamp = System.currentTimeMillis();
+            }
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
             // the authentication success event sent here is just an array of two keys
@@ -440,14 +477,19 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	// don't shut down the streams because this effectively shuts down the connection
             	// but make sure that the last message has been sent successfully
             	toRemote.flush();
-            	raiseAuthenticationSuccessEvent(connection, new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
+            	raiseAuthenticationSuccessEvent(connection, new Object[] {sessKey, authKey,
             			optionalParameter, connection});
             }
             else {
-            	raiseAuthenticationSuccessEvent(connection, new Object[] {ka.getSessionKey(), ka.getAuthenticationKey(),
+            	raiseAuthenticationSuccessEvent(connection, new Object[] {sessKey, authKey,
             			optionalParameter });
+				logger.info("Closing channel that has been used for key agreement");
             	shutdownConnectionCleanly();
             }
+            
+            if (logger.isInfoEnabled())
+            	logger.info("Key transfers took " + totalTransferTime + 
+            			"ms, crypto took " + totalCryptoTime + "ms");
         }
         catch (InternalApplicationException e)
         {
@@ -480,7 +522,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (timer != null)
             	timer.stop();
             if (logger.isDebugEnabled())
-            	logger.debug("Ended " + inOrOut + " authentication connection with " + remoteName);
+            	logger.debug("Ended " + inOrOut + " authentication connection with " + remoteAddr);
         }
     }
     
@@ -537,10 +579,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * the Authentication* events to get notifications of authentication
 	 * success, failure and progress.
 	 * 
-	 * @param remoteAddress
-	 *            The remote host to try to connect to.
-	 * @param remotePort
-	 *            The remote TCP port to try to connect to.
+	 * @param remote
+	 *            The remote connection to use for key agreement.
 	 * @param eventHandler
 	 *            The event handler that should be notified of authentication
 	 *            events. Can be null (in which case no events are sent). If not
@@ -587,12 +627,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		 * duplication here and above) to minimize potential for race 
 		 * conditions on application level.
 		 */
+		
+		
 		// This will e.g. trigger the creation of a State object in KeyManager, when used.
 		if (!tmpProtocolHandler.raiseAuthenticationStartedEvent(remote)) {
 			logger.warn("Some AuthenticationStarted event handler vetoed the outgoing authentication request to " +
 					remote + ". Aborting it now, not starting authentication protocol");
 		}
-		
+
+
 		// start the authentication protocol in the background
 		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
 				tmpProtocolHandler) {
@@ -600,5 +643,5 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 				outer.performAuthenticationProtocol(false);
 			}
 		}).start();
-	}
+    }
 }

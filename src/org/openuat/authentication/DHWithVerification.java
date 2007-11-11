@@ -361,17 +361,16 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 							(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		        	return;
 		        }
-		        
+
+		        // first also call the hook to allow the derived classes to react too
+		        protocolSucceededHook(remote, optionalVerificationId, optionalParameterFromRemote, sessionKey);
+
 		        if (!keepConnected) {
-			        // first also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(remote, optionalVerificationId, optionalParameterFromRemote, sessionKey);
 			        /* our result object is here the secret key that is shared (host authentication) 
 			           and now spatially authenticated (dongle authentication) */
 		        	raiseAuthenticationSuccessEvent(remoteParam, sessionKey);
 		        }
 		        else {
-			        // first also call the hook to allow the derived classes to react too
-			        protocolSucceededHook(remote, optionalVerificationId, optionalParameterFromRemote, sessionKey);
 		        	/* It has been requested that the socket be kept open, so pass it over
 		        	 * in addition to the shared secret key.
 		        	 * As we need to pass two parameters in this case, again use an array...
@@ -380,8 +379,10 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        }
 		        		
 				// if the socket is not going to be re-used, don't forget to close it properly
-				if (!keepConnected)
+				if (!keepConnected) {
+					logger.info("Closing channel that has been used for key verification");
 					remote.close();
+				}
 
 				// and finally reset (in failure cases, the authenticationFailed helper will call reset)
 		        keyManager.reset(remote);

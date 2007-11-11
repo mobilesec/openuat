@@ -135,8 +135,10 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void stop() {
+		logger.warn("11111111111");
 		try {
 			// properly close all resources
+			logger.warn("22222222");
 			if (sensorControlOut != null) {
 				// signal the Symbian sensor API wrapper that we are closing
 				sensorControlOut.write('e');
@@ -144,20 +146,24 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 				sensorControlOut.close();
 				sensorControlOut = null;
 			}
+			logger.warn("3333333333");
 			if (sensorDataIn != null) {
 				sensorDataIn.close();
 				sensorDataIn = null;
 			}
+			logger.warn("444444444444");
 			if (dataConnector != null) {
 				dataConnector.close();
 				dataConnector = null;
 			}
 			// this should also interrupt the thread
+			logger.warn("55555555555");
 			if (dataServer != null)
 				dataServer.close();
 		} catch (IOException e) {
 			logger.error("Error closing server socket or connection to sensor source: " + e);
 		}
+		logger.warn("66666666666");
 		super.stop();
 	}
 

@@ -380,7 +380,7 @@ public class KeyManager extends AuthenticationEventSender {
 	/** Returns the current state of a remote host. */
 	public int getState(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.info("getState called for unknown host '" + 
+			logger.debug("getState called for unknown host '" + 
 					host.getRemoteName() + "', return nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return STATE_NONEXISTANT;
@@ -476,6 +476,7 @@ public class KeyManager extends AuthenticationEventSender {
 		
 		State s = (State) hosts.get(host);
 		if (s.state == STATE_VERIFICATION) {
+			logger.info("Succeeding remote " + host.toString());
 			s.state = STATE_SUCCEEDED;
 			s.lastStateChange = System.currentTimeMillis();
 			// but wipe the authentication key, we no longer need it
@@ -502,7 +503,7 @@ public class KeyManager extends AuthenticationEventSender {
 	public boolean startKeyAgreement(RemoteConnection host) {
 		State remoteState;
 		if (! hosts.containsKey(host)) {
-			logger.info("Host '" + host.getRemoteName() + "' is nonexistant when trying to start, creating its state object" +
+			logger.debug("Host '" + host.getRemoteName() + "' is nonexistant when trying to start, creating its state object" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		remoteState = new State();
     		if (hosts.put(host, remoteState) != null)
@@ -512,6 +513,7 @@ public class KeyManager extends AuthenticationEventSender {
 			remoteState = (State) hosts.get(host);
 
 		if (remoteState.state == STATE_IDLE) {
+			logger.info("Starting key agreement with remote " + host.toString());
 			remoteState.state = STATE_KEY_AGREEMENT;
 			remoteState.lastStateChange = System.currentTimeMillis();
 			return true;
@@ -536,6 +538,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
 		}
+		logger.info("Failing remote " + host.toString());
 		
 		State s = (State) hosts.get(host);
 		// wipe all key material upon any failure - this is a safe fallback
@@ -558,6 +561,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
 		}
+		logger.info("Resetting remote " + host.toString());
 
 		State s = (State) hosts.get(host);
 		// this also sets STATE_IDLE

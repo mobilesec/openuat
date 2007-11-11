@@ -393,6 +393,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			throws IOException, InternalApplicationException {
 		// TODO: make configurable??? mabye not necessary
 		int rounds = 2;
+		int totalCodingTime=0, totalInterlockTime=0, totalComparisonTime=0;
+		long timestamp=0;
 
 		byte[] localPlainText = null;
 		synchronized (localSegmentLock) {
@@ -408,7 +410,11 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					return false;
 				}
 			}*/
+            if (logger.isInfoEnabled())
+            	timestamp = System.currentTimeMillis();
 			localPlainText = TimeSeriesUtil.encodeVector(localSegment);
+            if (logger.isInfoEnabled())
+            	totalCodingTime += System.currentTimeMillis()-timestamp;
 		}
 		if (localPlainText == null) {
 			verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
@@ -417,12 +423,16 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		logger.debug("My segment is " + localPlainText.length + " bytes long");
 
 		// exchange with the remote host
+        if (logger.isInfoEnabled())
+        	timestamp = System.currentTimeMillis();
 		byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
 				remote.getInputStream(), remote.getOutputStream(),
 				// TODO: enable mirror attack prevention after testing
 				sharedAuthenticationKey, rounds, false, 
 				false, RemoteInterlockExchangeTimeout, useJSSE,
 				interlockGroup, groupSize, instanceNum);
+        if (logger.isInfoEnabled())
+        	totalInterlockTime += System.currentTimeMillis()-timestamp;
 		if (remotePlainText == null) {
 			logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 			verificationFailure(remote, null, null, null, "Interlock protocol failed");
@@ -433,10 +443,18 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		// and check the received remote segment, compare it with our local segment
 		logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 		// count the tokens
+        if (logger.isInfoEnabled())
+        	timestamp = System.currentTimeMillis();
 		double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
+        if (logger.isInfoEnabled())
+        	totalCodingTime += System.currentTimeMillis()-timestamp;
 		if (remoteSegment != null) {
 			logger.debug("remote segment is " + remoteSegment.length + " elements long");
+	        if (logger.isInfoEnabled())
+	        	timestamp = System.currentTimeMillis();
 			decision = checkCoherence(remoteSegment);
+	        if (logger.isInfoEnabled())
+	        	totalComparisonTime += System.currentTimeMillis()-timestamp;
 			logger.info("COHERENCE MATCH: " + decision + "(computed " + 
 					lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
 		}
@@ -470,7 +488,13 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 		}
-		return true;
+
+        if (logger.isInfoEnabled())
+        	logger.info("Segment coding took " + totalCodingTime + 
+        			"ms, interlock took " + totalInterlockTime + 
+        			"ms, comparison took" + totalComparisonTime + "ms");
+
+        return true;
 	}
 	
 	/** This is a helper class for executing the interlock protocol in the background.

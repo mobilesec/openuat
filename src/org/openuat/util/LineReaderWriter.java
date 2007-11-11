@@ -26,19 +26,47 @@ import java.io.OutputStreamWriter;
  * @since 0.10
  */
 public class LineReaderWriter {
+	/** If timeoutMs > 0, then this method first waits for a byte to become 
+	 * available in in before reading it. If none becomes available within
+	 * timeoutMs, an IOException will be thrown.
+	 */
+	public static int readWithTimeout(InputStream in, int timeoutMs) throws IOException {
+		if (timeoutMs > 0) {
+			long startTime = System.currentTimeMillis();
+			while (in.available() == 0 && System.currentTimeMillis() < startTime+timeoutMs) {
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {
+					throw new IOException("Timeout while trying to read from stream (waited for " + 
+							timeoutMs + "ms for 1 byte)");
+				}
+			}
+			if (in.available() == 0)
+				throw new IOException("Timeout while trying to read from stream (waited for " + 
+						timeoutMs + "ms for 1 byte)");
+		}
+		return in.read();
+	}
+	
 	/** Read a line from an InputStream (until a '\n' character is 
 	 * encountered). This method blocks until the end of line or the end
-	 * of stream (-1) is received.
+	 * of stream (-1) is received or the timeout (in milliseconds) is
+	 * reached.
 	 */
-    public static String readLine(InputStream in) throws IOException {
+    public static String readLine(InputStream in, int timeoutMs) throws IOException {
 		StringBuffer line = new StringBuffer();
-		int buf = in.read();
+		int buf = readWithTimeout(in, timeoutMs);
 		while (buf != -1 && buf != '\n') {
 			if (buf != '\r')
 				line.append((char) buf);
-			buf = in.read();
+			buf = readWithTimeout(in, timeoutMs);
 		}
 		return line.toString();
+    }
+    
+    /** just calls readLine(in, -1). */
+    public static String readLine(InputStream in) throws IOException {
+    	return readLine(in, -1);
     }
     
     /** Print a line to an OutputStream, temporarily wrapping it in an
