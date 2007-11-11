@@ -220,6 +220,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 */
 	public void dispose() {
 		stop();
+		BluetoothRFCOMMChannel.shutdownAllChannels();
 	}
 
 	/** This is a helper method to attempt a new connection. If it fails,

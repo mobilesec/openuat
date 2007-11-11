@@ -327,7 +327,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void destroyApp(boolean unconditional) {
-		// nothing special to do, resources will be freed automatically
+		// just try to close all channels to shutdown quickly, all other resources should be freed automatically
+		BluetoothRFCOMMChannel.shutdownAllChannels();
 	}
 
 	private class ShakeAuthenticator extends ShakeWellBeforeUseProtocol1 {

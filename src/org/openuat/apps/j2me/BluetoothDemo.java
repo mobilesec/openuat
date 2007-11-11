@@ -23,6 +23,7 @@ import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothPeerManager;
+import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.LineReaderWriter;
@@ -187,7 +188,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void destroyApp(boolean unconditional) {
-		// nothing special to do, resources will be freed automatically
+		// just try to close all channels to shutdown quickly, all other resources should be freed automatically
+		BluetoothRFCOMMChannel.shutdownAllChannels();
 	}
 
 	public void inquiryCompleted(Vector newDevices) {

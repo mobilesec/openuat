@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.Enumeration;
 import java.util.Vector;
 
 import javax.bluetooth.RemoteDevice;
@@ -413,6 +414,20 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			return "BluetoothRFCOMMChannel with remote device " + remoteDeviceAddress;
 		else
 			return "BluetoothRFCOMMChannel with invalid/unknown endpoint";
+	}
+	
+	/** This method can be used to speed up shutdown of the overall application
+	 * by closing all RFCOMM channels that are still open at this time. 
+	 */
+	public static void shutdownAllChannels() {
+		Enumeration e = openChannels.elements();
+		while (e.hasMoreElements()) {
+			BluetoothRFCOMMChannel c = (BluetoothRFCOMMChannel) e.nextElement();
+			c.close();
+		}
+		
+		if (openChannels.size() > 0)
+			logger.error("Unable to close all Bluetooth RFCOMM channels, some are left open. This should not happen!");
 	}
 
 	   /**
