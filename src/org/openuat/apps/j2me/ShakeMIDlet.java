@@ -87,7 +87,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	// these are only needed for fixed demo mode...
 	BluetoothRFCOMMServer rfcommServer;
-//	DemoModeConnector connector;
+	DemoModeConnector connector;
 	boolean connected = false;
 	
 	LogForm logForm;
@@ -239,8 +239,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			else {
 				// hard-code a simple RFCOMM server that stays connected
 				// ATTENTION! setting the channel number will make startListening() crash
-//				rfcommServer = new BluetoothRFCOMMServer(null, /*new Integer(FIXED_DEMO_CHANNELNUM),*/ 
-/*						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", 
+				rfcommServer = new BluetoothRFCOMMServer(null, /*new Integer(FIXED_DEMO_CHANNELNUM),*/ 
+						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", 
 						ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, true, false);
 				protocol = new ShakeAuthenticator(rfcommServer, this);
 				protocol.startListening();
@@ -249,7 +249,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				// register the connector for (failure) events so that it will get notified when disconnection happens
 				protocol.addAuthenticationProgressHandler(connector);
 				connector.start();
-*/			}
+			}
 		} catch (IOException e) {
 			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 			return false;
@@ -292,7 +292,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		if (protocol != null)
 			protocol.stopListening();
 		
-/*		if (FIXED_DEMO_MODE) {
+		if (FIXED_DEMO_MODE) {
 			Thread tmp = connector;
 			connector = null;
 			if (tmp != null) {
@@ -304,7 +304,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				}
 			}
 		}
-*/		
+		
 		// in case we are streaming, stop that
 		status.setText("exiting (streaming)");
 		if (toRemote != null) {
@@ -450,7 +450,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 	}
 	
-/*	private class DemoModeConnector extends Thread implements AuthenticationProgressHandler {
+	private class DemoModeConnector extends Thread implements AuthenticationProgressHandler {
 		BluetoothRFCOMMChannel conn = null;
 		
 		public void run() {
@@ -493,11 +493,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				logger.info("Trying to connect to " + remoteAddr + 
 						" channel " + FIXED_DEMO_CHANNELNUM);
 				try {
-*/					/* construct our own serviceURL, because "master=true"
+					/* construct our own serviceURL, because "master=true"
 					 * seems to generate a "feature not supported" exception
 					 * from Symbian
 					 */
-/*					status.setText("connecting");
+					status.setText("connecting");
 					String serviceURL = "btspp://" + remoteAddr + ":" + 
 						FIXED_DEMO_CHANNELNUM + ";authenticate=false;encrypt=false";
 					conn = new BluetoothRFCOMMChannel(serviceURL);
@@ -555,7 +555,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			return true;
 		}
 	}
-*/	
+	
 	private double[] samples = new double[3];
 	OutputStreamWriter toRemote = null;
 	private class TestBTStreamingCommandHandler implements ProtocolCommandHandler {
