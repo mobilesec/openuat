@@ -66,7 +66,6 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 	/* 
 	 * @param line The line to parse.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void parseLine(String line) {
 		double[] sample = new double[3];
@@ -85,7 +84,6 @@ public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 	/** Provides appropriate parameters for interpreting the values to 
 	 * normalize to the [-1;1] range.
 	 */
-	// TODO: enable again when j2mepolish can deal with it
 	//@Override
 	public TimeSeries.Parameters getParameters() {
 		return new TimeSeries.Parameters() {

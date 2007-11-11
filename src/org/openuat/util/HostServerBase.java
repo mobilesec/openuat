@@ -97,7 +97,6 @@ public abstract class HostServerBase extends AuthenticationEventSender
     }
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("unused") // the exception may be thrown in sub-classes that override startListening
 	public void start() throws IOException {
 		if (!running) {

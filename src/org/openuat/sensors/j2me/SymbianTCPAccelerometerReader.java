@@ -99,9 +99,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	 * to open the outgoing control connection to get the incoming data 
 	 * connection.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void start() {
 		if (sensorDataIn != null || dataConnector != null || controlConnector != null) {
@@ -132,7 +130,6 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	/** This overrides the SamplesSource.stop implementation to also properly
 	 * close all resources the may be in use (the sockets).
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void stop() {
 		logger.warn("11111111111");
@@ -173,7 +170,6 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	 * Then, and on all further calls, it will read the samples from 
 	 * sensorDataIn and call emitSample to send to listeners.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected boolean handleSample() {
 		if (dataConnector == null) {
@@ -233,7 +229,6 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	/** Provides appropriate parameters for interpreting the values to 
 	 * normalize to the [-1;1] range.
 	 */
-	// TODO: enable again when j2mepolish can deal with it
 	//@Override
 	public TimeSeries.Parameters getParameters() {
 		// no floating point support...

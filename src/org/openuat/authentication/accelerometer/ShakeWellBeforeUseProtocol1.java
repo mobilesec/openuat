@@ -147,7 +147,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	
 	/** Called by the base class when the whole authentication protocol succeeded. 
 	 * Does nothing. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 			String optionalParameterFromRemote,	byte[] sharedSessionKey) {
@@ -158,7 +157,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	
 	/** Called by the base class when the whole authentication protocol failed. 
 	 * Does nothing. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
@@ -169,7 +167,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	
 	/** Called by the base class when the whole authentication protocol shows progress. 
 	 * Does nothing. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolProgressHook(RemoteConnection remote,  
 			int cur, int max, String message) {
@@ -184,7 +181,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 
 	/** Called by the base class when the whole authentication protocol is reset. 
 	 * Does nothing. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void resetHook(RemoteConnection remote) {
 		// nothing to do, really
@@ -196,7 +192,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * @see #interlockRunner
 	 * @see AsyncInterlockHelper
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
 			String param, RemoteConnection toRemote) {

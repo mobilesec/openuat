@@ -421,7 +421,6 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	
 	/** This is a simple helper task to re-attempt failed connections. */
 	private class ConnectionRetryTask extends TimerTask {
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		public void run() {
 			synchronized (connectionsQueue) {

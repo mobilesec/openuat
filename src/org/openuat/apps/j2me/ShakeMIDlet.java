@@ -181,7 +181,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void startApp() {
 		if (logForm != null) {
@@ -327,13 +326,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		reader.stop();
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void pauseApp() {
 		// nothing to do when the app is paused, leave the background actions running
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void destroyApp(boolean unconditional) {
 		// just try to close all channels to shutdown quickly, all other resources should be freed automatically

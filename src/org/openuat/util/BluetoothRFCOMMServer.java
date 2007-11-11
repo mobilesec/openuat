@@ -81,9 +81,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 
 	/** Need to override the startListening method to register the SDP service. 
 	 * @throws InternalApplicationException */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
 	public void start() throws IOException {
 		if (listener == null) {
@@ -110,7 +108,6 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 
 	/** Need to override the stopListening method to properly close the RFCOMM service notifier. 
 	 * @throws InternalApplicationException */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void stop() throws InternalApplicationException {
 		if (listener != null) {
