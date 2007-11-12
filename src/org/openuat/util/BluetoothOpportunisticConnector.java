@@ -88,15 +88,12 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	public final static int retryConnectionDelay = 10000;
 	
 	/** The maximum duration, in ms, that we allow a key agreement to take. */
-	public final static int maximumKeyAgreementRuntime = 10000;
+	public final static int maximumKeyAgreementRuntime = 15000;
 	
+	// TODO: make me configurable - maybe with setters/getters?
+	public final static boolean keepConnected = true;
 	public final static boolean useJSSE = false;
 	public final static String optionalParameter = null;
-
-	/** true if RFCOMM channels should be left open after successful key
-	 * agreement, false if they should be closed.
-	 */
-	private static boolean keepConnected = false;
 	
 	/** The singleton instance of this class, created when getInstance() is
 	 * called for the first time.
@@ -153,24 +150,6 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		
 		return singleton;
 	}
-
-	/** Gets the current value of keepConnected.
-	 * 
-	 * @return true if RFCOMM channels will be left open after successful key
-	 * 		   agreement, false if they will be closed.
-	 */
-    public static boolean getKeepConnected() {
-    	return keepConnected;
-    }
-
-    /** Sets the current value of keepConnected.
-     * 
-     * @param keepConnected true if RFCOMM channels should be left open after successful key
-	 * 		   agreement, false if they should be closed.
-     */
-    public static void setKeepConnected(boolean keepConnected) {
-    	BluetoothOpportunisticConnector.keepConnected = keepConnected;
-    }
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
     public void addProtocolCommandHandler(String command, ProtocolCommandHandler handler) {

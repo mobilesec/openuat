@@ -46,7 +46,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	public static final int TcpPort = 54322;
 	
 	/** Allow the (incoming) key agreement to take at maximum this amout of ms. */
-	public static final int KeyAgreementProtocolTimeout = 10000;
+	public static final int KeyAgreementProtocolTimeout = 15000;
 	
 	/** The maximimum time that the interlock exchange of active segments
 	 * with the remote host is allowed to take in ms.

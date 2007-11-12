@@ -227,8 +227,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		try {
 			if (!FIXED_DEMO_MODE) {
-				// using split phases, disconnect the channel after host authentication
-				BluetoothOpportunisticConnector.setKeepConnected(false);
 				BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
 				protocol = new ShakeAuthenticator(bt, this);
 				bt.setKeyManager(protocol.getKeyManager());
@@ -387,7 +385,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		// TODO: remove me?
 		// maybe only keep for the sound...
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
-			logger.info("Successful key agreement with " + remote.getRemoteName() + 
+			if (logger.isDebugEnabled())
+				logger.debug("Successful key agreement with " + remote.getRemoteName() + 
 					", auth key is " + new String(Hex.encodeHex(sharedAuthenticationKey)));
 			status.setText("key agreed");
 			// finished DH and connected to the remote
