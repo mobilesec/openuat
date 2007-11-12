@@ -20,5 +20,7 @@
 	<classpathentry kind="var" path="CLDC_JAR"/>
 	<classpathentry kind="var" path="MIDP_JAR"/>
 	<classpathentry kind="var" path="JSR75_JAR"/>
+	<classpathentry kind="lib" path="lib/jmdns.jar"/>
+	<classpathentry kind="lib" path="lib/simple-1.3.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

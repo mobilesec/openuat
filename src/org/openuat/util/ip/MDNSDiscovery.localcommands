@@ -1,0 +1,242 @@
+package uk.ac.lancs.relate.ip;
+
+import java.io.IOException;
+
+import javax.jmdns.*;
+
+import org.apache.log4j.Logger;
+
+/** This class wraps host and service discovery via Multicast DNS, using the jmDNS library
+ * (a MDNS and DNS-SD implementation in pure Java) at the moment. If another MDNS responder
+ * is already running on the machine (e.g. mDNSresponder under MacOSX or avahi under Linux),
+ * there might be problems with starting a second instance of an MDNS responder (which is 
+ * done by jmDNS). For a cleaner implementation, this class should use the operating system
+ * support for MDNS/DNS-SD when available and fall back to using jmDNS when none can be found.
+ * 
+ * Update: now hardcode avahi-* command line tools, because the jmDNS still doesn't work properly.
+ * 
+ * Because there can only be a single MDNS responder, this class is implemented as a singleton.
+ * 
+ * @author Rene Mayrhofer
+ * 
+ * This code is licensed under terms of the GNU Lesser General Public License. 
+ */
+public class MDNSDiscovery {
+	/** This is the DNS-SD type used to register relate dongles. */ 
+	public final static String DNS_SD_Type = "_relate._tcp.local.";
+	/** This is the DNS-SD attribute name that is registered as DNS TXT data. */
+	public final static String DNS_SD_Attribute = "dongleid";
+	
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger(MDNSDiscovery.class);
+
+	/** Holds the only instance of this class. */
+	private static MDNSDiscovery instance = null;
+	
+	/** This holds one instance of the jMDNS responder for each interface that this host has. */
+	private JmDNS[] jmdns = null; 
+	
+	/** A mapping of Relate dongle ids to IP addresses, which is modified by
+	 * incoming MDNS events and queried by resolveAddress.
+	 * 
+	 * @see ListenerHelper
+	 * @see #resolveAddress
+	 */
+	//private HashMap addresses;
+	
+	/** Get the only instance of the MDNSDiscovery. 
+	 * 
+	 * @return The MDNSDiscovery singleton.
+	 */
+	public static MDNSDiscovery getMDNSDiscovery() throws IOException {
+		if (instance == null) {
+			logger.debug("Creating singleton instance of MDNSDiscovery");
+			instance = new MDNSDiscovery();
+		}
+		return instance;
+	}
+	
+	/** Constructs the MDNSDiscovery class by initializing the jmDNS responder.
+	 * 
+	 *  TODO: Use operating system MDNS support when available. 
+	 */
+	public MDNSDiscovery() throws IOException {
+		// bind to all interfaces known to the host
+		Enumeration ifaces = NetworkInterface.getNetworkInterfaces();
+		LinkedList allAddrs = new LinkedList();
+		while (ifaces.hasMoreElements()) {
+			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
+			logger.debug("Found local interface " + iface.getName());
+			Enumeration addrs = iface.getInetAddresses();
+			while (addrs.hasMoreElements()) {
+				InetAddress addr = (InetAddress) addrs.nextElement();
+				logger.debug("Found address " + addr);
+				allAddrs.add(addr);
+			}
+		}
+		// start the responders
+		logger.debug("Using " + allAddrs.size() + " addresses, starting one jmDNS responder for each");
+		jmdns = new JmDNS[allAddrs.size()];
+		for (int i=0; allAddrs.size() > 0; i++)
+			jmdns[i] = new JmDNS((InetAddress) allAddrs.removeFirst());
+		logger.debug("jmDNS responders started");
+		//addresses = new HashMap();
+		// and register our listener
+		//jmdns.addServiceListener(DNS_SD_Type, new ListenerHelper());
+	}
+	
+	/** This method registers a local dongle id for querying via MDNS/DNS-SD.
+	 * 
+	 * @param localRelateId The local relate id to register.
+	 */
+	public void registerLocalDongleId(byte localRelateId) throws IOException {
+		// just make sure that there's no minus in front....
+		final int positiveId = localRelateId < 0 ? localRelateId + 0x100 : localRelateId;
+		
+		
+		logger.debug("Registering local relate id " + localRelateId + " for MDNS/DNS-SD lookup");
+		
+		// TODO: register a meaningful port number
+		/*logger.info("Registering DNS-SD service " + Integer.toString(positiveId) + "." + DNS_SD_Type);
+		jmdns.registerService(new ServiceInfo(DNS_SD_Type, Integer.toString(positiveId), 
+				54321, DNS_SD_Attribute + "=" + Integer.toString(positiveId)));*/
+		new Thread(new Runnable() { public void run() {
+			if (System.getProperty("os.name").startsWith("Linux")) {
+				logger.debug("Using Linux-specific services for MDNS/DNS-SD: avahi");
+				try {
+					String[] cmdArgs = new String[] {"avahi-publish-service", Integer.toString(positiveId), DNS_SD_Type, "54321"};
+					for (int i=0; i<cmdArgs.length; i++)
+						System.out.println(cmdArgs[i]);
+					int exitCode = Runtime.getRuntime().exec(cmdArgs).waitFor();
+					if (exitCode != 0) {
+						logger.error("Unable to publish DNS-SD record in MDNS using avahi. Others will be unable " +
+								"to discover this host's IP address. exitcode=" + exitCode);
+					}
+				}
+				catch (InterruptedException e) {
+					logger.error("The process was interrupted while trying to set serial port parameters with " + e + ". " +
+					    "This is non-fatal, but the dongle communication might now be subtly broken.");
+				}
+				catch (IOException e) {
+					logger.error("The process execution failed while trying to set serial port parameters with " + e + ". " +
+				    "This is non-fatal, but the dongle communication might now be subtly broken.");
+				}
+			}
+			else {
+				logger.error("Don't know how to use OS-specific services for this OS yet.");
+			}
+		}}).start();
+	}
+
+	/** (Try to) parse the dongle id from the service name. */
+	/*private Byte parseService(String name) {
+		try {
+			int val = Integer.parseInt(name);
+			if (val > 127)
+				val -= 0x100;
+			// just a sanity check
+			if (val < -128 || val > 127) {
+				logger.error("Dongle id is out of range");
+				return null;
+			}
+			return new Byte((byte) val);
+		}
+		catch (NumberFormatException e) {
+			// ok, not parseable, probably no entry created by the class
+			logger.error("Dongle id is not an integer number");
+			return null;
+		}
+	}*/
+	
+	/** Resolves a remote dongle id to an IP address of the host to which the dongle is
+	 * connected. As it performs the query synchronously, it can take a few seconds to
+	 * complete.
+	 * 
+	 * @param remoteRelateId The remote relate id to get the address for.
+	 * @return The IP address in some form (either host name, IPv4 or IPv6 address) usable
+	 *         by InetAddress or null if no mapping could be found, i.e. if the address
+	 *         could not be reolved (yet). 
+	 */
+	public String resolveAddress(byte remoteRelateId) {
+		// just make sure that there's no minus in front....
+		int positiveId = remoteRelateId;
+		if (positiveId < 0)
+			positiveId += 0x100;
+
+		logger.info("Querying for remote relate id " + positiveId);
+		
+		/*// this performs a query right now - so it will take some time 
+		ServiceInfo service = jmdns.getServiceInfo(DNS_SD_Type, Integer.toString(positiveId));
+		
+		logger.info("Mapped remote relate id " + positiveId + " to " + 
+				((service != null && service.getHostAddress() != null) ? service.getHostAddress() : "n/a"));
+		
+		if (service == null)
+			return null;
+		return service.getHostAddress();*/
+		
+		return null;
+	}
+	
+	/** This helper class implements the service listener, which will get notified of any
+	 * MDNS replies that the responder receives.
+	 */
+	/*private class ListenerHelper implements ServiceListener {
+		
+		public void serviceAdded(ServiceEvent e)
+		{
+			logger.debug("ADD: " + e);
+			if (e.getType().equals(DNS_SD_Type)) {
+				logger.info("Received MDNS add event for a Relate type");
+				Byte id = parseService(e.getName());
+				//addresses.put(id, );
+				System.out.println("source = " + e.getSource());
+				System.out.println("info = " + e.getInfo());
+				System.out.println("info.hostaddress = " + e.getInfo().getHostAddress());
+				System.out.println("info.name = " + e.getInfo().getName());
+				System.out.println("info.port = " + e.getInfo().getPort());
+				System.out.println("info.server = " + e.getInfo().getServer());
+				System.out.println("info.qualifiedname = " + e.getInfo().getQualifiedName());
+				System.out.println("info.address = " + e.getInfo().getAddress());
+				System.out.println("dns = " + e.getDNS());
+				System.out.println("dns.hostname = " + e.getDNS().getHostName());
+				//System.out.println("dns.hostname = " + e.getDNS().);
+			}
+		}
+		public void serviceRemoved(ServiceEvent e)
+		{
+			logger.debug("REMOVE: " + e);
+		}
+		public void serviceResolved(ServiceEvent e)
+		{
+			logger.debug("RESOLVED: " + e);
+			if (e.getType().equals(DNS_SD_Type)) {
+				logger.info("Received MDNS resolved event for a Relate type");
+				Byte id = parseService(e.getName());
+				//addresses.put(id, );
+				System.out.println("source = " + e.getSource());
+				System.out.println("info = " + e.getInfo());
+				System.out.println("info.hostaddress = " + e.getInfo().getHostAddress());
+				System.out.println("info.name = " + e.getInfo().getName());
+				System.out.println("info.port = " + e.getInfo().getPort());
+				System.out.println("info.server = " + e.getInfo().getServer());
+				System.out.println("info.qualifiedname = " + e.getInfo().getQualifiedName());
+				System.out.println("info.address = " + e.getInfo().getAddress());
+				System.out.println("dns = " + e.getDNS());
+			}
+		}
+	}*/
+	
+	
+	
+	////////////////////////// Test code begins here //////////////////////////
+	public static void main(String[] args) throws IOException, InterruptedException {
+		MDNSDiscovery d = MDNSDiscovery.getMDNSDiscovery();
+		d.registerLocalDongleId((byte) 19);
+		Thread.sleep(5000);
+		for (byte i= 0; i<20; i++) {
+			String s = d.resolveAddress(i);
+			System.out.println("Dongle id " + i + " maps to " + s);
+		}
+	}
+}
