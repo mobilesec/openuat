@@ -227,6 +227,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		try {
 			if (!FIXED_DEMO_MODE) {
+				// using split phases, disconnect the channel after host authentication
+				BluetoothOpportunisticConnector.setKeepConnected(false);
 				BluetoothOpportunisticConnector bt = BluetoothOpportunisticConnector.getInstance();
 				protocol = new ShakeAuthenticator(bt, this);
 				bt.setKeyManager(protocol.getKeyManager());
@@ -382,8 +384,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 		}
 
-		// TODO: remove me?
-		// maybe only keep for the sound...
+		/** In "normal" opportunistic mode, this does nothing but play a sound.
+		 * However, in demo mode, it will start the continuous background
+		 * verification thread.
+		 */
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
 			if (logger.isDebugEnabled())
 				logger.debug("Successful key agreement with " + remote.getRemoteName() + 

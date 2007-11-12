@@ -90,10 +90,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** The maximum duration, in ms, that we allow a key agreement to take. */
 	public final static int maximumKeyAgreementRuntime = 15000;
 	
-	// TODO: make me configurable - maybe with setters/getters?
-	public final static boolean keepConnected = true;
 	public final static boolean useJSSE = false;
 	public final static String optionalParameter = null;
+
+	/** true if RFCOMM channels should be left open after successful key
+	 * agreement, false if they should be closed.
+	 */
+	private static boolean keepConnected = false;
 	
 	/** The singleton instance of this class, created when getInstance() is
 	 * called for the first time.
@@ -150,6 +153,24 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		
 		return singleton;
 	}
+
+	/** Gets the current value of keepConnected.
+	 * 
+	 * @return true if RFCOMM channels will be left open after successful key
+	 * 		   agreement, false if they will be closed.
+	 */
+    public static boolean getKeepConnected() {
+    	return keepConnected;
+    }
+
+    /** Sets the current value of keepConnected.
+     * 
+     * @param keepConnected true if RFCOMM channels should be left open after successful key
+	 * 		   agreement, false if they should be closed.
+     */
+    public static void setKeepConnected(boolean keepConnected) {
+    	BluetoothOpportunisticConnector.keepConnected = keepConnected;
+    }
 
 	/** @see HostProtocolHandler#addProtocolCommandHandler */
     public void addProtocolCommandHandler(String command, ProtocolCommandHandler handler) {
@@ -255,7 +276,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		try {
 			channel = new BluetoothRFCOMMChannel(connectionURL);
 			localAddress = LocalDevice.getLocalDevice().getBluetoothAddress();
-			remoteAddress = channel.getRemoteAddressString();
+			remoteAddress = (String) channel.getRemoteAddress();
 		} catch (IOException e) {
 			logger.error("Can't initialize Bluetooth subsystem and/or get local address", e);
 			return false;
@@ -487,14 +508,36 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	///////////////////////////////////////
 	// test code
 //#if cfg.includeTestCode
+	private static class MotionVerificationCommandMirror implements ProtocolCommandHandler {
+		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
+			// sanity check
+			if (! firstLine.startsWith(org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand)) {
+				logger.error("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
+						org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand + "'. This should not happen!");
+				return false;
+			}
+			System.out.println("Motion verification handler entered with remote " + remote + ", now mirroring everything back");
+			
+			BluetoothRFCOMMChannel.TempHandler h = new BluetoothRFCOMMChannel.TempHandler(true, false);
+			h.inVerificationPhase(remote);
+
+			System.out.println("Motion verification handler entered with remote " + remote + " exiting");
+
+			return true;
+		}
+	}
+	
 	public static void main(String[] args) throws IOException {
 		BluetoothOpportunisticConnector c = BluetoothOpportunisticConnector.getInstance();
 		// yes, we support concurrent verification here for this test
 		KeyManager km = new KeyManager(true, "the one and only");
 		c.addAuthenticationProgressHandler(km.getHostAuthenticationHandler());
 		c.setKeyManager(km);
-		if (args.length > 1 && args[1].equals("mirror"))
+		if (args.length > 1 && args[1].equals("mirror")) {
 			km.addVerificationHandler(new BluetoothRFCOMMChannel.TempHandler(true, false));
+			c.addProtocolCommandHandler(org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand, 
+					new MotionVerificationCommandMirror());
+		}
 		c.start();
 		System.in.read();
 		c.stop();
