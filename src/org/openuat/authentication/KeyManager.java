@@ -228,6 +228,7 @@ public class KeyManager extends AuthenticationEventSender {
 		 */
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 	        logger.info("Received host authentication success event with " + remote +
+	        		", extracting and storing keys" + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 
 	        State remoteState = retreiveState(sender, remote, false);

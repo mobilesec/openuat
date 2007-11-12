@@ -465,10 +465,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             ka.addRemotePublicKey(remotePubKey);
             Object sessKey = ka.getSessionKey();
             Object authKey = ka.getAuthenticationKey();
-            if (logger.isInfoEnabled()) {
+            if (logger.isInfoEnabled()) 
             	totalCryptoTime += System.currentTimeMillis()-timestamp;
-            	timestamp = System.currentTimeMillis();
-            }
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
             // the authentication success event sent here is just an array of two keys

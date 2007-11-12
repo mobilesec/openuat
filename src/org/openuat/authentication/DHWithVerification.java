@@ -445,7 +445,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	protected class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-	    	logger.error("");
+	    	// key manager has taken care of this event, can ignore here
 	    }
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
@@ -484,7 +484,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	protected class StartVerificationHandler implements KeyManager.VerificationHandler {
 		public void startVerification(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection toRemote) {
-	        logger.info("Received host authentication success event with " + toRemote.getRemoteName() + 
+	        logger.info("Starting asynchronous verification triggered by host authentication success event with " + toRemote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        startVerificationAsync(sharedAuthenticationKey, optionalParam, toRemote);
 		}
