@@ -154,7 +154,6 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 * @throws IOException On Bluetooth errors.
 	 * @throws IOException When the channel has already been opened.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@SuppressWarnings("static-access") // we really want the javax...Connector, and not the avetanebt!
 	public synchronized boolean open() throws IOException {
 		if (connection != null) {
@@ -203,7 +202,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 */
 	public void close() {
 		if (connection == null) {
-			logger.error("RFCOMM channel has not been opened properly or been closed already, can not close");
+			logger.debug("RFCOMM channel has not been opened properly or been closed already, can not close");
 			return;
 		}
 		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
@@ -240,7 +239,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Implementation of RemoteConnection.isOpen. */
 	public boolean isOpen() {
 		if (connection == null || fromRemote == null || toRemote == null) {
-			logger.info(this + " is not open because connection, fromRemote, or toRemote are null");
+			logger.debug(this + " is not open because connection, fromRemote, or toRemote are null");
 			return false;
 		}
 		try {
@@ -248,7 +247,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			toRemote.flush();
 		}
 		catch (IOException e) {
-			logger.info(this + " is not open because fromRemote.available or toRemote.flush throw an exception: " + e);
+			logger.debug(this + " is not open because fromRemote.available or toRemote.flush throw an exception: " + e);
 			return false;
 		}
 		return true;
@@ -297,34 +296,44 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 *         but we can't due to the RemoteDevice(String) constructor being
 	 *         protected in the JSR81 API. Go complain to its authors.
 	 */
-	public Object getRemoteAddress() throws IOException {
-		if (connection != null)
+	public Object getRemoteAddress() /*throws IOException*/ {
+		/* On J2ME phones, this returns address "000000000000" when the remote 
+		 * side has closed the channel (but isOpen still returns true!). 
+		 * Therefore, never even try to use getBluetoothAddress on phones when
+		 * we can avoid it.
+		 * Actually, why would we ever want to use it? Every constructor sets
+		 * remoteDeviceAddress anyway. Scratch that here, just return it!
+		 */
+		/*if (isOpen() && System.getProperty( "microedition.platform") == null)
 			// connection already open, get the RemoteDevice object from it
 			return RemoteDevice.getRemoteDevice(connection).getBluetoothAddress();
-		else if (remoteDeviceAddress != null)
+		else if (remoteDeviceAddress != null)*/
 			// No connection open, need to work with remoteDeviceAddress here.
 			/* But the JSR82 API makes the RemoteDevice(String) constructor 
 			   protected, so can't use it. The best option is to simply return
 			   a string object. */
 			return remoteDeviceAddress;
-		else
-			return null;
+		/*else
+			return null;*/
 	}
 	
-	/** This returns the remote device address as a string, as e.g. parsed
-	 * by the constructor taking a connection URL. 
-	 */
-	public String getRemoteAddressString() {
-		return remoteDeviceAddress;
-	}
-
 	/** Implementation of RemoteConnection.getRemoteName.
 	 * @see RemoteConnection.getRemoteName
 	 */
 	public String getRemoteName() {
 		try {
-			if (connection != null)
-				return BluetoothPeerManager.resolveName(RemoteDevice.getRemoteDevice(connection));
+			if (isOpen()) { 
+				String name = BluetoothPeerManager.resolveName(RemoteDevice.getRemoteDevice(connection));
+				/* Special handling here, mostly for J2ME: when the other side
+				 * has already closed the connection, then getBluetoothAddress()
+				 * on RemoteDevice - used as fallback in resolveName - will 
+				 * return this special "null-address" string. Catch and replace
+				 * by the known address instead.
+				 */
+				if (name.equals("000000000000"))
+					name = remoteDeviceAddress;
+				return name;
+			}
 			else
 				return remoteDeviceAddress;
 		} catch (IOException e) {
@@ -336,7 +345,6 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** This implementation of equals either compares either the connection
 	 * objects (if set) or serviceURL.
 	 */ 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public boolean equals(Object other) {
 		if (other == null || !(other instanceof BluetoothRFCOMMChannel)) {
@@ -383,10 +391,9 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 * case, simply return the hashcode of the Bluetooth MAC address (as 
 	 * String), or 0 if no address is known.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public int hashCode() {
-		String remoteAddr = null;
+		/*String remoteAddr = null;
 		try {
 			remoteAddr = (String) getRemoteAddress();
 		}
@@ -398,16 +405,18 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			// no address known - let the hashtable call equals if necessary...
 			return 0;
 		else
-			return remoteAddr.hashCode();
+			return remoteAddr.hashCode();*/
+		
+		return remoteDeviceAddress.hashCode();
 	}
 
 	public String toString() {
 		if (connection != null)
-			try {
+			//try {
 				return "BluetoothRFCOMMChannel connected to " + getRemoteAddress();
-			} catch (IOException e) {
+			/*} catch (IOException e) {
 				return "BluetoothRFCOMMChannel connected, but unable to resolve address: " + e;
-			}
+			}*/
 		else if (serviceURL != null && remoteChannelNumber != -1)
 			return "BluetoothRFCOMMChannel with URL " + serviceURL;
 		else if (remoteDeviceAddress != null)
@@ -539,7 +548,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			inVerificationPhase(toRemote);
 		}
 		
-		private void inVerificationPhase(RemoteConnection connectionToRemote) {
+		void inVerificationPhase(RemoteConnection connectionToRemote) {
 	        InputStream i;
 	        OutputStream o;
 			try {
