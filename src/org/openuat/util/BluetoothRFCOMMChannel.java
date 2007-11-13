@@ -135,8 +135,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 * @throws IOException When the local Bluetooth stack was not initialized properly.
 	 */
 	public BluetoothRFCOMMChannel(String remoteDeviceAddress, int remoteChannelNumber) throws IOException {
-		this("btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
-			";authenticate=false;master=true;encrypt=false");
+		this(constructURL(remoteDeviceAddress, remoteChannelNumber));
 		
 		// just remember the parameters
 		this.remoteDeviceAddress = remoteDeviceAddress;
@@ -182,6 +181,12 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		this.connection = connection;
 		fromRemote = connection.openInputStream();
 		toRemote = connection.openOutputStream();
+	}
+
+	/** Just a small helper function to construct the correct URL string. */
+	private static String constructURL(String remoteDeviceAddress, int remoteChannelNumber) {
+		return "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
+		";authenticate=false;master=true;encrypt=false";
 	}
 	
 	/** Opens a channel to the endpoint given to the constructor.
@@ -386,6 +391,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Sets the remote channel number that will be used in the next open() call. */
 	public void setRemoteChannelNumber(int remoteChannelNumber) {
 		this.remoteChannelNumber = remoteChannelNumber;
+		serviceURL = constructURL(remoteDeviceAddress, remoteChannelNumber); 
 	}
 	
 	/** This implementation of equals either compares either the connection
