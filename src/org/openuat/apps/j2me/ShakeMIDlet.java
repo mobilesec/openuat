@@ -407,15 +407,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 			
 			// remember the remote channel number
-			if (optionalParam.startsWith("btspp://") &&
+			if (optionalParam != null && 
+					optionalParam.startsWith("btspp://") &&
 					optionalParam.indexOf(':', 8) == 20 &&
 					(optionalParam.indexOf(';') >= 22 || 
 					 (optionalParam.length() <= 23 && optionalParam.indexOf(';') == -1))) {
 				String remoteDeviceAddress = optionalParam.substring(8, 20);
-				int end = optionalParam.indexOf(';') > 0 ? optionalParam.indexOf(';') : optionalParam.length(); 
+				int end = optionalParam.indexOf(';') > 0 ? optionalParam.indexOf(';') : optionalParam.length();
 				int remoteChannelNumber = Integer.parseInt(optionalParam.substring(21, end));
-				// if (logger.isDebugEnabled())
-					logger.info("Parsed remote device address '" + remoteDeviceAddress + 
+				if (logger.isDebugEnabled())
+					logger.debug("Parsed remote device address '" + remoteDeviceAddress + 
 						"' and channel " + remoteChannelNumber + " from remote URL parameter '" +
 						optionalParam + "'");
 				BluetoothRFCOMMChannel channel = (BluetoothRFCOMMChannel) remote;
@@ -432,9 +433,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				logger.info("Storing remote channel number " + remoteChannelNumber + " for remote " + remote);
 				channel.setRemoteChannelNumber(remoteChannelNumber);
 			}
-			else
-				logger.warn("Could not parse URL '" + optionalParam + 
-						"', thus outgoing key verification to this host will not work!");
+			else {
+				if (logger.isDebugEnabled())
+					logger.debug("Could not parse URL '" + optionalParam + "'");
+				if (((BluetoothRFCOMMChannel) remote).getRemoteChannelNumber() == -1)
+					logger.warn("Could neither parse remote URL parameter nor already have a remote channel number to use, thus outgoing key verification to this host will not work!");
+			}
 			
 			if (FIXED_DEMO_MODE)
 				super.startVerificationAsync(sharedAuthenticationKey, optionalParam, remote);

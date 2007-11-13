@@ -108,7 +108,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** The optional parameter to send in the key agreement protocol: this will
 	 * be the URL that the local RFCOMM server is reachable at, i.e. the URL at
 	 * which the remote can "call back".
-	 * It is set in the constructor and used when starting a HostProtocolHandler.
+	 * It is set in start() and used when starting a HostProtocolHandler in
+	 * attemptConnection().
 	 */
 	private String optionalParameter = null;
 
@@ -147,7 +148,6 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		manager.addListener(new BluetoothPeerEventsHandler());
 		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, maximumKeyAgreementRuntime, keepConnected, useJSSE);
 		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
-		optionalParameter = service.getRegisteredServiceURL();
 	}
 	
 	/** Returns the local instance of BluetoothOpportunisticConnector.
@@ -221,6 +221,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		if (!service.isRunning()) {
 			logger.debug("Starting RFCOMM service and background inquiries");
 			service.start();
+			optionalParameter = service.getRegisteredServiceURL();
 			manager.startInquiry(true);
 		}
 		else
