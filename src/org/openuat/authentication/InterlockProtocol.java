@@ -713,9 +713,8 @@ public class InterlockProtocol {
 	 *                     This may also be caused by a timeout that forcefully closed
 	 *                     fromRemote. 
 	 * @throws InternalApplicationException
-	 * 
-	 *  // TODO: implement handling of retransmit
 	 */
+	// TODO: implement handling of retransmit
 	public static byte[] interlockExchange(byte[] message, InputStream fromRemote, OutputStream toRemote,
 			byte[] sharedKey, int rounds, boolean protectAgainstMirrorAttack, 
 			boolean retransmit, int timeoutMs, boolean useJSSE,
