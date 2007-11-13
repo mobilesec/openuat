@@ -66,6 +66,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 //#endif
 	}
 	
+	public final static int HoldOffConcurrentVerificationDelay = 7000;
+	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
 	public final static float CoherenceThreshold = 0.45f;
@@ -492,6 +494,35 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			status.setText("connected");
 			return true;
 		}
+		
+		//@Override
+		protected int holdOutgoingVerificationRequestHook(RemoteConnection remote) {
+			/* This is a small but hopefully effective hack to prevent two devices 
+			 * from trying to contact each other at the same time: the higher MAC 
+			 * address backs off for the first try, and will only try if not contacted
+			 * in the mean time.
+			 */
+			String localAddress;
+			try {
+				localAddress = LocalDevice.getLocalDevice().getBluetoothAddress();
+				String remoteAddress = (String) remote.getRemoteAddress();
+				if (localAddress.compareTo(remoteAddress) > 0) {
+					if (logger.isInfoEnabled())
+						logger.info("My Bluetooth address '" + localAddress +
+							"' is higher than the remote address to connect to '" + 
+							remoteAddress + "', backing off and waiting for remote to establish verification connection");
+					return HoldOffConcurrentVerificationDelay;
+				}
+				else
+					return 0;
+			} catch (BluetoothStateException e) {
+				// if we can't decide, better not wait
+				return 0;
+			} catch (IOException e) {
+				// if we can't decide, better not wait
+				return 0;
+			}
+		}		
 	}
 	
 	private class DemoModeConnector extends Thread implements AuthenticationProgressHandler {

@@ -11,6 +11,7 @@ package org.openuat.authentication.accelerometer;
 
 import java.io.IOException;
 import java.util.BitSet;
+import java.util.Hashtable;
 import java.util.Vector;
 
 import org.apache.log4j.Logger;
@@ -137,6 +138,13 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * time.
 	 */
 	private BitSet interlockGroup = null;
+	
+	/** Contains all RemoteDevice objects to represent hosts with which a key
+	 * verification is currently active, i.e. to which a channel is open for
+	 * key verification purposes. This is used to prevent two concurrent
+	 * verification runs with the same device (e.g. one incoming and one outgoing).
+	 */
+	private Hashtable verificationsRunning = new Hashtable();
 	
 	/** Initializes the object, only setting useJSSE at the moment.
 	 * 
@@ -408,105 +416,115 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		int totalCodingTime=0, totalInterlockTime=0, totalComparisonTime=0;
 		long timestamp=0;
 
-		byte[] localPlainText = null;
-		synchronized (localSegmentLock) {
-			// sanity checks
-			if (localSegment == null) {
-				logger.error("keyVerification called without localSegment being set. This should not happen!");
-				return false;
-			}
-/*			for (int i=0; i<localSegment.length; i++) {
-				if (localSegment[i] < 0 || localSegment[i] > 2) {
-					logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
-					protocolRunFinished(myThread);
+		synchronized (verificationsRunning) {
+			if (!verificationsRunning.containsKey(remote))
+				verificationsRunning.put(remote, null);
+		}
+
+		try {
+			byte[] localPlainText = null;
+			synchronized (localSegmentLock) {
+				// sanity checks
+				if (localSegment == null) {
+					logger.error("keyVerification called without localSegment being set. This should not happen!");
 					return false;
 				}
-			}*/
-            if (logger.isInfoEnabled())
-            	timestamp = System.currentTimeMillis();
-			localPlainText = TimeSeriesUtil.encodeVector(localSegment);
-            if (logger.isInfoEnabled())
-            	totalCodingTime += System.currentTimeMillis()-timestamp;
-		}
-		if (localPlainText == null) {
-			verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
-			return false;
-		}
-		logger.debug("My segment is " + localPlainText.length + " bytes long");
+/*				for (int i=0; i<localSegment.length; i++) {
+					if (localSegment[i] < 0 || localSegment[i] > 2) {
+						logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
+						protocolRunFinished(myThread);
+						return false;
+					}
+				}*/
+				if (logger.isInfoEnabled())
+					timestamp = System.currentTimeMillis();
+				localPlainText = TimeSeriesUtil.encodeVector(localSegment);
+				if (logger.isInfoEnabled())
+					totalCodingTime += System.currentTimeMillis()-timestamp;
+			}
+			if (localPlainText == null) {
+				verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
+				return false;
+			}
+			logger.debug("My segment is " + localPlainText.length + " bytes long");
 
-		// exchange with the remote host
-        if (logger.isInfoEnabled())
-        	timestamp = System.currentTimeMillis();
-		byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
-				remote.getInputStream(), remote.getOutputStream(),
-				// TODO: enable mirror attack prevention after testing
-				sharedAuthenticationKey, rounds, false, 
-				false, RemoteInterlockExchangeTimeout, useJSSE,
-				interlockGroup, groupSize, instanceNum);
-        if (logger.isInfoEnabled())
-        	totalInterlockTime += System.currentTimeMillis()-timestamp;
-		if (remotePlainText == null) {
-			logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
-			verificationFailure(remote, null, null, null, "Interlock protocol failed");
-			return false;
-		}
+			// exchange with the remote host
+			if (logger.isInfoEnabled())
+				timestamp = System.currentTimeMillis();
+			byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
+					remote.getInputStream(), remote.getOutputStream(),
+					// TODO: enable mirror attack prevention after testing
+					sharedAuthenticationKey, rounds, false, 
+					false, RemoteInterlockExchangeTimeout, useJSSE,
+					interlockGroup, groupSize, instanceNum);
+			if (logger.isInfoEnabled())
+				totalInterlockTime += System.currentTimeMillis()-timestamp;
+			if (remotePlainText == null) {
+				logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
+				verificationFailure(remote, null, null, null, "Interlock protocol failed");
+				return false;
+			}
 
-		boolean decision = false;
-		// and check the received remote segment, compare it with our local segment
-		logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
-		// count the tokens
-        if (logger.isInfoEnabled())
-        	timestamp = System.currentTimeMillis();
-		double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
-        if (logger.isInfoEnabled())
-        	totalCodingTime += System.currentTimeMillis()-timestamp;
-		if (remoteSegment != null) {
-			logger.debug("remote segment is " + remoteSegment.length + " elements long");
-	        if (logger.isInfoEnabled())
-	        	timestamp = System.currentTimeMillis();
-			decision = checkCoherence(remoteSegment);
-	        if (logger.isInfoEnabled())
-	        	totalComparisonTime += System.currentTimeMillis()-timestamp;
-			logger.info("COHERENCE MATCH: " + decision + "(computed " + 
-					lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
-		}
-		else
-			decision = false;
+			boolean decision = false;
+			// and check the received remote segment, compare it with our local segment
+			logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
+			// count the tokens
+			if (logger.isInfoEnabled())
+				timestamp = System.currentTimeMillis();
+			double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
+			if (logger.isInfoEnabled())
+				totalCodingTime += System.currentTimeMillis()-timestamp;
+			if (remoteSegment != null) {
+				logger.debug("remote segment is " + remoteSegment.length + " elements long");
+				if (logger.isInfoEnabled())
+					timestamp = System.currentTimeMillis();
+				decision = checkCoherence(remoteSegment);
+				if (logger.isInfoEnabled())
+					totalComparisonTime += System.currentTimeMillis()-timestamp;
+				logger.info("COHERENCE MATCH: " + decision + "(computed " + 
+						lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
+			}
+			else
+				decision = false;
 
-		// final decision
-		if (decision) { 
-			if (!continuousChecking)
-				// "productive" case
-				verificationSuccess(remote, null, Double.toString(lastCoherenceMean));
-			else {
-				// demo-only case!
-				protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null);
-				// need to to that here, as we don't call the cleanup/finished method in this case
-				synchronized (localSegmentLock) {
-					localSegment = null;
+			// final decision
+			if (decision) { 
+				if (!continuousChecking)
+					// "productive" case
+					verificationSuccess(remote, null, Double.toString(lastCoherenceMean));
+				else {
+					// demo-only case!
+					protocolSucceededHook(remote, null, Double.toString(lastCoherenceMean), null);
+					// need to to that here, as we don't call the cleanup/finished method in this case
+					synchronized (localSegmentLock) {
+						localSegment = null;
+					}
 				}
 			}
-		}
-		else {
-			if (!continuousChecking)
-				// "productive" case
-				verificationFailure(remote, null, null, null, "Coherence is below threshold, time series are not similar enough");
 			else {
-				// demo-only case!
-				protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
-				// need to to that here, as we don't call the cleanup/finished method in this case
-				synchronized (localSegmentLock) {
-					localSegment = null;
+				if (!continuousChecking)
+					// "productive" case
+					verificationFailure(remote, null, null, null, "Coherence is below threshold, time series are not similar enough");
+				else {
+					// demo-only case!
+					protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
+					// need to to that here, as we don't call the cleanup/finished method in this case
+					synchronized (localSegmentLock) {
+						localSegment = null;
+					}
 				}
 			}
+
+			if (logger.isInfoEnabled())
+				logger.info("Segment coding took " + totalCodingTime + 
+						"ms, interlock took " + totalInterlockTime + 
+						"ms, comparison took" + totalComparisonTime + "ms");
+	        return true;
 		}
-
-        if (logger.isInfoEnabled())
-        	logger.info("Segment coding took " + totalCodingTime + 
-        			"ms, interlock took " + totalInterlockTime + 
-        			"ms, comparison took" + totalComparisonTime + "ms");
-
-        return true;
+		finally {
+			// _always_ "unlock" this remote when leaving this method 
+			synchronized (verificationsRunning) { verificationsRunning.remove(remote); }
+		}
 	}
 	
 	/** This is a helper class for executing the interlock protocol in the background.
@@ -529,7 +547,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		
 		public void run() {
 			try {
-				do {
+				outer: do {
 					// first wait for the local segment to be received to start the interlock protocol
 					logger.debug("Waiting for local segment");
 					synchronized(localSegmentLock) {
@@ -544,20 +562,51 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 					logger.debug("Local segment sampled, starting interlock protocol");
 
+					// need to prevent concurrent verification runs with the same host (e.g. incoming and outgoing)
+					boolean alreadyVerifying = false;
+					synchronized (verificationsRunning) { alreadyVerifying = verificationsRunning.containsKey(remote); }
+
 					// if we need to open the channel here, there's some work to do
 					if (openChannel) {
 						logger.info("Trying to establish key verification channel to " + remote);
 						long startTime = System.currentTimeMillis();
 						boolean opened = false;
-						while (!opened && 
-								System.currentTimeMillis()-startTime < VerificationConnectionEstablishmentTimeout) {
+						int numRetries=0;
+						do {
 							try {
+								if (numRetries == 0) {
+									int holdoff = holdOutgoingVerificationRequestHook(remote);
+									if (holdoff < 0) {
+										logger.warn("Aborting outgoing key verification as requested, not establishing a connection");
+										break outer;
+									}
+									do {
+										try {
+											Thread.sleep(100);
+										}
+										catch (InterruptedException e1) {
+											// just ignore, it will only make the wait shorter but won't hurt
+										}
+										// re-check, an incoming verification request might have been started
+										synchronized (verificationsRunning) { alreadyVerifying = verificationsRunning.containsKey(remote); }
+									} while (System.currentTimeMillis()-startTime < holdoff && 
+											!alreadyVerifying);
+								}
+
+								synchronized (verificationsRunning) { alreadyVerifying = verificationsRunning.containsKey(remote); }
+								if (alreadyVerifying) {
+									logger.info("Another key verification is already running with remote " +
+											remote + " (possibly an incoming request), not opening an outgoing channel");
+									break outer;
+								}
+								
 								remote.open();
 								opened = true;
 							} 
 							catch (IOException e) {
 								logger.warn("Could not establish channel for key verification to " +
-										remote + " (" +	e + "), but will retry for another " + 
+										remote + " (" +	e + ") on try " + (numRetries+1) + 
+										", but will retry for another " + 
 										(VerificationConnectionEstablishmentTimeout+startTime-System.currentTimeMillis()) +
 										"ms");
 								try {
@@ -566,12 +615,14 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 								catch (InterruptedException e1) {
 									// just ignore, it will only make the wait shorter but won't hurt
 								}
+								numRetries++;
 							}
-						}
+						} while (!opened && 
+								System.currentTimeMillis()-startTime < VerificationConnectionEstablishmentTimeout);
 						if (!opened) {
 							logger.error("Unable to establish channel for key verification to " +
 									remote + ", aborting now");
-							break;
+							break outer;
 						}
 
 						// ok, connected - get the host into verification mode
@@ -587,7 +638,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						 * fromRemote. So any derived classes can already react
 						 * to this, just close the thread cleanly here.
 						 */
-						break;
+						break outer;
 					}
 				} while (continuousChecking);
 			} catch (IOException e) {
@@ -637,7 +688,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			}
 
 			if (!incomingVerificationRequestHook(remote)) {
-				logger.error("incomfingVerificationRequestHook returned false, aborting verification");
+				logger.error("incomingVerificationRequestHook returned false, aborting verification");
 				return true;
 			}
 				
@@ -707,6 +758,19 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected boolean incomingVerificationRequestHook(RemoteConnection remote) {
 		logger.info("Accepting incoming verification request from " + remote);
 		return true;
+	}
+	
+	/** This hook is called when an outgoing verification request is about to
+	 * be sent, just before opening the channel (if it has been closed after
+	 * key agreement). The implementation in here does nothing (returns 0),
+	 * but derived classes may use this to delay or abort outgoing verification.
+	 * @param remote The remote host with which verification is about to be started.
+	 * @return How long to delay the outgoing verification request in 
+	 *         milliseconds or -1 to abort it completely. 
+	 */
+	protected int holdOutgoingVerificationRequestHook(RemoteConnection remote) {
+		logger.info("Not delaying outgoing verification request to " + remote);
+		return 0;
 	}
 	
 	/////////////////// testing code begins here ///////////////
