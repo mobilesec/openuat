@@ -571,19 +571,24 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	        byte[] sharedKey = (byte[]) res[0];
 	        // and extract the shared authentication key for phase 2
 	        byte[] authKey = (byte[]) res[1];
-	        logger.debug("Shared session key is now '" + new String(Hex.encodeHex(sharedKey)) + 
+	        System.out.println("Shared session key is now '" + new String(Hex.encodeHex(sharedKey)) + 
 	        		"' with length " + sharedKey.length + 
 	        		", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
 	        		"' with length " + authKey.length);
 	        // then extraxt the optional parameter
 	        //String param = (String) res[2];
 	        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
-	        
-	        inVerificationPhase(connectionToRemote);
+	        if (connectionToRemote != null) {
+	        	System.out.println("Connection to remote is still open, mirroring on it");
+	        	inVerificationPhase(connectionToRemote);
+	        }
 		}
 
 		public void startVerification(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection toRemote) {
-			inVerificationPhase(toRemote);
+			if (((BluetoothRFCOMMChannel) toRemote).isOpen()) {
+	        	System.out.println("Called for verification and connection to remote is still open, mirroring on it");
+				inVerificationPhase(toRemote);
+			}
 		}
 		
 		void inVerificationPhase(RemoteConnection connectionToRemote) {
