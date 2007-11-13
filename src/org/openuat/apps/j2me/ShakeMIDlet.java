@@ -421,7 +421,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 						optionalParam + "'");
 				BluetoothRFCOMMChannel channel = (BluetoothRFCOMMChannel) remote;
 				if (! channel.getRemoteAddress().equals(remoteDeviceAddress)) {
-					logger.warn("Device address of remote is '" + channel.getRemoteAddress() +
+					if (logger.isDebugEnabled())
+						logger.debug("Device address of remote is '" + channel.getRemoteAddress() +
 							"', but parsed '" + remoteDeviceAddress + 
 							"' from URL parameter, assuming that this is the client and thus not storing channel number");
 				}
