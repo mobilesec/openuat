@@ -384,8 +384,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			}
 		}
 
-		/** In "normal" opportunistic mode, this does nothing but play a sound.
-		 * However, in demo mode, it will start the continuous background
+		/** In "normal" opportunistic mode, this only remembers the remote 
+		 * channel number that should be used when "calling" this remote for
+		 * key verification (the channel is otherwise unknown when the key
+		 * agreement that triggered this hook was incoming).
+		 * 
+		 * In demo mode, it will also start the continuous background
 		 * verification thread.
 		 */
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
@@ -401,6 +405,36 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
 			}
+			
+			// remember the remote channel number
+			if (optionalParam.startsWith("btspp://") &&
+					optionalParam.indexOf(':', 8) == 20 &&
+					(optionalParam.indexOf(';') >= 22 || 
+					 (optionalParam.length() <= 23 && optionalParam.indexOf(';') == -1))) {
+				String remoteDeviceAddress = optionalParam.substring(8, 20);
+				int end = optionalParam.indexOf(';') > 0 ? optionalParam.indexOf(';') : optionalParam.length(); 
+				int remoteChannelNumber = Integer.parseInt(optionalParam.substring(21, end));
+				// if (logger.isDebugEnabled())
+					logger.info("Parsed remote device address '" + remoteDeviceAddress + 
+						"' and channel " + remoteChannelNumber + " from remote URL parameter '" +
+						optionalParam + "'");
+				BluetoothRFCOMMChannel channel = (BluetoothRFCOMMChannel) remote;
+				if (! channel.getRemoteAddress().equals(remoteDeviceAddress))
+					logger.warn("Device address of remote is '" + channel.getRemoteAddress() +
+							"', but parsed '" + remoteDeviceAddress + 
+							"' from URL parameter, something is very wrong here");
+				if (channel.getRemoteChannelNumber() != -1 && 
+						channel.getRemoteChannelNumber() != remoteChannelNumber)
+					logger.warn("Remote channel number of remote is '" + channel.getRemoteChannelNumber() +
+							"', but parsed '" + remoteDeviceAddress + 
+							"' from URL parameter, something is very wrong here");
+				// and finally remember the parsed number (if it was already in there, it won't change)
+				logger.info("Storing remote channel number " + remoteChannelNumber + " for remote " + remote);
+				channel.setRemoteChannelNumber(remoteChannelNumber);
+			}
+			else
+				logger.warn("Could not parse URL '" + optionalParam + 
+						"', thus outgoing key verification to this host will not work!");
 			
 			if (FIXED_DEMO_MODE)
 				super.startVerificationAsync(sharedAuthenticationKey, optionalParam, remote);
