@@ -541,8 +541,10 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		KeyManager km = new KeyManager(true, "the one and only");
 		c.addAuthenticationProgressHandler(km.getHostAuthenticationHandler());
 		c.setKeyManager(km);
-		if (args.length > 1 && args[1].equals("mirror")) {
-			km.addVerificationHandler(new BluetoothRFCOMMChannel.TempHandler(true, false));
+		if (args.length > 0 && args[0].equals("mirror")) {
+			System.out.println("Switching to mirror attack mode, registering handler");
+			// don't do this anymore - we now have 2 split phases
+			//km.addVerificationHandler(new BluetoothRFCOMMChannel.TempHandler(true, false));
 			c.addProtocolCommandHandler(org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand, 
 					new MotionVerificationCommandMirror());
 		}
