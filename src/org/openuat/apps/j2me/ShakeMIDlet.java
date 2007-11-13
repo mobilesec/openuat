@@ -420,18 +420,21 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 						"' and channel " + remoteChannelNumber + " from remote URL parameter '" +
 						optionalParam + "'");
 				BluetoothRFCOMMChannel channel = (BluetoothRFCOMMChannel) remote;
-				if (! channel.getRemoteAddress().equals(remoteDeviceAddress))
+				if (! channel.getRemoteAddress().equals(remoteDeviceAddress)) {
 					logger.warn("Device address of remote is '" + channel.getRemoteAddress() +
 							"', but parsed '" + remoteDeviceAddress + 
-							"' from URL parameter, something is very wrong here");
-				if (channel.getRemoteChannelNumber() != -1 && 
+							"' from URL parameter, assuming that this is the client and thus not storing channel number");
+				}
+				else {
+					if (channel.getRemoteChannelNumber() != -1 && 
 						channel.getRemoteChannelNumber() != remoteChannelNumber)
-					logger.warn("Remote channel number of remote is '" + channel.getRemoteChannelNumber() +
-							"', but parsed '" + remoteDeviceAddress + 
+						logger.warn("Currently known remote channel number of remote is '" + channel.getRemoteChannelNumber() +
+							"', but parsed '" + remoteChannelNumber + 
 							"' from URL parameter, something is very wrong here");
-				// and finally remember the parsed number (if it was already in there, it won't change)
-				logger.info("Storing remote channel number " + remoteChannelNumber + " for remote " + remote);
-				channel.setRemoteChannelNumber(remoteChannelNumber);
+					// and finally remember the parsed number (if it was already in there, it won't change)
+					logger.info("Storing remote channel number " + remoteChannelNumber + " for remote " + remote);
+					channel.setRemoteChannelNumber(remoteChannelNumber);
+				}
 			}
 			else {
 				if (logger.isDebugEnabled())
