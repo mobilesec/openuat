@@ -625,14 +625,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		 * duplication here and above) to minimize potential for race 
 		 * conditions on application level.
 		 */
-		
-		
 		// This will e.g. trigger the creation of a State object in KeyManager, when used.
 		if (!tmpProtocolHandler.raiseAuthenticationStartedEvent(remote)) {
 			logger.warn("Some AuthenticationStarted event handler vetoed the outgoing authentication request to " +
 					remote + ". Aborting it now, not starting authentication protocol");
 		}
-
 
 		// start the authentication protocol in the background
 		new Thread(tmpProtocolHandler.new AsynchronousCallHelper(
