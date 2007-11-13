@@ -91,7 +91,6 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	public final static int maximumKeyAgreementRuntime = 15000;
 	
 	public final static boolean useJSSE = false;
-	public final static String optionalParameter = null;
 
 	/** true if RFCOMM channels should be left open after successful key
 	 * agreement, false if they should be closed.
@@ -105,6 +104,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	
 	/** Our own authentication service. */
 	private BluetoothRFCOMMServer service;
+
+	/** The optional parameter to send in the key agreement protocol: this will
+	 * be the URL that the local RFCOMM server is reachable at, i.e. the URL at
+	 * which the remote can "call back".
+	 * It is set in the constructor and used when starting a HostProtocolHandler.
+	 */
+	private String optionalParameter = null;
 
 	/** The peer manager for discovering other devices and their authentication
 	 * services.
@@ -141,6 +147,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		manager.addListener(new BluetoothPeerEventsHandler());
 		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, maximumKeyAgreementRuntime, keepConnected, useJSSE);
 		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
+		optionalParameter = service.getRegisteredServiceURL();
 	}
 	
 	/** Returns the local instance of BluetoothOpportunisticConnector.
@@ -542,9 +549,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		System.in.read();
 		c.stop();
 		// proper shutdown
-		BluetoothRFCOMMChannel[] openChannels = BluetoothRFCOMMChannel.getOpenChannels();
-		for (int i=0; i<openChannels.length; i++)
-			openChannels[i].close();
+		BluetoothRFCOMMChannel.shutdownAllChannels();
 	}
 //#endif
 }
