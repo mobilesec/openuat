@@ -248,8 +248,11 @@ public class KeyManager extends AuthenticationEventSender {
 	        		new String(Hex.encodeHex(remoteState.authenticationKey)) + 
 	        		"' with length " + remoteState.authenticationKey.length +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	        // then extraxt the optional parameter
+	        // then extract the optional parameter
 	        remoteState.optionalParam = (String) res[2];
+	        if (logger.isDebugEnabled())
+	        	logger.debug("Extracted optional parameter '" + remoteState.optionalParam +
+	        			"' from host " + remote);
 	        // this is mostly a sanity check - but it's unnessesary, we can have a key and use another channel for verification, after all
 	        /*if (res.length < 4 || res[3] == null || 
 	        		!(res[3] instanceof RemoteConnection) ||
