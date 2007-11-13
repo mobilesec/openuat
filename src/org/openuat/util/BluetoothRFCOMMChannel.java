@@ -74,7 +74,21 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		logger.info("Returning " + ret.length + " open BluetoothRFCOMMChannel objects");
 		return ret;
 	}
-	
+
+	/** This method can be used to speed up shutdown of the overall application
+	 * by closing all RFCOMM channels that are still open at this time. 
+	 */
+	public static void shutdownAllChannels() {
+		Enumeration e = openChannels.elements();
+		while (e.hasMoreElements()) {
+			BluetoothRFCOMMChannel c = (BluetoothRFCOMMChannel) e.nextElement();
+			c.close();
+		}
+		
+		if (openChannels.size() > 0)
+			logger.error("Unable to close all Bluetooth RFCOMM channels, some are left open. This should not happen!");
+	}
+
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
 	 * @param connectionURL The complete Bluetooth service URL, as returned e.g.
@@ -134,13 +148,35 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Construct a Bluetooth RFCOMM channel object from a StreamConnection 
 	 * that is already connected (this is used for server side). The channel
 	 * can not be re-openend by calling open() after close() has been called.
+	 * @param connection The connection to the remote host that must already be
+	 *                   open, and will also be used to query the remote address.
 	 * @throws IOException On Bluetooth errors.
 	 */
 	BluetoothRFCOMMChannel(StreamConnection connection) throws IOException {
+		this(connection, -1);
+	}
+	
+	/** Construct a Bluetooth RFCOMM channel object from a StreamConnection 
+	 * that is already connected (this is used for server side). In addition,
+	 * a remote channel number to be used for "calling back" on this channel is
+	 * specified (it can't be queried from the already open connection). The channel
+	 * can be re-openend by calling open() after close() has been called.
+	 * @param connection The connection to the remote host that must already be
+	 *                   open, and will also be used to query the remote address.
+	 * @param remoteChannelNumberForCallback The remote channel number to use 
+	 *                                       when re-opening the channel after
+	 *                                       closing it. This probably means to
+	 *                                       reverse the original direction of
+	 *                                       the channel (it's incoming when
+	 *                                       this constructor is used, but calling
+	 *                                       open will make it outgoing).
+	 * @throws IOException On Bluetooth errors.
+	 */
+	BluetoothRFCOMMChannel(StreamConnection connection, int remoteChannelNumberForCallback) throws IOException {
 		// also get the remote device information
 		RemoteDevice remote = RemoteDevice.getRemoteDevice(connection);
 		this.remoteDeviceAddress = remote.getBluetoothAddress();
-		this.remoteChannelNumber = -1;
+		this.remoteChannelNumber = remoteChannelNumberForCallback;
 		logger.debug("Opening streams in already connected RFCOMM channel");
 		
 		this.connection = connection;
@@ -342,6 +378,16 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 	}
 
+	/** Returns the remote channel number. */
+	public int getRemoteChannelNumber() {
+		return remoteChannelNumber;
+	}
+	 
+	/** Sets the remote channel number that will be used in the next open() call. */
+	public void setRemoteChannelNumber(int remoteChannelNumber) {
+		this.remoteChannelNumber = remoteChannelNumber;
+	}
+	
 	/** This implementation of equals either compares either the connection
 	 * objects (if set) or serviceURL.
 	 */ 
@@ -425,20 +471,6 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			return "BluetoothRFCOMMChannel with invalid/unknown endpoint";
 	}
 	
-	/** This method can be used to speed up shutdown of the overall application
-	 * by closing all RFCOMM channels that are still open at this time. 
-	 */
-	public static void shutdownAllChannels() {
-		Enumeration e = openChannels.elements();
-		while (e.hasMoreElements()) {
-			BluetoothRFCOMMChannel c = (BluetoothRFCOMMChannel) e.nextElement();
-			c.close();
-		}
-		
-		if (openChannels.size() > 0)
-			logger.error("Unable to close all Bluetooth RFCOMM channels, some are left open. This should not happen!");
-	}
-
 	   /**
 	    * Shows information about the remote device (name, device class, BT address ..etc..)
 	    */
