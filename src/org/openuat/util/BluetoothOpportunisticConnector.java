@@ -527,7 +527,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			System.out.println("Motion verification handler entered with remote " + remote + ", now mirroring everything back");
 			
 			BluetoothRFCOMMChannel.TempHandler h = new BluetoothRFCOMMChannel.TempHandler(true, false);
-			h.inVerificationPhase(remote);
+			h.inVerificationPhase(remote, false);
 
 			System.out.println("Motion verification handler entered with remote " + remote + " exiting");
 

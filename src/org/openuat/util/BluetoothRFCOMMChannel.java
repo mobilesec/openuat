@@ -580,18 +580,18 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	        RemoteConnection connectionToRemote = (RemoteConnection) res[3];
 	        if (connectionToRemote != null) {
 	        	System.out.println("Connection to remote is still open, mirroring on it");
-	        	inVerificationPhase(connectionToRemote);
+	        	inVerificationPhase(connectionToRemote, true);
 	        }
 		}
 
 		public void startVerification(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection toRemote) {
 			if (((BluetoothRFCOMMChannel) toRemote).isOpen()) {
 	        	System.out.println("Called for verification and connection to remote is still open, mirroring on it");
-				inVerificationPhase(toRemote);
+				inVerificationPhase(toRemote, true);
 			}
 		}
 		
-		void inVerificationPhase(RemoteConnection connectionToRemote) {
+		void inVerificationPhase(RemoteConnection connectionToRemote, boolean exitAfterClosing) {
 	        InputStream i;
 	        OutputStream o;
 			try {
@@ -615,7 +615,8 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 				e.printStackTrace();
 			}
 
-			System.exit(0);
+			if (exitAfterClosing)
+				System.exit(0);
 		}
 	}
 	
