@@ -24,6 +24,7 @@ import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.util.HostAuthenticationServer;
+import org.openuat.util.LineReaderWriter;
 import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
@@ -52,6 +53,16 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * with the remote host is allowed to take in ms.
 	 */
 	public static final int RemoteInterlockExchangeTimeout = 10000;
+	
+	/** How long to try and establish connections for key verification once a 
+	 * local segment has been gathered in ms.
+	 */
+	public static final int VerificationConnectionEstablishmentTimeout = 60000;
+	
+	/** How long to wait between after an unsuccessful attempt to establish a
+	 * key verification channel in ms.
+	 */
+	public static final int VerificationConnectionEstablishmentRetryDelay = 3000;
 	
 	/** Keep an incoming key verification connection open for this long when
 	 * no local segment is available [ms].
@@ -233,13 +244,20 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						groupSize--;
 					}
 				}
+				if (groupSize < 2) {
+					logger.debug("Although called for multiple concurrent modifications, only " +
+							groupSize + " will actually bs started, thus not using any locking");
+					interlockGroup = null;
+				}
 				
 				for (int i=0; i<toRemotes.length; i++) {
-					Thread runner = new AsyncInterlockHelper(toRemotes[i], openChannels, 
+					if (toRemotes != null) {
+						Thread runner = new AsyncInterlockHelper(toRemotes[i], openChannels, 
 							keyManager.getAuthenticationKey(toRemotes[i]),
 							groupSize, instanceNum++);
-					interlockRunners.addElement(runner); 
-					runner.start();
+						interlockRunners.addElement(runner); 
+						runner.start();
+					}
 				}
 			}
 			else {
@@ -386,7 +404,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	private boolean keyVerification(RemoteConnection remote, 
 			byte[] sharedAuthenticationKey, int groupSize, int instanceNum) 
 			throws IOException, InternalApplicationException {
-		// TODO: make configurable??? mabye not necessary
 		int rounds = 2;
 		int totalCodingTime=0, totalInterlockTime=0, totalComparisonTime=0;
 		long timestamp=0;
@@ -526,9 +543,42 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						}
 					}
 					logger.debug("Local segment sampled, starting interlock protocol");
-					
-					if (openChannel)
-						remote.open();
+
+					// if we need to open the channel here, there's some work to do
+					if (openChannel) {
+						logger.info("Trying to establish key verification channel to " + remote);
+						long startTime = System.currentTimeMillis();
+						boolean opened = false;
+						while (!opened && 
+								System.currentTimeMillis()-startTime < VerificationConnectionEstablishmentTimeout) {
+							try {
+								remote.open();
+								opened = true;
+							} 
+							catch (IOException e) {
+								logger.warn("Could not establish channel for key verification to " +
+										remote + " (" +	e + "), but will retry for another " + 
+										(VerificationConnectionEstablishmentTimeout+startTime-System.currentTimeMillis()) +
+										"ms");
+								try {
+									Thread.sleep(VerificationConnectionEstablishmentRetryDelay);
+								}
+								catch (InterruptedException e1) {
+									// just ignore, it will only make the wait shorter but won't hurt
+								}
+							}
+						}
+						if (!opened) {
+							logger.error("Unable to establish channel for key verification to " +
+									remote + ", aborting now");
+							break;
+						}
+
+						// ok, connected - get the host into verification mode
+						LineReaderWriter.println(remote.getOutputStream(), MotionVerificationCommand);
+						// and consume its first line (the HELO)
+						LineReaderWriter.readLine(remote.getInputStream());
+					}
 					
 					if (!keyVerification(remote, sharedAuthenticationKey,
 							groupSize, instanceNum) && !continuousChecking) {
