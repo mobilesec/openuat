@@ -417,8 +417,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		long timestamp=0;
 
 		synchronized (verificationsRunning) {
-			if (!verificationsRunning.containsKey(remote))
-				verificationsRunning.put(remote, null);
+			if (!verificationsRunning.containsKey(remote)) {
+				verificationsRunning.put(remote, new Object());
+			}
 		}
 
 		try {
@@ -451,12 +452,14 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			// exchange with the remote host
 			if (logger.isInfoEnabled())
 				timestamp = System.currentTimeMillis();
+
 			byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
 					remote.getInputStream(), remote.getOutputStream(),
 					// TODO: enable mirror attack prevention after testing
 					sharedAuthenticationKey, rounds, false, 
 					false, RemoteInterlockExchangeTimeout, useJSSE,
 					interlockGroup, groupSize, instanceNum);
+
 			if (logger.isInfoEnabled())
 				totalInterlockTime += System.currentTimeMillis()-timestamp;
 			if (remotePlainText == null) {
@@ -572,6 +575,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						long startTime = System.currentTimeMillis();
 						boolean opened = false;
 						int numRetries=0;
+
 						do {
 							try {
 								if (numRetries == 0) {
@@ -599,7 +603,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 											remote + " (possibly an incoming request), not opening an outgoing channel");
 									break outer;
 								}
-								
+
 								remote.open();
 								opened = true;
 							} 
@@ -630,7 +634,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						// and consume its first line (the HELO)
 						LineReaderWriter.readLine(remote.getInputStream());
 					}
-					
+
 					if (!keyVerification(remote, sharedAuthenticationKey,
 							groupSize, instanceNum) && !continuousChecking) {
 						/* If keyVerification returns false, then it will already
@@ -638,6 +642,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						 * fromRemote. So any derived classes can already react
 						 * to this, just close the thread cleanly here.
 						 */
+
 						break outer;
 					}
 				} while (continuousChecking);
