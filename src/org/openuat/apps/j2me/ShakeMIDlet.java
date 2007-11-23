@@ -66,7 +66,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 //#endif
 	}
 	
-	public final static int HoldOffConcurrentVerificationDelay = 7000;
+	public final static int HoldOffConcurrentVerificationDelay = 20000;
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
@@ -510,7 +510,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					if (logger.isInfoEnabled())
 						logger.info("My Bluetooth address '" + localAddress +
 							"' is higher than the remote address to connect to '" + 
-							remoteAddress + "', backing off and waiting for remote to establish verification connection");
+							remoteAddress + "', backing off and waiting for remote to establish verification connection for " +
+							HoldOffConcurrentVerificationDelay + "ms");
 					return HoldOffConcurrentVerificationDelay;
 				}
 				else
