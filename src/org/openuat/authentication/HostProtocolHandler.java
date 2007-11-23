@@ -351,7 +351,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         long timestamp=0;
         
         try {
-			remoteAddr = (String) connection.getRemoteAddress();
+			remoteAddr = connection.getRemoteAddress().toString();
 		} catch (IOException e1) {
 			logger.error("Can not get address of remote. This should not happen!");
 		}
