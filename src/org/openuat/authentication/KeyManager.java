@@ -173,47 +173,30 @@ public class KeyManager extends AuthenticationEventSender {
 	 * agreements with the same host (e.g. one incoming, one outgoing). 
 	 */
 	private class HostAuthenticationEventHandler implements AuthenticationProgressHandler {
-		/** A small helper function to retreive the state for the remote or 
-		 * create one if it's not there.
-		 */
-		private State retreiveState(Object sender, Object remote, boolean allowImplicitTransition) {
+		/** Sanity check on the remote object, to be called by all handlers. */
+		private boolean sanityCheckRemote(Object sender, Object remote) {
 	    	if (! (remote instanceof RemoteConnection)) {
 	    		logger.error("Received host authentication event from " + sender + " with remote object of unknown type '" + 
 	    				remote + "', ignoring" +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		return null;
+	    		return false;
 	    	}
+	    	return true;
+		}
+		
+		/** A small helper function to retreive the state for the remote. */
+		private State retreiveState(Object sender, Object remote) {
 	    	if (logger.isDebugEnabled())
-	    		logger.debug("Trying to retrieve key state object for remote " + remote);
+	    		logger.debug("Trying to retrieve key state object for remote " + remote +
+		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    	
 	    	RemoteConnection host = (RemoteConnection) remote;
-	    	State remoteState;
 	    	if (! hosts.containsKey(host)) {
-		    	if (logger.isDebugEnabled())
-		    		logger.debug("Received host authentication event from " + sender + " in nonexistant state, creating IDLE object." + 
-		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		remoteState = new State();
-	    		if (hosts.put(host, remoteState) != null)
-	    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
-	    	}
-	    	else
-	    		remoteState = (State) hosts.get(host);
-	    	
-	    	if (remoteState.state == STATE_IDLE && allowImplicitTransition) {
-		    	if (logger.isDebugEnabled())
-		    		logger.debug("Received host authentication started event from " + sender + " in idle state, transitioning to KEY_AGREEMENT." + 
-		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
-	    		remoteState.state = STATE_KEY_AGREEMENT;
-	    		remoteState.lastStateChange = System.currentTimeMillis();
-	    	}
-	    	if (remoteState.state != STATE_KEY_AGREEMENT) {
-	    		logger.error("Received some host authentication event with remote host " + remote + 
-	    				" while not expecting one (currently in state " + remoteState.state + 
-	    				")! This event will be ignored." +
+	    		logger.warn("Received host authentication event from " + sender + " in nonexistant state, ignoring event" + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return null;
 	    	}
-	    	return remoteState;
+	    	return (State) hosts.get(host);
 		}
 		
 		/** Helper function to wipe key material and set state. */
@@ -230,9 +213,17 @@ public class KeyManager extends AuthenticationEventSender {
 	        logger.info("Received host authentication success event with " + remote +
 	        		", extracting and storing keys" + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    	if (!sanityCheckRemote(sender, remote)) return;
 
-	        State remoteState = retreiveState(sender, remote, false);
+	        State remoteState = retreiveState(sender, remote);
 	    	if (remoteState == null) return;
+	    	if (remoteState.state != STATE_KEY_AGREEMENT) {
+	    		logger.error("Received host authentication success event with remote host " + remote + 
+	    				" while not expecting one (currently in state " + remoteState.state + 
+	    				")! This event will be ignored." +
+		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    		return;
+	    	}
 
 	    	// first of all remember all the parameters for later use
 	        Object[] res = (Object[]) result;
@@ -252,7 +243,8 @@ public class KeyManager extends AuthenticationEventSender {
 	        remoteState.optionalParam = (String) res[2];
 	        if (logger.isDebugEnabled())
 	        	logger.debug("Extracted optional parameter '" + remoteState.optionalParam +
-	        			"' from host " + remote);
+	        			"' from host " + remote +
+		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this is mostly a sanity check - but it's unnessesary, we can have a key and use another channel for verification, after all
 	        /*if (res.length < 4 || res[3] == null || 
 	        		!(res[3] instanceof RemoteConnection) ||
@@ -294,8 +286,9 @@ public class KeyManager extends AuthenticationEventSender {
 	    }
 		
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
-	        logger.info("Received host authentication failure with " + remote +
+	    	logger.info("Received host authentication failure with " + remote +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    	if (!sanityCheckRemote(sender, remote)) return;
 
 	        // only fail here in keyManager when the object is known, but don't abort - need to forward the event
 	    	if (hosts.containsKey(remote))
@@ -313,9 +306,30 @@ public class KeyManager extends AuthenticationEventSender {
 	    	if (logger.isDebugEnabled())
 	    		logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    	if (!sanityCheckRemote(sender, remote)) return;
 
-	        State remoteState = retreiveState(sender, remote, false);
+	    	RemoteConnection host = (RemoteConnection) remote;
+	        State remoteState = retreiveState(sender, remote);
 	    	if (remoteState == null) return;
+	    	if (cur == 2) {
+		    	/* second progress means that we have (on the receiver side) really entered key agreement phase
+		    	   (and not bailed out into a command handler) */
+	    		if (logger.isInfoEnabled())
+	    			logger.info("Resetting state for remote " + host + 
+	    					", because key agreement now running" +
+	    	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    		reset(host);
+	    		// make sure the state is right for the potentially subsequent success event...
+	    		remoteState.state = STATE_KEY_AGREEMENT;
+	    	}
+	    	if (cur > 2 && remoteState.state != STATE_KEY_AGREEMENT) {
+	    		logger.error("Received host authentication progress event (" + cur + 
+	    				" with remote host " + remote + 
+	    				" while not expecting one (currently in state " + remoteState.state + 
+	    				")! This event will be ignored." +
+		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    		return;
+	    	}
 			
 	        // forward the progress event onwards
 	        raiseAuthenticationProgressEvent(remote, cur, max, msg);
@@ -325,22 +339,32 @@ public class KeyManager extends AuthenticationEventSender {
 	    	if (logger.isDebugEnabled())
 	    		logger.debug("Received host authentication started event with " + remote + 
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    	// don't veto, just ignore in this case
+	    	if (!sanityCheckRemote(sender, remote)) return true;
 
 	    	/* No: don't veto - we don't start an outgoing request if we have 
 	    	 * a state already (check in BluetoothOpportunisticConnector, e.g.). 
 	    	 * But we need to allow incoming new key agreement runs at any time;
 	    	 * the remote host state may have changed (e.g. application/device
-	    	 * restart). So the best is to reset if we receive a new key agreement
-	    	 * start.
+	    	 * restart). So the best is to just ignore an existing state here,
+	    	 * and of course create one if the host is not yet known.
+	    	 * If the (new) key agreement protocol run has progressed far 
+	    	 * enough, then the progress event handler will do a reset when
+	    	 * necessary.
 	    	 */
-			if (hosts.containsKey(remote))
-				reset((RemoteConnection) remote);
-	        // this basically makes sure that a state object is created for this protocol run
-	        // and only in this event do we allow an implicit transition from IDLE to KEY_AGREEMENT
-	        retreiveState(sender, remote, true);
-	        // No - don't do that anymore. 
-	        // (Was: and if it wasn't IDLE (or nonexistant) before, veto right here)
-	    	/*if (remoteState == null) return false;*/
+			if (! hosts.containsKey(remote)) {
+		        // this basically makes sure that a state object is created and prepared for this protocol run
+		    	RemoteConnection host = (RemoteConnection) remote;
+	    		State remoteState = new State();
+	    		if (hosts.put(host, remoteState) != null)
+	    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
+
+		    	if (logger.isDebugEnabled())
+		    		logger.debug("Received host authentication started event from " + sender + " in idle state, transitioning to KEY_AGREEMENT." + 
+		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
+	    		remoteState.state = STATE_KEY_AGREEMENT;
+	    		remoteState.lastStateChange = System.currentTimeMillis();
+			}
 			
 	        // forward the started event onwards
 	        return raiseAuthenticationStartedEvent(remote);
