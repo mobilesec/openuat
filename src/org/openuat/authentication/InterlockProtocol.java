@@ -621,6 +621,7 @@ public class InterlockProtocol {
 			logger.debug("Sending line to remote host: command '" + command + "', value '" + value + "'");
 		toRemote.write(command + " " + value + "\n");
 		toRemote.flush();
+
 		StringBuffer remoteLine = new StringBuffer();
 		int ch = fromRemote.read();
 		while (ch != -1 && ch != '\n') {
@@ -629,6 +630,7 @@ public class InterlockProtocol {
 				remoteLine.append((char) ch);
 			ch = fromRemote.read();
 		}
+
 		if (remoteLine.length() > command.length()+1 && 
 			remoteLine.toString().substring(0, command.length()+1).equals(command + " ")) {
 			String ret = remoteLine.toString().substring(command.length() + 1);
@@ -733,14 +735,15 @@ public class InterlockProtocol {
 		if (interlockGroup != null && (groupSize < 2 || instanceInGroup >= groupSize))
 			throw new IllegalArgumentException("Using interlock group, but either group size is <2 or this instance number is >= group size");
 
-		logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
+		if (logger.isInfoEnabled())
+			logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
 				timeoutMs + "ms. My message is " + message.length + " bytes long");
 		
 		InterlockProtocol myIp = new InterlockProtocol(sharedKey, rounds, 
 				message.length*8, null, useJSSE);
 		byte[] localCiphertext = myIp.encrypt(message);
 		byte[][] localParts = myIp.split(localCiphertext);
-		
+
 		OutputStreamWriter writer = new OutputStreamWriter(toRemote);
 		/* do not use a BufferedReader here because that would potentially mess up
 		 * the stream for other users of the socket (by consuming too many bytes)
@@ -770,6 +773,7 @@ public class InterlockProtocol {
 			remoteTmp.append(round);
 			remoteTmp.append(' ');
 			remoteTmp.append(Hex.encodeHex(localParts[round]));
+
 			String remotePart = swapLine(ProtocolLine_Round, 
 					remoteTmp.toString(),
 					fromRemote, writer);
@@ -797,7 +801,7 @@ public class InterlockProtocol {
 					logger.error("Could not decode remote byte array. Can not continue.");
 					return null;
 				}
-					
+
 				/* When the second to last round has just been received and we are part
 				 * of an interlock group, then need to wait for all other members before
 				 * transmitting our last round. */
@@ -834,7 +838,7 @@ public class InterlockProtocol {
 							return null;
 						}
 					}
-						
+
 					// for the last round, set the timer back to normal
 					if (timer != null) {
 						timer.stop();
@@ -847,12 +851,13 @@ public class InterlockProtocol {
 				return null;
 			}
 		}
+
 		if (round == rounds) {
 			if (timer != null)
 				timer.stop();
 			if (logger.isDebugEnabled())
 				logger.debug("Interlock protocol completed");
-		
+
 			byte[] remoteCiphertext = remoteIp.reassemble();
 			if (protectAgainstMirrorAttack) {
 				boolean equals=true;
@@ -864,6 +869,7 @@ public class InterlockProtocol {
 					return null;
 				}
 			}
+
 			return remoteIp.decrypt(remoteCiphertext);
 		}
 		else {

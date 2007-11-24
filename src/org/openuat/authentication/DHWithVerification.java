@@ -335,7 +335,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 			String optionalParameterToRemote) {
     	String remoteStatus = remoteStatusExchange(remote, optionalVerificationId,
     			Protocol_Success + (optionalParameterToRemote != null ? optionalParameterToRemote : ""));
-		
+
     	if (remoteStatus != null && remoteStatus.length() > 0) {
     		if (remoteStatus.startsWith(Protocol_Success)) {
     			logger.info("Received success status from remote host" + 
