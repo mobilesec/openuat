@@ -287,6 +287,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			logger.warn("Coherence not computed, no match");
 			return -1;
 		}
+
 		return Coherence.mean(coherence, ShakeWellBeforeUseParameters.coherenceCutOffFrequency);
 	}
 
@@ -298,7 +299,13 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * @see #coherenceThreshold
 	 */
 	private boolean checkCoherence(double[] remoteSegment) {
-		double c = coherence(localSegment, remoteSegment, windowSize);
+		// computing coherence can take some time, so take a copy of the pointer in case it gets modified in between
+		double[] mySegment;
+		synchronized (localSegmentLock) {
+			mySegment = localSegment;
+		}
+		
+		double c = coherence(mySegment, remoteSegment, windowSize);
 		if (c < 0)
 			return false;
 		
@@ -447,7 +454,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
 				return false;
 			}
-			logger.debug("My segment is " + localPlainText.length + " bytes long");
+			if (logger.isDebugEnabled())
+				logger.debug("My segment is " + localPlainText.length + " bytes long");
 
 			// exchange with the remote host
 			if (logger.isInfoEnabled())
@@ -470,15 +478,18 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 
 			boolean decision = false;
 			// and check the received remote segment, compare it with our local segment
-			logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
+			if (logger.isDebugEnabled())
+				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 			// count the tokens
 			if (logger.isInfoEnabled())
 				timestamp = System.currentTimeMillis();
 			double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
 			if (logger.isInfoEnabled())
 				totalCodingTime += System.currentTimeMillis()-timestamp;
+
 			if (remoteSegment != null) {
-				logger.debug("remote segment is " + remoteSegment.length + " elements long");
+				if (logger.isDebugEnabled())
+					logger.debug("remote segment is " + remoteSegment.length + " elements long");
 				if (logger.isInfoEnabled())
 					timestamp = System.currentTimeMillis();
 				decision = checkCoherence(remoteSegment);
@@ -549,6 +560,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		}
 		
 		public void run() {
+			boolean cleanup = false;
+			
 			try {
 				outer: do {
 					// first wait for the local segment to be received to start the interlock protocol
@@ -635,6 +648,10 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						LineReaderWriter.readLine(remote.getInputStream());
 					}
 
+					/* Now the localSegment may indeed be "used up" by being transmitted.
+					 * Thus need to clean up when exiting. */
+					cleanup = true;
+					
 					if (!keyVerification(remote, sharedAuthenticationKey,
 							groupSize, instanceNum) && !continuousChecking) {
 						/* If keyVerification returns false, then it will already
@@ -642,7 +659,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						 * fromRemote. So any derived classes can already react
 						 * to this, just close the thread cleanly here.
 						 */
-
 						break outer;
 					}
 				} while (continuousChecking);
@@ -659,7 +675,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				e.printStackTrace();
 				verificationFailure(remote, null, null, e, "Background verification aborted");
 			}
-			
+
 			// thread finished, so remove ourselves from the list of threads
 			synchronized (interlockRunners) {
 				if (!interlockRunners.removeElement(this)) 
@@ -667,9 +683,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						" but could not find it in list. This should not happen!");
 				if (interlockRunners.isEmpty()) {
 					// removed the last one now, clean up - this allows startVerification to be called again
-					// don't re-use the segment
-					localSegment = null;
 					interlockGroup = null;
+					// ant don't re-use the segment (if it has been used)
+					if (cleanup) localSegment = null;
 				}
 			}
 		}
@@ -696,7 +712,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				logger.error("incomingVerificationRequestHook returned false, aborting verification");
 				return true;
 			}
-				
+
 			synchronized(localSegmentLock) {
 				/* If we don't have a local segment (yet) when being contacted, 
 				 * wait for some time before aborting. The segment may just be
@@ -720,7 +736,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					return false;
 				}
 			}
-			
+
 			try {
 				if (!continuousChecking) {
 					// incoming key verification, so need to retrieve the authentication key
@@ -742,6 +758,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 							authKey, 0, 0);
 					h.run();
 				}
+				
 				return true;
 			} catch (IOException e) {
 				logger.error("IOException while running incoming key verification: " + e);
