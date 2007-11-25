@@ -27,27 +27,30 @@ import org.openuat.util.TCPPortServer;
  */
 public class DHOverTCPWithVerificationTest extends TestCase {
 	private class TestHelper extends DHWithVerification {
-		protected TestHelper(int tcpPort, boolean keepConnected, String instanceId, boolean useJSSE, boolean succeed) {
+		protected TestHelper(int tcpPort, boolean keepConnected, String instanceId, boolean useJSSE, 
+				boolean succeed, boolean failHard) {
 			super(new TCPPortServer(tcpPort, 10000, keepConnected, useJSSE), false, keepConnected, instanceId, useJSSE);
 			this.succeed = succeed;
+			this.failHard = failHard;
 			this.tcpPort = tcpPort;
 		}
 
 		int tcpPort;
 		int numResetHookCalled = 0;
 		int numSucceededHookCalled = 0;
-		int numFailedHookCalled = 0;
+		int numFailedHardHookCalled = 0;
+		int numFailedSoftHookCalled = 0;
 		int numProgressHookCalled = 0;
 		int numStartedHookCalled = 0;
 		byte[] sharedAuthKey = null;
 		byte[] sharedSessKey = null;
 		private boolean succeed;
+		private boolean failHard;
 		String param;
 		
 		Object optVerifyIdIn = null, optVerifyIdOut = null;
 		String optParamIn = null, optParamOut = null;
 		
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String parm, RemoteConnection remote) {
 			this.param = parm;
@@ -56,16 +59,14 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			if (succeed)
 				this.verificationSuccess(remote, optVerifyIdIn, optParamIn);
 			else
-				this.verificationFailure(remote, optVerifyIdIn, optParamIn, null, null);
+				this.verificationFailure(failHard, remote, optVerifyIdIn, optParamIn, null, null);
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void resetHook(RemoteConnection remote) {
 			numResetHookCalled++;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 				String optionalParameterFromRemote, byte[] sharedSessionKey) {
@@ -76,15 +77,16 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			this.sharedSessKey = sharedSessionKey;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
-		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId,
+		protected void protocolFailedHook(boolean failedHard, RemoteConnection remote, Object optionalVerificationId,
 				Exception e, String message) {
-			numFailedHookCalled++;
+			if (failedHard)
+				numFailedHardHookCalled++;
+			else
+				numFailedSoftHookCalled++;
 			this.optVerifyIdOut = optionalVerificationId;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
 			numProgressHookCalled++;
@@ -109,8 +111,8 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 	// client sends later, the client will never get the string. when it's the other way around (the
 	// client sends its 'ACK TEST2' first), it works....
 	public void DISABLED_testCompleteRun_Success() throws IOException, InterruptedException {
-		helper1 = new TestHelper(54326, false, "server", useJSSE1, true);
-		helper2 = new TestHelper(54326, false, "client", useJSSE2, true);
+		helper1 = new TestHelper(54326, false, "server", useJSSE1, true, true);
+		helper2 = new TestHelper(54326, false, "client", useJSSE2, true, true);
 
 		String param = "TEST";
 		String param1 = "TEST1";
@@ -126,8 +128,10 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		helper1.startListening();
 		helper2.startAuthentication(param);
 		
-		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
-				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) {
+		while ((helper1.numFailedHardHookCalled == 0 && helper1.numFailedSoftHookCalled == 0 && 
+				helper1.numSucceededHookCalled == 0) ||
+				(helper2.numFailedHardHookCalled == 0 && helper2.numFailedSoftHookCalled == 0 && 
+				helper2.numSucceededHookCalled == 0)) {
 			Thread.sleep(50);
 		}
 		
@@ -135,8 +139,10 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		Assert.assertEquals(1, helper2.numStartedHookCalled);
 		Assert.assertEquals(1, helper1.numSucceededHookCalled);
 		Assert.assertEquals(1, helper2.numSucceededHookCalled);
-		Assert.assertEquals(0, helper1.numFailedHookCalled);
-		Assert.assertEquals(0, helper2.numFailedHookCalled);
+		Assert.assertEquals(0, helper1.numFailedHardHookCalled);
+		Assert.assertEquals(0, helper2.numFailedHardHookCalled);
+		Assert.assertEquals(0, helper1.numFailedSoftHookCalled);
+		Assert.assertEquals(0, helper2.numFailedSoftHookCalled);
 		
 		Assert.assertNotNull(helper1.param);
 		Assert.assertNotNull(helper2.param);
@@ -159,9 +165,11 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		Assert.assertFalse(SimpleKeyAgreementTest.compareByteArray(helper2.sharedSessKey, helper2.sharedAuthKey));
 	}
 	
-	public void testCompleteRun_Failure1() throws InterruptedException, IOException {
-		helper1 = new TestHelper(54327, false, "server", useJSSE1, true);
-		helper2 = new TestHelper(54327, false, "client", useJSSE2, false);
+	private void helper_testCompleteRun_failures(int port,
+			boolean succeed1, boolean hardFail1,
+			boolean succeed2, boolean hardFail2) throws InterruptedException, IOException {
+		helper1 = new TestHelper(port, false, "server", useJSSE1, succeed1, hardFail1);
+		helper2 = new TestHelper(port, false, "client", useJSSE2, succeed2, hardFail2);
 		
 		String param = "TEST";
 		String param1 = "TEST1";
@@ -177,52 +185,10 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		helper1.startListening();
 		helper2.startAuthentication(param);
 		
-		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
-				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) {
-			Thread.sleep(50);
-		}
-		
-		Assert.assertEquals(1, helper1.numStartedHookCalled);
-		Assert.assertEquals(1, helper2.numStartedHookCalled);
-		Assert.assertEquals(0, helper1.numSucceededHookCalled);
-		Assert.assertEquals(0, helper2.numSucceededHookCalled);
-		Assert.assertEquals(1, helper1.numFailedHookCalled);
-		Assert.assertEquals(1, helper2.numFailedHookCalled);
-
-		Assert.assertNotNull(helper1.param);
-		Assert.assertNotNull(helper2.param);
-		Assert.assertEquals(param, helper1.param);
-		Assert.assertEquals(param, helper2.param);
-
-		Assert.assertNull(helper1.optParamOut);
-		Assert.assertNull(helper2.optParamOut);
-		Assert.assertNotNull(helper1.optVerifyIdOut);
-		Assert.assertNotNull(helper2.optVerifyIdOut);
-		
-		Assert.assertEquals(remoteId1, helper1.optVerifyIdOut);
-		Assert.assertEquals(remoteId2, helper2.optVerifyIdOut);
-	}
-
-	public void testCompleteRun_Failure2() throws InterruptedException, IOException {
-		helper1 = new TestHelper(54328, false, "server", useJSSE1, false);
-		helper2 = new TestHelper(54328, false, "client", useJSSE2, true);
-		
-		String param = "TEST";
-		String param1 = "TEST1";
-		String param2 = "TEST2";
-		Integer remoteId1 = new Integer(1);
-		Integer remoteId2 = new Integer(2);
-		
-		helper1.optParamIn = param1;
-		helper2.optParamIn = param2;
-		helper1.optVerifyIdIn = remoteId1;
-		helper2.optVerifyIdIn = remoteId2;
-		
-		helper1.startListening();
-		helper2.startAuthentication(param);
-		
-		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
-				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) {
+		while ((helper1.numFailedHardHookCalled == 0 && helper1.numFailedSoftHookCalled == 0 && 
+				helper1.numSucceededHookCalled == 0) ||
+				(helper2.numFailedHardHookCalled == 0 && helper2.numFailedSoftHookCalled == 0 && 
+				helper2.numSucceededHookCalled == 0)) {
 			Thread.sleep(50);
 		}
 		
@@ -230,8 +196,11 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		Assert.assertEquals(1, helper2.numStartedHookCalled);
 		Assert.assertEquals("assert 1", 0, helper1.numSucceededHookCalled);
 		Assert.assertEquals("assert 2", 0, helper2.numSucceededHookCalled);
-		Assert.assertEquals("assert 3", 1, helper1.numFailedHookCalled);
-		Assert.assertEquals("assert 4", 1, helper2.numFailedHookCalled);
+		boolean expectHardFail = (!succeed1 && hardFail1) || (!succeed2 && hardFail2);
+		Assert.assertEquals((expectHardFail ? 1 : 0), helper1.numFailedHardHookCalled);
+		Assert.assertEquals((expectHardFail ? 1 : 0), helper2.numFailedHardHookCalled);
+		Assert.assertEquals((expectHardFail ? 0 : 1), helper1.numFailedSoftHookCalled);
+		Assert.assertEquals((expectHardFail ? 0 : 1), helper2.numFailedSoftHookCalled);
 
 		Assert.assertNotNull("assert 5", helper1.param);
 		Assert.assertNotNull("assert 6", helper2.param);
@@ -246,48 +215,36 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		Assert.assertEquals("assert 13", remoteId1, helper1.optVerifyIdOut);
 		Assert.assertEquals("assert 14", remoteId2, helper2.optVerifyIdOut);
 	}
+	
+	public void testCompleteRun_HardFailure2_Succeed1() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54327, true, true, false, true);
+	}
 
-	public void testCompleteRun_Failure3() throws InterruptedException, IOException {
-		helper1 = new TestHelper(54329, false, "server", useJSSE1, false);
-		helper2 = new TestHelper(54329, false, "client", useJSSE2, false);
-		
-		String param = "TEST";
-		String param1 = "TEST1";
-		String param2 = "TEST2";
-		Integer remoteId1 = new Integer(1);
-		Integer remoteId2 = new Integer(2);
-		
-		helper1.optParamIn = param1;
-		helper2.optParamIn = param2;
-		helper1.optVerifyIdIn = remoteId1;
-		helper2.optVerifyIdIn = remoteId2;
-		
-		helper1.startListening();
-		helper2.startAuthentication(param);
-		
-		while ((helper1.numFailedHookCalled == 0 && helper1.numSucceededHookCalled == 0) ||
-				(helper2.numFailedHookCalled == 0 && helper2.numSucceededHookCalled == 0)) {
-			Thread.sleep(50);
-		}
-		
-		Assert.assertEquals(1, helper1.numStartedHookCalled);
-		Assert.assertEquals(1, helper2.numStartedHookCalled);
-		Assert.assertEquals(0, helper1.numSucceededHookCalled);
-		Assert.assertEquals(0, helper2.numSucceededHookCalled);
-		Assert.assertEquals(1, helper1.numFailedHookCalled);
-		Assert.assertEquals(1, helper2.numFailedHookCalled);
+	public void testCompleteRun_HardFailure1_Succeed2() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54328, false, true, true, true);
+	}
 
-		Assert.assertNotNull(helper1.param);
-		Assert.assertNotNull(helper2.param);
-		Assert.assertEquals(param, helper1.param);
-		Assert.assertEquals(param, helper2.param);
+	public void testCompleteRun_HardFailure1and2() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54329, false, true, false, true);
+	}
 
-		Assert.assertNull(helper1.optParamOut);
-		Assert.assertNull(helper2.optParamOut);
-		Assert.assertNotNull(helper1.optVerifyIdOut);
-		Assert.assertNotNull(helper2.optVerifyIdOut);
-		
-		Assert.assertEquals(remoteId1, helper1.optVerifyIdOut);
-		Assert.assertEquals(remoteId2, helper2.optVerifyIdOut);
+	public void testCompleteRun_SoftFailure2_Succeed1() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54330, true, true, false, false);
+	}
+
+	public void testCompleteRun_SoftFailure1_Succeed2() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54331, false, false, true, true);
+	}
+
+	public void testCompleteRun_SoftFailure1and2() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54332, false, false, false, false);
+	}
+
+	public void testCompleteRun_SoftFailure2_HardFailure1() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54333, false, true, false, false);
+	}
+
+	public void testCompleteRun_SoftFailure1_HardFailure2() throws InterruptedException, IOException {
+		helper_testCompleteRun_failures(54334, false, false, false, true);
 	}
 }

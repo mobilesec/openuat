@@ -235,10 +235,8 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 * @see DongleProtocolHandler#handleDongleCommunication
 	 */
 	public boolean startAuthentication(String remoteHost, 
-			// TODO: activate me again when J2ME polish can deal with Java5 sources!
 			//@SuppressWarnings("hiding") // this sets the member variable
 			int remoteRelateId, 
-			// TODO: activate me again when J2ME polish can deal with Java5 sources!
 			//@SuppressWarnings("hiding") // this indirectly (via the optional parameter passing) sets the member variable later on
 			int rounds) 
 			throws UnknownHostException, IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
@@ -292,7 +290,6 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	}
 	
 	/** Called by the base class when the object is reset to idle state. */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void resetHook(RemoteConnection remote) {
 		// this needs to be reset so that the handler will be in "server" state
@@ -308,7 +305,6 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 * object with the remote relate ID, but the full DongleProtocolHandler, so 
 	 * that the protocol execution times can be queried. 
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, 
 			String optionalParameterFromRemote, byte[] sharedSessionKey) {
@@ -342,9 +338,8 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 * be called when HostAuthenticationProtocol fails, we don't know if optionalRemoteId
 	 * is going to be set - can't use it here at all.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
-	protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId,
+	protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
 		logger.error("Authentication protocol failed at port " + serialPort + 
 				" with " + remote + "/" + optionalVerificationId + "%" + remoteRelateId + ": " + e + " / " + message);
@@ -367,7 +362,6 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 * be called when HostAuthenticationProtocol fails, we don't know if optionalRemoteId
 	 * is going to be set - can't use it here at all.
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
 		logger.debug("protocolProgressHook called at port " + serialPort + " with " + 
@@ -388,7 +382,6 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	/** Called by the base class when shared keys have been established and should be verified now.
 	 * In this implementation, verification is done by starting a DongleAuthenticationProtocol. 
 	 */
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void startVerificationAsync(byte[] sharedAuthenticationKey, 
 			String param, RemoteConnection toRemote) {
@@ -509,7 +502,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
         		keyManager.setOptionalRemoteReference(remoteHost, h);
 	        }
 	        
-	        verificationFailure(remoteHost, remote, localTimes, e, msg);
+	        verificationFailure(true, remoteHost, remote, localTimes, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {

@@ -64,7 +64,9 @@ import org.openuat.util.RemoteConnection;
  * Generally, events will be emitted by this class to all registered listeners.
  * 
  * @author Rene Mayrhofer
- * @version 1.3, changes to 1.2: can now deal with arbitrary servers as long as
+ * @version 1.4, changes to 1.3: can now distinguish between hard and soft 
+ *               failure 
+ *               changes to 1.2: can now deal with arbitrary servers as long as
  *               they implement the new HostAuthenticationServer interface
  *               changes to 1.1: made independent of TCP, but provide a subclass
  *               with the same old interface;
@@ -77,8 +79,10 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 
 	/** This message is sent via the remote channel to the remote upon authentication success. */
 	private final static String Protocol_Success = "ACK ";
-	/** This message is sent via the remote channel to the remote upon authentication failure. */
-	private final static String Protocol_Failure = "NACK ";
+	/** This message is sent via the remote channel to the remote upon hard authentication failure. */
+	private final static String Protocol_HardFailure = "NACK ";
+	/** This message is sent via the remote channel to the remote upon soft authentication failure. */
+	private final static String Protocol_SoftFailure = "NOTYET ";
 
 	/** If set to true, the connection to the remote host will not be closed after a successful 
 	 * authentication, but will be passed as a parameter to the success event. This allows re-use for
@@ -246,6 +250,13 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	
 	/** Small helper function to raise an authentication failure event and set state as well as wipe sharedKey.
 	 * 
+	 * @param failHard If true, then the protocol has failed hard, meaning that
+	 *                 there can be no retry without another key agreement
+	 *                 protocol run. Key material shoud be be wiped.
+	 *                 If false, only a soft failure occured, meaning that 
+	 *                 the connection should be closed, but key material should
+	 *                 not be wiped yet. Retrying key verification (i.e.
+	 *                 authenticating the key agreement) should be possible.
 	 * @param remote The remote device with which the authentication failed.
 	 * @param optionalVerificationId If the key verification step yielded any
 	 *        ID or reference that can be referred to, this should be set
@@ -253,7 +264,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */ 
-	protected void authenticationFailed(RemoteConnection remote, Object optionalVerificationId, 
+	protected void authenticationFailed(boolean failHard, RemoteConnection remote, Object optionalVerificationId, 
 			Exception e, String message) {
 		if (remote == null) {
 			logger.error("Can not fail nonexistant remote object, this should not happen!");
@@ -265,12 +276,13 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		raiseAuthenticationFailureEvent(remote, e, message);
 		
 		// also allow derived classes to do special failure handling
-		protocolFailedHook(remote, optionalVerificationId, e, message);
+		protocolFailedHook(failHard, remote, optionalVerificationId, e, message);
 		
 		// no need to keep the connection around in any case - close it properly
 		remote.close();
 		
-		reset(remote);
+		if (failHard)
+			reset(remote);
 	}
 	
 	/** Small helper to send to the remote and wait for the remote message 
@@ -298,7 +310,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     		if (remoteStatus.length() == 0) {
     			logger.error("Could not get status message from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    			authenticationFailed(remote, optionalVerificationId, null, 
+    			authenticationFailed(true, remote, optionalVerificationId, null, 
     					"Could not get status message from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			return null;
@@ -309,7 +321,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
         catch (IOException e) {
         	logger.error("Could not report success/failure to remote host or get status message from remote host: " + e + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-        	authenticationFailed(remote, optionalVerificationId, e, 
+        	authenticationFailed(true, remote, optionalVerificationId, e, 
         			"Could not report success/failure to remote host or get status message from remote host" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	return null;
@@ -387,17 +399,26 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 				// and finally reset (in failure cases, the authenticationFailed helper will call reset)
 		        keyManager.reset(remote);
     		}
-    		else if (remoteStatus.startsWith(Protocol_Failure)) {
-    			logger.error("Received failure status from remote host although local dongle authentication was successful. Authentication protocol failed" + 
+    		else if (remoteStatus.startsWith(Protocol_HardFailure)) {
+    			logger.error("Received hard failure status from remote host although local authentication was successful. " + 
+    					"Authentication protocol failed" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    			authenticationFailed(remote, optionalVerificationId, null, 
+    			authenticationFailed(true, remote, optionalVerificationId, null, 
+    					"Received authentication failure status from remote host" + 
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+        	}
+    		else if (remoteStatus.startsWith(Protocol_SoftFailure)) {
+    			logger.error("Received soft failure status from remote host although local authentication was successful. " + 
+    					"Verification protocol failed, but not resetting keys for this host" + 
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+    			authenticationFailed(false, remote, optionalVerificationId, null, 
     					"Received authentication failure status from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else {
     			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    			authenticationFailed(remote, optionalVerificationId, null, 
+    			authenticationFailed(true, remote, optionalVerificationId, null, 
     					"Unkown status from remote host (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
@@ -418,25 +439,33 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 *                                  remote device alongside the success status message.
 	 *                                  This will also be forwarded to the hook function.
 	 */
-	protected void verificationFailure(RemoteConnection remote, Object optionalVerificationId, 
+	protected void verificationFailure(boolean failHard, RemoteConnection remote, Object optionalVerificationId, 
 			String optionalParameterToRemote, Exception e, String msg) {
 		String remoteStatus = remoteStatusExchange(remote, optionalVerificationId, 
-				Protocol_Failure + (optionalParameterToRemote != null ? optionalParameterToRemote : ""));
+				(failHard ? Protocol_HardFailure : Protocol_SoftFailure ) + 
+				(optionalParameterToRemote != null ? optionalParameterToRemote : ""));
         
     	if (remoteStatus != null) {
     		if (remoteStatus.startsWith(Protocol_Success)) {
     			logger.info("Received success status from remote host after reporting local failure" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
-    		} else if (remoteStatus.startsWith(Protocol_Failure)) { 
-    			logger.info("Received failure status from remote host to match local failure."
-    					+ "Good that we agreed." + 
+    		} else if (remoteStatus.startsWith(Protocol_HardFailure)) { 
+    			logger.info("Received hard failure status from remote host to match local " +
+    					(failHard ? "hard" : "soft" ) + " failure. " +
+    					(failHard ? "Good that we agreed." : "Therefore also failing hard." ) + 
+    					(instanceId != null ? " [instance " + instanceId + "]" : ""));
+    			failHard = true;
+    		} else if (remoteStatus.startsWith(Protocol_SoftFailure)) { 
+    			logger.info("Received soft failure status from remote host to match local " +
+    					(failHard ? "hard" : "soft" ) + " failure. " +
+    					(failHard ? "Failing hard anyway, and remote should do the same now." : "Good that we agreed." ) + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		} else {
     			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		}
 
-    		authenticationFailed(remote, optionalVerificationId, e, msg);
+    		authenticationFailed(failHard, remote, optionalVerificationId, e, msg);
     	} // if remoteStatus == null, just ignore here because the helper already fired the failure event
 	}
 
@@ -452,7 +481,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	        logger.info("Received host authentication failure with " + remote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this will also call the derived classes hook and raise an event to listeners
-	        authenticationFailed(((RemoteConnection) remote), null, e, msg);
+	        authenticationFailed(true, ((RemoteConnection) remote), null, e, msg);
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
@@ -542,6 +571,14 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	
 	/** This hook will be called when the whole authentication protocol has
 	 * failed. Derived classes should implement it to react to this failure.
+	 * @param failHard If true, then the protocol has failed hard, meaning that
+	 *                 there can be no retry without another key agreement
+	 *                 protocol run. Key material will be wiped after this
+	 *                 hook returns.
+	 *                 If false, only a soft failure occured, meaning that 
+	 *                 the connection will be closed, but key material will
+	 *                 not be wiped yet. Retrying key verification (i.e.
+	 *                 authenticating the key agreement) will be possible.
 	 * @param remote The remote host with which the key exchange failed. If 
 	 *               it has not been requested that the connection should stay 
 	 *               open (keepConnected==true), then this will be closed 
@@ -555,7 +592,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @param e If not null, the exception describing the failure.
 	 * @param message If not null, the message describing the failure.
 	 */
-	protected abstract void protocolFailedHook(RemoteConnection remote,
+	protected abstract void protocolFailedHook(boolean failHard, RemoteConnection remote,
 			 Object optionalVerificationId,	Exception e, String message);
 
 	/** This hook will be called when the whole authentication protocol has

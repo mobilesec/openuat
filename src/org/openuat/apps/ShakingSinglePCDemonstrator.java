@@ -351,7 +351,7 @@ public class ShakingSinglePCDemonstrator {
 					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout,
 					keepConnected, useJSSE), 
 					keepConnected, concurrentVerificationSupported,
-					ShakeWellBeforeUseParameters.coherenceThreshold, 
+					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, 
 					ShakeWellBeforeUseParameters.coherenceWindowSize, useJSSE);
 		}
 		

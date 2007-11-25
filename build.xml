@@ -479,7 +479,7 @@
 					<parameter name="optimize" value="false" />
 				</obfuscator>
 				<resources>
-					<fileset dir="${resources}" includes="button_*.png" />
+					<fileset dir="${resources}" includes="*.png" />
 					<fileset dir="${src}" includes="microlog.properties" />
 				</resources>
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />

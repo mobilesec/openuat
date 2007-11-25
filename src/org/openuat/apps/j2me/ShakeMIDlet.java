@@ -45,6 +45,7 @@ import org.openuat.util.RemoteConnection;
 public class ShakeMIDlet extends MIDlet implements CommandListener {
 	private final static String IMAGE_GOOD = "/button_ok.png";
 	private final static String IMAGE_BAD = "/button_cancel.png";
+	private final static String IMAGE_RETRY = "/cache.png";
 	
 	/** Code for the Ubicomp 2007 Demo. Will be ignored if the preprocessor defines are not set. */
 	private static boolean FIXED_DEMO_MODE = false;
@@ -70,11 +71,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
-	public final static float CoherenceThreshold = 0.45f;
+	public final static float CoherenceThresholdSucceed = 0.45f;
+	public final static float CoherenceThresholdFailHard = 0.15f;
 	
 	Form mainForm;
 	
-	Image good, bad;
+	Image good, bad, retry;
 	ImageItem goodOrBad; 
 	StringItem status, lastValue;
 	String previousStatus = "";
@@ -157,6 +159,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		try {
 			good = Image.createImage(IMAGE_GOOD);
 			bad = Image.createImage(IMAGE_BAD);
+			retry = Image.createImage(IMAGE_RETRY);
 		} catch (IOException e1) {
 			logger.warn("Could not load image: " + e1);
 		}
@@ -166,7 +169,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		lastMatch = new Gauge("Last match", false, 99, 0);
 		lastMatch.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_AFTER);
 		mainForm.append(lastMatch);
-		lastValue = new StringItem("Last value:", "0 / " + Float.toString(CoherenceThreshold*100));
+		lastValue = new StringItem("Last value:", "0 / " + 
+				Float.toString(CoherenceThresholdSucceed*100) + "/" + 
+				Float.toString(CoherenceThresholdFailHard*100));
 		lastValue.setLayout(Item.LAYOUT_DEFAULT);
 		mainForm.append(lastValue);
 		
@@ -346,7 +351,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			super(server,  
 					FIXED_DEMO_MODE, // don't keep channel open (unless in demo mode)
 					true, // we support multiple authentications 
-					CoherenceThreshold, 
+					CoherenceThresholdSucceed,
+					CoherenceThresholdFailHard,
 					32,
 					false); // no JSSE
 			this.outer = outer;
@@ -359,12 +365,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			return keyManager;
 		}
 
-		protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
-			goodOrBad.setImage(bad);
-			status.setText("FAILURE");
-			previousStatus = "FAILURE";
+		protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId, Exception e, String message) {
+			String statusText = failHard ? "FAILURE" : "NOT SIMILAR ENOUGH - RETRY";
+			
+			goodOrBad.setImage(failHard ? bad : retry);
+			status.setText(statusText);
+			previousStatus = statusText;
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
-			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + Float.toString(CoherenceThreshold*100));
+			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + 
+					Float.toString(CoherenceThresholdSucceed*100) + "/" + 
+					Float.toString(CoherenceThresholdFailHard*100));
 			// I want to beep
 		}
 
@@ -373,7 +383,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			status.setText("SUCCESS");
 			previousStatus = "SUCCESS";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
-			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + Float.toString(CoherenceThreshold*100));
+			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + 
+					Float.toString(CoherenceThresholdSucceed*100) + "/" + 
+					Float.toString(CoherenceThresholdFailHard*100));
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);

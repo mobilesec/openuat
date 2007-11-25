@@ -61,7 +61,7 @@ public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProto
 			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
 					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, false, true), 
 					false, false,
-					ShakeWellBeforeUseParameters.coherenceThreshold, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
+					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!

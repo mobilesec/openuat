@@ -98,7 +98,12 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	/** The current threshold for the coherence. If it is higher, the two segments
 	 * are considered similar enough.
 	 */
-	private double coherenceThreshold;
+	private double coherenceThresholdSucceed;
+
+	/** The current threshold for the coherence. If it is lower, the two segments
+	 * are considered so dissimilar that authentication should fail hard.
+	 */
+	private double coherenceThresholdFailHard;
 	
 	/** If set to true, the thread started by startVerification will not terminate
 	 * but will check continuously, only calling the hook methods in this class
@@ -155,12 +160,14 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 *                Lightweight API classes will be used.
 	 */
 	public ShakeWellBeforeUseProtocol1(HostAuthenticationServer server, boolean keepConnected, 
-			boolean concurrentVerificationSupported, double coherenceThreshold, 
+			boolean concurrentVerificationSupported, 
+			double coherenceThresholdSucceed,  double coherenceThresholdFailHard, 
 			int windowSize, boolean useJSSE) {
 		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
 		// also register our command handler for split phase operation
 		server.addProtocolCommandHandler(MotionVerificationCommand, new MotionVerificationCommandHandler());
-		this.coherenceThreshold = coherenceThreshold;
+		this.coherenceThresholdSucceed = coherenceThresholdSucceed;
+		this.coherenceThresholdFailHard = coherenceThresholdFailHard;
 		this.windowSize = windowSize;
 	}
 	
@@ -177,7 +184,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	/** Called by the base class when the whole authentication protocol failed. 
 	 * Does nothing. */
 	//@Override
-	protected void protocolFailedHook(RemoteConnection remote, Object optionalVerificationId,
+	protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
 		logger.debug("protocolFailedHook called");
@@ -312,7 +319,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		lastCoherenceMean = c;
 		System.out.println("Coherence mean: " + lastCoherenceMean);
 		
-		return lastCoherenceMean > coherenceThreshold;
+		return lastCoherenceMean > coherenceThresholdSucceed;
 	}
 	
 	/** The implementation of SegmentsSink.addSegment. It will be called whenever
@@ -349,22 +356,22 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * @param coherenceThreshold The threshold over which a coherence value will be taken
 	 *                           as valid (i.e. shaken within the same hand). Must be
 	 *                           between 0 and 1.
-	 * @see #coherenceThreshold 
+	 * @see #coherenceThresholdSucceed
 	 */
 	public void setCoherenceThreshold(double coherenceThreshold) {
 		if (coherenceThreshold < 0 || coherenceThreshold > 1)
 			throw new IllegalArgumentException("Coherence threshold must be in [0;1].");
 		
 		logger.debug("Setting coherence threshold to " + coherenceThreshold);
-		this.coherenceThreshold = coherenceThreshold;
+		this.coherenceThresholdSucceed = coherenceThreshold;
 	}
 	
 	/** Returns the current value of the coherence threshold. 
 	 * @return The current coherence threshold.
-	 * @see #coherenceThreshold
+	 * @see #coherenceThresholdSucceed
 	 */
 	public double getCoherenceThreshold() {
-		return coherenceThreshold;
+		return coherenceThresholdSucceed;
 	}
 	
 	/** Enable or disable continuous checking.
@@ -451,7 +458,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					totalCodingTime += System.currentTimeMillis()-timestamp;
 			}
 			if (localPlainText == null) {
-				verificationFailure(remote, null, null, null, "Interlock exchange aborted: sample value out of expected range");
+				verificationFailure(true, remote, null, null, null, "Interlock exchange aborted: encoding segment to a string failed");
 				return false;
 			}
 			if (logger.isDebugEnabled())
@@ -472,7 +479,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				totalInterlockTime += System.currentTimeMillis()-timestamp;
 			if (remotePlainText == null) {
 				logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
-				verificationFailure(remote, null, null, null, "Interlock protocol failed");
+				verificationFailure(true, remote, null, null, null, "Interlock protocol failed");
 				return false;
 			}
 
@@ -496,7 +503,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				if (logger.isInfoEnabled())
 					totalComparisonTime += System.currentTimeMillis()-timestamp;
 				logger.info("COHERENCE MATCH: " + decision + "(computed " + 
-						lastCoherenceMean + " and threshold is " + coherenceThreshold + ")");
+						lastCoherenceMean + " and threshold is " + coherenceThresholdSucceed + ")");
 			}
 			else
 				decision = false;
@@ -518,10 +525,12 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			else {
 				if (!continuousChecking)
 					// "productive" case
-					verificationFailure(remote, null, null, null, "Coherence is below threshold, time series are not similar enough");
+					verificationFailure(lastCoherenceMean < coherenceThresholdFailHard,
+							remote, null, null, null, "Coherence is below threshold, time series are not similar enough");
 				else {
 					// demo-only case!
-					protocolFailedHook(remote, null, null, "Coherence is below threshold, time series are not similar enough");
+					protocolFailedHook(lastCoherenceMean < coherenceThresholdFailHard,
+							remote, null, null, "Coherence is below threshold, time series are not similar enough");
 					// need to to that here, as we don't call the cleanup/finished method in this case
 					synchronized (localSegmentLock) {
 						localSegment = null;
@@ -665,15 +674,15 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			} catch (IOException e) {
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
-				verificationFailure(remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
+				verificationFailure(true, remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
 			} catch (InternalApplicationException e) {
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
-				verificationFailure(remote, null, null, e, "Background verification aborted");
+				verificationFailure(true, remote, null, null, e, "Background verification aborted");
 			} catch (Exception e) {
 				logger.error("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
 				e.printStackTrace();
-				verificationFailure(remote, null, null, e, "Background verification aborted");
+				verificationFailure(true, remote, null, null, e, "Background verification aborted");
 			}
 
 			// thread finished, so remove ourselves from the list of threads
@@ -731,7 +740,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					logger.error("Incoming motion key verification request from " +
 							remote + ", but no local segment available after "+
 							IncomingConnectionWaitForLocalSegmentTimeout + "ms, aborting");
-					verificationFailure(remote, null, null, null, 
+					// not transmitted any sensor data yet, thus can fail soft
+					verificationFailure(false, remote, null, null, null, 
 							"No local segment available to process incoming key verification");
 					return false;
 				}
@@ -825,9 +835,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		// this will not be started
 		s2 = new org.openuat.util.TCPPortServer(0, KeyAgreementProtocolTimeout, keepConnected, true); 
 		ShakeWellBeforeUseProtocol1 ma1 = new ShakeWellBeforeUseProtocol1(s1, keepConnected, false,
-				0.82, ShakeWellBeforeUseParameters.coherenceWindowSize, true); 
+				0.82, 0.2, ShakeWellBeforeUseParameters.coherenceWindowSize, true); 
 		ShakeWellBeforeUseProtocol1 ma2 = new ShakeWellBeforeUseProtocol1(s2, keepConnected, false,
-				0.82, ShakeWellBeforeUseParameters.coherenceWindowSize, true);
+				0.82, 0.2, ShakeWellBeforeUseParameters.coherenceWindowSize, true);
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startListening();
