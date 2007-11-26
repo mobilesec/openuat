@@ -520,7 +520,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	}
 
 	
-	/** This method must be implemented by derived classes. It shoudl start the
+	/** This method must be implemented by derived classes. It should start the
 	 * verification of the shared key to make sure that the other host shared the
 	 * same and thus rule out man-in-the-middle attacks during the Diffie-Hellman
 	 * key agreement.
