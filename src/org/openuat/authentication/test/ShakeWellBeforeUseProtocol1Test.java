@@ -17,7 +17,7 @@ import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
 import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
-public class MotionAuthenticationProtocol1Test extends MotionAuthenticationProtocolTestBase {
+public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol1Hooks prot1_a, prot1_b;
 	
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!

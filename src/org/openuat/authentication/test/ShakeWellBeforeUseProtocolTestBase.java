@@ -24,7 +24,7 @@ import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.TimeSeriesAggregator;
 
-public class MotionAuthenticationProtocolTestBase extends TestCase {
+public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 
 	// only allow to take this much more time than the data set is long --> "soft-realtime"
 	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 2;

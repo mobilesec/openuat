@@ -13,7 +13,7 @@ import java.io.IOException;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2;
 
-public class MotionAuthenticationProtocol2Test extends MotionAuthenticationProtocolTestBase {
+public class ShakeWellBeforeUseProtocol2Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol2Hooks prot2_a, prot2_b;
 	
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
