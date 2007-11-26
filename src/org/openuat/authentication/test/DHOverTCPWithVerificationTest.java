@@ -54,8 +54,10 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		//@Override
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String parm, RemoteConnection remote) {
 			this.param = parm;
-			this.sharedAuthKey = sharedAuthenticationKey;
-			
+			// need to copy here to retain until after success of failure - the original will be wiped
+			this.sharedAuthKey = new byte[sharedAuthenticationKey.length];
+			System.arraycopy(sharedAuthenticationKey, 0, this.sharedAuthKey, 0, sharedAuthenticationKey.length);
+
 			if (succeed)
 				this.verificationSuccess(remote, optVerifyIdIn, optParamIn);
 			else
@@ -107,10 +109,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 	private TestHelper helper1;
 	private TestHelper helper2;
 	
-	// TODO: this test breaks only sometimes: when the server sends its 'ACK TEST1' first, and the 
-	// client sends later, the client will never get the string. when it's the other way around (the
-	// client sends its 'ACK TEST2' first), it works....
-	public void DISABLED_testCompleteRun_Success() throws IOException, InterruptedException {
+	public void testCompleteRun_Success() throws IOException, InterruptedException {
 		helper1 = new TestHelper(54326, false, "server", useJSSE1, true, true);
 		helper2 = new TestHelper(54326, false, "client", useJSSE2, true, true);
 
