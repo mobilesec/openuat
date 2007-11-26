@@ -270,7 +270,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 			logger.error("Can not fail nonexistant remote object, this should not happen!");
 			return;
 		}
-		if (!keyManager.fail(remote))
+		if (failHard && !keyManager.fail(remote))
 			logger.error("Could not fail remote host object, this should not happen!" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		raiseAuthenticationFailureEvent(remote, e, message);
