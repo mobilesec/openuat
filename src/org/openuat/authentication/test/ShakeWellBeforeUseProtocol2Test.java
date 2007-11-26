@@ -16,7 +16,6 @@ import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2;
 public class ShakeWellBeforeUseProtocol2Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol2Hooks prot2_a, prot2_b;
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void setUp() throws IOException {
 		super.setUp();
@@ -49,19 +48,16 @@ public class ShakeWellBeforeUseProtocol2Test extends ShakeWellBeforeUseProtocolT
 					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
 			numSucceeded++;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
 			numFailed++;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
 			numProgress++;

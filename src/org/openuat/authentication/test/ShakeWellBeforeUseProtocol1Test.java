@@ -20,7 +20,6 @@ import org.openuat.util.TCPPortServer;
 public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol1Hooks prot1_a, prot1_b;
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void setUp() throws IOException {
 		super.setUp();
@@ -50,7 +49,6 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 		classIsReadyForTests = true;
 	}
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void tearDown() {
 		prot1_a.stopListening();
@@ -60,11 +58,10 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 		protected Protocol1Hooks() {
 			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
 					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, false, true), 
-					false, false,
+					true, false,
 					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@SuppressWarnings("unused")
 		protected void protocolSucceededHook(InetAddress remote, 
 				Object optionalRemoteId, String optionalParameterFromRemote, 
@@ -72,14 +69,12 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 			numSucceeded++;
 		}		
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@SuppressWarnings("unused")
 		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
 				Exception e, String message) {
 			numFailed++;
 		}
 		
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@SuppressWarnings("unused")
 		protected void protocolProgressHook(InetAddress remote, 
 				Object optionalRemoteId, int cur, int max, String message) {

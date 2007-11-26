@@ -12,6 +12,36 @@
                     <type>java</type>
                     <location>src</location>
                 </source-folder>
+                <source-folder>
+                    <label>thirdparty/avetanaNoop</label>
+                    <type>java</type>
+                    <location>thirdparty/avetanaNoop</location>
+                </source-folder>
+                <source-folder>
+                    <label>thirdparty/bouncycastle-core-deps</label>
+                    <type>java</type>
+                    <location>thirdparty/bouncycastle-core-deps</location>
+                </source-folder>
+                <source-folder>
+                    <label>thirdparty/bouncycastle-x509-deps</label>
+                    <type>java</type>
+                    <location>thirdparty/bouncycastle-x509-deps</location>
+                </source-folder>
+                <source-folder>
+                    <label>thirdparty/bouncycastle-openssl-deps</label>
+                    <type>java</type>
+                    <location>thirdparty/bouncycastle-openssl-deps</location>
+                </source-folder>
+                <source-folder>
+                    <label>thirdparty/log4jNoop</label>
+                    <type>java</type>
+                    <location>thirdparty/log4jNoop</location>
+                </source-folder>
+                <source-folder>
+                    <label>thirdparty/microlog</label>
+                    <type>java</type>
+                    <location>thirdparty/microlog</location>
+                </source-folder>
             </folders>
             <ide-actions>
                 <action name="build">
@@ -40,6 +70,30 @@
                         <label>src</label>
                         <location>src</location>
                     </source-folder>
+                    <source-folder style="packages">
+                        <label>thirdparty/avetanaNoop</label>
+                        <location>thirdparty/avetanaNoop</location>
+                    </source-folder>
+                    <source-folder style="packages">
+                        <label>thirdparty/bouncycastle-core-deps</label>
+                        <location>thirdparty/bouncycastle-core-deps</location>
+                    </source-folder>
+                    <source-folder style="packages">
+                        <label>thirdparty/bouncycastle-x509-deps</label>
+                        <location>thirdparty/bouncycastle-x509-deps</location>
+                    </source-folder>
+                    <source-folder style="packages">
+                        <label>thirdparty/bouncycastle-openssl-deps</label>
+                        <location>thirdparty/bouncycastle-openssl-deps</location>
+                    </source-folder>
+                    <source-folder style="packages">
+                        <label>thirdparty/log4jNoop</label>
+                        <location>thirdparty/log4jNoop</location>
+                    </source-folder>
+                    <source-folder style="packages">
+                        <label>thirdparty/microlog</label>
+                        <location>thirdparty/microlog</location>
+                    </source-folder>
                     <source-file>
                         <location>build.xml</location>
                     </source-file>
@@ -58,7 +112,31 @@
         <java-data xmlns="http://www.netbeans.org/ns/freeform-project-java/1">
             <compilation-unit>
                 <package-root>src</package-root>
-                <classpath mode="compile">lib/log4j-1.2.jar:lib/kxml2-2.2.2.jar:lib/junit.jar:lib/jcommon-1.0.5.jar:lib/jfreechart-1.0.1.jar:lib/avetanaBT.jar:lib/RXTXcomm.jar</classpath>
+                <classpath mode="compile">lib/log4j-1.2.jar:lib/kxml2-2.2.2.jar:lib/junit.jar:lib/jcommon-1.0.5.jar:lib/jfreechart-1.0.1.jar:lib/avetanaBT.jar:lib/RXTXcomm.jar:thirdparty/bouncycastle-core-deps:thirdparty/bouncycastle-openssl-deps:thirdparty/bouncycastle-x509-deps:thirdparty/microlog</classpath>
+                <source-level>1.5</source-level>
+            </compilation-unit>
+            <compilation-unit>
+                <package-root>thirdparty/avetanaNoop</package-root>
+                <source-level>1.5</source-level>
+            </compilation-unit>
+            <compilation-unit>
+                <package-root>thirdparty/bouncycastle-core-deps</package-root>
+                <source-level>1.5</source-level>
+            </compilation-unit>
+            <compilation-unit>
+                <package-root>thirdparty/bouncycastle-x509-deps</package-root>
+                <source-level>1.5</source-level>
+            </compilation-unit>
+            <compilation-unit>
+                <package-root>thirdparty/bouncycastle-openssl-deps</package-root>
+                <source-level>1.5</source-level>
+            </compilation-unit>
+            <compilation-unit>
+                <package-root>thirdparty/log4jNoop</package-root>
+                <source-level>1.5</source-level>
+            </compilation-unit>
+            <compilation-unit>
+                <package-root>thirdparty/microlog</package-root>
                 <source-level>1.5</source-level>
             </compilation-unit>
         </java-data>
