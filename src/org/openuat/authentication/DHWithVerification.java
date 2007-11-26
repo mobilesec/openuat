@@ -366,13 +366,18 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        // this string can be null if no optional parameter has been received from the remote host
 		        String optionalParameterFromRemote = remoteStatus.substring(Protocol_Success.length());
 		        
-		        byte[] sessionKey = keyManager.getSessionKey(remote);
-		        if (sessionKey == null) {
+		        /* Really copy the session key here, because keyManager will wipe its own
+		         * reference when calling reset() below.
+		         */
+		        byte[] sessKey = keyManager.getSessionKey(remote);
+		        if (sessKey == null) {
 		        	logger.error("Could not retreive session key for remote host '" + remote.getRemoteName() +
 		        			", this should not happen! Aborting verificationSuccess" +
 							(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		        	return;
 		        }
+		        byte[] sessionKey = new byte[sessKey.length];
+		        System.arraycopy(sessKey, 0, sessionKey, 0, sessKey.length);
 
 		        // first also call the hook to allow the derived classes to react too
 		        protocolSucceededHook(remote, optionalVerificationId, optionalParameterFromRemote, sessionKey);
