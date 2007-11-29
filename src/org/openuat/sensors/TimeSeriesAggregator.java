@@ -82,7 +82,8 @@ public class TimeSeriesAggregator {
 		//@Override
 		protected void toQuiescent(int lineIndex, int numSample) {
 			// +1 because first and last samples are added
-			if (curSampleIndex != numSample && curSampleIndex+1 != numSample && (
+			if (curSampleIndex != numSample && curSampleIndex+1 != numSample && 
+			    curSampleIndex-windowSize != numSample && curSampleIndex-windowSize+1 != numSample && (
 //#if cfg.haveFloatSupport
 					(aggregatedSeries != null && aggregatedSeries.size() > windowSize) ||
 //#endif					
