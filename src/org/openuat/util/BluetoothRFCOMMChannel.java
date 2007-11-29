@@ -179,8 +179,20 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		logger.debug("Opening streams in already connected RFCOMM channel");
 		
 		this.connection = connection;
-		fromRemote = connection.openInputStream();
-		toRemote = connection.openOutputStream();
+		
+		try {
+		    fromRemote = connection.openInputStream();
+		    toRemote = connection.openOutputStream();
+		    // as this channel is already open, need to keep track of it
+		    synchronized (openChannels) {
+			openChannels.addElement(this);
+		    }
+		}
+		catch (IOException e) {
+			logger.info("Could not open streams on open connection to '" + 
+				remoteDeviceAddress);
+			throw e;
+		}
 	}
 
 	/** Just a small helper function to construct the correct URL string. */
@@ -224,7 +236,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			toRemote = connection.openOutputStream();
 		}
 		catch (IOException e) {
-			logger.warn("Could not establish connection to '" + serviceURL +
+			logger.info("Could not establish connection to '" + serviceURL +
 					"', removing from list of open connections again");
 			synchronized (openChannels) {
 				openChannels.removeElement(this);

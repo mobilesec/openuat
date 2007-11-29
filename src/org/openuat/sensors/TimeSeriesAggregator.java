@@ -47,7 +47,6 @@ public class TimeSeriesAggregator {
 		/** When the first dimension becomes active, this method starts a new active,
 		 * aggregated segment.
 		 */
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void toActive(int lineIndex, int numSample) {
 			/* one of the time series just became active when no one was before 
@@ -80,14 +79,17 @@ public class TimeSeriesAggregator {
 		/** When the last dimension becomes quiescent, this method stops the active,
 		 * aggregated segment. It will also send the complete segment to registered listeners. 
 		 */
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void toQuiescent(int lineIndex, int numSample) {
-			// +2 because first and last samples are added - or is it? not quite sure...
-			if (curSampleIndex-windowSize+1 != numSample && curSampleIndex-windowSize+2 != numSample)
+			// +1 because first and last samples are added
+			if (curSampleIndex != numSample && curSampleIndex+1 != numSample && (
+//#if cfg.haveFloatSupport
+					(aggregatedSeries != null && aggregatedSeries.size() > windowSize) ||
+//#endif					
+					(aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && aggregatedSeriesIndex_Int > windowSize)))
 				logger.warn("Unexpected index of segment end, got " + numSample 
-						+ ", expected either " + (curSampleIndex-windowSize+1)
-						+ " or " +  + (curSampleIndex-windowSize+2));
+						+ ", expected either " + curSampleIndex
+						+ " or " +  + (curSampleIndex+1));
 			
 			/* the last time series just became quiescent when at least one was active before 
 			 * --> end of active segment, forward the complete segment
@@ -174,7 +176,6 @@ public class TimeSeriesAggregator {
 		 * @see TimeSeriesAggregator#isCurSampleComplete() for checking if the current sample is complete
 		 * @see TimeSeriesAggregator#curSampleReceived is reset when all sample dimensions are complete and have been aggregated
 		 */
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void sampleAdded(int lineIndex, double sample, int numSample) {
 //#if cfg.haveFloatSupport
@@ -215,7 +216,6 @@ public class TimeSeriesAggregator {
 			}
 //#endif			
 		}
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void sampleAdded(int lineIndex, int sample, int numSample) {
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check

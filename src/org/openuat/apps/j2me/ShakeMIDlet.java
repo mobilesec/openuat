@@ -124,7 +124,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			FormAppender appender = new FormAppender(logForm);
 			logBackend.addAppender(appender);
 			//logBackend.addAppender(new RecordStoreAppender());
-			logBackend.setLogLevel(Level.INFO);
+			logBackend.setLogLevel(Level.WARN);
 			logger.info("Microlog initialized");
 		}
 		

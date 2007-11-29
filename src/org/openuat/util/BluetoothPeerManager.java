@@ -302,7 +302,7 @@ public class BluetoothPeerManager {
 			Thread.sleep(100);
 		}
 		if (eventsHandler.isInquiryRunning()) {
-			logger.error("Timeout while waiting for background inquiry to finish: still running after " +
+			logger.info("Timeout while waiting for background inquiry to finish: still running after " +
 					timeoutMs + "ms, aborting wait");
 			return false;
 		}
@@ -375,11 +375,11 @@ public class BluetoothPeerManager {
 				dev.serviceSearchTransId = agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
 				return true;
 			} catch (BluetoothStateException e) {
-				logger.error("Could not initiate service search: " + e);
+				logger.warn("Could not initiate service search: " + e);
 				e.printStackTrace();
 				return false;
 			} catch (IllegalArgumentException e) {
-				logger.error("Could not initiate service search: " + e);
+				logger.warn("Could not initiate service search: " + e);
 				e.printStackTrace();
 				return false;
 			}
@@ -509,7 +509,7 @@ public class BluetoothPeerManager {
 								if (dev.serviceSearchTransId > -1)
 									agent.cancelServiceSearch(dev.serviceSearchTransId);
 								else
-									logger.error("Tried to cancel service search on " + 
+									logger.info("Tried to cancel service search on " + 
 											device.getBluetoothAddress() + 
 											", but no transaction ID known, can not cancel");
 							}
@@ -770,13 +770,13 @@ public class BluetoothPeerManager {
 				
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_DEVICE_NOT_REACHABLE:
-				logger.error("Device not reachable while trying to perform service discovery");
+				logger.info("Device not reachable while trying to perform service discovery");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
-				logger.error("Service serch error");
+				logger.info("Service serch error");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
@@ -858,7 +858,7 @@ public class BluetoothPeerManager {
 				dev.wait(500);
 			}
 			if (!dev.serviceSearchFinished) {
-				logger.warn("Timeout while waiting for service search to finish: still running after " +
+				logger.info("Timeout while waiting for service search to finish: still running after " +
 						timeoutMs + "ms, aborting wait");
 				return false;
 			}

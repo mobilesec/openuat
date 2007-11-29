@@ -630,7 +630,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 								opened = true;
 							} 
 							catch (IOException e) {
-								logger.warn("Could not establish channel for key verification to " +
+								logger.info("Could not establish channel for key verification to " +
 										remote + " (" +	e + ") on try " + (numRetries+1) + 
 										", but will retry for another " + 
 										(VerificationConnectionEstablishmentTimeout+startTime-System.currentTimeMillis()) +

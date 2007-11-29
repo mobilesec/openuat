@@ -388,7 +388,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					}
 					else
 						connectionsQueue.put(connectionURL, new Integer(++numRetries));
-					logger.warn("Could not connect to remote service '" + connectionURL + 
+					logger.info("Could not connect to remote service '" + connectionURL + 
 							"' after " + (numRetries-1) + " previously failed attempts, will retry in " + 
 							retryConnectionDelay + "ms");
 					// if we get here, we have re-scheduled, so maybe need to start the timer
