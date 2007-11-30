@@ -877,6 +877,7 @@
 			<fileset dir="." 
 		    	     includes="build.xml Changelog .classpath .project 
 						src/**/* lib/**/* doc/**/* dist/*.jnlp 
+						tests/**/*
 						thirdparty/bouncycastle-*-deps/**/* 
 						thirdparty/avetanabt/**/* thirdparty/ipsec2k.1.1/**/*.h 
 						thirdparty/ipsec2k.1.1/**/*.cpp thirdparty/ipsec2k.1.1/**/wstring 
