@@ -6,8 +6,14 @@ Additional methods that should be implemented within OpenUAT:
 - Amigo
 - Infrared
 
-* ordentlicher Shutdown
-* warum wird Kanal nach DH nicht geschlossen beim MIDlet?
-* mirror mir Neuaufbauen des Kanals
-* zwischen Handies mit Neuaufbauen des Kanals
-* beide Optionen im ShakeMIDlet konfiguierbar
+---------------------------
+future Changelog:
+
+  A new concept introduced with this release is the concept of roles: a device
+  or side of the authentication can hold one or multiple roles. Initial
+  implementations include the two sides of the Resurrecting Duckling protocol.
+
+  New abstraction: roles:
+  * roles.Duckling
+  * roles.MotherDuck
+  

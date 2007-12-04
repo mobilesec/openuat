@@ -1,12 +1,4 @@
-  A new concept introduced with this release is the concept of roles: a device
-  or side of the authentication can hold one or multiple roles. Initial
-  implementations include the two sides of the Resurrecting Duckling protocol.
-
-  New abstraction: roles:
-  * roles.Duckling
-  * roles.MotherDuck
-  
-Version 0.10, released 2007-11-30
+Version 0.10, released 2007-12-04
 
   This is a major new feature release, adding support for new accelerometer
   sensors available on some recent laptop mainboards and Bluetooth RFCOMM
@@ -20,16 +12,23 @@ Version 0.10, released 2007-11-30
   host shares with remote hosts.
   
   New interfaces:
+  * util.RemoteConnection with implementations util.RemoteTCPConnection and
+    util.BluetoothRFCOMMChannel
+  
+  Changed interfaces:
+  * authentication.AuthenticationProgressHandler now has a new 
+    AuthenticationStarted method
   
   New sensor data classes:
   * sensors.MainboardAccelerometerReaderFactory with implementations for 
     Linux and MacOS/X
-  * sensors.j2me.SymbianTCPAccelerometerReader
+  * sensors.j2me.SymbianTCPAccelerometerReader with native Symbian counterpart
+    under thirdparty/NokiaAccelerometerSensorDaemon/
   
   New classes for authentication:
   * authentication.KeyManager
-  * authentication.accelerometer.MarinPerianuComparison
-  * authentication.accelerometer.MartiniSynchProtocol
+  * authentication.accelerometer.MarinPerianuComparison, still empty
+  * authentication.accelerometer.MartiniSynchProtocol, still empty
   
   New utility classes for communication:
   * util.BluetoothRFCOMMServer
@@ -59,23 +58,31 @@ Version 0.10, released 2007-11-30
   applicable.
 
   Renamed classes:
-  * authentication.accelerometer.MotionAuthenticationProtocol1 -> ShakeWellBeforeUseProtocol1
-  * authentication.accelerometer.MotionAuthenticationProtocol2 -> ShakeWellBeforeUseProtocol2
-  * authentication.accelerometer.MotionAuthenticationParameters -> ShakeWellBeforeUseParameters
+  * authentication.accelerometer.MotionAuthenticationProtocol1 
+    -> ShakeWellBeforeUseProtocol1
+  * authentication.accelerometer.MotionAuthenticationProtocol2 
+    -> ShakeWellBeforeUseProtocol2
+  * authentication.accelerometer.MotionAuthenticationParameters 
+    -> ShakeWellBeforeUseParameters
     
   New applications:
   * (J2ME) apps.j2me.HelloProporty
   * (J2ME) apps.j2me.BluetoothDemo
-  * (J2ME) apps.j2me.ShakeMIDlet
+  * (J2ME) apps.j2me.ShakeMIDlet implements shake-well-before-use between 
+    mobile phones using split phases with opportunistic key agreement
   
   Changed applications:
-  * IPSecME client and server applications: now use Swing and are
-    generally nicer
+  * IPSecME client and server applications: now use Swing and are generally 
+    nicer
 
   The build script now integrates:
-  * Findbugs for generating what-may-be-wrong report.
-  * Cobertura for generating coverage reports.
-  * Sun WTK with J2ME Polish to create J2ME MIDlets.
+  * Findbugs for generating what-may-be-wrong report, with ant target 
+    "findbugs".
+  * Checkstyle for verifying source code style, with ant target "check".
+  * Cobertura for generating coverage reports, with ant target 
+    "coverage-report".
+  * Sun WTK with J2ME Polish to create J2ME MIDlets, integrated in normal ant
+    target "jar".
 
 --- Rene Mayrhofer <rene@mayrhofer.eu.org>
 

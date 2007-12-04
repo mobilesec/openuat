@@ -1,10 +1,15 @@
 /* Copyright Rene Mayrhofer
  * File created 2007-05-03
+ * Initial public release 2007-12-04
  * 
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
+ *
+ * For commercial usage, please contact the Lancaster University 
+ * Intellectual Property department. Academic and open source use is
+ * hereby granted without requiring any further permission.
  */
 package org.openuat.apps.j2me;
 

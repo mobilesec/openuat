@@ -11,7 +11,7 @@ package org.openuat.authentication;
 /**
  * This interface defines a listener for authentication events. 
  * @author Rene Mayrhofer
- * @version 1.0
+ * @version 1.1, changes since 1.0: added AuthenticationStarted method
  */
 public interface AuthenticationProgressHandler {
 	/** Upon successful authentication, the established shared key can be used
