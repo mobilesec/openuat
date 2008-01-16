@@ -398,8 +398,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         	}
             raiseAuthenticationProgressEvent(connection, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
 
-            if (logger.isInfoEnabled())
-            	timestamp = System.currentTimeMillis();
+           	timestamp = System.currentTimeMillis();
             byte[] remotePubKey = null;
             if (serverSide) {
             	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection, true);
@@ -414,37 +413,29 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 	if (logger.isDebugEnabled())
                 		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
                 }
-                if (logger.isInfoEnabled())
-                	totalTransferTime += System.currentTimeMillis()-timestamp;
+               	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             else {
             	// now send my first message, but already need the public key for it
             	ka = new SimpleKeyAgreement(useJSSE);
             	String myPubKey = new String(Hex.encodeHex(ka.getPublicKey()));
-                if (logger.isInfoEnabled()) {
-                	totalCryptoTime += System.currentTimeMillis()-timestamp;
-                	timestamp = System.currentTimeMillis();
-                }
+               	totalCryptoTime += System.currentTimeMillis()-timestamp;
+               	timestamp = System.currentTimeMillis();
             	println(Protocol_AuthenticationRequest + myPubKey +
             			(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
-                if (logger.isInfoEnabled())
-                	totalTransferTime += System.currentTimeMillis()-timestamp;
+               	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             raiseAuthenticationProgressEvent(connection, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
 
-            if (logger.isInfoEnabled())
-            	timestamp = System.currentTimeMillis();
+           	timestamp = System.currentTimeMillis();
             if (serverSide) {
                 // for performance reasons: only now start the DH phase
             	ka = new SimpleKeyAgreement(useJSSE);
             	String myPubKey = new String(Hex.encodeHex(ka.getPublicKey()));
-                if (logger.isInfoEnabled()) {
-                	totalCryptoTime += System.currentTimeMillis()-timestamp;
-                	timestamp = System.currentTimeMillis();
-                }
+               	totalCryptoTime += System.currentTimeMillis()-timestamp;
+               	timestamp = System.currentTimeMillis();
             	println(Protocol_AuthenticationAcknowledge + myPubKey);
-                if (logger.isInfoEnabled())
-                	totalTransferTime += System.currentTimeMillis()-timestamp;
+               	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             else {
             	remotePubKey = helper_extractPublicKey(
@@ -455,18 +446,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     shutdownConnectionCleanly();
                     return;
                 }
-                if (logger.isInfoEnabled())
-                	totalTransferTime += System.currentTimeMillis()-timestamp;
+               	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             raiseAuthenticationProgressEvent(connection, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
 
-            if (logger.isInfoEnabled())
-            	timestamp = System.currentTimeMillis();
+           	timestamp = System.currentTimeMillis();
             ka.addRemotePublicKey(remotePubKey);
             Object sessKey = ka.getSessionKey();
             Object authKey = ka.getAuthenticationKey();
-            if (logger.isInfoEnabled()) 
-            	totalCryptoTime += System.currentTimeMillis()-timestamp;
+           	totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
             // the authentication success event sent here is just an array of two keys
@@ -485,8 +473,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	shutdownConnectionCleanly();
             }
             
-            if (logger.isInfoEnabled())
-            	logger.info("Key transfers took " + totalTransferTime + 
+            	logger.warn("Key transfers took " + totalTransferTime + 
             			"ms, crypto took " + totalCryptoTime + "ms");
         }
         catch (InternalApplicationException e)

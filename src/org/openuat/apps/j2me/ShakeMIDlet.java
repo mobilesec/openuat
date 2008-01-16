@@ -122,7 +122,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
         }
 		logger.configure(GlobalProperties.getInstance());*/
 
-		if (!FIXED_DEMO_MODE) {
+//		if (!FIXED_DEMO_MODE) {
 			net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
 			logForm = new LogForm();
 			logForm.setDisplay(display);
@@ -131,7 +131,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			//logBackend.addAppender(new RecordStoreAppender());
 			logBackend.setLogLevel(Level.WARN);
 			logger.info("Microlog initialized");
-		}
+//		}
 		
 		// need to get the player and volumeControl objects
 		try {
@@ -152,10 +152,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		mainForm = new Form("Shake Me");
 		exit = new Command("Exit", Command.EXIT, 1);
 		mainForm.addCommand(exit);
-		if (!FIXED_DEMO_MODE) {
+//		if (!FIXED_DEMO_MODE) {
 			log = new Command("Log", Command.ITEM, 2);
 			mainForm.addCommand(log);
-		}
+//		}
 		mainForm.setCommandListener(this);
 
 		status = new StringItem("Status:", "initializing");

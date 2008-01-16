@@ -455,11 +455,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						return false;
 					}
 				}*/
-				if (logger.isInfoEnabled())
-					timestamp = System.currentTimeMillis();
+				timestamp = System.currentTimeMillis();
 				localPlainText = TimeSeriesUtil.encodeVector(localSegment);
-				if (logger.isInfoEnabled())
-					totalCodingTime += System.currentTimeMillis()-timestamp;
+				totalCodingTime += System.currentTimeMillis()-timestamp;
 			}
 			if (localPlainText == null) {
 				verificationFailure(true, remote, null, null, null, "Interlock exchange aborted: encoding segment to a string failed");
@@ -469,8 +467,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				logger.debug("My segment is " + localPlainText.length + " bytes long");
 
 			// exchange with the remote host
-			if (logger.isInfoEnabled())
-				timestamp = System.currentTimeMillis();
+			timestamp = System.currentTimeMillis();
 
 			byte[] remotePlainText = InterlockProtocol.interlockExchange(localPlainText, 
 					remote.getInputStream(), remote.getOutputStream(),
@@ -479,8 +476,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					false, RemoteInterlockExchangeTimeout, useJSSE,
 					interlockGroup, groupSize, instanceNum);
 
-			if (logger.isInfoEnabled())
-				totalInterlockTime += System.currentTimeMillis()-timestamp;
+			totalInterlockTime += System.currentTimeMillis()-timestamp;
 			if (remotePlainText == null) {
 				logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 				verificationFailure(true, remote, null, null, null, "Interlock protocol failed");
@@ -492,20 +488,16 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			if (logger.isDebugEnabled())
 				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 			// count the tokens
-			if (logger.isInfoEnabled())
-				timestamp = System.currentTimeMillis();
+			timestamp = System.currentTimeMillis();
 			double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
-			if (logger.isInfoEnabled())
-				totalCodingTime += System.currentTimeMillis()-timestamp;
+			totalCodingTime += System.currentTimeMillis()-timestamp;
 
 			if (remoteSegment != null) {
 				if (logger.isDebugEnabled())
 					logger.debug("remote segment is " + remoteSegment.length + " elements long");
-				if (logger.isInfoEnabled())
-					timestamp = System.currentTimeMillis();
+				timestamp = System.currentTimeMillis();
 				decision = checkCoherence(remoteSegment);
-				if (logger.isInfoEnabled())
-					totalComparisonTime += System.currentTimeMillis()-timestamp;
+				totalComparisonTime += System.currentTimeMillis()-timestamp;
 				logger.info("COHERENCE MATCH: " + decision + "(computed " + 
 						lastCoherenceMean + " and threshold is " + coherenceThresholdSucceed + ")");
 			}
@@ -542,8 +534,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 
-			if (logger.isInfoEnabled())
-				logger.info("Segment coding took " + totalCodingTime + 
+			logger.warn("Segment coding took " + totalCodingTime + 
 						"ms, interlock took " + totalInterlockTime + 
 						"ms, comparison took" + totalComparisonTime + "ms");
 	        return true;
