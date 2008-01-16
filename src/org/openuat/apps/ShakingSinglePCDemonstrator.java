@@ -172,10 +172,10 @@ public class ShakingSinglePCDemonstrator {
 		// these can use segments of arbitrary length
 		final TimeSeriesAggregator aggr2_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
 		final TimeSeriesAggregator aggr2_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
-		aggr1_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
-		aggr1_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
-		aggr2_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
-		aggr2_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr1_a.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr1_b.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr2_a.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr2_b.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		// including our listeners for the device status
 		devState1 = new StateListener(0);
 		devState2 = new StateListener(1);
