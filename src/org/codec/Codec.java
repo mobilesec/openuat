@@ -1,6 +1,6 @@
 package org.codec;
 
-import org.codec.audio.messageDigest;
+import org.openuat.util.Hash;
 
 import javax.swing.*;
 import java.io.File;
@@ -116,7 +116,7 @@ public abstract class Codec {
                     out.write(data_bytes);
 
                     //compute the hash and reads the first 10 bytes in hb[]
-                    computed_hash_bytes = messageDigest.hashMD5(data_bytes, null);
+                    computed_hash_bytes = Hash.doubleSHA256(data_bytes, false);
                     byte[] hb = new byte[10];
                     for (int i = 0; i < 10; i++)
                         hb[i] = computed_hash_bytes[i];

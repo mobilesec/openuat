@@ -2,10 +2,12 @@ package org.codec;
 
 import org.codec.audio.AudioUtils;
 import org.codec.audio.WavPlayer;
-import org.codec.audio.messageDigest;
 import org.codec.audio.speech.Synthesizer;
 import org.codec.mad.MadLib;
 import org.codec.utils.ArrayUtils;
+
+import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.util.Hash;
 
 import java.io.*;
 import java.security.*;
@@ -90,7 +92,7 @@ public class ServerCodec extends Codec {
 
                     in.read(bytes);
 
-                    hbytes = messageDigest.hashMD5(bytes, null);
+                    hbytes = Hash.doubleSHA256(bytes, false);
 
                     out.write(bytes);
                     out.write(hbytes, 0, 10);
@@ -105,7 +107,7 @@ public class ServerCodec extends Codec {
                     // TODO Auto-generated catch block
                     e1.printStackTrace();
 
-                } catch (NoSuchAlgorithmException e1) {
+                } catch (InternalApplicationException e1) {
                     // TODO Auto-generated catch block
                     e1.printStackTrace();
                 }
@@ -219,7 +221,10 @@ public class ServerCodec extends Codec {
                 FileInputStream in = new FileInputStream(my_key_file);
 
                 in.read(bytes1);
-                hbytes = messageDigest.hashMD5(bytes1, hash_file);
+                hbytes = Hash.doubleSHA256(bytes1, false);
+                // TODO: don't use files
+                FileOutputStream out = new FileOutputStream(hash_file);
+                out.write(hbytes);
             }
 
             //in case of bilateral transmission 
@@ -234,12 +239,18 @@ public class ServerCodec extends Codec {
                 //the hash is computed on client_key||server_key
                 bytes = ArrayUtils.concatenate(bytes2, bytes1);
 
-                hbytes = messageDigest.hashMD5(bytes, hash_file);
+                hbytes = Hash.doubleSHA256(bytes, false);
+                // TODO: don't use files
+                FileOutputStream out = new FileOutputStream(hash_file);
+                out.write(hbytes);
 
             }
 
             if (protocol == 2) {
-                hbytes = messageDigest.hashMD5(playScoreSts(), hash_file);
+                hbytes = Hash.doubleSHA256(playScoreSts(), false);
+                // TODO: don't use files
+                FileOutputStream out = new FileOutputStream(hash_file);
+                out.write(hbytes);
             }
 
 

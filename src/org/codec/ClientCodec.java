@@ -2,13 +2,13 @@ package org.codec;
 
 import org.codec.audio.AudioUtils;
 import org.codec.audio.WavPlayer;
-import org.codec.audio.messageDigest;
 import org.codec.audio.speech.Synthesizer;
 import org.codec.utils.ArrayUtils;
 import org.codec.mad.MadLib;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiUnavailableException;
+import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.util.Hash;
+
 import javax.swing.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -66,6 +66,7 @@ import java.security.spec.X509EncodedKeySpec;
  * 
  */
 public class ClientCodec extends Codec {
+	// TODO: remove these - we can't deal with files on J2ME etc.
     //10 bytes challenge. SENT BY the client
     private static File ch_client_file = new File("ch_client.txt");
     //server public key and signature of the challenge. RECEIVED BY the client
@@ -102,7 +103,7 @@ public class ClientCodec extends Codec {
 
                     in.read(bytes);
 
-                    hbytes = messageDigest.hashMD5(bytes, null);
+                    hbytes = Hash.doubleSHA256(bytes, false);
 
                     out.write(bytes);
                     out.write(hbytes, 0, 10);
@@ -110,13 +111,10 @@ public class ClientCodec extends Codec {
                     in.close();
                     out.close();
                 } catch (FileNotFoundException e1) {
-                    // TODO Auto-generated catch block
                     e1.printStackTrace();
                 } catch (IOException e1) {
-                    // TODO Auto-generated catch block
                     e1.printStackTrace();
-                } catch (NoSuchAlgorithmException e1) {
-                    // TODO Auto-generated catch block
+                } catch (InternalApplicationException e1) {
                     e1.printStackTrace();
                 }
 
@@ -276,10 +274,14 @@ public class ClientCodec extends Codec {
 //in case of unilateral transmission
             if (protocol == 0) {
                 // TODO prendere iteratiamente i 4 esce
+                // TODO: don't use files
                 FileInputStream in = new FileInputStream(output_key_file);
 
                 in.read(bytes1);
-                hbytes = messageDigest.hashMD5(bytes1, hash_file);
+                hbytes = Hash.doubleSHA256(bytes1, false);
+                // TODO: don't use files
+                FileOutputStream out = new FileOutputStream(hash_file);
+                out.write(hbytes);
             }
 
 //in case of bilateral transmission 
@@ -294,12 +296,18 @@ public class ClientCodec extends Codec {
                 //the hash is computed on client_key||server_key
                 bytes = ArrayUtils.concatenate(bytes1, bytes2);
 
-                hbytes = messageDigest.hashMD5(bytes, hash_file);
+                hbytes = Hash.doubleSHA256(bytes, false);
+                // TODO: don't use files
+                FileOutputStream out = new FileOutputStream(hash_file);
+                out.write(hbytes);
             }
             
 //in case of STS 
             if (protocol == 2) {
-                hbytes = messageDigest.hashMD5(playScoreSts(), hash_file);
+                hbytes = Hash.doubleSHA256(playScoreSts(), false);
+                // TODO: don't use files
+                FileOutputStream out = new FileOutputStream(hash_file);
+                out.write(hbytes);
             }
 
             MadLib madLib = new MadLib();
