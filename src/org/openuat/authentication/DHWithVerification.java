@@ -64,7 +64,9 @@ import org.openuat.util.RemoteConnection;
  * Generally, events will be emitted by this class to all registered listeners.
  * 
  * @author Rene Mayrhofer
- * @version 1.4, changes to 1.3: can now distinguish between hard and soft 
+ * @version 1.5, changes to 1.4: now support Mana IV and MA-DH in addition to 
+ *               SimpleKeyAgreement as the basic key agreement protocol
+ *               changes to 1.3: can now distinguish between hard and soft 
  *               failure 
  *               changes to 1.2: can now deal with arbitrary servers as long as
  *               they implement the new HostAuthenticationServer interface
