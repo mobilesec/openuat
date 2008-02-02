@@ -129,6 +129,8 @@ public abstract class TimeSeriesBundle {
 				// this time step is now complete, so immediately process
 				curSampleIndex = numSample;
 				curActiveSegmentLength++;
+				for (int i=0; i<curSample.length; i++)
+					curSampleReceived[i] = false;
 				
 				sampleAddedLine(lineIndex, sample, numSample);
 				
@@ -152,6 +154,8 @@ public abstract class TimeSeriesBundle {
 				// this time step is now complete, so immediately aggregate
 				curSampleIndex = numSample;
 				curActiveSegmentLength++;
+				for (int i=0; i<curSample_Int.length; i++)
+					curSampleReceived[i] = false;
 				
 				sampleAddedLine(lineIndex, sample, numSample);
 				

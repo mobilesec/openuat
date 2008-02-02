@@ -148,14 +148,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 	protected void sampleAddedLine(int lineIndex, double sample, int numSample) {
 		if (aggregatedSeries != null) {
 			double magnitude = 0;
-			for (int i=0; i<curSample.length; i++) {
+			for (int i=0; i<curSample.length; i++)
 				magnitude += curSample[i] * curSample[i];
-				curSampleReceived[i] = false;
-			}
 			magnitude = Math.sqrt(magnitude);
 			aggregatedSeries.addElement(new Double(magnitude));
 
-			/* this is inside an active segment, so also forward the samples 
+			/* this is inside an active segment, so also forward the aggregated samples 
 			 * immediately to all registered listeners
 			 */
 			if (samplesSinks != null) {
@@ -172,10 +170,8 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 	protected void sampleAddedLine(int lineIndex, int sample, int numSample) {
 		if (aggregatedSeries_Int != null & aggregatedSeriesIndex_Int >= 0) {
 			int magnitude = 0;
-			for (int i=0; i<curSample_Int.length; i++) {
+			for (int i=0; i<curSample_Int.length; i++)
 				magnitude += curSample_Int[i] * curSample_Int[i];
-				curSampleReceived[i] = false;
-			}
 			// TODO: verify if this is doing the correct thing!
 			//magnitude = (int) Math.sqrt(magnitude);
 			if (aggregatedSeriesIndex_Int < maxSegmentSize+windowSize)
@@ -183,7 +179,7 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 			else
 				logger.warn("Want to write more active samples than segment size. This should not happen!");
 
-			/* this is inside an active segment, so also forward the samples 
+			/* this is inside an active segment, so also forward the aggregated samples 
 			 * immediately to all registered listeners
 			 */
 			if (samplesSinks_Int != null) {
