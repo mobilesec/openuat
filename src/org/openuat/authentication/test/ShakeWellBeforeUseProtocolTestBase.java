@@ -9,8 +9,10 @@
 package org.openuat.authentication.test;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.StringTokenizer;
@@ -27,7 +29,7 @@ import org.openuat.sensors.TimeSeriesAggregator;
 public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 
 	// only allow to take this much more time than the data set is long --> "soft-realtime"
-	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 2;
+	protected static final int MAX_PROTOCOL_LATENCY_SECONDS = 5;
 	
 	protected TimeSeriesAggregator aggr_a, aggr_b;
 	
@@ -35,7 +37,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 	
 	protected boolean classIsReadyForTests = false;
 	
-	//@Override
+	@Override
 	public void setUp() throws IOException {
 		aggr_a = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
 		aggr_b = new TimeSeriesAggregator(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
@@ -55,7 +57,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 		classIsReadyForTests = false;
 	}
 	
-	//@Override
+	@Override
 	public void tearDown() {
 		classIsReadyForTests = false;
 	}
@@ -76,24 +78,66 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 			reader1.start();
 			boolean end = false;
 			while (!end && System.currentTimeMillis() - startTime < timeout) {
-				if (numSucceeded > 0 && numSucceeded > 0 )
-					end = true;
-				if (numFailed > 0 && numFailed > 0 )
+				if (numSucceeded > 1 || numFailed > 1 || (numSucceeded > 0 && numFailed > 0))
 					end = true;
 				Thread.sleep(500);
+				
+				System.out.println(numSucceeded + " " + numFailed);
 			}
 			reader1.stop();
 			in.close();
 			System.gc();
-			// TODO: activate again
-			//Assert.assertTrue("Protocol did not finish within time limit", end);
+			Assert.assertTrue("Protocol did not finish within time limit", end);
 		}
 	}
 	
 	public void testSoftRealtime() throws IOException, InterruptedException {
 		runCase("tests/motionauth/negative/1.gz");
 	}
-	
+
+	public void testAuthenticationSuccess() throws IOException, InterruptedException {
+		if (!classIsReadyForTests) 
+			return;
+			
+		String[] testFiles = getTestFiles("tests/motionauth/positive/");
+		for (int i=0; i<testFiles.length; i++) {
+			numSucceeded = numFailed = numProgress = 0;
+			runCase("tests/motionauth/positive/" + testFiles[i]);
+			
+			Assert.assertEquals("Test file " + testFiles.length + " should have succeeded on both sides, but didn't",
+					2, numSucceeded);
+			Assert.assertEquals("Test file " + testFiles.length + " should not have failed on either side, but did",
+					0, numFailed);
+		}
+	}
+
+	public void testAuthenticationFailure() throws IOException, InterruptedException {
+		if (!classIsReadyForTests) 
+			return;
+
+		String[] testFiles = getTestFiles("tests/motionauth/negative/");
+		for (int i=0; i<testFiles.length; i++) {
+			numSucceeded = numFailed = numProgress = 0;
+			runCase("tests/motionauth/negative/" + testFiles[i]);
+			
+			Assert.assertEquals("Test file " + testFiles.length + " should not have succeeded on either sides, but did",
+					0, numSucceeded);
+			Assert.assertEquals("Test file " + testFiles.length + " should have failed on both side, but didn't",
+					2, numFailed);
+		}
+	}
+
+	/** This is a small helper to get all *.gz files from a directory. */
+	private String[] getTestFiles(String directory) {
+		File dir = new File(directory);
+		String[] testFiles = dir.list(new FilenameFilter() { 
+			public boolean accept(File dir, String name) {
+				return name.endsWith(".gz");
+			}
+		});
+		return testFiles;
+	}
+
 	/** This helper function returns the length of the data set in seconds. */ 
 	private int determineDataSetLength(String filename) throws FileNotFoundException, IOException {
 		BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(filename))));

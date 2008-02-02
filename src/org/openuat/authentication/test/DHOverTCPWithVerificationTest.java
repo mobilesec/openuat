@@ -51,7 +51,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 		Object optVerifyIdIn = null, optVerifyIdOut = null;
 		String optParamIn = null, optParamOut = null;
 		
-		//@Override
+		@Override
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String parm, RemoteConnection remote) {
 			this.param = parm;
 			// need to copy here to retain until after success of failure - the original will be wiped
@@ -64,12 +64,12 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 				this.verificationFailure(failHard, remote, optVerifyIdIn, optParamIn, null, null);
 		}
 
-		//@Override
+		@Override
 		protected void resetHook(RemoteConnection remote) {
 			numResetHookCalled++;
 		}
 
-		//@Override
+		@Override
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 				String optionalParameterFromRemote, byte[] sharedSessionKey) {
 			System.out.println("-----------------------------------------------------------------------------------------");
@@ -79,7 +79,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			this.sharedSessKey = sharedSessionKey;
 		}
 
-		//@Override
+		@Override
 		protected void protocolFailedHook(boolean failedHard, RemoteConnection remote, Object optionalVerificationId,
 				Exception e, String message) {
 			if (failedHard)
@@ -89,7 +89,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 			this.optVerifyIdOut = optionalVerificationId;
 		}
 
-		//@Override
+		@Override
 		protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
 			numProgressHookCalled++;
 		}

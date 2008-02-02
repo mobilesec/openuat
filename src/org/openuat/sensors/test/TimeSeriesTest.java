@@ -15,8 +15,7 @@ import junit.framework.*;
 public class TimeSeriesTest extends TestCase {
 	private TimeSeries s;
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() {
 		s = new TimeSeries(10);
 		s.addSample(15f, 0);

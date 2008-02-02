@@ -28,15 +28,13 @@ public class TCPPortServerTest extends TestCase {
 		super(s);
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() throws IOException {
 		server = new TCPPortServer(PORT, 10000, false, true);
 		server.start();
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void tearDown() throws IOException, InternalApplicationException {
 		if (client != null)
 			client.close();

@@ -35,16 +35,14 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 		super(s);
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() throws IOException {
 		server = new BluetoothRFCOMMServer(new Integer(CHANNEL), SERVICE_UUID, SERVICE_NAME, 
 				10000, false, true);
 		server.start();
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void tearDown() throws IOException, InternalApplicationException {
 		if (client != null)
 			client.close();

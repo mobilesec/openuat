@@ -33,14 +33,12 @@ public class X509CertificateGeneratorTest extends TestCase {
 
 	protected boolean useBCAPI = false;
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}

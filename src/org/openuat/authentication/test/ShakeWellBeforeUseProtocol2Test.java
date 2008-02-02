@@ -16,7 +16,7 @@ import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2;
 public class ShakeWellBeforeUseProtocol2Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol2Hooks prot2_a, prot2_b;
 	
-	//@Override
+	@Override
 	public void setUp() throws IOException {
 		super.setUp();
 
@@ -34,7 +34,6 @@ public class ShakeWellBeforeUseProtocol2Test extends ShakeWellBeforeUseProtocolT
 		classIsReadyForTests = true;
 	}
 	
-	// TODO: activate me again
 	public void testMemoryOverflowCase() throws IOException, InterruptedException {
 		runCase("tests/motionauth/specialcases/outofmemory.gz");
 	}
@@ -48,17 +47,17 @@ public class ShakeWellBeforeUseProtocol2Test extends ShakeWellBeforeUseProtocolT
 					numMatches, false, udpRecvPort, udpSendPort, "127.0.0.1", instanceId);
 		}
 		
-		//@Override
+		@Override
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingRoundsFraction) {
 			numSucceeded++;
 		}
 
-		//@Override
+		@Override
 		protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
 			numFailed++;
 		}
 
-		//@Override
+		@Override
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
 			numProgress++;
 		}

@@ -18,7 +18,8 @@ import junit.framework.TestCase;
 
 public class BluetoothRFCOMMChannelTest extends TestCase {
 	private boolean haveBTSupport;
-	
+
+	@Override
 	public void setUp() {
 		haveBTSupport = BluetoothSupport.init();
 	}

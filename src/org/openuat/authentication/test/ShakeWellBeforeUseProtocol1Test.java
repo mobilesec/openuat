@@ -9,18 +9,18 @@
 package org.openuat.authentication.test;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.Socket;
 
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
+import org.openuat.util.RemoteConnection;
 import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.TCPPortServer;
 
 public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol1Hooks prot1_a, prot1_b;
 	
-	//@Override
+	@Override
 	public void setUp() throws IOException {
 		super.setUp();
 
@@ -49,7 +49,7 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 		classIsReadyForTests = true;
 	}
 	
-	//@Override
+	@Override
 	public void tearDown() {
 		prot1_a.stopListening();
 	}
@@ -62,23 +62,30 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
-		//@SuppressWarnings("unused")
-		protected void protocolSucceededHook(InetAddress remote, 
-				Object optionalRemoteId, String optionalParameterFromRemote, 
-				byte[] sharedSessionKey, Socket toRemote) {
+		@SuppressWarnings("unused")
+		@Override
+		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
+				String optionalParameterFromRemote,	byte[] sharedSessionKey) {
 			numSucceeded++;
 		}		
 
-		//@SuppressWarnings("unused")
-		protected void protocolFailedHook(InetAddress remote, Object optionalRemoteId, 
+		@SuppressWarnings("unused")
+		@Override
+		protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 				Exception e, String message) {
 			numFailed++;
 		}
 		
-		//@SuppressWarnings("unused")
-		protected void protocolProgressHook(InetAddress remote, 
-				Object optionalRemoteId, int cur, int max, String message) {
+		@SuppressWarnings("unused")
+		@Override
+		protected void protocolProgressHook(RemoteConnection remote,  
+				int cur, int max, String message) {
 			numProgress++;
 		}		
+
+		/*@SuppressWarnings("unused")
+		@Override
+		protected void protocolStartedHook(RemoteConnection remote) {
+		}*/
 	}
 }

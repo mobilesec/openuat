@@ -19,14 +19,12 @@ public class BinaryBlockStreamerTest extends TestCase {
 		super(s);
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() {
 		// nothing to do here, no sensible defaults
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void tearDown() {
 		// nothing to do here
 	}

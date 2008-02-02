@@ -35,21 +35,18 @@ public class CKPOverUDPTest extends TestCase {
 			numResetHookCalled++;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
-		//@Override
+		@Override
 		protected void protocolSucceededHook(String remote, byte[] sharedSessionKey, float matchingFraction) {
 			numSucceededHookCalled++;
 			this.sharedSessKey = sharedSessionKey;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
-		//@Override
+		@Override
 		protected void protocolFailedHook(String remote, float matchingFraction, Exception e, String message) {
 			numFailedHookCalled++;
 		}
 
-		// TODO: activate me again when J2ME polish can deal with Java5 sources!
-		//@Override
+		@Override
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
 			numProgressHookCalled++;
 		}
@@ -75,8 +72,7 @@ public class CKPOverUDPTest extends TestCase {
 		super(s);
 	}
 
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() {
 		// 2 matches 1
 		keyParts_round1_side1 = new byte[][] { 

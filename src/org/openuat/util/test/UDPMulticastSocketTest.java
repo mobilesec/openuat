@@ -34,14 +34,12 @@ public class UDPMulticastSocketTest extends TestCase {
 	
 	private UDPMulticastSocket s;
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() throws IOException {
 		s = new UDPMulticastSocket(Port, Port, "230.0.0.1");
 	}
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void tearDown() {
 		s.dispose();
 		s = null;

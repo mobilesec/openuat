@@ -44,8 +44,7 @@ public class CandidateKeyProtocolTest extends TestCase {
 	Integer remoteIdentifier2;
 	Integer remoteIdentifier3;
 	
-	// TODO: activate me again when J2ME polish can deal with Java5 sources!
-	//@Override
+	@Override
 	public void setUp() {
 		p1 = new CandidateKeyProtocol(10, 5, 300, "p1", useJSSE1);
 		p2 = new CandidateKeyProtocol(10, 5, 300, "p2", useJSSE2);
