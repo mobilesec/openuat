@@ -90,7 +90,7 @@
 	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
-	<property name="java5-files" value="" />
+	<property name="java5-files" value="org/openuat/**/test/*.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
 	
@@ -432,6 +432,7 @@
 				org/openuat/sensors/SegmentsSink.java
 				org/openuat/sensors/TimeSeries_Int.java org/openuat/sensors/TimeSeries.java
 				org/openuat/sensors/TimeSeriesAggregator.java org/openuat/sensors/DeviceStateListener.java
+				org/openuat/sensors/TimeSeriesBundle.java
 				org/openuat/sensors/j2me/SymbianTCPAccelerometerReader.java
 				org/openuat/features/FPIntFFT.java org/openuat/features/Coherence_Int.java
 				org/openuat/features/TimeSeriesUtil.java
