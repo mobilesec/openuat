@@ -18,9 +18,9 @@ import org.apache.log4j.Logger;
  *
  * 
  * Mana IV:
- * 1. Alice computes (c, d) ← Compk (ka ) for random ka ← Ka and sends (ma , c) to Bob.
+ * 1. Alice computes (c, d) ← Com_pk (ka ) for random ka ← Ka and sends (ma , c) to Bob.
 2. Bob chooses random kb ← Kb and sends (mb , kb ) to Alice.
-3. Alice sends d to Bob, who computes ka ← Openpk (c, d) and halts if ka = ⊥.
+3. Alice sends d to Bob, who computes ka ← Open_pk (c, d) and halts if ka = ⊥.
    Both parties compute a test value oob = h(ma ||mb , ka , kb ) from the received messages.
 4. Both parties accept (ma , mb ) iff the local -bit test values ooba and oobb coincide.
  *
@@ -29,11 +29,11 @@ of commitment scheme. The hash function h and the public parameters pk of the co
 scheme are ﬁxed and distributed by a trusted authority.
  * 
  * MA-DH:
- * 1. Alice computes (c, d) ← Compk (ka ) for ka = g a , a ← Zq and sends (ida , c) to Bob.
-2. Bob computes kb = g b for random b ← Zq and sends (idb , kb ) to Alice.
-3. Alice sends d to Bob, who computes ka ← Openpk (c, d) and halts if ka = ⊥.
+ * 1. Alice computes (c, d) ← Com_pk (ka ) for ka = g^a , a ← Z_q and sends (ida , c) to Bob.
+2. Bob computes kb = g^b for random b ← Z_q and sends (idb , kb ) to Alice.
+3. Alice sends d to Bob, who computes ka ← Open_pk (c, d) and halts if ka = ⊥.
    Both parties compute sid = (ida , idb ) and oob = h(sid, ka , kb ) from the received messages.
-4. Both parties accept key = (ga )b = (g b )a iff the -bit test values ooba and oobb coincide.
+4. Both parties accept key = (g^a )^b = (g^b )^a iff the -bit test values ooba and oobb coincide.
  * 
  * Speciﬁcation: h is a keyed hash function with sub-keys ka , kb ∈ G where G = g is a q
 element Decisional Difﬁe-Hellman group; G is a message space of commitment scheme. Public
