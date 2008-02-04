@@ -48,20 +48,21 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	}
 	
 	public TimeSeriesAlignment(double[][] mySide) {
-		super (mySide[0].length, 1, 1, 1);
+		this(mySide[0].length, 1, 1, mySide.length);
 		
 		if (mySide.length < 1)
 			throw new IllegalArgumentException("Need at least 1 sample");
 		if (mySide[0].length != 2 && mySide[0].length != 3)
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
-		
+
+		index=0;
 		for (int i=0; i<mySide.length; i++)
 			newSample(mySide[i]);
 	}
 	
 	public class Alignment {
-		double delta_alpha=0, delta_beta=0, error=0;
-		int numSamples=0;
+		public double delta_alpha=0, delta_beta=0, error=0;
+		public int numSamples=0;
 	}
 	
 	public Alignment alignWith(double[][] otherSide) {
