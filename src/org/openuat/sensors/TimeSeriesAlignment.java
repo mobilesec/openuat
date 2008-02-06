@@ -100,14 +100,14 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		// calculate error for alpha, beta, and length (magnitude)
 		for (int i=0; i<index && i<otherSide.index; i++) {
 			if (firstStageSeries_Int.length == 3)
-				al.error += (otherSide.alpha[i]-alpha[i]-al.delta_alpha)*
-			            (otherSide.alpha[1]-alpha[i]-al.delta_alpha) +
-			            (otherSide.beta[i]-beta[i]-al.delta_beta)*
-			            (otherSide.beta[i]-beta[i]-al.delta_beta) +
+				al.error += (angleWithinPI(otherSide.alpha[i]-alpha[i]) - al.delta_alpha)*
+			            (angleWithinPI(otherSide.alpha[1]-alpha[i]) - al.delta_alpha) +
+			            (angleWithinPI(otherSide.beta[i]-beta[i]) - al.delta_beta)*
+			            (angleWithinPI(otherSide.beta[i]-beta[i]) - al.delta_beta) +
 			            (l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
 			else
-				al.error += (otherSide.alpha[i]-alpha[i]-al.delta_alpha)*
-						(otherSide.alpha[1]-alpha[i]-al.delta_alpha) +
+				al.error += (angleWithinPI(otherSide.alpha[i]-alpha[i]) - al.delta_alpha)*
+						angleWithinPI((otherSide.alpha[1]-alpha[i]) - al.delta_alpha) +
 						(l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
 		}
 		
