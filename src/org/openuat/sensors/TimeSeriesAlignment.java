@@ -73,17 +73,32 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 
 		// this is naive optimisation - our own sample is the reference, the other rotated wrt. it
 		Alignment al = new Alignment();
-		for (int i=0; i<index && i<otherSide.l.length; i++) {
-			al.delta_alpha += otherSide.alpha[i] - alpha[i];
-			if (firstStageSeries_Int.length == 3)
-				al.delta_beta += otherSide.beta[i] - beta[i];
+		int numRelevantAlpha=0, numRelevantBeta=0;
+		for (int i=0; i<index && i<otherSide.index; i++) {
+			al.delta_alpha += angleWithinPI(otherSide.alpha[i] - alpha[i]);
+			/* only count as relevant when both alphas are != 0, because atan2 returns 0
+			 * for (0,0), which really has no angle at all */
+			if (alpha[i] != 0 || otherSide.alpha[i] != 0)
+				numRelevantAlpha++;
+			if (firstStageSeries_Int.length == 3) {
+				al.delta_beta += angleWithinPI(otherSide.beta[i] - beta[i]);
+				// same here
+				if (beta[i] != 0 || otherSide.beta[i] != 0)
+					numRelevantBeta++;
+			}
 			al.numSamples++;
 		}
-		al.delta_alpha /= al.numSamples;
-		al.delta_beta /= al.numSamples;
+		if (numRelevantAlpha > 0)
+			al.delta_alpha /= numRelevantAlpha;
+		else if (al.delta_alpha != 0)
+			logger.warn("Delta alpha is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+		if (numRelevantBeta > 0)
+			al.delta_beta /= numRelevantBeta;
+		else if (al.delta_beta != 0)
+			logger.warn("Delta beta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 		
 		// calculate error for alpha, beta, and length (magnitude)
-		for (int i=0; i<al.numSamples; i++) {
+		for (int i=0; i<index && i<otherSide.index; i++) {
 			if (firstStageSeries_Int.length == 3)
 				al.error += (otherSide.alpha[i]-alpha[i]-al.delta_alpha)*
 			            (otherSide.alpha[1]-alpha[i]-al.delta_alpha) +
@@ -97,6 +112,14 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		}
 		
 		return al;
+	}
+	
+	private double angleWithinPI(double angle) {
+		if (angle <= -Math.PI)
+			angle += 2*Math.PI;
+		if (angle <= -Math.PI || angle > Math.PI)
+			logger.warn("Unexpected angle: " + angle);
+		return angle;
 	}
 	
 	public double[][] rotate(double[][] series) {
