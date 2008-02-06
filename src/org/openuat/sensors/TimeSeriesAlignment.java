@@ -100,14 +100,11 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		// calculate error for alpha, beta, and length (magnitude)
 		for (int i=0; i<index && i<otherSide.index; i++) {
 			if (firstStageSeries_Int.length == 3)
-				al.error += (angleWithinPI(otherSide.alpha[i]-alpha[i]) - al.delta_alpha)*
-			            (angleWithinPI(otherSide.alpha[i]-alpha[i]) - al.delta_alpha) +
-			            (angleWithinPI(otherSide.beta[i]-beta[i]) - al.delta_beta)*
-			            (angleWithinPI(otherSide.beta[i]-beta[i]) - al.delta_beta) +
+				al.error += angleError(otherSide.alpha[i], alpha[i], al.delta_alpha, otherSide.l[i], l[i]) +  
+						angleError(otherSide.beta[i], beta[i], al.delta_beta, otherSide.l[i], l[i]) +
 			            (l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
 			else
-				al.error += (angleWithinPI(otherSide.alpha[i]-alpha[i]) - al.delta_alpha)*
-						angleWithinPI((otherSide.alpha[i]-alpha[i]) - al.delta_alpha) +
+				al.error += angleError(otherSide.alpha[i], alpha[i], al.delta_alpha, otherSide.l[i], l[i]) +  
 						(l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
 		}
 		
@@ -117,9 +114,19 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	private double angleWithinPI(double angle) {
 		if (angle <= -Math.PI)
 			angle += 2*Math.PI;
+		if (angle > Math.PI)
+			angle -= 2*Math.PI;
 		if (angle <= -Math.PI || angle > Math.PI)
 			logger.warn("Unexpected angle: " + angle);
 		return angle;
+	}
+	
+	private double angleError(double a1, double a2, double delta, double l1, double l2) {
+		// again special handling: for (0,0), no error even with a delta
+		if (a1 != 0 || a2 != 0 || l1 != 0 || l2 != 0)
+			return (angleWithinPI(a1-a2)-delta)*(angleWithinPI(a1-a2)-delta);
+		else
+			return 0;
 	}
 	
 	public double[][] rotate(double[][] series) {
