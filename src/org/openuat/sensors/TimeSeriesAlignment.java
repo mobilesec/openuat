@@ -65,30 +65,36 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		public int numSamples=0;
 	}
 	
-	public Alignment alignWith(double[][] otherSide) {
-		if (otherSide == null || otherSide.length < 1)
+	public Alignment alignWith(TimeSeriesAlignment otherSide) {
+		if (otherSide == null || otherSide.l.length < 1)
 			throw new IllegalArgumentException("Need at least 1 sample");
-		if (otherSide[0].length != firstStageSeries_Int.length)
+		if (otherSide.firstStageSeries_Int.length != firstStageSeries_Int.length)
 			throw new IllegalArgumentException("Number of dimensions must match for both sides");
 
-		// this is naive optimisation
+		// this is naive optimisation - our own sample is the reference, the other rotated wrt. it
 		Alignment al = new Alignment();
-		for (int i=0; i<index && i<otherSide.length; i++) {
-			al.delta_alpha += alpha[i] - otherSide[i][1];
+		for (int i=0; i<index && i<otherSide.l.length; i++) {
+			al.delta_alpha += otherSide.alpha[i] - alpha[i];
 			if (firstStageSeries_Int.length == 3)
-				al.delta_beta += beta[i] - otherSide[i][2];
+				al.delta_beta += otherSide.beta[i] - beta[i];
 			al.numSamples++;
 		}
 		al.delta_alpha /= al.numSamples;
 		al.delta_beta /= al.numSamples;
 		
 		// calculate error for alpha, beta, and length (magnitude)
-		for (int i=0; i<al.numSamples; i++)
-			al.error += (alpha[i]-otherSide[i][1]-al.delta_alpha)*
-			            (alpha[i]-otherSide[i][1]-al.delta_alpha) +
-			            (beta[i]-otherSide[i][2]-al.delta_beta)*
-			            (beta[i]-otherSide[i][2]-al.delta_beta) +
-			            (l[i]-otherSide[i][0])*(l[i]-otherSide[i][0]);
+		for (int i=0; i<al.numSamples; i++) {
+			if (firstStageSeries_Int.length == 3)
+				al.error += (otherSide.alpha[i]-alpha[i]-al.delta_alpha)*
+			            (otherSide.alpha[1]-alpha[i]-al.delta_alpha) +
+			            (otherSide.beta[i]-beta[i]-al.delta_beta)*
+			            (otherSide.beta[i]-beta[i]-al.delta_beta) +
+			            (l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
+			else
+				al.error += (otherSide.alpha[i]-alpha[i]-al.delta_alpha)*
+						(otherSide.alpha[1]-alpha[i]-al.delta_alpha) +
+						(l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
+		}
 		
 		return al;
 	}
