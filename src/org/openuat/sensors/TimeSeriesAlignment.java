@@ -10,11 +10,26 @@ package org.openuat.sensors;
 
 import org.apache.log4j.Logger;
 
+/** http://en.wikipedia.org/wiki/Image:Spherical_Coordinates.png
+ * http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
+ * 
+ * x = r cos phi sin theta
+ y = r sin phi sin theta
+ z = r cos theta
+ 
+ r^2 = x^2+y^2+z^2
+ 
+ cos phi = x / sqrt(x^2 + y^2), sin phi = y / sqrt(x^2 + y^2), tan phi = y/x
+ cos theta = z/r, tan theta = sqrt(x^2+y^2) / z
+
+ * @author Rene Mayrhofer
+ * @version 1.0
+ */
 public class TimeSeriesAlignment extends TimeSeriesBundle {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeriesAlignment" /*TimeSeriesAlignment.class*/);
 
-	private double[] l = null, alpha = null, beta = null;
+	private double[] r = null, phi = null, theta = null;
 	
 	private int index = -1;
 	
@@ -41,10 +56,10 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (numSeries != 2 && numSeries != 3)
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
 		
-		l = new double[windowSize+maxSegmentSize];
-		alpha = new double[windowSize+maxSegmentSize];
+		r = new double[windowSize+maxSegmentSize];
+		phi = new double[windowSize+maxSegmentSize];
 		if (numSeries == 3)
-			beta = new double[windowSize+maxSegmentSize];
+			theta = new double[windowSize+maxSegmentSize];
 	}
 	
 	public TimeSeriesAlignment(double[][] mySide) {
@@ -66,7 +81,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	}
 	
 	public Alignment alignWith(TimeSeriesAlignment otherSide) {
-		if (otherSide == null || otherSide.l.length < 1)
+		if (otherSide == null || otherSide.r.length < 1)
 			throw new IllegalArgumentException("Need at least 1 sample");
 		if (otherSide.firstStageSeries_Int.length != firstStageSeries_Int.length)
 			throw new IllegalArgumentException("Number of dimensions must match for both sides");
@@ -75,16 +90,16 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		Alignment al = new Alignment();
 		int numRelevantAlpha=0, numRelevantBeta=0;
 		for (int i=0; i<index && i<otherSide.index; i++) {
-			al.delta_alpha += angleWithinPI(otherSide.alpha[i] - alpha[i]);
+			al.delta_alpha += angleWithinPI(otherSide.phi[i] - phi[i]);
 			/* only count as relevant when both alphas are != 0, because atan2 returns 0
 			 * for (0,0), which really has no angle at all */
-			if (alpha[i] != 0 || otherSide.alpha[i] != 0)
+			if (phi[i] != 0 || otherSide.phi[i] != 0)
 				numRelevantAlpha++;
 			if (firstStageSeries_Int.length == 3) {
-				// TODO: this is wrong: need to _first_ rotate around alpha, then around beta!
-				al.delta_beta += angleWithinPI(otherSide.beta[i] - beta[i]);
+				// TODO: this is wrong: need to _first_ rotate around phi, then around theta!
+				al.delta_beta += angleWithinPI(otherSide.theta[i] - theta[i]);
 				// same here
-				if (beta[i] != 0 || otherSide.beta[i] != 0)
+				if (theta[i] != 0 || otherSide.theta[i] != 0)
 					numRelevantBeta++;
 			}
 			al.numSamples++;
@@ -92,21 +107,21 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (numRelevantAlpha > 0)
 			al.delta_alpha /= numRelevantAlpha;
 		else if (al.delta_alpha != 0)
-			logger.warn("Delta alpha is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+			logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 		if (numRelevantBeta > 0)
 			al.delta_beta /= numRelevantBeta;
 		else if (al.delta_beta != 0)
-			logger.warn("Delta beta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+			logger.warn("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 		
-		// calculate error for alpha, beta, and length (magnitude)
+		// calculate error for phi, theta, and length (magnitude)
 		for (int i=0; i<index && i<otherSide.index; i++) {
 			if (firstStageSeries_Int.length == 3)
-				al.error += angleError(otherSide.alpha[i], alpha[i], al.delta_alpha, otherSide.l[i], l[i]) +  
-						angleError(otherSide.beta[i], beta[i], al.delta_beta, otherSide.l[i], l[i]) +
-			            (l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
+				al.error += angleError(otherSide.phi[i], phi[i], al.delta_alpha, otherSide.r[i], r[i]) +  
+						angleError(otherSide.theta[i], theta[i], al.delta_beta, otherSide.r[i], r[i]) +
+			            (r[i]-otherSide.r[i])*(r[i]-otherSide.r[i]);
 			else
-				al.error += angleError(otherSide.alpha[i], alpha[i], al.delta_alpha, otherSide.l[i], l[i]) +  
-						(l[i]-otherSide.l[i])*(l[i]-otherSide.l[i]);
+				al.error += angleError(otherSide.phi[i], phi[i], al.delta_alpha, otherSide.r[i], r[i]) +  
+						(r[i]-otherSide.r[i])*(r[i]-otherSide.r[i]);
 		}
 		
 		return al;
@@ -159,14 +174,14 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		}
 
 		if (coord.length == 2) {
-			l[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]);
-			alpha[index] = Math.atan2(coord[1], coord[0]);
+			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]);
+			phi[index] = Math.atan2(coord[1], coord[0]);
 			index++;
 		}
 		else if (coord.length == 3) {
-			l[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1] + coord[2]*coord[2]);
-			alpha[index] = Math.atan2(coord[1], coord[0]);
-			beta[index] = Math.atan2(coord[2], Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]));
+			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1] + coord[2]*coord[2]);
+			phi[index] = Math.atan2(coord[1], coord[0]);
+			theta[index] = Math.atan2(Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]),	coord[2]);
 			index++;
 		}
 		else
