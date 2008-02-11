@@ -134,10 +134,10 @@ public class TimeSeries implements SamplesSink {
 	 *              to start at 0.
 	 */
 	public void addSample(double sample, int sampleNum) {
-		if (sampleNum != totalNum) {
+/*		if (sampleNum != totalNum) {
 			logger.warn("Sample index " + sampleNum + " does not correspond to number of samples already received "
 					+ "(" + totalNum + ")");
-		}
+		}*/
 		
 		// first of all, normalize the incoming values to our internal range
 		sample = sample * multiplicator + offset;

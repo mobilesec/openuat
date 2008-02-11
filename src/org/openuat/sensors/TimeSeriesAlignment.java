@@ -81,6 +81,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			if (alpha[i] != 0 || otherSide.alpha[i] != 0)
 				numRelevantAlpha++;
 			if (firstStageSeries_Int.length == 3) {
+				// TODO: this is wrong: need to _first_ rotate around alpha, then around beta!
 				al.delta_beta += angleWithinPI(otherSide.beta[i] - beta[i]);
 				// same here
 				if (beta[i] != 0 || otherSide.beta[i] != 0)

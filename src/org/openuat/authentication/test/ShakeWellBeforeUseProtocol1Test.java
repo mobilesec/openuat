@@ -62,7 +62,7 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 					/* TODO: how to deal with the difference between the "real" threshold for
 					   usability and the threshold set here for maximum positive/negative
 					   distinction?*/ 
-					0.72f, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
+					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
 		@SuppressWarnings("unused")
