@@ -90,15 +90,24 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		Alignment al = new Alignment();
 		int numRelevantAlpha=0, numRelevantBeta=0;
 		for (int i=0; i<index && i<otherSide.index; i++) {
-			//al.delta_alpha += angleWithinPI(otherSide.theta[i] - theta[i]);
-			al.delta_theta += otherSide.theta[i] - theta[i];
+			// 2 options, as we can "invert" r - choose the one with the smaller error (naive, greedy search)
+			if (error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i], 
+					otherSide.r[i], r[i]) <= 
+				error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i]+Math.PI, 
+					otherSide.r[i], -r[i])) {
+				//al.delta_theta += angleWithinPI(otherSide.theta[i] - theta[i]);
+				// actually, when "inverting" here, would need to invert r
+				// otherwise the computed error will be too high
+				al.delta_theta += otherSide.theta[i]-theta[i];
+			}
+			else
+				al.delta_theta += otherSide.theta[i]-theta[i]+Math.PI;
 			/* only count as relevant when both alphas are != 0, because atan2 returns 0
 			 * for (0,0), which really has no angle at all */
 			if (theta[i] != 0 || otherSide.theta[i] != 0)
 				numRelevantAlpha++;
 			if (firstStageSeries_Int.length == 3) {
-				// TODO: this is wrong: need to _first_ rotate around theta, then around phi!
-				//al.delta_beta += angleWithinPI(otherSide.phi[i] - phi[i]);
+				//al.delta_phi += angleWithinPI(otherSide.phi[i] - phi[i]);
 				al.delta_phi += otherSide.phi[i] - phi[i];
 				// same here
 				if (phi[i] != 0 || otherSide.phi[i] != 0)
@@ -118,18 +127,19 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		// calculate error for theta, phi, and length (magnitude)
 		for (int i=0; i<index && i<otherSide.index; i++) {
 			if (firstStageSeries_Int.length == 3)
-				al.error += angleError(otherSide.theta[i], theta[i], al.delta_theta, otherSide.r[i], r[i]) +  
-						angleError(otherSide.phi[i], phi[i], al.delta_phi, otherSide.r[i], r[i]) +
-			            (r[i]-otherSide.r[i])*(r[i]-otherSide.r[i]);
+				al.error += error3(otherSide.theta[i], theta[i], al.delta_theta, 
+						otherSide.phi[i], phi[i], al.delta_phi,
+						otherSide.r[i], r[i]);
 			else
-				al.error += angleError(otherSide.theta[i], theta[i], al.delta_theta, otherSide.r[i], r[i]) +  
-						(r[i]-otherSide.r[i])*(r[i]-otherSide.r[i]);
+				al.error += error2(otherSide.theta[i], theta[i], al.delta_theta, 
+						otherSide.r[i], r[i]);
 		}
 		
 		return al;
 	}
 	
-/*	private double angleWithinPI(double angle) {
+	/** Makes sure an angle is within ]-PI; PI]; */ 
+	private double angleWithinPI(double angle) {
 		if (angle <= -Math.PI)
 			angle += 2*Math.PI;
 		if (angle > Math.PI)
@@ -137,13 +147,22 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (angle <= -Math.PI || angle > Math.PI)
 			logger.warn("Unexpected angle: " + angle);
 		return angle;
-	}*/
+	}
 	
-	private double angleError(double a1, double a2, double delta, double l1, double l2) {
+	private double error2(double theta1, double theta2, double d_theta, double r1, double r2) {
+		return angleError(theta1, theta2, d_theta, r1, r2) + (r1-r2)*(r1-r2);
+	}
+
+	private double error3(double theta1, double theta2, double d_theta, 
+			double phi1, double phi2, double d_phi, double r1, double r2) {
+		return angleError(theta1, theta2, d_theta, r1, r2) + 
+			angleError(phi1, phi2, d_phi, r1, r2) + (r1-r2)*(r1-r2);
+	}
+
+	private double angleError(double a1, double a2, double delta, double r1, double r2) {
 		// again special handling: for (0,0), no error even with a delta
-		if (a1 != 0 || a2 != 0 || l1 != 0 || l2 != 0)
-			//return (angleWithinPI(a1-a2)-delta)*(angleWithinPI(a1-a2)-delta);
-			return (a1-a2-delta)*(a1-a2-delta);
+		if (a1 != 0 || a2 != 0 || r1 != 0 || r2 != 0)
+			return (angleWithinPI(a1-a2)-delta)*(angleWithinPI(a1-a2)-delta);
 		else
 			return 0;
 	}
