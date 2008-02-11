@@ -91,24 +91,24 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		int numRelevantAlpha=0, numRelevantBeta=0;
 		for (int i=0; i<index && i<otherSide.index; i++) {
 			// 2 options, as we can "invert" r - choose the one with the smaller error (naive, greedy search)
-			if (error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i], 
+			/*if (error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i], 
 					otherSide.r[i], r[i]) <= 
 				error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i]+Math.PI, 
 					otherSide.r[i], -r[i])) {
 				//al.delta_theta += angleWithinPI(otherSide.theta[i] - theta[i]);
 				// actually, when "inverting" here, would need to invert r
 				// otherwise the computed error will be too high
-				al.delta_theta += otherSide.theta[i]-theta[i];
-			}
+*/				al.delta_theta += angleWithinPI(otherSide.theta[i]-theta[i]);
+			/*}
 			else
-				al.delta_theta += otherSide.theta[i]-theta[i]+Math.PI;
+				al.delta_theta += otherSide.theta[i]-theta[i]+Math.PI;*/
 			/* only count as relevant when both alphas are != 0, because atan2 returns 0
 			 * for (0,0), which really has no angle at all */
 			if (theta[i] != 0 || otherSide.theta[i] != 0)
 				numRelevantAlpha++;
 			if (firstStageSeries_Int.length == 3) {
-				//al.delta_phi += angleWithinPI(otherSide.phi[i] - phi[i]);
-				al.delta_phi += otherSide.phi[i] - phi[i];
+				al.delta_phi += angleWithinPI(otherSide.phi[i] - phi[i]);
+				//al.delta_phi += otherSide.phi[i] - phi[i];
 				// same here
 				if (phi[i] != 0 || otherSide.phi[i] != 0)
 					numRelevantBeta++;
@@ -201,8 +201,8 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		else if (coord.length == 3) {
 			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1] + coord[2]*coord[2]);
 			phi[index] = Math.atan2(Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]),	coord[2]);
-			// also restrict phi to [0;PI] - but atan2 should never return anything else anyway
-			if (phi[index] < 0)
+			// sanity check
+			if (phi[index] < 0 || phi[index] >= Math.PI)
 				logger.warn("Computed phi out of tange [0; PI[ (" + phi[index] + "). This should not happen!");
 		}
 		else
@@ -210,7 +210,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 
 		theta[index] = Math.atan2(coord[1], coord[0]);
 		// restrict angles to [0;PI[ so that polar representation is unique
-		if (theta[index] < 0) {
+/*		if (theta[index] < 0) {
 			r[index] = -r[index];
 			theta[index] = -theta[index];
 		}
@@ -218,15 +218,14 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			// special case: PI is not within the limits, so invert r and set to 0 so as to be unique
 			r[index] = -r[index];
 			theta[index] = 0;
-		}
-
-		// sanity checks
-		if (theta[index] < 0 || theta[index] > Math.PI)
-			logger.warn("Phi out of range [0; PI]: " + theta[index]);
-		if (coord[1] < -0.000001 && r [index] >= 0)
+		}*/
+		// sanity check
+		if (theta[index] < 0 || theta[index] >= 2*Math.PI)
+			logger.warn("Phi out of range [0; 2*PI]: " + theta[index]);
+/*		if (coord[1] < -0.000001 && r [index] >= 0)
 			logger.warn("y < 0 but r >= 0. This should not happen.");
 		if (coord[1] > 0.000001 && r [index] <= 0)
-			logger.warn("y > 0 but r <= 0. This should not happen.");
+			logger.warn("y > 0 but r <= 0. This should not happen.");*/
 		
 		index++;
 	}
