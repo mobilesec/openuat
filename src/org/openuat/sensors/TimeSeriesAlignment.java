@@ -202,13 +202,16 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1] + coord[2]*coord[2]);
 			phi[index] = Math.atan2(Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]),	coord[2]);
 			// sanity check
-			if (phi[index] < 0 || phi[index] >= Math.PI)
-				logger.warn("Computed phi out of tange [0; PI[ (" + phi[index] + "). This should not happen!");
+			if (phi[index] < 0 || phi[index] > Math.PI)
+				logger.warn("Computed phi out of tange [0; PI] (" + phi[index] + "). This should not happen!");
 		}
 		else
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
 
 		theta[index] = Math.atan2(coord[1], coord[0]);
+		// somewhat normalize the angle
+		if (theta[index] <= -Math.PI)
+			theta[index] += 2*Math.PI;
 		// restrict angles to [0;PI[ so that polar representation is unique
 /*		if (theta[index] < 0) {
 			r[index] = -r[index];
@@ -220,8 +223,8 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			theta[index] = 0;
 		}*/
 		// sanity check
-		if (theta[index] < 0 || theta[index] >= 2*Math.PI)
-			logger.warn("Phi out of range [0; 2*PI]: " + theta[index]);
+		if (theta[index] <= -Math.PI || theta[index] > Math.PI)
+			logger.warn("Phi out of range ]-PI; PI]: " + theta[index]);
 /*		if (coord[1] < -0.000001 && r [index] >= 0)
 			logger.warn("y < 0 but r >= 0. This should not happen.");
 		if (coord[1] > 0.000001 && r [index] <= 0)
