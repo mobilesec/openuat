@@ -240,7 +240,10 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		helper_testRotation(a_axis_z, a_axis_x, 0, -Math.PI/2);
 		helper_testRotation(a_axis_y, a_axis_z, -Math.PI/2, Math.PI/2);
 		helper_testRotation(a_axis_z, a_axis_y, Math.PI/2, -Math.PI/2);
-	}
+
+		// TODO: doesn't work for this case! it seems the naive alignment is too simple
+//		helper_testRotation(a_plane_xy, a_plane_xz, Math.PI/2, 0);
+}
 
 	public void testExactCopyRotateOther() {
 		helper_testRotation(a_plane_xy_2d, a_plane_xy_rot315_2d, -Math.PI*7/8, 0);
