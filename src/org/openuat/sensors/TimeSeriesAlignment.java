@@ -8,6 +8,8 @@
  */
 package org.openuat.sensors;
 
+import java.util.BitSet;
+
 import org.apache.log4j.Logger;
 
 /** http://en.wikipedia.org/wiki/Image:Spherical_Coordinates.png
@@ -88,48 +90,74 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 
 		// this is naive optimisation - our own sample is the reference, the other rotated wrt. it
 		Alignment al = new Alignment();
-		int numRelevantAlpha=0, numRelevantBeta=0;
+		int nTheta=0, nPhi=0;
+		BitSet alternativeRotate = new BitSet(index);
 		for (int i=0; i<index && i<otherSide.index; i++) {
-			// 2 options, as we can "invert" r - choose the one with the smaller error (naive, greedy search)
-			/*if (error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i], 
-					otherSide.r[i], r[i]) <= 
-				error2(otherSide.theta[i], theta[i], otherSide.theta[i]-theta[i]+Math.PI, 
-					otherSide.r[i], -r[i])) {
-				//al.delta_theta += angleWithinPI(otherSide.theta[i] - theta[i]);
-				// actually, when "inverting" here, would need to invert r
-				// otherwise the computed error will be too high
-*/				al.delta_theta += angleWithinPI(otherSide.theta[i]-theta[i]);
-			/*}
-			else
-				al.delta_theta += otherSide.theta[i]-theta[i]+Math.PI;*/
-			/* only count as relevant when both alphas are != 0, because atan2 returns 0
+			/* only count as relevant when both thetas are != 0, because atan2 returns 0
 			 * for (0,0), which really has no angle at all */
-			if (theta[i] != 0 || otherSide.theta[i] != 0)
-				numRelevantAlpha++;
-			if (firstStageSeries_Int.length == 3) {
-				al.delta_phi += angleWithinPI(otherSide.phi[i] - phi[i]);
-				//al.delta_phi += otherSide.phi[i] - phi[i];
-				// same here
-				if (phi[i] != 0 || otherSide.phi[i] != 0)
-					numRelevantBeta++;
+			boolean validTheta = (theta[i] != 0 && r[i] != 0) || (otherSide.theta[i] != 0 && otherSide.r[i] != 0);
+			double d_theta = 0;
+			if (validTheta) {
+				d_theta = angleWithinPI(otherSide.theta[i]-theta[i]);
+				nTheta++;
 			}
+			
+			if (firstStageSeries_Int.length == 3) {
+				boolean validPhi = (phi[i] != 0 && r[i] != 0) || (otherSide.phi[i] != 0 && otherSide.r[i] != 0);
+				double d_phi = 0; 
+				// see al.delta_theta, same here
+				if (validPhi) {
+					d_phi = angleWithinPI(otherSide.phi[i]-phi[i]);
+					nPhi++;
+				}
+				
+				/* in 3D there are multiple options how to rotate with 2 angles -
+				 * choose the one that (with the average so far) yields the smaller error
+				 * ==> naive, greedy search over what would be 2^(2*n) possibilities
+				 */
+				double e1=error3(otherSide.theta[i], theta[i], 
+						(nTheta>0 ? (al.delta_theta+d_theta)/nTheta : 0), 
+						otherSide.phi[i], phi[i], 
+						(nPhi>0 ? (al.delta_phi+d_phi)/nPhi : 0),
+						otherSide.r[i], r[i]);
+				double e2=error3(otherSide.theta[i], angleWithinPI(theta[i]-Math.PI), 
+						(nTheta>0 ? (al.delta_theta+angleWithinPI(d_theta-Math.PI))/nTheta : 0), 
+						otherSide.phi[i], angleWithinPI(phi[i]-Math.PI), 
+						(nPhi>0 ? (al.delta_phi+angleWithinPI(d_phi-Math.PI))/nPhi : 0),
+						otherSide.r[i], r[i]);
+				if (e1 > e2) {
+					d_theta = angleWithinPI(d_theta-Math.PI);
+					d_phi = angleWithinPI(d_phi-Math.PI);
+					// remember what we figured out so that error will be calculated correctly
+					alternativeRotate.set(i);
+				}
+				
+				al.delta_phi += d_phi;
+			}
+			al.delta_theta += d_theta;
 			al.numSamples++;
 		}
-		if (numRelevantAlpha > 0)
-			al.delta_theta /= numRelevantAlpha;
+		if (nTheta > 0)
+			al.delta_theta /= nTheta;
 		else if (al.delta_theta != 0)
 			logger.warn("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
-		if (numRelevantBeta > 0)
-			al.delta_phi /= numRelevantBeta;
+		if (nPhi > 0)
+			al.delta_phi /= nPhi;
 		else if (al.delta_phi != 0)
 			logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 		
 		// calculate error for theta, phi, and length (magnitude)
 		for (int i=0; i<index && i<otherSide.index; i++) {
-			if (firstStageSeries_Int.length == 3)
-				al.error += error3(otherSide.theta[i], theta[i], al.delta_theta, 
+			if (firstStageSeries_Int.length == 3) {
+				if (!alternativeRotate.get(i))
+					al.error += error3(otherSide.theta[i], theta[i], al.delta_theta, 
 						otherSide.phi[i], phi[i], al.delta_phi,
 						otherSide.r[i], r[i]);
+				else
+					al.error += error3(otherSide.theta[i], angleWithinPI(theta[i]-Math.PI), al.delta_theta, 
+							otherSide.phi[i], angleWithinPI(phi[i]-Math.PI), al.delta_phi,
+							otherSide.r[i], r[i]);
+			}
 			else
 				al.error += error2(otherSide.theta[i], theta[i], al.delta_theta, 
 						otherSide.r[i], r[i]);
@@ -161,8 +189,8 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 
 	private double angleError(double a1, double a2, double delta, double r1, double r2) {
 		// again special handling: for (0,0), no error even with a delta
-		if (a1 != 0 || a2 != 0 || r1 != 0 || r2 != 0)
-			return (angleWithinPI(a1-a2)-delta)*(angleWithinPI(a1-a2)-delta);
+		if ((a1 != 0 && r1 != 0) || (a2 != 0 && r2 != 0))
+			return (angleWithinPI(a1-a2-delta))*(angleWithinPI(a1-a2-delta));
 		else
 			return 0;
 	}
