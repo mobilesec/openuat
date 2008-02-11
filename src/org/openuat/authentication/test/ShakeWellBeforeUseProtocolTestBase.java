@@ -87,7 +87,8 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 			reader1.stop();
 			in.close();
 			System.gc();
-			Assert.assertTrue("Protocol did not finish within time limit", end);
+			Assert.assertTrue("Protocol did not finish within time limit (test file "+ filename  + ")", 
+					end);
 		}
 	}
 	
@@ -104,10 +105,11 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 			numSucceeded = numFailed = numProgress = 0;
 			runCase("tests/motionauth/positive/" + testFiles[i]);
 			
-			Assert.assertEquals("Test file " + testFiles.length + " should have succeeded on both sides, but didn't",
+			Assert.assertEquals("Test file " + testFiles[i] + " should have succeeded on both sides, but didn't",
 					2, numSucceeded);
-			Assert.assertEquals("Test file " + testFiles.length + " should not have failed on either side, but did",
+			Assert.assertEquals("Test file " + testFiles[i] + " should not have failed on either side, but did",
 					0, numFailed);
+			System.out.println("----- TEST SUCCESSFUL: tests/motionauth/positive/" + testFiles[i]);
 		}
 	}
 
@@ -120,9 +122,9 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 			numSucceeded = numFailed = numProgress = 0;
 			runCase("tests/motionauth/negative/" + testFiles[i]);
 			
-			Assert.assertEquals("Test file " + testFiles.length + " should not have succeeded on either sides, but did",
+			Assert.assertEquals("Test file " + testFiles[i] + " should not have succeeded on either side, but did",
 					0, numSucceeded);
-			Assert.assertEquals("Test file " + testFiles.length + " should have failed on both side, but didn't",
+			Assert.assertEquals("Test file " + testFiles[i] + " should have failed on both side, but didn't",
 					2, numFailed);
 		}
 	}

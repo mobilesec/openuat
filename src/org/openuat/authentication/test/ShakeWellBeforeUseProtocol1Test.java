@@ -57,9 +57,12 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 	private class Protocol1Hooks extends ShakeWellBeforeUseProtocol1 {
 		protected Protocol1Hooks() {
 			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
-					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, false, true), 
+					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, true, true), 
 					true, false,
-					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
+					/* TODO: how to deal with the difference between the "real" threshold for
+					   usability and the threshold set here for maximum positive/negative
+					   distinction?*/ 
+					0.72f, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
 		@SuppressWarnings("unused")
