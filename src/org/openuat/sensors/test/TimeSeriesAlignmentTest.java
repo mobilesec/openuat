@@ -190,8 +190,8 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	
 	private void helper_testNoRotation(TimeSeriesAlignment autoAlignment) {
 		TimeSeriesAlignment.Alignment a = autoAlignment.alignWith(autoAlignment);
-		Assert.assertEquals("Delta alpha is not correct", 0, a.delta_alpha, 0.001);
-		Assert.assertEquals("Delta beta is not correct", 0, a.delta_alpha, 0.001);
+		Assert.assertEquals("Delta alpha is not correct", 0, a.delta_theta, 0.001);
+		Assert.assertEquals("Delta beta is not correct", 0, a.delta_theta, 0.001);
 		Assert.assertEquals("Error after rotational alignment should be zero", 0, a.error, 0.001);
 		Assert.assertEquals("Not all samples processed", NUMSAMPLES, a.numSamples);
 	}
@@ -214,10 +214,10 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	}
 	
 	private void helper_testRotation(TimeSeriesAlignment a1, TimeSeriesAlignment a2,
-			double expectedAlpha, double expectedBeta) {
+			double expectedTheta, double expectedPhi) {
 		TimeSeriesAlignment.Alignment a = a1.alignWith(a2);
-		Assert.assertEquals("Delta alpha is not correct", expectedAlpha, a.delta_alpha, 0.001);
-		Assert.assertEquals("Delta beta is not correct", expectedBeta, a.delta_beta, 0.001);
+		Assert.assertEquals("Delta theta is not correct", expectedTheta, a.delta_theta, 0.001);
+		Assert.assertEquals("Delta phi is not correct", expectedPhi, a.delta_phi, 0.001);
 		Assert.assertEquals("Error after rotational alignment should be zero", 0, a.error, 0.001);
 		Assert.assertEquals("Not all samples processed", NUMSAMPLES, a.numSamples);
 	}

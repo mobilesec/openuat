@@ -13,14 +13,14 @@ import org.apache.log4j.Logger;
 /** http://en.wikipedia.org/wiki/Image:Spherical_Coordinates.png
  * http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
  * 
- * x = r cos phi sin theta
+ * x = r sin phi cos theta
  y = r sin phi sin theta
- z = r cos theta
+ z = r cos phi
  
  r^2 = x^2+y^2+z^2
  
- cos phi = x / sqrt(x^2 + y^2), sin phi = y / sqrt(x^2 + y^2), tan phi = y/x
- cos theta = z/r, tan theta = sqrt(x^2+y^2) / z
+ cos theta = x / sqrt(x^2 + y^2), sin theta = y / sqrt(x^2 + y^2), tan theta = y/x
+ cos phi = z/r, tan phi = sqrt(x^2+y^2) / z
 
  * @author Rene Mayrhofer
  * @version 1.0
@@ -29,7 +29,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeriesAlignment" /*TimeSeriesAlignment.class*/);
 
-	private double[] r = null, phi = null, theta = null;
+	private double[] r = null, theta = null, phi = null;
 	
 	private int index = -1;
 	
@@ -57,9 +57,9 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
 		
 		r = new double[windowSize+maxSegmentSize];
-		phi = new double[windowSize+maxSegmentSize];
+		theta = new double[windowSize+maxSegmentSize];
 		if (numSeries == 3)
-			theta = new double[windowSize+maxSegmentSize];
+			phi = new double[windowSize+maxSegmentSize];
 	}
 	
 	public TimeSeriesAlignment(double[][] mySide) {
@@ -76,7 +76,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	}
 	
 	public class Alignment {
-		public double delta_alpha=0, delta_beta=0, error=0;
+		public double delta_theta=0, delta_phi=0, error=0;
 		public int numSamples=0;
 	}
 	
@@ -90,44 +90,46 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		Alignment al = new Alignment();
 		int numRelevantAlpha=0, numRelevantBeta=0;
 		for (int i=0; i<index && i<otherSide.index; i++) {
-			al.delta_alpha += angleWithinPI(otherSide.phi[i] - phi[i]);
+			//al.delta_alpha += angleWithinPI(otherSide.theta[i] - theta[i]);
+			al.delta_theta += otherSide.theta[i] - theta[i];
 			/* only count as relevant when both alphas are != 0, because atan2 returns 0
 			 * for (0,0), which really has no angle at all */
-			if (phi[i] != 0 || otherSide.phi[i] != 0)
+			if (theta[i] != 0 || otherSide.theta[i] != 0)
 				numRelevantAlpha++;
 			if (firstStageSeries_Int.length == 3) {
-				// TODO: this is wrong: need to _first_ rotate around phi, then around theta!
-				al.delta_beta += angleWithinPI(otherSide.theta[i] - theta[i]);
+				// TODO: this is wrong: need to _first_ rotate around theta, then around phi!
+				//al.delta_beta += angleWithinPI(otherSide.phi[i] - phi[i]);
+				al.delta_phi += otherSide.phi[i] - phi[i];
 				// same here
-				if (theta[i] != 0 || otherSide.theta[i] != 0)
+				if (phi[i] != 0 || otherSide.phi[i] != 0)
 					numRelevantBeta++;
 			}
 			al.numSamples++;
 		}
 		if (numRelevantAlpha > 0)
-			al.delta_alpha /= numRelevantAlpha;
-		else if (al.delta_alpha != 0)
-			logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
-		if (numRelevantBeta > 0)
-			al.delta_beta /= numRelevantBeta;
-		else if (al.delta_beta != 0)
+			al.delta_theta /= numRelevantAlpha;
+		else if (al.delta_theta != 0)
 			logger.warn("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+		if (numRelevantBeta > 0)
+			al.delta_phi /= numRelevantBeta;
+		else if (al.delta_phi != 0)
+			logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 		
-		// calculate error for phi, theta, and length (magnitude)
+		// calculate error for theta, phi, and length (magnitude)
 		for (int i=0; i<index && i<otherSide.index; i++) {
 			if (firstStageSeries_Int.length == 3)
-				al.error += angleError(otherSide.phi[i], phi[i], al.delta_alpha, otherSide.r[i], r[i]) +  
-						angleError(otherSide.theta[i], theta[i], al.delta_beta, otherSide.r[i], r[i]) +
+				al.error += angleError(otherSide.theta[i], theta[i], al.delta_theta, otherSide.r[i], r[i]) +  
+						angleError(otherSide.phi[i], phi[i], al.delta_phi, otherSide.r[i], r[i]) +
 			            (r[i]-otherSide.r[i])*(r[i]-otherSide.r[i]);
 			else
-				al.error += angleError(otherSide.phi[i], phi[i], al.delta_alpha, otherSide.r[i], r[i]) +  
+				al.error += angleError(otherSide.theta[i], theta[i], al.delta_theta, otherSide.r[i], r[i]) +  
 						(r[i]-otherSide.r[i])*(r[i]-otherSide.r[i]);
 		}
 		
 		return al;
 	}
 	
-	private double angleWithinPI(double angle) {
+/*	private double angleWithinPI(double angle) {
 		if (angle <= -Math.PI)
 			angle += 2*Math.PI;
 		if (angle > Math.PI)
@@ -135,12 +137,13 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (angle <= -Math.PI || angle > Math.PI)
 			logger.warn("Unexpected angle: " + angle);
 		return angle;
-	}
+	}*/
 	
 	private double angleError(double a1, double a2, double delta, double l1, double l2) {
 		// again special handling: for (0,0), no error even with a delta
 		if (a1 != 0 || a2 != 0 || l1 != 0 || l2 != 0)
-			return (angleWithinPI(a1-a2)-delta)*(angleWithinPI(a1-a2)-delta);
+			//return (angleWithinPI(a1-a2)-delta)*(angleWithinPI(a1-a2)-delta);
+			return (a1-a2-delta)*(a1-a2-delta);
 		else
 			return 0;
 	}
@@ -175,16 +178,37 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 
 		if (coord.length == 2) {
 			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]);
-			phi[index] = Math.atan2(coord[1], coord[0]);
-			index++;
 		}
 		else if (coord.length == 3) {
 			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1] + coord[2]*coord[2]);
-			phi[index] = Math.atan2(coord[1], coord[0]);
-			theta[index] = Math.atan2(Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]),	coord[2]);
-			index++;
+			phi[index] = Math.atan2(Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]),	coord[2]);
+			// also restrict phi to [0;PI] - but atan2 should never return anything else anyway
+			if (phi[index] < 0)
+				logger.warn("Computed phi out of tange [0; PI[ (" + phi[index] + "). This should not happen!");
 		}
 		else
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
+
+		theta[index] = Math.atan2(coord[1], coord[0]);
+		// restrict angles to [0;PI[ so that polar representation is unique
+		if (theta[index] < 0) {
+			r[index] = -r[index];
+			theta[index] = -theta[index];
+		}
+		else if (theta[index] == Math.PI) {
+			// special case: PI is not within the limits, so invert r and set to 0 so as to be unique
+			r[index] = -r[index];
+			theta[index] = 0;
+		}
+
+		// sanity checks
+		if (theta[index] < 0 || theta[index] > Math.PI)
+			logger.warn("Phi out of range [0; PI]: " + theta[index]);
+		if (coord[1] < -0.000001 && r [index] >= 0)
+			logger.warn("y < 0 but r >= 0. This should not happen.");
+		if (coord[1] > 0.000001 && r [index] <= 0)
+			logger.warn("y > 0 but r <= 0. This should not happen.");
+		
+		index++;
 	}
 }
