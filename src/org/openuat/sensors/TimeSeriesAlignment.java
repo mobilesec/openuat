@@ -214,11 +214,11 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		// again naive: return the alignment vector with the lowest error
 		Alignment almin = al[0];
 		for (int q=1; q<al.length; q++)
-			if (al[q].error < almin.error)
+			// have a small error margin here, thus use the "simple" quadrant rotations first
+			if (al[q].error < almin.error-0.00001)
 				almin = al[q];
 		
-		//return almin;
-		return al[0];
+		return almin;
 	}
 	
 	/** Makes sure an angle is within ]-PI; PI]; */ 
@@ -276,14 +276,15 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	 * Depending on the input (2 or 3 dimensions), there will be 1 or 2
 	 * angles returned.
 	 * @param coord
-	 * @param permuteXYZ For 2 dimensions, either 0 (no change) or 1 (x and y swapped).
-	 * 					 For 3 dimensions, a value between 0 and 5 describing the permutation of x, y, and z:
-	 * 					 0: x, y, z
-	 * 					 1: y, x, z
-	 * 					 2: x, z, y
-	 * 					 3: y, z, x
-	 * 					 4: z, x, y
-	 * 					 5: z, y, x
+	 * @param permute For 2 dimensions, either 0 (no change) or 1 (x and y swapped).
+	 * 				  For 3 dimensions, a value between 0 and 5 describing the permutation of x, y, and z:
+	 * 				  0: x, y, z
+	 * 				  1: y, x, z
+	 * 				  2: x, z, y
+	 * 				  3: y, z, x
+	 * 				  4: z, x, y
+	 * 				  5: z, y, x
+	 * @negY Ignored for 2 dimensions and computed automatically so that only right-handed systems are generated.
 	 * @return Polar coordinates. First element is r, second theta, optional third phi.
 	 */
 	private static double[] toPolar(double[] coord, int permute, boolean negX, boolean negY) {
@@ -301,6 +302,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (coord.length == 2) {
 			x = permute==0 ? coord[0] : coord[1];
 			y = permute==0 ? coord[1] : coord[0];
+			neg = permute==1;
 		}
 		else {
 			/** There are certainly shorter formulations, but this is verbose and self-explanatory (i.e. it's hard that I mess it up). */
@@ -341,10 +343,13 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		}
 		
 		if (negX) x = -x;
-		if (negY) y = -y;
-		if (coord.length == 3) 
+		if (coord.length == 2)
+			if (negX ^ neg) x = -y;
+		else {
+			if (negY) y = -y;
 			// we need to negate an even number of axes to stay right-handed
 			if (negX ^ negY ^ neg) z = -z;
+		}
 		
 		if (coord.length == 2) {
 			ret[0] = Math.sqrt(x*x + y*y);
