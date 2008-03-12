@@ -38,33 +38,43 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	/** This is a hard-coded table of what the different quadrant rotation 
 	 * options mean in terms of multiple of PI/2 around theta and phi. Would 
 	 * be nice to actually compute this...
+	 * 
+	 * The format for 2D is: <multiples of PI/2 rotation>, <swap x and x>, <negate x>
+	 * The format for 3D is: <multiples of PI/2 rotation in theta>, <multiples of PI/2 rotation in phi>,
+	 * 						 <value for permute in toPolar>, <negate x>, <negate y>
 	 */
-	private static int[] quadRotAngles_2D = {0, 2, 3, 1};
-	private static int[][] quadRotAngles_3D = {
-			{0, 0},
-			{1, 0},
-			{2, 0},
-			{3, 0},
-			{4, 0},
-			{5, 0},
-			{6, 0},
-			{7, 0},
-			{8, 0},
-			{9, 0},
-			{10, 0},
-			{11, 0},
-			{12, 0},
-			{13, 0},
-			{14, 0},
-			{15, 0},
-			{16, 0},
-			{17, 0},
-			{18, 0},
-			{19, 0},
-			{20, 0},
-			{21, 0},
-			{22, 0},
-			{23, 0},
+	private static int[][] quadRot_2D = {
+			{0, 0, 0},
+			{1, 1, 1},
+			{2, 0, 1},
+			{3, 1, 0}
+		};
+	private static int[][] quadRot_3D = {
+			{0, 0, 0, 0, 0},
+			{1, 0, 0, 0, 0},
+			{2, 0, 0, 0, 0},
+			{3, 0, 0, 0, 0},
+			{0, 1, 0, 0, 0},
+			{1, 1, 0, 0, 0},
+			{2, 1, 0, 0, 0},
+			{3, 1, 0, 0, 0},
+			{0, 2, 0, 0, 0},
+			{1, 2, 0, 0, 0},
+			{2, 2, 0, 0, 0},
+			{3, 2, 0, 0, 0},
+			{0, 3, 0, 0, 0},
+			{1, 3, 0, 0, 0},
+			{2, 3, 0, 0, 0},
+			{3, 3, 0, 0, 0},
+			// TODO: 16 vs. 24...
+			{16, 0, 0, 0, 0},
+			{17, 0, 0, 0, 0},
+			{18, 0, 0, 0, 0},
+			{19, 0, 0, 0, 0},
+			{20, 0, 0, 0, 0},
+			{21, 0, 0, 0, 0},
+			{22, 0, 0, 0, 0},
+			{23, 0, 0, 0, 0},
 		};
 	
 	/** Constructs all internal buffers and the time series.
@@ -139,7 +149,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		 * in 3D, there are 24 possibilities for roughly aligning the quadrants:
 		 * 6 sides of the cube times 4 possibilities of rotating (by PI/2) it around this base
 		 */
-		Alignment[] al = new Alignment[(firstStageSeries_Int.length==2 ? 4 : 24)];
+		Alignment[] al = new Alignment[(firstStageSeries_Int.length==2 ? quadRot_2D.length : quadRot_3D.length)];
 		double[][][] otherPolar = new double[al.length][][];
 		
 		for (int q=0; q<al.length; q++) {
@@ -149,20 +159,16 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			otherPolar[q] = new double[otherSide.length][];
 			for (int i=0; i<otherSide.length; i++)
 				if (firstStageSeries_Int.length==2)
-					otherPolar[q][i] = toPolar(otherSide[i], q>>1, (q&1)==1, false);
+					otherPolar[q][i] = toPolar(otherSide[i], quadRot_2D[q][1], quadRot_2D[q][2]==1, false);
 				else
-					/* being (too) clever here: the lower two bits of our 
-					 * "possibilities counter" encode the negation bits, the
-					 * higher bits our permute enum
-					 */ 
-					otherPolar[q][i] = toPolar(otherSide[i], q>>2, (q&1)==1, (q&2)==2);
+					otherPolar[q][i] = toPolar(otherSide[i], quadRot_3D[q][2], quadRot_3D[q][3]==1, quadRot_3D[q][4]==1);
 
 			// TODO: there must also be nicer way of figuring out these angles...
 			if (firstStageSeries_Int.length==2)
-				al[q].quadrotTheta = quadRotAngles_2D[q];
+				al[q].quadrotTheta = quadRot_2D[q][0];
 			else {
-				al[q].quadrotTheta = quadRotAngles_3D[q][0];
-				al[q].quadrotPhi = quadRotAngles_3D[q][1];
+				al[q].quadrotTheta = quadRot_3D[q][0];
+				al[q].quadrotPhi = quadRot_3D[q][1];
 			}
 		}
 	
