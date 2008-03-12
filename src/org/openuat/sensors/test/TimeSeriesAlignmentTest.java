@@ -193,8 +193,8 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		a_helix_yz = new TimeSeriesAlignment(helix_yz); 
 	}
 	
-	private void helper_testNoRotation(TimeSeriesAlignment autoAlignment) {
-		TimeSeriesAlignment.Alignment a = autoAlignment.alignWith(autoAlignment);
+	private void helper_testNoRotation(TimeSeriesAlignment self, double[][] self2) {
+		TimeSeriesAlignment.Alignment a = self.alignWith(self2);
 		Assert.assertEquals("Delta alpha is not correct", 0, a.delta_theta, 0.001);
 		Assert.assertEquals("Delta beta is not correct", 0, a.delta_theta, 0.001);
 		Assert.assertEquals("Error after rotational alignment should be zero", 0, a.error, 0.001);
@@ -202,24 +202,24 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	}
 	
 	public void testNoRotation() {
-		helper_testNoRotation(a_axis_x_2d);
-		helper_testNoRotation(a_axis_y_2d);
-		helper_testNoRotation(a_plane_xy_2d);
-		helper_testNoRotation(a_plane_xy_rot90_2d);
-		helper_testNoRotation(a_plane_xy_rot315_2d);
+		helper_testNoRotation(a_axis_x_2d, axis_x_2d);
+		helper_testNoRotation(a_axis_y_2d, axis_y_2d);
+		helper_testNoRotation(a_plane_xy_2d, plane_xy_2d);
+		helper_testNoRotation(a_plane_xy_rot90_2d, plane_xy_rot90_2d);
+		helper_testNoRotation(a_plane_xy_rot315_2d, plane_xy_rot315_2d);
 
-		helper_testNoRotation(a_axis_x);
-		helper_testNoRotation(a_axis_y);
-		helper_testNoRotation(a_axis_z);
-		helper_testNoRotation(a_plane_xy);
-		helper_testNoRotation(a_plane_xz);
-		helper_testNoRotation(a_plane_yz);
-		helper_testNoRotation(a_helix_xy);
-		helper_testNoRotation(a_helix_xz);
-		helper_testNoRotation(a_helix_yz);
+		helper_testNoRotation(a_axis_x, axis_x);
+		helper_testNoRotation(a_axis_y, axis_y);
+		helper_testNoRotation(a_axis_z, axis_z);
+		helper_testNoRotation(a_plane_xy, plane_xy);
+		helper_testNoRotation(a_plane_xz, plane_xz);
+		helper_testNoRotation(a_plane_yz, plane_yz);
+		helper_testNoRotation(a_helix_xy, helix_xy);
+		helper_testNoRotation(a_helix_xz, helix_xz);
+		helper_testNoRotation(a_helix_yz, helix_yz);
 	}
 	
-	private void helper_testRotation(TimeSeriesAlignment a1, TimeSeriesAlignment a2,
+	private void helper_testRotation(TimeSeriesAlignment a1, double[][] a2,
 			double expectedTheta, double expectedPhi) {
 		TimeSeriesAlignment.Alignment a = a1.alignWith(a2);
 		Assert.assertEquals("Delta theta is not correct", expectedTheta, a.delta_theta, 0.001);
@@ -229,31 +229,30 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	}
 	
 	public void testExactCopyRotate90() {
-		helper_testRotation(a_axis_x_2d, a_axis_y_2d, Math.PI/2, 0);
-		helper_testRotation(a_axis_y_2d, a_axis_x_2d, -Math.PI/2, 0);
-		helper_testRotation(a_plane_xy_2d, a_plane_xy_rot90_2d, -Math.PI/2, 0);
-		helper_testRotation(a_plane_xy_rot90_2d, a_plane_xy_2d, Math.PI/2, 0);
+		helper_testRotation(a_axis_x_2d, axis_y_2d, Math.PI/2, 0);
+		helper_testRotation(a_axis_y_2d, axis_x_2d, -Math.PI/2, 0);
+		helper_testRotation(a_plane_xy_2d, plane_xy_rot90_2d, -Math.PI/2, 0);
+		helper_testRotation(a_plane_xy_rot90_2d, plane_xy_2d, Math.PI/2, 0);
 
-		helper_testRotation(a_axis_x, a_axis_y, Math.PI/2, 0);
-		helper_testRotation(a_axis_y, a_axis_x, -Math.PI/2, 0);
-		helper_testRotation(a_axis_x, a_axis_z, 0, Math.PI/2);
-		helper_testRotation(a_axis_z, a_axis_x, 0, -Math.PI/2);
-		helper_testRotation(a_axis_y, a_axis_z, -Math.PI/2, Math.PI/2);
-		helper_testRotation(a_axis_z, a_axis_y, Math.PI/2, -Math.PI/2);
+		helper_testRotation(a_axis_x, axis_y, Math.PI/2, 0);
+		helper_testRotation(a_axis_y, axis_x, -Math.PI/2, 0);
+		helper_testRotation(a_axis_x, axis_z, 0, Math.PI/2);
+		helper_testRotation(a_axis_z, axis_x, 0, -Math.PI/2);
+		helper_testRotation(a_axis_y, axis_z, -Math.PI/2, Math.PI/2);
+		helper_testRotation(a_axis_z, axis_y, Math.PI/2, -Math.PI/2);
 
-		// TODO: doesn't work for this case! it seems the naive alignment is too simple
-//		helper_testRotation(a_plane_xy, a_plane_xz, Math.PI/2, 0);
+//		helper_testRotation(a_plane_xy, plane_xz, Math.PI/2, 0);
 }
 
 	public void testExactCopyRotateOther() {
-		helper_testRotation(a_plane_xy_2d, a_plane_xy_rot315_2d, -Math.PI*7/8, 0);
-		helper_testRotation(a_plane_xy_rot315_2d, a_plane_xy_2d, Math.PI*7/8, 0);
-		helper_testRotation(a_plane_xy_rot90_2d, a_plane_xy_rot315_2d, -Math.PI*3/8, 0);
-		helper_testRotation(a_plane_xy_rot315_2d, a_plane_xy_rot90_2d, Math.PI*3/8, 0);
+		helper_testRotation(a_plane_xy_2d, plane_xy_rot315_2d, -Math.PI*7/8, 0);
+		helper_testRotation(a_plane_xy_rot315_2d, plane_xy_2d, Math.PI*7/8, 0);
+		helper_testRotation(a_plane_xy_rot90_2d, plane_xy_rot315_2d, -Math.PI*3/8, 0);
+		helper_testRotation(a_plane_xy_rot315_2d, plane_xy_rot90_2d, Math.PI*3/8, 0);
 	}
 
 	public void testRotateNoExactMatchPossible() {
-		TimeSeriesAlignment.Alignment a = a_plane_xy_2d.alignWith(a_plane_yx_2d);
+		TimeSeriesAlignment.Alignment a = a_plane_xy_2d.alignWith(plane_yx_2d);
 		Assert.assertTrue("Error after rotational alignment should not be zero", Math.abs(0 - a.error) > 0.001);
 	}
 }

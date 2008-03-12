@@ -80,90 +80,145 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	public class Alignment {
 		public double delta_theta=0, delta_phi=0, error=0;
 		public int numSamples=0;
+		
+		/** The numbers of valid rotation deltas. */
+		int nTheta=0, nPhi=0;
+		/** For each sample, its value can be positive or negative with obvious rotation of PI. */
+		BitSet alternativeRotate = new BitSet(index);
 	}
 	
-	public Alignment alignWith(TimeSeriesAlignment otherSide) {
-		if (otherSide == null || otherSide.r.length < 1)
+	/** This is naive optimisation - our own sample is the reference, the other rotated wrt. it
+	 * 
+	 * @param otherSide A two-dimensional array, the "outer" array representing
+	 *                  samples, the "inner" arrays the dimensions for each sample.
+	 *                  It is assumed that all samples have the same number of 
+	 *                  dimensions. Bad things will happen if they don't... 
+	 * @return
+	 */
+	public Alignment alignWith(double[][] otherSide) {
+		if (otherSide == null || otherSide.length < 1)
 			throw new IllegalArgumentException("Need at least 1 sample");
-		if (otherSide.firstStageSeries_Int.length != firstStageSeries_Int.length)
+		if (otherSide[0].length != firstStageSeries_Int.length)
 			throw new IllegalArgumentException("Number of dimensions must match for both sides");
 
-		// this is naive optimisation - our own sample is the reference, the other rotated wrt. it
-		Alignment al = new Alignment();
-		int nTheta=0, nPhi=0;
-		BitSet alternativeRotate = new BitSet(index);
-		for (int i=0; i<index && i<otherSide.index; i++) {
-			/* only count as relevant when both thetas are != 0, because atan2 returns 0
-			 * for (0,0), which really has no angle at all */
-			boolean validTheta = (theta[i] != 0 && r[i] != 0) || (otherSide.theta[i] != 0 && otherSide.r[i] != 0);
-			double d_theta = 0;
-			if (validTheta) {
-				d_theta = angleWithinPI(otherSide.theta[i]-theta[i]);
-				nTheta++;
-			}
+		Alignment[] al;
+		double[][][] otherPolar;
+		
+		if (firstStageSeries_Int.length == 2) {
+			// in 2D, only 4 possibilities
+			al = new Alignment[4];
+			otherPolar = new double[4][][];
+
+			for (int q=0; q<al.length; q++) {
+				al[q] = new Alignment();
 			
-			if (firstStageSeries_Int.length == 3) {
-				boolean validPhi = (phi[i] != 0 && r[i] != 0) || (otherSide.phi[i] != 0 && otherSide.r[i] != 0);
-				double d_phi = 0; 
-				// see al.delta_theta, same here
-				if (validPhi) {
-					d_phi = angleWithinPI(otherSide.phi[i]-phi[i]);
-					nPhi++;
-				}
-				
-				/* in 3D there are multiple options how to rotate with 2 angles -
-				 * choose the one that (with the average so far) yields the smaller error
-				 * ==> naive, greedy search over what would be 2^(2*n) possibilities
-				 */
-				double e1=error3(otherSide.theta[i], theta[i], 
-						(nTheta>0 ? (al.delta_theta+d_theta)/nTheta : 0), 
-						otherSide.phi[i], phi[i], 
-						(nPhi>0 ? (al.delta_phi+d_phi)/nPhi : 0),
-						otherSide.r[i], r[i]);
-				double e2=error3(otherSide.theta[i], angleWithinPI(theta[i]-Math.PI), 
-						(nTheta>0 ? (al.delta_theta+angleWithinPI(d_theta-Math.PI))/nTheta : 0), 
-						otherSide.phi[i], angleWithinPI(phi[i]-Math.PI), 
-						(nPhi>0 ? (al.delta_phi+angleWithinPI(d_phi-Math.PI))/nPhi : 0),
-						otherSide.r[i], r[i]);
-				if (e1 > e2) {
-					d_theta = angleWithinPI(d_theta-Math.PI);
-					d_phi = angleWithinPI(d_phi-Math.PI);
-					// remember what we figured out so that error will be calculated correctly
-					alternativeRotate.set(i);
-				}
-				
-				al.delta_phi += d_phi;
+				// compute all the alignments for the other side
+				otherPolar[q] = new double[otherSide.length][];
+				for (int i=0; i<otherSide.length; i++)
+					otherPolar[q][i] = toPolar(otherSide[i], q>>1, (q&1)==1, false);
 			}
-			al.delta_theta += d_theta;
-			al.numSamples++;
 		}
-		if (nTheta > 0)
-			al.delta_theta /= nTheta;
-		else if (al.delta_theta != 0)
-			logger.warn("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
-		if (nPhi > 0)
-			al.delta_phi /= nPhi;
-		else if (al.delta_phi != 0)
-			logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+		else {
+			/* There are 24 possibilities for roughly aligning the quadrants:
+			 * 6 sides of the cube times 4 possibilities of rotating (by PI/2) it around this base
+			 */
+			al = new Alignment[24];
+			// the other side converted to polar coordinates with 24 different quadrant rotations applied
+			otherPolar = new double[24][][];
+			for (int q=0; q<al.length; q++) {
+				al[q] = new Alignment();
+			
+				// compute all the alignments for the other side
+				otherPolar[q] = new double[otherSide.length][];
+				for (int i=0; i<otherSide.length; i++)
+					/* being (too) clever here: the lower two bits of our 
+					 * "possibilities counter" encode the negation bits, the
+					 * higher bits our permute enum
+					 */ 
+					otherPolar[q][i] = toPolar(otherSide[i], q>>2, (q&1)==1, (q&2)==2);
+			}
+		}
+		for (int q=0; q<al.length; q++) {
+			for (int i=0; i<index && i<otherSide.length; i++) {
+				/* only count as relevant when both thetas are != 0, because atan2 returns 0
+				 * for (0,0), which really has no angle at all */
+				boolean validTheta = (theta[i] != 0 && r[i] != 0) || (otherPolar[q][i][1] != 0 && otherPolar[q][i][0] != 0);
+				double d_theta = 0;
+				if (validTheta) {
+					d_theta = angleWithinPI(otherPolar[q][i][1]-theta[i]);
+					al[q].nTheta++;
+				}
+			
+				if (firstStageSeries_Int.length == 3) {
+					boolean validPhi = (phi[i] != 0 && r[i] != 0) || (otherPolar[q][i][2] != 0 && otherPolar[q][i][0] != 0);
+					double d_phi = 0; 
+					// see al.delta_theta, same here
+					if (validPhi) {
+						d_phi = angleWithinPI(otherPolar[q][i][2]-phi[i]);
+						al[q].nPhi++;
+					}
+				
+					/* in 3D there are multiple options how to rotate with 2 angles -
+					 * choose the one that (with the average so far) yields the smaller error
+					 * ==> naive, greedy search over what would be 2^(2*n) possibilities
+					 */
+					double e1=error3(otherPolar[q][i][1], theta[i], 
+							(al[q].nTheta>0 ? (al[q].delta_theta+d_theta)/al[q].nTheta : 0), 
+							otherPolar[q][i][2], phi[i], 
+							(al[q].nPhi>0 ? (al[q].delta_phi+d_phi)/al[q].nPhi : 0),
+							otherPolar[q][i][0], r[i]);
+					double e2=error3(otherPolar[q][i][1], angleWithinPI(theta[i]-Math.PI), 
+							(al[q].nTheta>0 ? (al[q].delta_theta+angleWithinPI(d_theta-Math.PI))/al[q].nTheta : 0), 
+							otherPolar[q][i][2], angleWithinPI(phi[i]-Math.PI), 
+							(al[q].nPhi>0 ? (al[q].delta_phi+angleWithinPI(d_phi-Math.PI))/al[q].nPhi : 0),
+							otherPolar[q][i][0], r[i]);
+					if (e1 > e2) {
+						d_theta = angleWithinPI(d_theta-Math.PI);
+						d_phi = angleWithinPI(d_phi-Math.PI);
+						// remember what we figured out so that error will be calculated correctly
+						al[q].alternativeRotate.set(i);
+					}
+				
+					al[q].delta_phi += d_phi;
+				}
+				al[q].delta_theta += d_theta;
+				al[q].numSamples++;
+			}
+			if (al[q].nTheta > 0)
+				al[q].delta_theta /= al[q].nTheta;
+			else if (al[q].delta_theta != 0)
+				logger.warn("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+			if (al[q].nPhi > 0)
+				al[q].delta_phi /= al[q].nPhi;
+			else if (al[q].delta_phi != 0)
+				logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 		
-		// calculate error for theta, phi, and length (magnitude)
-		for (int i=0; i<index && i<otherSide.index; i++) {
-			if (firstStageSeries_Int.length == 3) {
-				if (!alternativeRotate.get(i))
-					al.error += error3(otherSide.theta[i], theta[i], al.delta_theta, 
-						otherSide.phi[i], phi[i], al.delta_phi,
-						otherSide.r[i], r[i]);
+			// calculate error for theta, phi, and length (magnitude)
+			for (int i=0; i<index && i<otherSide.length; i++) {
+				if (firstStageSeries_Int.length == 3) {
+					if (!al[q].alternativeRotate.get(i))
+						al[q].error += error3(otherPolar[q][i][1], theta[i], al[q].delta_theta, 
+								otherPolar[q][i][2], phi[i], al[q].delta_phi,
+								otherPolar[q][i][0], r[i]);
+					else
+						al[q].error += error3(otherPolar[q][i][1], angleWithinPI(theta[i]-Math.PI), al[q].delta_theta, 
+								otherPolar[q][i][2], angleWithinPI(phi[i]-Math.PI), al[q].delta_phi,
+								otherPolar[q][i][0], r[i]);
+				}
 				else
-					al.error += error3(otherSide.theta[i], angleWithinPI(theta[i]-Math.PI), al.delta_theta, 
-							otherSide.phi[i], angleWithinPI(phi[i]-Math.PI), al.delta_phi,
-							otherSide.r[i], r[i]);
+					al[q].error += error2(otherPolar[q][i][1], theta[i], al[q].delta_theta, 
+							otherPolar[q][i][0], r[i]);
 			}
-			else
-				al.error += error2(otherSide.theta[i], theta[i], al.delta_theta, 
-						otherSide.r[i], r[i]);
 		}
 		
-		return al;
+		// again naive: return the alignment vector with the lowest error
+		Alignment almin = al[0];
+		for (int q=1; q<al.length; q++)
+			if (al[q].error < almin.error)
+				almin = al[q];
+		
+		//return almin;
+		return al[0];
 	}
 	
 	/** Makes sure an angle is within ]-PI; PI]; */ 
@@ -217,29 +272,95 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	protected void sampleAddedLine(int lineIndex, int sample, int numSample) {
 	}
 	
-	private void newSample(double[] coord) {
-		if (index >= maxSegmentSize+windowSize) {
-			logger.warn("Want to write more active samples than segment size, aborting. This should not happen!");
-			return;
-		}
-
-		if (coord.length == 2) {
-			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]);
-		}
-		else if (coord.length == 3) {
-			r[index] = Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1] + coord[2]*coord[2]);
-			phi[index] = Math.atan2(Math.sqrt(coord[0]*coord[0] + coord[1]*coord[1]),	coord[2]);
-			// sanity check
-			if (phi[index] < 0 || phi[index] > Math.PI)
-				logger.warn("Computed phi out of tange [0; PI] (" + phi[index] + "). This should not happen!");
-		}
-		else
+	/** Returns the polar representation of coordinates given as x/y(/z). 
+	 * Depending on the input (2 or 3 dimensions), there will be 1 or 2
+	 * angles returned.
+	 * @param coord
+	 * @param permuteXYZ For 2 dimensions, either 0 (no change) or 1 (x and y swapped).
+	 * 					 For 3 dimensions, a value between 0 and 5 describing the permutation of x, y, and z:
+	 * 					 0: x, y, z
+	 * 					 1: y, x, z
+	 * 					 2: x, z, y
+	 * 					 3: y, z, x
+	 * 					 4: z, x, y
+	 * 					 5: z, y, x
+	 * @return Polar coordinates. First element is r, second theta, optional third phi.
+	 */
+	private static double[] toPolar(double[] coord, int permute, boolean negX, boolean negY) {
+		if (coord.length != 2 && coord.length != 3)
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
+		if (coord.length == 2 && (permute < 0 || permute > 1))
+			throw new IllegalArgumentException("Only permutations 0 or 1 allowed");
+		if (coord.length == 3 && (permute < 0 || permute > 5))
+			throw new IllegalArgumentException("Only permutations 0 to 5 allowed");
+		
+		double[] ret = new double[coord.length];
+		double x=0, y=0, z=0;
+		boolean neg=false;
+		
+		if (coord.length == 2) {
+			x = permute==0 ? coord[0] : coord[1];
+			y = permute==0 ? coord[1] : coord[0];
+		}
+		else {
+			/** There are certainly shorter formulations, but this is verbose and self-explanatory (i.e. it's hard that I mess it up). */
+			switch (permute) {
+			case 0: x = coord[0];
+					y = coord[1];
+					z = coord[2];
+					// this is a right-handed coordinate system, no need to negate any axis
+					neg = false;
+					break;
+			case 1: x = coord[1];
+					y = coord[0];
+					z = coord[2];
+					// this is left-handed, need to negate at least one axis to make it right-handed again
+					neg = true;
+					break;
+			case 2: x = coord[0];
+					y = coord[2];
+					z = coord[1];
+					neg = true;
+					break;
+			case 3: x = coord[1];
+					y = coord[2];
+					z = coord[0];
+					neg = true;
+					break;
+			case 4: x = coord[2];
+					y = coord[0];
+					z = coord[1];
+					neg = false;
+					break;
+			case 5: x = coord[2];
+					y = coord[1];
+					z = coord[0];
+					neg = true;
+					break;
+			}
+		}
+		
+		if (negX) x = -x;
+		if (negY) y = -y;
+		if (coord.length == 3) 
+			// we need to negate an even number of axes to stay right-handed
+			if (negX ^ negY ^ neg) z = -z;
+		
+		if (coord.length == 2) {
+			ret[0] = Math.sqrt(x*x + y*y);
+		}
+		else {
+			ret[0] = Math.sqrt(x*x + y*y + z*z);
+			ret[2] = Math.atan2(Math.sqrt(x*x + y*y), z);
+			// sanity check
+			if (ret[2] < 0 || ret[2] > Math.PI)
+				logger.warn("Computed phi out of tange [0; PI] (" + ret[2] + "). This should not happen!");
+		}
 
-		theta[index] = Math.atan2(coord[1], coord[0]);
+		ret[1] = Math.atan2(y, x);
 		// somewhat normalize the angle
-		if (theta[index] <= -Math.PI)
-			theta[index] += 2*Math.PI;
+		if (ret[1] <= -Math.PI)
+			ret[1] += 2*Math.PI;
 		// restrict angles to [0;PI[ so that polar representation is unique
 /*		if (theta[index] < 0) {
 			r[index] = -r[index];
@@ -251,12 +372,27 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			theta[index] = 0;
 		}*/
 		// sanity check
-		if (theta[index] <= -Math.PI || theta[index] > Math.PI)
-			logger.warn("Phi out of range ]-PI; PI]: " + theta[index]);
+		if (ret[1] <= -Math.PI || ret[1] > Math.PI)
+			logger.warn("Phi out of range ]-PI; PI]: " + ret[1]);
 /*		if (coord[1] < -0.000001 && r [index] >= 0)
 			logger.warn("y < 0 but r >= 0. This should not happen.");
 		if (coord[1] > 0.000001 && r [index] <= 0)
 			logger.warn("y > 0 but r <= 0. This should not happen.");*/
+		
+		return ret;
+	}
+	
+	private void newSample(double[] coord) {
+		if (index >= maxSegmentSize+windowSize) {
+			logger.warn("Want to write more active samples than segment size, aborting. This should not happen!");
+			return;
+		}
+	
+		double[] polar = toPolar(coord, 0, false, false);
+		r[index] = polar[0];
+		theta[index] = polar[1];
+		if (coord.length == 3)
+			phi[index] = polar[2];
 		
 		index++;
 	}
