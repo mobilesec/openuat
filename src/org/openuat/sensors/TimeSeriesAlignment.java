@@ -35,6 +35,38 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	
 	private int index = -1;
 	
+	/** This is a hard-coded table of what the different quadrant rotation 
+	 * options mean in terms of multiple of PI/2 around theta and phi. Would 
+	 * be nice to actually compute this...
+	 */
+	private static int[] quadRotAngles_2D = {0, 2, 3, 1};
+	private static int[][] quadRotAngles_3D = {
+			{0, 0},
+			{1, 0},
+			{2, 0},
+			{3, 0},
+			{4, 0},
+			{5, 0},
+			{6, 0},
+			{7, 0},
+			{8, 0},
+			{9, 0},
+			{10, 0},
+			{11, 0},
+			{12, 0},
+			{13, 0},
+			{14, 0},
+			{15, 0},
+			{16, 0},
+			{17, 0},
+			{18, 0},
+			{19, 0},
+			{20, 0},
+			{21, 0},
+			{22, 0},
+			{23, 0},
+		};
+	
 	/** Constructs all internal buffers and the time series.
 	 * 
 	 * @param numSeries The number of time series to use, i.e. the dimensionality
@@ -85,6 +117,8 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		int nTheta=0, nPhi=0;
 		/** For each sample, its value can be positive or negative with obvious rotation of PI. */
 		BitSet alternativeRotate = new BitSet(index);
+		/** For quadrant rotation cases the required added multiples of PI. */
+		public int quadrotTheta=0, quadrotPhi=0;
 	}
 	
 	/** This is naive optimisation - our own sample is the reference, the other rotated wrt. it
@@ -101,43 +135,37 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (otherSide[0].length != firstStageSeries_Int.length)
 			throw new IllegalArgumentException("Number of dimensions must match for both sides");
 
-		Alignment[] al;
-		double[][][] otherPolar;
+		/* In 2D, only 4 possibilities.
+		 * in 3D, there are 24 possibilities for roughly aligning the quadrants:
+		 * 6 sides of the cube times 4 possibilities of rotating (by PI/2) it around this base
+		 */
+		Alignment[] al = new Alignment[(firstStageSeries_Int.length==2 ? 4 : 24)];
+		double[][][] otherPolar = new double[al.length][][];
 		
-		if (firstStageSeries_Int.length == 2) {
-			// in 2D, only 4 possibilities
-			al = new Alignment[4];
-			otherPolar = new double[4][][];
-
-			for (int q=0; q<al.length; q++) {
-				al[q] = new Alignment();
+		for (int q=0; q<al.length; q++) {
+			al[q] = new Alignment();
 			
-				// compute all the alignments for the other side
-				otherPolar[q] = new double[otherSide.length][];
-				for (int i=0; i<otherSide.length; i++)
+			// compute all the alignments for the other side
+			otherPolar[q] = new double[otherSide.length][];
+			for (int i=0; i<otherSide.length; i++)
+				if (firstStageSeries_Int.length==2)
 					otherPolar[q][i] = toPolar(otherSide[i], q>>1, (q&1)==1, false);
-			}
-		}
-		else {
-			/* There are 24 possibilities for roughly aligning the quadrants:
-			 * 6 sides of the cube times 4 possibilities of rotating (by PI/2) it around this base
-			 */
-			al = new Alignment[24];
-			// the other side converted to polar coordinates with 24 different quadrant rotations applied
-			otherPolar = new double[24][][];
-			for (int q=0; q<al.length; q++) {
-				al[q] = new Alignment();
-			
-				// compute all the alignments for the other side
-				otherPolar[q] = new double[otherSide.length][];
-				for (int i=0; i<otherSide.length; i++)
+				else
 					/* being (too) clever here: the lower two bits of our 
 					 * "possibilities counter" encode the negation bits, the
 					 * higher bits our permute enum
 					 */ 
 					otherPolar[q][i] = toPolar(otherSide[i], q>>2, (q&1)==1, (q&2)==2);
+
+			// TODO: there must also be nicer way of figuring out these angles...
+			if (firstStageSeries_Int.length==2)
+				al[q].quadrotTheta = quadRotAngles_2D[q];
+			else {
+				al[q].quadrotTheta = quadRotAngles_3D[q][0];
+				al[q].quadrotPhi = quadRotAngles_3D[q][1];
 			}
 		}
+	
 		for (int q=0; q<al.length; q++) {
 			for (int i=0; i<index && i<otherSide.length; i++) {
 				/* only count as relevant when both thetas are != 0, because atan2 returns 0
@@ -192,7 +220,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 				al[q].delta_phi /= al[q].nPhi;
 			else if (al[q].delta_phi != 0)
 				logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
-		
+			
 			// calculate error for theta, phi, and length (magnitude)
 			for (int i=0; i<index && i<otherSide.length; i++) {
 				if (firstStageSeries_Int.length == 3) {
@@ -209,11 +237,16 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 					al[q].error += error2(otherPolar[q][i][1], theta[i], al[q].delta_theta, 
 							otherPolar[q][i][0], r[i]);
 			}
+			
+			// don't forget to add the quadrant rotations now, because this would not be known externally
+			al[q].delta_theta += al[q].quadrotTheta * Math.PI/2;
+			al[q].delta_phi += al[q].quadrotPhi * Math.PI/2;
 		}
 		
 		// again naive: return the alignment vector with the lowest error
 		Alignment almin = al[0];
 		for (int q=1; q<al.length; q++)
+			// TODO: remove me again when rotations are correct!
 			// have a small error margin here, thus use the "simple" quadrant rotations first
 			if (al[q].error < almin.error-0.00001)
 				almin = al[q];
