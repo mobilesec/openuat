@@ -36,45 +36,45 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 	private int index = -1;
 	
 	/** This is a hard-coded table of what the different quadrant rotation 
-	 * options mean in terms of multiple of PI/2 around theta and phi. Would 
+	 * options mean in terms of multiples of PI/2 around theta and phi. Would 
 	 * be nice to actually compute this...
 	 * 
 	 * The format for 2D is: <multiples of PI/2 rotation>, <swap x and x>, <negate x>
-	 * The format for 3D is: <multiples of PI/2 rotation in theta>, <multiples of PI/2 rotation in phi>,
+	 * The format for 3D is: <multiples of PI/2 rotation in psi (around Z)> 
+	 * 						 <multiples of PI/2 rotation in theta (around X')> 
+	 * 						 <multiples of PI/2 rotation in phi (around Z'')>,
 	 * 						 <value for permute in toPolar>, <negate x>, <negate y>
 	 */
 	private static int[][] quadRot_2D = {
 			{0, 0, 0},
 			{1, 1, 1},
 			{2, 0, 1},
-			{3, 1, 0}
+			{3, 1, 0},
 		};
+	/* 	 * 				  0: x, y, z
+	 * 				  1: y, x, z
+	 * 				  2: x, z, y
+	 * 				  3: y, z, x
+	 * 				  4: z, x, y
+	 * 				  5: z, y, x
+*/
 	private static int[][] quadRot_3D = {
-			{0, 0, 0, 0, 0},
-			{1, 0, 0, 0, 0},
-			{2, 0, 0, 0, 0},
-			{3, 0, 0, 0, 0},
-			{0, 1, 0, 0, 0},
-			{1, 1, 0, 0, 0},
-			{2, 1, 0, 0, 0},
-			{3, 1, 0, 0, 0},
-			{0, 2, 0, 0, 0},
-			{1, 2, 0, 0, 0},
-			{2, 2, 0, 0, 0},
-			{3, 2, 0, 0, 0},
-			{0, 3, 0, 0, 0},
-			{1, 3, 0, 0, 0},
-			{2, 3, 0, 0, 0},
-			{3, 3, 0, 0, 0},
-			// TODO: 16 vs. 24...
-			{16, 0, 0, 0, 0},
-			{17, 0, 0, 0, 0},
-			{18, 0, 0, 0, 0},
-			{19, 0, 0, 0, 0},
-			{20, 0, 0, 0, 0},
-			{21, 0, 0, 0, 0},
-			{22, 0, 0, 0, 0},
-			{23, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0}, // check
+			{1, 0, 0, 1, 1, 0}, // check
+			{2, 0, 0, 0, 1, 1}, // check
+			{3, 0, 0, 1, 0, 1}, // check
+			{0, 1, 0, 0, 0, 0},
+			{1, 1, 0, 0, 0, 0},
+			{2, 1, 0, 0, 0, 0},
+			{3, 1, 0, 0, 0, 0},
+			{0, 2, 0, 0, 0, 0},
+			{1, 2, 0, 0, 0, 0},
+			{2, 2, 0, 0, 0, 0},
+			{3, 2, 0, 0, 0, 0},
+			{0, 3, 0, 0, 0, 0},
+			{1, 3, 0, 0, 0, 0},
+			{2, 3, 0, 0, 0, 0},
+			{3, 3, 0, 0, 0, 0},
 		};
 	
 	/** Constructs all internal buffers and the time series.
@@ -128,10 +128,10 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		/** For each sample, its value can be positive or negative with obvious rotation of PI. */
 		BitSet alternativeRotate = new BitSet(index);
 		/** For quadrant rotation cases the required added multiples of PI. */
-		public int quadrotTheta=0, quadrotPhi=0;
+		public int quadrotTheta=0, quadrotPhi=0, quadrotPsi=0;
 	}
 	
-	/** This is naive optimisation - our own sample is the reference, the other rotated wrt. it
+	/** This is naive optimisation - our own sample is the reference, the other rotated wrt. it.
 	 * 
 	 * @param otherSide A two-dimensional array, the "outer" array representing
 	 *                  samples, the "inner" arrays the dimensions for each sample.
@@ -161,14 +161,15 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 				if (firstStageSeries_Int.length==2)
 					otherPolar[q][i] = toPolar(otherSide[i], quadRot_2D[q][1], quadRot_2D[q][2]==1, false);
 				else
-					otherPolar[q][i] = toPolar(otherSide[i], quadRot_3D[q][2], quadRot_3D[q][3]==1, quadRot_3D[q][4]==1);
+					otherPolar[q][i] = toPolar(otherSide[i], quadRot_3D[q][3], quadRot_3D[q][4]==1, quadRot_3D[q][5]==1);
 
 			// TODO: there must also be nicer way of figuring out these angles...
 			if (firstStageSeries_Int.length==2)
 				al[q].quadrotTheta = quadRot_2D[q][0];
 			else {
-				al[q].quadrotTheta = quadRot_3D[q][0];
-				al[q].quadrotPhi = quadRot_3D[q][1];
+				al[q].quadrotPsi = quadRot_3D[q][0];
+				al[q].quadrotTheta = quadRot_3D[q][1];
+				al[q].quadrotPhi = quadRot_3D[q][2];
 			}
 		}
 	

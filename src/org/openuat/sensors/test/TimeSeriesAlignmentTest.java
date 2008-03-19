@@ -27,6 +27,8 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	private static double[][] plane_yx, plane_zx, plane_zy;
 	private static double[][] helix_xy, helix_xz, helix_yz;
 	
+	private static double[][] offcenterplane_xy, offcenterplane_xz, offcenterplane_yz;
+	
 	static {
 		axis_x_2d = new double[NUMSAMPLES][];
 		axis_y_2d = new double[NUMSAMPLES][];
@@ -56,6 +58,11 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		helix_xz = new double[NUMSAMPLES][];
 		helix_yz = new double[NUMSAMPLES][];
 
+		offcenterplane_xy = new double[NUMSAMPLES][];
+		offcenterplane_xz = new double[NUMSAMPLES][];
+		offcenterplane_yz = new double[NUMSAMPLES][];
+		// TODO: 45° rotated offcenterplane
+		
 		for (int i=0; i<NUMSAMPLES; i++) {
 			axis_x_2d[i] = new double[2];
 			axis_y_2d[i] = new double[2];
@@ -84,7 +91,11 @@ public class TimeSeriesAlignmentTest extends TestCase {
 			helix_xy[i] = new double[3];
 			helix_xz[i] = new double[3];
 			helix_yz[i] = new double[3];
-			
+
+			offcenterplane_xy[i] = new double[3];
+			offcenterplane_xz[i] = new double[3];
+			offcenterplane_yz[i] = new double[3];
+
 			axis_x_2d[i][0] = Math.sin(2*Math.PI*i/NUMSAMPLES);
 			axis_x_2d[i][1] = 0;
 			axis_y_2d[i][0] = 0;
@@ -158,6 +169,16 @@ public class TimeSeriesAlignmentTest extends TestCase {
 			helix_yz[i][0] = ((double) i)/NUMSAMPLES;
 			helix_yz[i][1] = Math.sin(2*Math.PI*i/NUMSAMPLES);
 			helix_yz[i][2] = Math.cos(2*Math.PI*i/NUMSAMPLES);
+
+			offcenterplane_xy[i][0] = Math.sin(2*Math.PI*i/NUMSAMPLES);
+			offcenterplane_xy[i][1] = Math.cos(2*Math.PI*i/NUMSAMPLES);
+			offcenterplane_xy[i][2] = 1;
+			offcenterplane_xz[i][0] = Math.sin(2*Math.PI*i/NUMSAMPLES);
+			offcenterplane_xz[i][1] = 1;
+			offcenterplane_xz[i][2] = Math.cos(2*Math.PI*i/NUMSAMPLES);
+			offcenterplane_yz[i][0] = 1;
+			offcenterplane_yz[i][1] = Math.sin(2*Math.PI*i/NUMSAMPLES);
+			offcenterplane_yz[i][2] = Math.cos(2*Math.PI*i/NUMSAMPLES);
 		}
 	}
 
@@ -165,7 +186,8 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	a_plane_xy_2d, a_plane_xy_rot90_2d, a_plane_xy_rot315_2d, a_plane_yx_2d,
 		a_axis_x, a_axis_y, a_axis_z, a_plane_xy, a_plane_xz, a_plane_yz,
 		a_plane_xy_rot, a_plane_xz_rot, a_plane_yz_rot, a_plane_yx, a_plane_zx, a_plane_zy,
-		a_helix_xy, a_helix_xz, a_helix_yz; 
+		a_helix_xy, a_helix_xz, a_helix_yz,
+		a_offcenterplane_xy, a_offcenterplane_xz, a_offcenterplane_yz;
 
 	@Override
 	public void setUp() {
@@ -191,6 +213,9 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		a_helix_xy = new TimeSeriesAlignment(helix_xy); 
 		a_helix_xz = new TimeSeriesAlignment(helix_xz); 
 		a_helix_yz = new TimeSeriesAlignment(helix_yz); 
+		a_offcenterplane_xy = new TimeSeriesAlignment(offcenterplane_xy); 
+		a_offcenterplane_xz = new TimeSeriesAlignment(offcenterplane_xz); 
+		a_offcenterplane_yz = new TimeSeriesAlignment(offcenterplane_yz); 
 	}
 	
 	private void helper_testNoRotation(TimeSeriesAlignment self, double[][] self2) {
@@ -242,6 +267,11 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		helper_testRotation(a_axis_z, axis_y, Math.PI/2, -Math.PI/2);
 
 		//helper_testRotation(a_plane_xy, plane_xz, Math.PI/2, 0);
+		//helper_testRotation(a_plane_xy, plane_yz, Math.PI/2, 0);
+		//helper_testRotation(a_plane_xz, plane_yz, Math.PI/2, 0);
+		//helper_testRotation(a_offcenterplane_xy, offcenterplane_xz, Math.PI/2, 0);
+		//helper_testRotation(a_offcenterplane_xy, offcenterplane_yz, Math.PI/2, 0);
+		//helper_testRotation(a_offcenterplane_xz, offcenterplane_yz, Math.PI/2, 0);
 }
 
 	public void testExactCopyRotateOther() {
