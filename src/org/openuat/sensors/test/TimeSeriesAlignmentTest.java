@@ -317,7 +317,7 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	}
 
 	protected double runCase(String filename) throws IOException, InterruptedException {
-		int dataSetLength = PositiveNegativeTestsHelper.determineDataSetLength(filename);
+		int dataSetLength = DataFilesHelper.determineDataSetLength(filename);
 		System.out.println("Data set is " + dataSetLength + " seconds long");
 		// just read from the file
 		FileInputStream in = new FileInputStream(filename);
@@ -335,7 +335,7 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	}
 
 	public void testAuthenticationSuccess() throws IOException, InterruptedException {
-		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/positive/");
+		String[] testFiles = DataFilesHelper.getTestFiles("tests/motionauth/positive/");
 		for (int i=0; i<testFiles.length; i++) {
 			runCase("tests/motionauth/positive/" + testFiles[i]);
 			System.out.println("----- TEST SUCCESSFUL: tests/motionauth/positive/" + testFiles[i]);
@@ -343,7 +343,7 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	}
 
 	public void testAuthenticationFailure() throws IOException, InterruptedException {
-		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/negative/");
+		String[] testFiles = DataFilesHelper.getTestFiles("tests/motionauth/negative/");
 		for (int i=0; i<testFiles.length; i++) {
 			runCase("tests/motionauth/negative/" + testFiles[i]);
 		}

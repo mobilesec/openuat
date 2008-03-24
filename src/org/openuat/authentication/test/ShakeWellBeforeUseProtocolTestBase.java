@@ -19,7 +19,7 @@ import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.TimeSeriesAggregator;
-import org.openuat.sensors.test.PositiveNegativeTestsHelper;
+import org.openuat.sensors.test.DataFilesHelper;
 
 public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 
@@ -59,7 +59,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 	
 	protected void runCase(String filename) throws IOException, InterruptedException {
 		if (classIsReadyForTests) {
-			int dataSetLength = PositiveNegativeTestsHelper.determineDataSetLength(filename);
+			int dataSetLength = DataFilesHelper.determineDataSetLength(filename);
 			System.out.println("Data set is " + dataSetLength + " seconds long");
 			int timeout = (dataSetLength + MAX_PROTOCOL_LATENCY_SECONDS) * 1000;
 			// just read from the file
@@ -95,7 +95,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 		if (!classIsReadyForTests) 
 			return;
 			
-		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/positive/");
+		String[] testFiles = DataFilesHelper.getTestFiles("tests/motionauth/positive/");
 		for (int i=0; i<testFiles.length; i++) {
 			numSucceeded = numFailed = numProgress = 0;
 			runCase("tests/motionauth/positive/" + testFiles[i]);
@@ -112,7 +112,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 		if (!classIsReadyForTests) 
 			return;
 
-		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/negative/");
+		String[] testFiles = DataFilesHelper.getTestFiles("tests/motionauth/negative/");
 		for (int i=0; i<testFiles.length; i++) {
 			numSucceeded = numFailed = numProgress = 0;
 			runCase("tests/motionauth/negative/" + testFiles[i]);

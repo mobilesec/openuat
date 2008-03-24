@@ -18,7 +18,7 @@ import java.io.InputStreamReader;
 import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
 
-public class PositiveNegativeTestsHelper {
+public class DataFilesHelper {
 	/** This is a small helper to get all *.gz files from a directory. */
 	public static String[] getTestFiles(String directory) {
 		File dir = new File(directory);
