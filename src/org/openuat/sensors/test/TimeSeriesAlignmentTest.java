@@ -273,9 +273,9 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		helper_testRotation(a_plane_xy, plane_xz, Math.PI/2, 0, 0, 1, 0);
 		helper_testRotation(a_plane_xy, plane_yz, Math.PI/2, 0, 1, 1, 0);
 		helper_testRotation(a_plane_xz, plane_yz, Math.PI/2, 0, 0, 0, 0);
-		//helper_testRotation(a_offcenterplane_xy, offcenterplane_xz, Math.PI/2, 0);
-		//helper_testRotation(a_offcenterplane_xy, offcenterplane_yz, Math.PI/2, 0);
-		//helper_testRotation(a_offcenterplane_xz, offcenterplane_yz, Math.PI/2, 0);
+		helper_testRotation(a_offcenterplane_xy, offcenterplane_xz, Math.PI/2, 0, 0, 1, 0);
+		helper_testRotation(a_offcenterplane_xy, offcenterplane_yz, Math.PI/2, 0, 1, 1, 0);
+		helper_testRotation(a_offcenterplane_xz, offcenterplane_yz, 0, 0, 1, 0, 0);
 }
 
 	public void testExactCopyRotateOther() {
