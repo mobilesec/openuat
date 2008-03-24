@@ -60,21 +60,29 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 */
 	private static int[][] quadRot_3D = {
 			{0, 0, 0, 0, 0, 0}, // check - V/2
-			{1, 0, 0, 1, 1, 0}, // check - V/1
+			{1, 0, 0, 1, 0, 1}, // check - V/1
 			{2, 0, 0, 0, 1, 1}, // check - V/4
-			{3, 0, 0, 1, 0, 1}, // check - V/3
-			{0, 1, 0, 2, 0, 1}, // check - IV/3
+			{3, 0, 0, 1, 1, 0}, // check - V/3
+			{0, 1, 0, 2, 0, 0}, // check - IV/3
 			{0, 2, 0, 0, 0, 1}, // check - VI/4
-			{0, 3, 0, 2, 0, 0}, // check - II/1
-			{1, 1, 0, 0, 0, 0},
-			{1, 2, 0, 0, 0, 0},
-			{1, 3, 0, 0, 0, 0},
-			{0, 2, 0, 0, 0, 0},
-			{3, 2, 0, 0, 0, 0},
-			{0, 3, 0, 0, 0, 0},
-			{1, 3, 0, 0, 0, 0},
-			{2, 3, 0, 0, 0, 0},
-			{3, 3, 0, 0, 0, 0},
+			{0, 3, 0, 2, 0, 1}, // check - II/1
+			{1, 1, 0, 3, 0, 0}, // check - III/1
+			{1, 2, 0, 1, 0, 0}, // check - VI/1
+			{1, 3, 0, 3, 0, 1}, // check - I/3
+			{2, 1, 0, 2, 1, 0}, // check - II/3
+			{2, 2, 0, 0, 1, 0}, // check - VI/2
+			{2, 3, 0, 2, 1, 1}, // check - IV/1
+			{3, 1, 0, 3, 1, 0}, // check - I/1
+			{3, 2, 0, 1, 1, 1}, // check - VI/3
+			{3, 3, 0, 3, 1, 1}, // check - III/3
+			{0, 1, 1, 4, 0, 1}, // check - IV/2
+			{0, 3, 1, 4, 1, 1}, // check - II/4
+			{1, 1, 1, 5, 0, 1}, // check - III/4
+			{1, 3, 1, 5, 1, 1}, // check - I/2
+			{2, 1, 1, 4, 0, 0}, // check - II/2
+			{2, 3, 1, 4, 1, 0}, // check - IV/4
+			{3, 1, 1, 5, 0, 0}, // check - I/4
+			{3, 3, 1, 5, 1, 0}, // check - III/2
 		};
 	
 	/** Constructs all internal buffers and the time series.
@@ -367,7 +375,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			case 3: x = coord[1];
 					y = coord[2];
 					z = coord[0];
-					neg = true;
+					neg = false;
 					break;
 			case 4: x = coord[2];
 					y = coord[0];
