@@ -8,14 +8,8 @@
  */
 package org.openuat.authentication.test;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
 
 import junit.framework.Assert;
@@ -25,6 +19,7 @@ import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.TimeSeriesAggregator;
+import org.openuat.sensors.test.PositiveNegativeTestsHelper;
 
 public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 
@@ -64,7 +59,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 	
 	protected void runCase(String filename) throws IOException, InterruptedException {
 		if (classIsReadyForTests) {
-			int dataSetLength = determineDataSetLength(filename);
+			int dataSetLength = PositiveNegativeTestsHelper.determineDataSetLength(filename);
 			System.out.println("Data set is " + dataSetLength + " seconds long");
 			int timeout = (dataSetLength + MAX_PROTOCOL_LATENCY_SECONDS) * 1000;
 			// just read from the file
@@ -100,7 +95,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 		if (!classIsReadyForTests) 
 			return;
 			
-		String[] testFiles = getTestFiles("tests/motionauth/positive/");
+		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/positive/");
 		for (int i=0; i<testFiles.length; i++) {
 			numSucceeded = numFailed = numProgress = 0;
 			runCase("tests/motionauth/positive/" + testFiles[i]);
@@ -117,7 +112,7 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 		if (!classIsReadyForTests) 
 			return;
 
-		String[] testFiles = getTestFiles("tests/motionauth/negative/");
+		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/negative/");
 		for (int i=0; i<testFiles.length; i++) {
 			numSucceeded = numFailed = numProgress = 0;
 			runCase("tests/motionauth/negative/" + testFiles[i]);
@@ -127,33 +122,5 @@ public class ShakeWellBeforeUseProtocolTestBase extends TestCase {
 			Assert.assertEquals("Test file " + testFiles[i] + " should have failed on both side, but didn't",
 					2, numFailed);
 		}
-	}
-
-	/** This is a small helper to get all *.gz files from a directory. */
-	private String[] getTestFiles(String directory) {
-		File dir = new File(directory);
-		String[] testFiles = dir.list(new FilenameFilter() { 
-			public boolean accept(File dir, String name) {
-				return name.endsWith(".gz");
-			}
-		});
-		return testFiles;
-	}
-
-	/** This helper function returns the length of the data set in seconds. */ 
-	private int determineDataSetLength(String filename) throws FileNotFoundException, IOException {
-		BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(filename))));
-		int firstTimestamp = -1, lastTimestamp = -1;
-		String line = in.readLine();
-		while (line != null) {
-			StringTokenizer st = new StringTokenizer(line, " .", false);
-			int timestampSecs = Integer.parseInt(st.nextToken());
-			if (firstTimestamp == -1)
-				firstTimestamp = timestampSecs;
-			if (timestampSecs > lastTimestamp)
-				lastTimestamp = timestampSecs;
-			line = in.readLine();
-		}
-		return lastTimestamp - firstTimestamp;
 	}
 }

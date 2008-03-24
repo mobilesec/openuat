@@ -8,6 +8,20 @@
  */
 package org.openuat.sensors.test;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.StringTokenizer;
+import java.util.zip.GZIPInputStream;
+
+import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
+import org.openuat.sensors.AsciiLineReaderBase;
+import org.openuat.sensors.ParallelPortPWMReader;
+import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.TimeSeriesAlignment;
 
 import junit.framework.Assert;
@@ -187,7 +201,8 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		a_axis_x, a_axis_y, a_axis_z, a_plane_xy, a_plane_xz, a_plane_yz,
 		a_plane_xy_rot, a_plane_xz_rot, a_plane_yz_rot, a_plane_yx, a_plane_zx, a_plane_zy,
 		a_helix_xy, a_helix_xz, a_helix_yz,
-		a_offcenterplane_xy, a_offcenterplane_xz, a_offcenterplane_yz;
+		a_offcenterplane_xy, a_offcenterplane_xz, a_offcenterplane_yz,
+		sample1, sample2;
 
 	@Override
 	public void setUp() {
@@ -216,6 +231,17 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		a_offcenterplane_xy = new TimeSeriesAlignment(offcenterplane_xy); 
 		a_offcenterplane_xz = new TimeSeriesAlignment(offcenterplane_xz); 
 		a_offcenterplane_yz = new TimeSeriesAlignment(offcenterplane_yz); 
+
+		sample1 = new TimeSeriesAlignment(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+		sample2 = new TimeSeriesAlignment(3, ShakeWellBeforeUseParameters.activityDetectionWindowSize, ShakeWellBeforeUseParameters.activityMinimumSegmentSize, -1);
+		sample1.setOffset(0);
+		sample1.setMultiplicator(1 / 128f);
+		sample1.setSubtractTotalMean(true);
+		sample1.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		sample2.setOffset(0);
+		sample2.setMultiplicator(1 / 128f);
+		sample2.setSubtractTotalMean(true);
+		sample2.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 	}
 	
 	private void helper_testNoRotation(TimeSeriesAlignment self, double[][] self2) {
@@ -288,5 +314,38 @@ public class TimeSeriesAlignmentTest extends TestCase {
 	public void testRotateNoExactMatchPossible() {
 		TimeSeriesAlignment.Alignment a = a_plane_xy_2d.alignWith(plane_yx_2d);
 		Assert.assertTrue("Error after rotational alignment should not be zero", Math.abs(0 - a.error) > 0.001);
+	}
+
+	protected double runCase(String filename) throws IOException, InterruptedException {
+		int dataSetLength = PositiveNegativeTestsHelper.determineDataSetLength(filename);
+		System.out.println("Data set is " + dataSetLength + " seconds long");
+		// just read from the file
+		FileInputStream in = new FileInputStream(filename);
+		AsciiLineReaderBase reader1 = new ParallelPortPWMReader(new GZIPInputStream(in), ShakeWellBeforeUseParameters.samplerate);
+
+		reader1.addSink(new int[] { 0, 1, 2 }, sample1.getInitialSinks());
+		reader1.addSink(new int[] { 4, 5, 6 }, sample2.getInitialSinks());
+	
+		reader1.simulateSampling();
+		in.close();
+		System.gc();
+		
+		//sample1.alignWith(sample2.)
+		return 0;
+	}
+
+	public void testAuthenticationSuccess() throws IOException, InterruptedException {
+		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/positive/");
+		for (int i=0; i<testFiles.length; i++) {
+			runCase("tests/motionauth/positive/" + testFiles[i]);
+			System.out.println("----- TEST SUCCESSFUL: tests/motionauth/positive/" + testFiles[i]);
+		}
+	}
+
+	public void testAuthenticationFailure() throws IOException, InterruptedException {
+		String[] testFiles = PositiveNegativeTestsHelper.getTestFiles("tests/motionauth/negative/");
+		for (int i=0; i<testFiles.length; i++) {
+			runCase("tests/motionauth/negative/" + testFiles[i]);
+		}
 	}
 }
