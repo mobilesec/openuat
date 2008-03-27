@@ -460,10 +460,17 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (firstStageSeries_Int.length == 3)
 			phi = new double[windowSize+maxSegmentSize];
 		
-		cartesian = new double[maxSegmentSize][];
+		cartesian = new double[windowSize+maxSegmentSize][];
+		index = 0;
 	}
 	
+	/** Returns all dimensions of the active segment in cartesian coordinates.
+	 * @return The length will be equal to index.
+	 */
 	public double[][] getCartesian() {
-		return cartesian;
+		double[][] ret = new double[index][];
+		for (int i=0; i<index; i++)
+			ret[i] = cartesian[i];
+		return ret;
 	}
 }

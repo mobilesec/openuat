@@ -30,8 +30,8 @@ import junit.framework.TestCase;
 public class TimeSeriesAlignmentTest extends TestCase {
 	private static final int NUMSAMPLES = 10;
 	
-	private static final double POSIIVE_SAMPLES_ALIGNMENT_ERROR_THRESHOLD = 0.1;
-	private static final double NEGATIVE_SAMPLES_ALIGNMENT_ERROR_THRESHOLD = 0.1;
+	private static final double POSIIVE_SAMPLES_ALIGNMENT_ERROR_THRESHOLD = 4000;
+	private static final double NEGATIVE_SAMPLES_ALIGNMENT_ERROR_THRESHOLD = 10000;
 	
 	private static double[][] axis_x_2d, axis_y_2d;
 	private static double[][] axis_xm_2d, axis_ym_2d;
@@ -247,6 +247,12 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		sample2.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 	}
 	
+	@Override
+	public void tearDown() {
+		sample1.reset();
+		sample2.reset();
+	}
+	
 	private void helper_testNoRotation(TimeSeriesAlignment self, double[][] self2) {
 		TimeSeriesAlignment.Alignment a = self.alignWith(self2);
 		Assert.assertEquals("Delta alpha is not correct", 0, a.delta_theta, 0.001);
@@ -340,7 +346,7 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		String[] testFiles = DataFilesHelper.getTestFiles("tests/motionauth/positive/");
 		for (int i=0; i<testFiles.length; i++) {
 			double error = runCase("tests/motionauth/positive/" + testFiles[i]);
-			Assert.assertTrue("Error should have been lower than threshold for file " + 
+			Assert.assertTrue("Error (" + error + ") should have been lower than threshold for file " + 
 					"tests/motionauth/positive/" + testFiles[i] + 
 					", but wasn't", (error < POSIIVE_SAMPLES_ALIGNMENT_ERROR_THRESHOLD));
 			System.out.println("----- TEST SUCCESSFUL: tests/motionauth/positive/" + testFiles[i]);
@@ -351,7 +357,7 @@ public class TimeSeriesAlignmentTest extends TestCase {
 		String[] testFiles = DataFilesHelper.getTestFiles("tests/motionauth/negative/");
 		for (int i=0; i<testFiles.length; i++) {
 			double error = runCase("tests/motionauth/negative/" + testFiles[i]);
-			Assert.assertTrue("Error should have been higher than threshold for file " + 
+			Assert.assertTrue("Error (" + error + ") should have been higher than threshold for file " + 
 					"tests/motionauth/negative/" + testFiles[i] + 
 					", but wasn't", (error > NEGATIVE_SAMPLES_ALIGNMENT_ERROR_THRESHOLD));
 			System.out.println("----- TEST SUCCESSFUL: tests/motionauth/negative/" + testFiles[i]);
