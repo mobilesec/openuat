@@ -33,6 +33,8 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 
 	private double[] r = null, theta = null, phi = null;
 	
+	private double[][] cartesian = null;
+	
 	private int index = -1;
 	
 	/** This is a hard-coded table of what the different quadrant rotation 
@@ -51,13 +53,6 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			{2, 0, 1},
 			{3, 1, 0},
 		};
-	/* 	 * 				  0: x, y, z
-	 * 				  1: y, x, z
-	 * 				  2: x, z, y
-	 * 				  3: y, z, x
-	 * 				  4: z, x, y
-	 * 				  5: z, y, x
-*/
 	private static int[][] quadRot_3D = {
 			{0, 0, 0, 0, 0, 0}, // check - V/2
 			{1, 0, 0, 1, 0, 1}, // check - V/1
@@ -107,11 +102,8 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		
 		if (numSeries != 2 && numSeries != 3)
 			throw new IllegalArgumentException("Number of dimensions must be 2 or 3");
-		
-		r = new double[windowSize+maxSegmentSize];
-		theta = new double[windowSize+maxSegmentSize];
-		if (numSeries == 3)
-			phi = new double[windowSize+maxSegmentSize];
+	
+		init();
 	}
 	
 	public TimeSeriesAlignment(double[][] mySide) {
@@ -447,6 +439,31 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (coord.length == 3)
 			phi[index] = polar[2];
 		
+		// also remember the original values for alignWith()
+		cartesian[index] = new double[coord.length];
+		for (int i=0; i<coord.length; i++)
+			cartesian[index][i] = coord[i];
+		
 		index++;
+	}
+
+	/** Resets the time series to the state as created when freshly constructing it. */
+	public void reset() {
+		super.reset();
+		init();
+	}
+		
+	/** Simply initializes all vectors kept in this class and is called by the constructor and reset(). */ 
+	private void init() {
+		r = new double[windowSize+maxSegmentSize];
+		theta = new double[windowSize+maxSegmentSize];
+		if (firstStageSeries_Int.length == 3)
+			phi = new double[windowSize+maxSegmentSize];
+		
+		cartesian = new double[maxSegmentSize][];
+	}
+	
+	public double[][] getCartesian() {
+		return cartesian;
 	}
 }
