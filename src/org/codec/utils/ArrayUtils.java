@@ -1,8 +1,4 @@
-package org.codec.utils;/*
- * Copyright 2002 by the authors. All rights reserved.
- *
- * Author: Cristina V Lopes
- */
+package org.codec.utils;
 
 /**
  * Copyright 2002 by the authors. All rights reserved.

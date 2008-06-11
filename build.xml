@@ -83,7 +83,7 @@
 	<!-- the device for the test mode - you can define it on the command-line
 	     using the -D switch, e.g. ant -Ddevice=Generic/midp2 emulator -->
 	<property name="device" value="Generic/midp2"/>
-	<property name="midp_libs" value="${polish.home}/import/midp-2.0.jar:${polish.home}/lib/cldc-1.1-java5.0.jar" />
+	<property name="midp_libs" value="${polish.home}/import/midp-2.0.jar:${polish.home}/import/cldc-1.1-java5.0.jar" />
 	<!-- These classes can only be compiled with J2ME MIDP class libraries -->
 	<property name="midp-only-files1" value="org/openuat/apps/j2me/**/*.java" />
 	<property name="midp-only-files2" value="org/openuat/sensors/j2me/**/*.java" />
@@ -440,6 +440,7 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java" />
+				<!-- org/codec/**/*.java" /> -->
 		</copy>
 
 		<!-- build multiple versions of the ShakeMIDlet - "real" and demo modes -->
