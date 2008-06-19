@@ -1,9 +1,9 @@
 Additional methods that should be implemented within OpenUAT:
-- Loud-and-Clear and HAPADEP
+- Loud-and-Clear and HAPADEP: Iulia Ion now working on this
 - BEDA
-- MANA IV as basic protocol family
+- MANA IV as basic protocol family: Rene Mayrhofer now working on this
 - Hash visualization
-- Seeing-is-Believing and extension
+- Seeing-is-Believing and extension: Iulia Ion now working on this
 
 - "A Gesture-based Authentication Scheme for Untrusted Public Terminals" 
   to authenticate a user interface device to a personal mobile device.
