@@ -73,14 +73,16 @@ public class Quantizer {
 		double intervals[][] = new double[2][];
 		intervals[0] = new double[numLevels];
 		intervals[1] = new double[numLevels];
-		logger.debug("Creating " + (exponentialLevels ? "exponential" : "linear") + 
+		if (logger.isDebugEnabled())
+			logger.debug("Creating " + (exponentialLevels ? "exponential" : "linear") + 
 				" intervals with lower=" + lower + ", upper=" + upper + 
 				", numLevels=" + numLevels + ", offset=" + offset + ", errorMargin=" + errorMargin);
 		int totalQuantLevelsExp = 1, curQuantLevelsExp = 1, sumQuantLevelsExp = 0;
 		if (exponentialLevels) {
 			for (int i=0; i<numLevels; i++) totalQuantLevelsExp*=2;
 			totalQuantLevelsExp--;
-			logger.debug("Using " + totalQuantLevelsExp + " quants");
+			if (logger.isDebugEnabled())
+				logger.debug("Using " + totalQuantLevelsExp + " quants");
 		}
 		for (int i=0; i<numLevels; i++) {
 			if (! exponentialLevels) {
@@ -88,12 +90,13 @@ public class Quantizer {
 				intervals[1][i] = (i+1+offset) * (upper-lower)/numLevels + lower - errorMargin;
 			}
 			else {
-				intervals[0][i] =  (sumQuantLevelsExp+offset*curQuantLevelsExp) * (upper-lower)/totalQuantLevelsExp + lower + errorMargin;
+				intervals[0][i] = (sumQuantLevelsExp+offset*curQuantLevelsExp) * (upper-lower)/totalQuantLevelsExp + lower + errorMargin;
 				intervals[1][i] = (sumQuantLevelsExp+(offset+1)*curQuantLevelsExp) * (upper-lower)/totalQuantLevelsExp + lower - errorMargin;
 				sumQuantLevelsExp+=curQuantLevelsExp;
 				curQuantLevelsExp*=2;
 			}
-			logger.debug("Using interval " + i + " from " + intervals[0][i] + " to " + intervals[1][i]);
+			if (logger.isDebugEnabled())
+				logger.debug("Using interval " + i + " from " + intervals[0][i] + " to " + intervals[1][i]);
 		}
 		// but (when using no error zones), set first and last intervals to be open
 		intervals[0][0] = Double.NEGATIVE_INFINITY;
@@ -106,7 +109,8 @@ public class Quantizer {
 			for (int j=0; j<numLevels; j++) {
 				if (vector[i] >= intervals[0][j] && vector[i] <= intervals[1][j]) {
 					quantized[i] = j;
-					logger.debug(i + ": " + vector[i] + " is in " + j + ": [" + 
+					if (logger.isDebugEnabled())
+						logger.debug(i + ": " + vector[i] + " is in " + j + ": [" + 
 							intervals[0][j] + ";" + intervals[1][j] + "], setting to " + quantized[i]);
 				}
 			}
@@ -146,7 +150,8 @@ public class Quantizer {
 		if (numCandidates < 2)
 			throw new IllegalArgumentException("numCandidates must >= 2");
 		
-		logger.debug("Generating " + numCandidates + " quantization candidates for lower=" 
+		if (logger.isDebugEnabled())
+			logger.debug("Generating " + numCandidates + " quantization candidates for lower=" 
 				+ lower + ", upper=" + upper + ", numLevels=" + numLevels + 
 				(errorZone ? " with" : " without") + " error zones");
 		
