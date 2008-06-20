@@ -1,0 +1,33 @@
+After unpacking the OpenUAT source tree, compiling and running the unit tests 
+can be done by simply calling
+
+	ant
+
+This assumes an installed ant version >= 1.6 and a Java development kit
+installed in the runtime path. Although the ant script detects which version
+(1.4, 1.5, or 1.6) is installed, the respective newest version is recommended
+so that all classes can be compiled. When running ant under an older JDK
+version, some classes will be excluded from compilation and thus from testing.
+
+To successfully run the JUnit tests, the installed Java runtime environment
+needs to be able to use AES with 256 Bit keys. The default Sun JRE does not
+allow this key strength unless the "JCE Unlimited Strength" policy is 
+installed. When unit tests fail (e.g. org.openuat.authentication.test.
+InterlockProtocolTest), please check that this policy has been correctly 
+installed, effectively replacing local_policy.jar and US_export_policy.jar in 
+the lib/security directory of the JRE.
+
+J2ME
+----
+Most of the code in OpenUAT can be compiled for use in J2ME, e.g. on mobile
+phones. To compile it, the "Wireless Toolkit" (WTK) >= 2.2 and J2MEPolish
+version 2 need to be installed. The installation path of J2MEPolish should be
+put into the "polish.home" variable in "build.xml". If everything has been
+installed and set, the ant build script should detect the J2ME build 
+environment and use it:
+
+     [echo]     WTK with MIDP2.0 and CLDC1.1: true 
+     
+
+Extending the toolkit
+---------------------
