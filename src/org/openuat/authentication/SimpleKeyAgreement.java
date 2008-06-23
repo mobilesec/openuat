@@ -14,23 +14,28 @@ import org.openuat.util.Hash;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
-/** This class implements a simple key agreement protocol. Simple refers to the interface of this class, not its security. 
- * For a complete key agreement, the caller is expected to initialize the object, transmit the public key to the remote host,
- * receive the remote public key and add it to this agreements and then get the shared authentication and session keys. Each 
- * caller is expected to handle the transmitted public keys and especially the private keys with care and not leak it to
- * an outside class. The steps must be done in exactly this order or a KeyAgreementProtocolException will be thrown.
+/** This class implements a simple key agreement protocol. Simple refers to the 
+ * interface of this class, not its security. For a complete key agreement, the 
+ * caller is expected to initialize the object, transmit the public key to the 
+ * remote host, receive the remote public key and add it to this agreements and 
+ * then get the shared authentication and session keys. Each caller is expected 
+ * to handle the transmitted public keys and especially the private keys with 
+ * care and not leak it to an outside class. The steps must be done in exactly 
+ * this order or a KeyAgreementProtocolException will be thrown.
  * 
  * @author Rene Mayrhofer
  * @version 1.0
  */
 public class SimpleKeyAgreement {
 	/* These are our states of the key agreement protocol: 
-	 - initialized means that the internal nonce has been generated (by the init method),
-	 but that no message has been transmitted yet, i.e. that we have neither sent our 
-	 own part to the remote nor that we have received the remote part yet.
-	 - inTransit means that the own key has been sent, but the remote key has not yet 
-	 been received and added.
-	 - completed means that we have received the remote part and thus completed the protocol.
+	 - initialized means that the internal nonce has been generated (by the 
+	   init method), but that no message has been transmitted yet, i.e. that 
+	   we have neither sent our own part to the remote nor that we have 
+	   received the remote part yet.
+	 - inTransit means that the own key has been sent, but the remote key has 
+	   not yet been received and added.
+	 - completed means that we have received the remote part and thus completed 
+	   the protocol.
 	 */
 	private static final int STATE_INITIALIZED = 1;
 	/** @see #STATE_INITIALIZED */
@@ -38,25 +43,32 @@ public class SimpleKeyAgreement {
 	/** @see #STATE_INITIALIZED */
 	private static final int STATE_COMPLETED = 3;
 	
-	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
+	/** If set to true, the JSSE will be used, if set to false, the 
+	 * Bouncycastle Lightweight API. */
 	private boolean useJSSE;
 
-	/** The current state of the protocol, i.e. one of STATE_INITIALIZED, STATE_INTRANSIT, or STATE_COMPLETED. */
+	/** The current state of the protocol, i.e. one of STATE_INITIALIZED, 
+	 * STATE_INTRANSIT, or STATE_COMPLETED. */
 	private int state;
 
-	/** The Diffie-Hellman key agreement object used for computing the shared key. This object will hold either a
-	 * javax.crypto.KeyAgreement object of an org.bouncycastle.crypto.BasicAgreement object, depending on the
-	 * used API.  */
+	/** The Diffie-Hellman key agreement object used for computing the shared 
+	 * key. This object will hold either a javax.crypto.KeyAgreement object of 
+	 * an org.bouncycastle.crypto.BasicAgreement object, depending on the
+	 * used API. */
 	private Object dh;
 
-	/** The local Diffie-Hellman key pair, can be used to get the public and private parts. This object will hold 
-	 * either a java.security.KeyPair object or an org.bouncycastle.crypto.AsymmetricCipherKeyPair object,
+	/** The local Diffie-Hellman key pair, can be used to get the public and 
+	 * private parts. This object will hold either a java.security.KeyPair 
+	 * object or an org.bouncycastle.crypto.AsymmetricCipherKeyPair object,
 	 * depending on the used API. */
 	private Object myKeypair;
 
-	/** We use this algorithm for computing the shared key. It is hard-coded for simpler use of this class. */
+	/** We use this algorithm for computing the shared key. It is hard-coded 
+	 * for simpler use of this class. */
 	private static final String KEYAGREEMENT_ALGORITHM = "DiffieHellman";
-	/** This is used for deriving the authentication key from the shared session key to ensure that they are different. It's just some random text, the exact value really does not matter. */
+	/** This is used for deriving the authentication key from the shared 
+	 * session key to ensure that they are different. It's just some random 
+	 * text, the exact value really does not matter. */
 	private static final String MAGIC_COOKIE = "MAGIC COOKIE FOR AUTHENTICAION";
 
 	/** The 1024 bit Diffie-Hellman modulus values used by SKIP */
@@ -88,7 +100,8 @@ public class SimpleKeyAgreement {
 			(byte) 0x5E, (byte) 0xC3, (byte) 0x55, (byte) 0xE9, (byte) 0x2F,
 			(byte) 0x78, (byte) 0xC7 };
 
-	/** The SKIP 1024 bit modulus. This is only a BigInterger representation of skip1024ModulusBytes, but kept for performance reasons. */
+	/** The SKIP 1024 bit modulus. This is only a BigInterger representation 
+	 * of skip1024ModulusBytes, but kept for performance reasons. */
 	public static final BigInteger skip1024Modulus = new BigInteger(1,
 			skip1024ModulusBytes);
 
@@ -110,31 +123,38 @@ public class SimpleKeyAgreement {
 	 }
 	 }*/
 
-	/** This is the shared key computed by the key agreement algorithm (Diffie-Hellman at the moment). It is not passed
-	 * to the caller by any function, but the session and authentication keys computed by getSessionKey and getAuthenticationKey
-	 * are only derived from this key in a non-reversable way. This provides Perfect Forward Secrecy (PFS), i.e. even when some
-	 * session or authentication key is leaked by improper use or side-channel attacks, neither this shared secret nor the private
-	 * key used to establish it will be leaked. The authentication and session keys are independent in the same way: knowing one
-	 * does not give any knowledge about the other (under the assumption that the hashing algorithm specified in 
-	 * DIGEST_ALGORITHM is secure).
+	/** This is the shared key computed by the key agreement algorithm 
+	 * (Diffie-Hellman at the moment). It is not passed to the caller by any 
+	 * function, but the session and authentication keys computed by 
+	 * getSessionKey and getAuthenticationKey are only derived from this key 
+	 * in a non-reversable way. This provides Perfect Forward Secrecy (PFS), 
+	 * i.e. even when some session or authentication key is leaked by improper 
+	 * use or side-channel attacks, neither this shared secret nor the private
+	 * key used to establish it will be leaked. The authentication and session 
+	 * keys are independent in the same way: knowing one does not give any 
+	 * knowledge about the other (under the assumption that the hashing 
+	 * algorithm specified in DIGEST_ALGORITHM is secure).
 	 */
 	private byte[] sharedKey;
 	
 	/** Initialized a fresh key agreement, simply by calling init(). 
 	 * @see #init
-	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
-	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
-	 *                Lightweight API classes will be used.
+	 * @param useJSSE If set to true, the JSSE API with the default JCE 
+	 *                provider of the JVM will be used for cryptographic 
+	 *                operations. If set to false, an internal copy of the 
+	 *                Bouncycastle Lightweight API classes will be used.
 	 */
 	public SimpleKeyAgreement(boolean useJSSE) throws InternalApplicationException {
 		init(useJSSE);
 	}
 
-	/** Initializes the random nonce of this side for generating the shared session key.
-	 * This method can be called in any state and wipes all old values (by calling wipe()).
-	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
-	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
-	 *                Lightweight API classes will be used.
+	/** Initializes the random nonce of this side for generating the shared 
+	 * session key. This method can be called in any state and wipes all old 
+	 * values (by calling wipe()).
+	 * @param useJSSE If set to true, the JSSE API with the default JCE 
+	 *                provider of the JVM will be used for cryptographic 
+	 *                operations. If set to false, an internal copy of the 
+	 *                Bouncycastle Lightweight API classes will be used.
 	 * @see #wipe
 	 */
 	public void init(// TODO: activate me again when J2ME polish can deal with Java5 sources!
@@ -185,7 +205,8 @@ public class SimpleKeyAgreement {
 	}
 //#endif
 
-	/** This is an implementation of init() using the Bouncycastle Lightweight API. */
+	/** This is an implementation of init() using the Bouncycastle Lightweight 
+	 * API. */
 	private void init_BCAPI() {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
 		wipe();
@@ -204,13 +225,16 @@ public class SimpleKeyAgreement {
 		state = STATE_INITIALIZED;
 	}
 
-	/** This method performs a secure wipe of the cryptographic key material held by this class by overwriting the memory
-	 * regions with zero before freeing them (i.e. handing them over to the garbage collector, which might free them
-	 * at an unpredictable time later, marking them for overwrite at an even later time). More specifically, it wipes
+	/** This method performs a secure wipe of the cryptographic key material 
+	 * held by this class by overwriting the memory regions with zero before 
+	 * freeing them (i.e. handing them over to the garbage collector, which 
+	 * might free them at an unpredictable time later, marking them for 
+	 * overwrite at an even later time). More specifically, it wipes
 	 * sharedKey, myKeypair and dh.
 	 * 
-	 * TODO: This method is not yet secure! It can't access the internal data structures of myKeypair and dh, which do not
-	 * offer wipe methods themselves.
+	 * TODO: This method is not yet secure! It can't access the internal data 
+	 * structures of myKeypair and dh, which do not offer wipe methods 
+	 * themselves.
 	 * 
 	 * @see #sharedKey
 	 * @see #myKeypair
@@ -233,8 +257,9 @@ public class SimpleKeyAgreement {
 		state = 0;
 	}
 
-	/**  Get the public key for the key agreement protocol. This byte array should be transmitted to the remote side.
-	 * This method can only be called in state initialized and changes it to inTransit. */
+	/** Get the public key for the key agreement protocol. This byte array 
+	 * should be transmitted to the remote side. This method can only be 
+	 * called in state initialized and changes it to inTransit. */
 	public byte[] getPublicKey() throws KeyAgreementProtocolException {
 		if (state != STATE_INITIALIZED)
 			throw new KeyAgreementProtocolException(
@@ -254,20 +279,23 @@ public class SimpleKeyAgreement {
 	}
 	
 //#if cfg.includeJSSESupport
-	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
+	/** This is an implementation of the last part of getPublicKey() using the 
+	 * Sun JSSE API. */
 	private byte[] getPublicKey_JSSE() {
 		return ((javax.crypto.interfaces.DHPublicKey) ((java.security.KeyPair) myKeypair).getPublic()).getY().toByteArray();
 	}
 //#endif
 	
-	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
+	/** This is an implementation of the last part of getPublicKey() using the 
+	 * Bouncycastle Lightweight API. */
 	private byte[] getPublicKey_BCAPI() {
 		return ((org.bouncycastle.crypto.params.DHPublicKeyParameters) 
 				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPublic()) .getY().toByteArray();
 	}
 
 	/** Add the remote public key.
-	 * This method can only be called in state inTransmit and changes it to completed.
+	 * This method can only be called in state inTransmit and changes it to 
+	 * completed.
 	 */ 
 	public void addRemotePublicKey(byte[] key)
 			throws KeyAgreementProtocolException, InternalApplicationException {
@@ -305,7 +333,8 @@ public class SimpleKeyAgreement {
 	}
 	
 //#if cfg.includeJSSESupport
-	/** This is an implementation of the last part of getPublicKey() using the Sun JSSE API. */
+	/** This is an implementation of the last part of getPublicKey() using the 
+	 * Sun JSSE API. */
 	private void addRemotePublicKey_JSSE(byte[] key)
 			throws KeyAgreementProtocolException, InternalApplicationException {
 		if (new BigInteger(key).equals(((javax.crypto.interfaces.DHPublicKey) ((java.security.KeyPair) myKeypair).getPublic())
@@ -340,7 +369,8 @@ public class SimpleKeyAgreement {
 	}
 //#endif
 
-	/** This is an implementation of the last part of getPublicKey() using the Bouncycastle Lightweight API. */
+	/** This is an implementation of the last part of getPublicKey() using the 
+	 * Bouncycastle Lightweight API. */
 	private void addRemotePublicKey_BCAPI(byte[] key)
 			throws KeyAgreementProtocolException {
 		if (new BigInteger(key).equals(((org.bouncycastle.crypto.params.DHPublicKeyParameters) 
@@ -353,12 +383,12 @@ public class SimpleKeyAgreement {
 			org.bouncycastle.crypto.params.DHPublicKeyParameters(new BigInteger(key), 
 					new org.bouncycastle.crypto.params.DHParameters(skip1024Modulus, skip1024Base));
 		sharedKey = ((org.bouncycastle.crypto.agreement.DHBasicAgreement) dh).calculateAgreement(remotePublicKey).toByteArray();
-		/* This is a fix for an interoperability problem between BC and JCE. According
-		 * to BC developer David Hook:
-		 * BigInteger.toByteArray() converts the big int to a 2's complement number
-		 * and occasionally this adds a leading zero to the byte array to prevent
-		 * the encoding from being negative. This leading zero needs to be dropped
-		 * if you want to correctly calculate the shared secret.
+		/* This is a fix for an interoperability problem between BC and JCE. 
+		 * According to BC developer David Hook:
+		 * BigInteger.toByteArray() converts the big int to a 2's complement 
+		 * number and occasionally this adds a leading zero to the byte array 
+		 * to prevent the encoding from being negative. This leading zero needs 
+		 * to be dropped if you want to correctly calculate the shared secret.
 		 */
 		if (sharedKey[0] == 0) {
 			byte[] sharedKeyNew = new byte[sharedKey.length-1];
@@ -373,9 +403,10 @@ public class SimpleKeyAgreement {
 	}
 	
 	/** This method can only be called in state completed.
-	 * The returned session key must only be used for deriving authentication and encryption keys,
-	 * e.g. as a PSK for IPSec. It must _not_ be used directly for authentication, since this could
-	 * leak the encryption key to any attacker if the authentication function is not strong enough. */
+	 * The returned session key must only be used for deriving authentication 
+	 * and encryption keys, e.g. as a PSK for IPSec. It must _not_ be used 
+	 * directly for authentication, since this could leak the encryption key 
+	 * to any attacker if the authentication function is not strong enough. */
 	public byte[] getSessionKey() throws KeyAgreementProtocolException,
 			InternalApplicationException {
 		if (state != STATE_COMPLETED)
@@ -390,9 +421,10 @@ public class SimpleKeyAgreement {
 	}
 
 	/** This method can only be called in state completed.
-	 * The returned key should be used for the initial authentication phase, but must _not_ be
-	 * used for deriving other channel authentication and encryption keys. It is derived from the same base as 
-     * the key returned by getSessionKey, and one can thus assume that if this key is equal on 
+	 * The returned key should be used for the initial authentication phase, 
+	 * but must _not_ be used for deriving other channel authentication and 
+	 * encryption keys. It is derived from the same base as the key returned 
+	 * by getSessionKey, and one can thus assume that if this key is equal on 
 	 * both sides, then both sides also share the same session key. */  
 	public byte[] getAuthenticationKey() throws KeyAgreementProtocolException,
 			InternalApplicationException {
