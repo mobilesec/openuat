@@ -45,6 +45,8 @@ import org.apache.log4j.Logger;
  * registered with addProtocolCommandHandlers. These commands can subsequently be handled 
  * at the stage when the Protocol_AuthenticationRequest command would be expected.
  * 
+ * TODO: make this class abstract to force use of ManaIV in all code
+ * 
  * @author Rene Mayrhofer
  * @version 1.1, changes to 1.0: Support registering additional protocol 
  *               handlers that are called for their registered protocol.
@@ -68,28 +70,28 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     public static final int AuthenticationStages = 4;
     
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
-	private boolean useJSSE;
+	protected boolean useJSSE;
 	
 	/** If != -1 and the protocol has been running for longer than this, it will be aborted. */
-	private int timeoutMs = -1;
+	protected int timeoutMs = -1;
 	
     /** The (already opened) connection used to communicate with the remote end, for both incoming and outgoing connections. */
-    private RemoteConnection connection;
+    protected RemoteConnection connection;
     /** If set to false, connection will be closed after the protocol finished. 
      * @see #connection
      * @see #HostProtocolHandler(RemoteConnection, boolean, boolean)
      */
-    private boolean keepConnected;
+    protected boolean keepConnected;
     /** An optional parameter that can be passed from the client to the server
      * in its authentication request message. If not null, this message will be
      * forwarded by both the server and the client in their respective authentication
      * success messages.
      */
-    private String optionalParameter = null;
+    protected String optionalParameter = null;
     /** The stream to send messages to the remote end. */
-    private OutputStreamWriter toRemote;
+    protected OutputStreamWriter toRemote;
     /** The stream to receive messages from the remote end. */
-    private InputStream fromRemote;
+    protected InputStream fromRemote;
     
     /** There may be additional handlers to call, depending on the first line
      * that is received from the other side. Keys are of type String and 
@@ -213,16 +215,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
    		connection.close();
     }
     
-    private String readLine() throws IOException {
+    protected String readLine() throws IOException {
     	return LineReaderWriter.readLine(fromRemote, timeoutMs);
     }
     
-    private void println(String line) throws IOException {
+    protected void println(String line) throws IOException {
     	LineReaderWriter.println(toRemote, line);
     }
     
     /** Tries to receive a properly formatted parameter line from the remote host.
-	 * This will always include the public key and might include an optional parameter.
 	 * If the line could not be received (i.e. no line at all or starting with an
 	 * unexpected command), an OnAuthenticaionFailure event is raised.
 	 * 
@@ -240,7 +241,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            
 	 * @return The complete parameter line on success, null otherwise.
 	 */
-    private String helper_getAuthenticationParamLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
+    protected String helper_getLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
     	String msg = readLine();
         if (msg == null) {
         	logger.warn("helper_getAuthenticationParamLine called with null argument");
@@ -300,8 +301,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @return The extracted public key is returned in this array. If decoding
 	 *         failed, null will be returned instead of the (meaningless) parts
 	 *         that might have been decoded.
-	 * @throws IOException 
 	 * @throws IOException
+	 * 
+	 * TODO: this is specific to simple DH?
 	 */
     private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, RemoteConnection remote) throws IOException
     {
@@ -344,8 +346,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            true for server side ("authenticator"), false for client side
 	 *            ("authenticatee")
 	 */
-    private void performAuthenticationProtocol(boolean serverSide) {
-    		SimpleKeyAgreement ka = null;
+    protected void performAuthenticationProtocol(boolean serverSide) {
+    	SimpleKeyAgreement ka = null;
         String inOrOut, serverToClient, clientToServer, remoteAddr=null;
         int totalTransferTime=0, totalCryptoTime=0;
         long timestamp=0;
@@ -401,7 +403,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
            	timestamp = System.currentTimeMillis();
             byte[] remotePubKey = null;
             if (serverSide) {
-            	String paramLine = helper_getAuthenticationParamLine(Protocol_AuthenticationRequest, connection, true);
+            	String paramLine = helper_getLine(Protocol_AuthenticationRequest, connection, true);
                 remotePubKey = helper_extractPublicKey(paramLine, Protocol_AuthenticationRequest, connection);
                 if (remotePubKey == null) {
                     shutdownConnectionCleanly();
@@ -439,7 +441,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             }
             else {
             	remotePubKey = helper_extractPublicKey(
-            			helper_getAuthenticationParamLine(Protocol_AuthenticationAcknowledge, connection, false),
+            			helper_getLine(Protocol_AuthenticationAcknowledge, connection, false),
                 		Protocol_AuthenticationAcknowledge, connection);
                 if (remotePubKey == null)
                 {
