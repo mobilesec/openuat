@@ -78,6 +78,7 @@ public class X509CertificateGeneratorTest extends TestCase {
 	}
 
 	// Can't execute the constructor without a valid CA...
+	// TODO: activate again
 	/*public void testCreateCertificateParameterCheck1() throws IOException, InvalidKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException, NoSuchProviderException, SignatureException, DataLengthException, SecurityException, InvalidKeySpecException, CryptoException {
 		try {
 			X509CertificateGenerator g = new X509CertificateGenerator("", "", "", useBCAPI);
@@ -126,6 +127,7 @@ public class X509CertificateGeneratorTest extends TestCase {
 		tempCa.deleteOnExit();
 		String caExportPw = "my test export password for the CA";
 		String caExportAlias = "my test alias for the CA export";
+		// TODO: activate again and make it run from within ant!
 /*		Assert.assertTrue("Could not generate new CA", 
 				X509CertificateGenerator.createNewCa("My new test CA", 90, tempCa.getAbsolutePath(), 
 						caExportPw, caExportAlias, useBCAPI));
