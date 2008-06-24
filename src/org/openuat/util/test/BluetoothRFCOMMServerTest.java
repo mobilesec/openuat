@@ -16,6 +16,7 @@ import javax.bluetooth.UUID;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
+import org.openuat.util.BluetoothSupport;
 import org.openuat.util.HostServerBase;
 
 import junit.framework.TestCase;
@@ -31,12 +32,22 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 
 	private BluetoothRFCOMMChannel client = null;
 
+	private boolean haveBTSupport;
+
 	public BluetoothRFCOMMServerTest(String s) {
 		super(s);
 	}
 
 	@Override
 	public void setUp() throws IOException {
+		try {
+			haveBTSupport = BluetoothSupport.init();
+		} catch (UnsatisfiedLinkError e) {
+			System.err.println("Unable to load native Bluetooth support: " + e.toString());
+			System.err.println("Skipping Bluetooth tests");
+			return;
+		}
+
 		server = new BluetoothRFCOMMServer(new Integer(CHANNEL), SERVICE_UUID, SERVICE_NAME, 
 				10000, false, true);
 		server.start();
@@ -51,6 +62,8 @@ public class BluetoothRFCOMMServerTest extends TestCase {
 	}
 
 	public void testCreateConnection() throws IOException {
+		if (!haveBTSupport) return;
+
 		// TODO: loopback connections seem not to work, hmm - need to find some was to test
 		client = new BluetoothRFCOMMChannel(LocalDevice.getLocalDevice().getBluetoothAddress(), CHANNEL);
 /*		Assert.assertNotNull("Can't connect to server channel", client.getInputStream());

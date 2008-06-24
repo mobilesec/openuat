@@ -21,7 +21,12 @@ public class BluetoothRFCOMMChannelTest extends TestCase {
 
 	@Override
 	public void setUp() {
-		haveBTSupport = BluetoothSupport.init();
+		try {
+			haveBTSupport = BluetoothSupport.init();
+		} catch (UnsatisfiedLinkError e) {
+			System.err.println("Unable to load native Bluetooth support: " + e.toString());
+			System.err.println("Skipping Bluetooth tests");
+		}
 	}
 
 	public void testClosedOnInitWithAddress() throws IOException {
