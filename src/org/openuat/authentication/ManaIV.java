@@ -85,8 +85,20 @@ import org.openuat.util.SafetyBeltTimer;
  * --> another difference is that random numbers (in id in MA-DH) are part of first 
  * commitment in DH-SC, but not in MA-DH --> make them a part?
  * SAS is basically similar to MANA-IV/MA-DH 
+ * BEDA is a variant of MANA III with n rounds, 1 for each bit --> seems unnecessary and can be done in 1 round
+ * 
+ * Wong and Stajano have a MANA III variant where the manually input code no longer needs to be secret
+ * --> maybe use this extension?
+ * --> commit mutually and include secret chosen earlier
+ * --> BUT: security only holds when auxiliary input takes place AFTER commitments!
+ * a restricted variant can be used asymmetrically
  * 
  * TODO: rename out-of-band to auxiliary channel
+ * 
+ * ==> results should be the "unified auxiliary channel authentication protocol"
+ * UACAP 
+ * needs to be able to cope with INPUT, TRANSFER, and VERIFY
+ * probably by using optional protocol steps (either of the auxiliary transfer must be done)
  * 
  * @author Rene Mayrhofer
  * @version 1.0
