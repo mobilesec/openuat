@@ -87,10 +87,20 @@ import org.openuat.util.SafetyBeltTimer;
  * SAS is basically similar to MANA-IV/MA-DH 
  * BEDA is a variant of MANA III with n rounds, 1 for each bit --> seems unnecessary and can be done in 1 round
  * 
+ * MANA I is transfer --> can be implemented as MANA IV when the receiving device compares
+ * MANA II is comparison --> is what MANA IV assumes
+ * MANA III is input --> can be implemented by replacing the comparison step in MANA IV with
+ * another round of commitment: A generates random K1, computes M1 = HMAC_K1 (Ia | DH-key | R) where
+ * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
+ * assumption: R remains secret  
+ * 
  * Wong and Stajano have a MANA III variant where the manually input code no longer needs to be secret
  * --> maybe use this extension?
  * --> commit mutually and include secret chosen earlier
  * --> BUT: security only holds when auxiliary input takes place AFTER commitments!
+ *     which is a different assumption
+ * --> use either MANA III when input is secret and known beforehand or variant when it can not be secret 
+ *     (but then timing is important)
  * a restricted variant can be used asymmetrically
  * 
  * TODO: rename out-of-band to auxiliary channel
@@ -99,6 +109,9 @@ import org.openuat.util.SafetyBeltTimer;
  * UACAP 
  * needs to be able to cope with INPUT, TRANSFER, and VERIFY
  * probably by using optional protocol steps (either of the auxiliary transfer must be done)
+ * 
+ * This protocol combines aspects of the MANA III variant described by Wong and Stajano,
+ * MANA IV, 
  * 
  * @author Rene Mayrhofer
  * @version 1.0
