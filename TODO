@@ -1,9 +1,12 @@
 Additional methods that should be implemented within OpenUAT:
 - Loud-and-Clear and HAPADEP: Iulia Ion now working on this
-- BEDA
+- BEDA: should be done after HAPADEP and SiB
 - MANA IV as basic protocol family: Rene Mayrhofer now working on this
+- MANA as user interaction (input/transfer/comparison of short strings): Rene Mayrhofer will be working on this next
 - Hash visualization
 - Seeing-is-Believing and extension: Iulia Ion now working on this
+- Laser channel
+- Improve sampling rate of accelerometer on N95 by using Python interface instead of sensor API wrapper
 
 - "A Gesture-based Authentication Scheme for Untrusted Public Terminals" 
   to authenticate a user interface device to a personal mobile device.

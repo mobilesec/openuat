@@ -65,6 +65,29 @@ import org.openuat.util.SafetyBeltTimer;
  * // on the other side:
  * m2.addOobMessage(msg);  
  * 
+ * TODO: signal to event listeners if the other side has been human-verified
+ * (in case of unidirectional OOB channels) 
+ * 
+ * TODO: for input or unidirectional OOB channels, might need commitments on the
+ * wireless channel with ACKs before sending the OOB message? cf. Wong/Stajano
+ * 
+ * TODO: compare MA-DH with SAS and DH-SC (cagalj): message order
+ * seeing-is-believing uses "pre-authentication" by sending hashes over visual before transmitting the public keys
+ * --> long OOB messages required
+ * sib-plus-mana transmits keys first over wireless and then does one-way "transmit"
+ * of a hash over visual --> authentication with one-way channel, but A needs to 
+ * trust B's comparison of the hashes --> not really mutual, but ok when devices are trusted
+ * sib+ma3 --> additional mutual commitment steps to random strings that are added
+ * to the hash that is transmitted visually
+ * TODO: do we need this for one-way? maybe add to our protocol?
+ * DH-SC uses two commitments before exchanging public keys, then id comparison as in MANA IV
+ * --> only difference is that MA-DH only uses 1 commitment while DH-SC uses 2
+ * --> another difference is that random numbers (in id in MA-DH) are part of first 
+ * commitment in DH-SC, but not in MA-DH --> make them a part?
+ * SAS is basically similar to MANA-IV/MA-DH 
+ * 
+ * TODO: rename out-of-band to auxiliary channel
+ * 
  * @author Rene Mayrhofer
  * @version 1.0
  */

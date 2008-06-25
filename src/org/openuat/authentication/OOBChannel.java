@@ -10,6 +10,7 @@ package org.openuat.authentication;
 
 /* Does this make sense? It's the other way around... */
 public interface OOBChannel {
+	// with uni-directional communication, can only provide uni-directional human verifiability!
 	public boolean isBidirectional();
 	
 	public boolean isConfidential();
