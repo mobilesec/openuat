@@ -400,8 +400,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *         failed, null will be returned instead of the (meaningless) parts
 	 *         that might have been decoded.
 	 * @throws IOException
-	 * 
-	 * TODO: this is specific to simple DH?
 	 */
     private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, RemoteConnection remote) throws IOException
     {
@@ -910,7 +908,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             }
             // step 3, part 3: Alice and Bob compute the out-of-band message
            	timestamp = System.currentTimeMillis();
-           	// TODO: add local and remote addresses
+           	// TODO: might want to add local and remote addresses
             byte[] oobInput = new byte[2*NonceByteLength]; 
             byte[] oobKey = new byte[myPubKey.length + remotePubKey.length + 
                                      (presharedShortSecret != null ? 

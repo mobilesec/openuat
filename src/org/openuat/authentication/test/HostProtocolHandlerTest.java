@@ -97,7 +97,7 @@ public class HostProtocolHandlerTest extends TestCase {
             i++;
         }
         Assert.assertEquals(0, h.getReceivedFailures());
-        Assert.assertEquals(8, h.getReceivedProgress());
+        Assert.assertEquals(10, h.getReceivedProgress());
         Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
@@ -122,7 +122,7 @@ public class HostProtocolHandlerTest extends TestCase {
             i++;
         }
         Assert.assertEquals(0, h.getReceivedFailures());
-        Assert.assertEquals(8, h.getReceivedProgress());
+        Assert.assertEquals(10, h.getReceivedProgress());
         Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
@@ -150,7 +150,7 @@ public class HostProtocolHandlerTest extends TestCase {
             i++;
         }
         Assert.assertEquals(0, h.getReceivedFailures());
-        Assert.assertEquals(8, h.getReceivedProgress());
+        Assert.assertEquals(10, h.getReceivedProgress());
         Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
@@ -167,7 +167,7 @@ public class HostProtocolHandlerTest extends TestCase {
     private class EventHelper implements AuthenticationProgressHandler
     {
         private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0, receivedStarted = 0;
-        private byte[][] sharedSessionKeys = new byte[2][], sharedAuthenticationKeys = new byte[2][];
+        private byte[][] sharedSessionKeys = new byte[2][], sharedOObMsgs = new byte[2][];
         private String[] optionalParameters = new String[2];
         private Socket[] sockets = new Socket[2];
 
@@ -178,7 +178,7 @@ public class HostProtocolHandlerTest extends TestCase {
             	int r = receivedSecrets++;
             	Object[] res = (Object[]) result;
                 sharedSessionKeys[r] = (byte[]) res[0];
-                sharedAuthenticationKeys[r] = (byte[]) res[1];
+                sharedOObMsgs[r] = (byte[]) res[1];
                 optionalParameters[r] = (String) res[2];
                 if (res.length > 3)
                 	sockets[r] = ((RemoteTCPConnection) res[3]).getSocketReference();
@@ -236,7 +236,7 @@ public class HostProtocolHandlerTest extends TestCase {
                 return false;
             else
                 return SimpleKeyAgreementTest.compareByteArray(sharedSessionKeys[0], sharedSessionKeys[1]) &&
-                	SimpleKeyAgreementTest.compareByteArray(sharedAuthenticationKeys[0], sharedAuthenticationKeys[1]);
+                	SimpleKeyAgreementTest.compareByteArray(sharedOObMsgs[0], sharedOObMsgs[1]);
         }
         
         boolean areOptionalParametersSet() 
