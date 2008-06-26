@@ -68,50 +68,7 @@ import org.openuat.util.SafetyBeltTimer;
  * TODO: signal to event listeners if the other side has been human-verified
  * (in case of unidirectional OOB channels) 
  * 
- * TODO: for input or unidirectional OOB channels, might need commitments on the
- * wireless channel with ACKs before sending the OOB message? cf. Wong/Stajano
- * 
- * TODO: compare MA-DH with SAS and DH-SC (cagalj): message order
- * seeing-is-believing uses "pre-authentication" by sending hashes over visual before transmitting the public keys
- * --> long OOB messages required
- * sib-plus-mana transmits keys first over wireless and then does one-way "transmit"
- * of a hash over visual --> authentication with one-way channel, but A needs to 
- * trust B's comparison of the hashes --> not really mutual, but ok when devices are trusted
- * sib+ma3 --> additional mutual commitment steps to random strings that are added
- * to the hash that is transmitted visually
- * TODO: do we need this for one-way? maybe add to our protocol?
- * DH-SC uses two commitments before exchanging public keys, then id comparison as in MANA IV
- * --> only difference is that MA-DH only uses 1 commitment while DH-SC uses 2
- * --> another difference is that random numbers (in id in MA-DH) are part of first 
- * commitment in DH-SC, but not in MA-DH --> make them a part?
- * SAS is basically similar to MANA-IV/MA-DH 
- * BEDA is a variant of MANA III with n rounds, 1 for each bit --> seems unnecessary and can be done in 1 round
- * 
- * MANA I is transfer --> can be implemented as MANA IV when the receiving device compares
- * MANA II is comparison --> is what MANA IV assumes
- * MANA III is input --> can be implemented by replacing the comparison step in MANA IV with
- * another round of commitment: A generates random K1, computes M1 = HMAC_K1 (Ia | DH-key | R) where
- * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
- * assumption: R remains secret  
- * 
- * Wong and Stajano have a MANA III variant where the manually input code no longer needs to be secret
- * --> maybe use this extension?
- * --> commit mutually and include secret chosen earlier
- * --> BUT: security only holds when auxiliary input takes place AFTER commitments!
- *     which is a different assumption
- * --> use either MANA III when input is secret and known beforehand or variant when it can not be secret 
- *     (but then timing is important)
- * a restricted variant can be used asymmetrically
- * 
  * TODO: rename out-of-band to auxiliary channel
- * 
- * ==> results should be the "unified auxiliary channel authentication protocol"
- * UACAP 
- * needs to be able to cope with INPUT, TRANSFER, and VERIFY
- * probably by using optional protocol steps (either of the auxiliary transfer must be done)
- * 
- * This protocol combines aspects of the MANA III variant described by Wong and Stajano,
- * MANA IV, 
  * 
  * @author Rene Mayrhofer
  * @version 1.0
@@ -131,6 +88,12 @@ public class ManaIV extends HostProtocolHandler {
     
     private OOBChannel oobChannel = null;
 
+    /** If this is set, then we have some form of user input that has been
+     * created _before_ starting the protocol instance and is assumed to be
+     * secret.
+     */
+    private byte[] presharedShortSecret = null;
+    
 	/**
 	 * 
 	 * @param combinedMaDH Set to true if the protocol should run an instance
@@ -226,10 +189,6 @@ public class ManaIV extends HostProtocolHandler {
      * In this implementation, Alice is the client and Bob the server. This 
      * protocol is only assumed to be secure for a <b>bidirectional and
      * authentic</b> out-of-band channel.
-     * 
-     * TODO: what should we use with unidirectional OOB channels?
-     * TODO: maybe provide a factory instead of folding the selection based
-     * on channel properties into ManaIV???
 	 */
     protected void performAuthenticationProtocolMaDh(boolean serverSide) {
     	SimpleKeyAgreement ka = null;
@@ -441,7 +400,9 @@ public class ManaIV extends HostProtocolHandler {
            	timestamp = System.currentTimeMillis();
            	// TODO: add local and remote addresses
             byte[] oobInput = new byte[2*NonceByteLength + 
-                                       myPubKey.length + remotePubKey.length];
+                                       myPubKey.length + remotePubKey.length + 
+                                       (presharedShortSecret != null ? 
+                                        presharedShortSecret.length : 0)];
             // order: first client, then server
             if (!serverSide) {
             	System.arraycopy(myId, 0, oobInput, 0, NonceByteLength);
@@ -455,17 +416,80 @@ public class ManaIV extends HostProtocolHandler {
             	System.arraycopy(remotePubKey, 0, oobInput, NonceByteLength*2, remotePubKey.length);
             	System.arraycopy(myPubKey, 0, oobInput, NonceByteLength*2+remotePubKey.length, myPubKey.length);
             }
-            byte[] oobMsg = Hash.doubleSHA256(oobInput, true);
+            byte[] oobMsg;
+            
+            // transfer: one device sends oobMsg to the other, the latter compares
+            //           important: the used must press "yes" on the former if and only if the latter accepted (1-bit OOB)
+            // comparison: user needs to enter yes/no on both sides after being shown oobMsg somehow
+            // input: additional steps required
+            if (presharedShortSecret != null) {
+            	// case 1: MANA III assuming the user input to be secret, but it
+            	// may have already been entered before even starting the protocol
+            	// instead of transmitting/comparing oobMsg, add the short secret to it 
+            	// and make it a commitment scheme
+            	/* A generates random K1, computes M1 = HMAC_K1 (Ia | DH-key | R) where
+ * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
+ * assumption: R remains secret */
+            	System.arraycopy(presharedShortSecret, 0, oobInput, 
+            			NonceByteLength*2+myPubKey.length+remotePubKey.length, 
+            			presharedShortSecret.length);
+
+            	// another two-round commitment scheme, but now using a HMAC keyed with a random key
+            	// 1. send HMAC_K1(oobInput)
+                byte[] myK = new byte[NonceByteLength];
+                r.nextBytes(myK);
+                //byte[] myM = hmac(myK, oobInput);
+                // 2. receive M2
+                
+                // if we have an input case and R is _not_ secret, then it must 
+                // be entered on both sides exactly here in the protocol, not
+                // earlier and not later
+                // it is important that R is not made available to an attacker 
+                // before the commitments M1/M2 have been exchanged because
+                // otherwise it could create valid commitments with different
+                // public keys (and different K1/K2, as long as R is known)
+                // need to block at this stage until both devices received R
+                                
+                // 3. send K1
+                // 4. receive K2
+                // 5. compare M1 and M2
+                //byte[] remoteMExpected = hmac(remoteK, oobInput);
+                //if (!Arrays.equals(remoteMExpected, remoteM))
+                
+                // already authenticated!
+                oobMsg = null;
+            }
+            else {
+                // TODO: define asymmetric case from Wong/Stajano page 11
+                // need to be clear which messages may be omitted (none for consistency?)
+                // and which user interaction is required -> the ACK, but on which device?
+                // personal device needs to verify, so "service" device needs to
+                // send commitment and R
+                // --> but this is actually the asymmetric transfer case, does not
+                // belong here
+            	// TODO: carefully check if there is a potential attack on this 
+            	// protocol when we omit the commitment and ACK from Wong/Stajano
+            	// seems ok because "client" first sends commitment and only sends
+            	// own ephemeral DH key after having received the remote (potential
+            	// attacker's) key --> attacker can not choose their 
+            	// NONONONO seems not ok
+            	// need to paint asymmetric attack scenario -> might need more
+            	// randomness in commitment and maybe need mutual commitment??
+            	
+            	// transfer or comparison case (depends on OOB channel)
+                oobMsg = Hash.doubleSHA256(oobInput, true);
+            }
             totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
-            // TODO: now transmit the OOB message
+
+            // final step: finish DH computation, but _only use keys after OOB message has been accepted by both sides_
+            // TODO: in Hollywood mode, don't do this until we accept
             
-            // step 4: compare OOB messages and, if equal, create keys
-            // TODO: compare OOB messages
-           	timestamp = System.currentTimeMillis();
+            // in PlainObject mode, generate the final session key and the OOB string and forward both
+            timestamp = System.currentTimeMillis();
             ka.addRemotePublicKey(remotePubKey);
             Object sessKey = ka.getSessionKey();
-            Object authKey = ka.getAuthenticationKey();
+            Object authKey = oobMsg;
            	totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 5, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
 
