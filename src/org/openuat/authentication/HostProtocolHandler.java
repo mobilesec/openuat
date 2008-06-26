@@ -140,8 +140,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     /** @see #Protocol_Hello */
     public static final String Protocol_AuthenticationAcknowledge2 = "AUTHACK2 ";
     
-    /** At the moment, the whole protocol consists of 4 stages. */
-    public static final int AuthenticationStages = 4;
+    /** At the moment, the whole protocol consists of 5 stages. */
+    public static final int AuthenticationStages = 5;
     
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
