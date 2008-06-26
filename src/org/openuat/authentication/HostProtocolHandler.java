@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Hashtable;
 
 import org.openuat.authentication.exceptions.*;
@@ -172,7 +171,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      * Hollywood style and can automatically select optional protocol steps
      * based on the properties of this channel.
      */
-    protected OOBChannel oobChannel = null;
+//    protected OOBChannel oobChannel = null;
 
     /** If this is set, then we have some form of user input that has been
      * created _before_ starting the protocol instance and is assumed to be
@@ -229,11 +228,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		this.timeoutMs = timeoutMs;
     }
     
-    public HostProtocolHandler(OOBChannel oobChannel, RemoteConnection con, int timeoutMs, 
+/*    public HostProtocolHandler(OOBChannel oobChannel, RemoteConnection con, int timeoutMs, 
     		boolean keepConnected, boolean useJSSE) {
     	this(con, timeoutMs, keepConnected, useJSSE);
     	this.oobChannel = oobChannel;
-    }
+    }*/
 
     /** Adds a protocol command handler.
      * 
@@ -897,13 +896,16 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 totalTransferTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
                	byte[] remoteCommitmentExpected = commitment(remotePubKey);
-                if (!Arrays.equals(remoteCommitment, remoteCommitmentExpected)) {
-                    logger.warn("Protocol error: remote commitment does not match public key");
-                    println("Protocol error: remote commitment does not match public key");
-                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment does not match public key");
-                    shutdownConnectionCleanly();
-                    return;
-                }
+               	// grml, no java.util.Arrays class in J2ME - this simply sucks
+               	for (int i=0; i<remoteCommitment.length; i++) {
+                    if (remoteCommitment[i] != remoteCommitmentExpected[i]) {
+                        logger.warn("Protocol error: remote commitment does not match public key");
+                        println("Protocol error: remote commitment does not match public key");
+                        raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment does not match public key");
+                        shutdownConnectionCleanly();
+                        return;
+                    }
+               	}
                 totalCryptoTime += System.currentTimeMillis()-timestamp;
             }
             // step 3, part 3: Alice and Bob compute the out-of-band message
