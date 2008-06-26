@@ -8,8 +8,6 @@
  */
 package org.openuat.util;
 
-import java.util.Arrays;
-
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This is a small helper class that implements SHAd-256, a double execution of SHA256 
@@ -31,7 +29,7 @@ public class Hash {
 	/** This is only a helper function to select JSSE or Bouncycastle implementation. */
 	private static byte[] SHA256(byte[] text, boolean useJSSE) 
 			throws InternalApplicationException {
-//		#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		if (useJSSE)
 			return SHA256_JSSE(text);
 		else
@@ -40,7 +38,7 @@ public class Hash {
 	}
 	
 	/** This is an implementation of SHA256 using the Sun JSSE. */
-//	#if cfg.includeJSSESupport
+//#if cfg.includeJSSESupport
 		private static byte[] SHA256_JSSE(byte[] text)
 				throws InternalApplicationException {
 			try {
@@ -52,7 +50,7 @@ public class Hash {
 						e);
 			}
 		}
-//	#endif
+//#endif
 
 		/** This is an implementation of SHA256 using the Bouncycastle Lightweight API. */
 		private static byte[] SHA256_BCAPI(byte[] text)
@@ -110,9 +108,9 @@ public class Hash {
 			key = doubleSHA256(key, useJSSE);
 		// and zero-pad if it is too short
 		if (key.length < 32) {
+			// the Java runtime is defined to initialize all elements with 0
 			byte[] tmp = new byte[32];
 			System.arraycopy(key, 0, tmp, 0, key.length);
-			Arrays.fill(tmp, key.length, tmp.length-1, (byte) 0);
 			key = tmp;
 		}
 		
