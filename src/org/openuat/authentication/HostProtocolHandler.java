@@ -48,6 +48,12 @@ import org.apache.log4j.Logger;
  * TODO: make this class abstract to force use of ManaIV in all code
  * 
  * @author Rene Mayrhofer
+ * @version 2.0, changes to 1.0: The performProtocol method has been 
+ *               significantly improved and is now based upon a generalized
+ *               MA-DH protocol (which includes at least one additional
+ * 				 commitment message but may add more) instead of simple and
+ * 				 potentially (depending on future uses of this class) insecure
+ *  			 Diffie-Hellman-only key exchange.
  * @version 1.1, changes to 1.0: Support registering additional protocol 
  *               handlers that are called for their registered protocol.
  */

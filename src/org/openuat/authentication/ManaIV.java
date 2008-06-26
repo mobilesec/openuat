@@ -118,8 +118,7 @@ public class ManaIV extends HostProtocolHandler {
 	 * c = H(g^a) and such a relaxed security proof would bridge the gap 
 	 * between theory and practice.
 	 * 
-	 * The current implementation uses the @see Hash class as H and therefore
-	 * SHA256-double.
+	 * The current implementation uses SHA256-double for the commitment.
      *
      * Other options for implementing the commitment scheme according to the
      * Mana IV article are:
@@ -149,6 +148,14 @@ public class ManaIV extends HostProtocolHandler {
 	 */
 	public byte[] commitment(byte[] ownPublicKey) throws InternalApplicationException {
 		return Hash.doubleSHA256(ownPublicKey, useJSSE);
+	}
+	
+	/** This method implements the keyed hash function for computing the 
+	 * l-Bit out-of-band message. It uses the standard HMAC-SHA256 
+	 * construction.
+	 */
+	public byte[] keyedHash(byte[] oobInput, byte[] oobKey) throws InternalApplicationException {
+		return Hash.hmacSHA256(oobInput, oobKey, useJSSE);
 	}
 	
 	/** MANA-IV:
@@ -399,22 +406,22 @@ public class ManaIV extends HostProtocolHandler {
             // step 3, part 3: Alice and Bob compute the out-of-band message
            	timestamp = System.currentTimeMillis();
            	// TODO: add local and remote addresses
-            byte[] oobInput = new byte[2*NonceByteLength + 
-                                       myPubKey.length + remotePubKey.length + 
-                                       (presharedShortSecret != null ? 
-                                        presharedShortSecret.length : 0)];
+            byte[] oobInput = new byte[2*NonceByteLength]; 
+            byte[] oobKey = new byte[myPubKey.length + remotePubKey.length + 
+                                     (presharedShortSecret != null ? 
+                                             presharedShortSecret.length : 0)];
             // order: first client, then server
             if (!serverSide) {
             	System.arraycopy(myId, 0, oobInput, 0, NonceByteLength);
             	System.arraycopy(remoteId, 0, oobInput, NonceByteLength, NonceByteLength);
-            	System.arraycopy(myPubKey, 0, oobInput, NonceByteLength*2, myPubKey.length);
-            	System.arraycopy(remotePubKey, 0, oobInput, NonceByteLength*2+myPubKey.length, remotePubKey.length);
+            	System.arraycopy(myPubKey, 0, oobKey, 0, myPubKey.length);
+            	System.arraycopy(remotePubKey, 0, oobKey, myPubKey.length, remotePubKey.length);
             }
             else {
             	System.arraycopy(remoteId, 0, oobInput, 0, NonceByteLength);
             	System.arraycopy(myId, 0, oobInput, NonceByteLength, NonceByteLength);
-            	System.arraycopy(remotePubKey, 0, oobInput, NonceByteLength*2, remotePubKey.length);
-            	System.arraycopy(myPubKey, 0, oobInput, NonceByteLength*2+remotePubKey.length, myPubKey.length);
+            	System.arraycopy(remotePubKey, 0, oobKey, 0, remotePubKey.length);
+            	System.arraycopy(myPubKey, 0, oobKey, remotePubKey.length, myPubKey.length);
             }
             byte[] oobMsg;
             
@@ -467,17 +474,9 @@ public class ManaIV extends HostProtocolHandler {
                 // send commitment and R
                 // --> but this is actually the asymmetric transfer case, does not
                 // belong here
-            	// TODO: carefully check if there is a potential attack on this 
-            	// protocol when we omit the commitment and ACK from Wong/Stajano
-            	// seems ok because "client" first sends commitment and only sends
-            	// own ephemeral DH key after having received the remote (potential
-            	// attacker's) key --> attacker can not choose their 
-            	// NONONONO seems not ok
-            	// need to paint asymmetric attack scenario -> might need more
-            	// randomness in commitment and maybe need mutual commitment??
             	
             	// transfer or comparison case (depends on OOB channel)
-                oobMsg = Hash.doubleSHA256(oobInput, true);
+                oobMsg = keyedHash(oobInput, oobKey);
             }
             totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
