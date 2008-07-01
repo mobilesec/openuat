@@ -90,6 +90,7 @@
 	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
+	<!-- TODO: add "com/bleugris/io/*.java" -->
 	<property name="java5-files" value="org/openuat/**/test/*.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
@@ -340,6 +341,7 @@
         <mkdir dir="${build.midp.temp}"/>
 		<copy todir="${build.midp.temp}" failonerror="true">
 			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java
+				org/openuat/apps/j2me/ManualAuthentication.java
 				org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
 				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
 				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
@@ -349,7 +351,8 @@
 				org/openuat/authentication/KeyManager.java org/openuat/util/HostAuthenticationServer.java
 				org/openuat/authentication/AuthenticationEventSender.java
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java
-				org/openuat/util/SafetyBeltTimer.java" />
+				org/openuat/util/SafetyBeltTimer.java
+				net/mypapit/java/StringTokenizer.java" />
 		</copy>
 		<!-- hack ends here -->
 
@@ -358,12 +361,12 @@
 		    <!-- Have a look at the <jad>-section for setting specialised attributes.
 		         You can also define localized attributes in the resources/messages.txt files -->
 			<info
-				name="BluetoothDemo"
+				name="ManualAuthentication"
 				version="1.0.0"
-				description="A demonstration MIDlet for the Bluetooth and Diffie-Hellman HostProtocol infrastructure"
+				description="A demonstration MIDlet for the Bluetooth, UACAP infrastructure, and manual authentication"
 				vendorName="Rene Mayrhofer"
 				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-bt_dh-demo.jar" 
+				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-bt_mana.jar" 
 				jarUrl="${deploy-url}${polish.jarName}"
 				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
 			/>
@@ -394,21 +397,21 @@
 				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
 				>
 				<!-- midlets definition -->
-				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="BluetoothDemo"/>
+				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication"/>
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 				</variables>
 				<!-- activate Java 5 syntax support -->
 				<!-- TODO: this doesn't work yet - proguard emits errors when activated -->
-				<!--<compiler source="1.5" target="1.5"/>-->
-				<!--<postcompiler name="java5" />-->
+				<!--<compiler source="1.5" target="1.5"/>
+				<postcompiler name="java5" />-->
 				<!-- obfuscator settings: do not obfuscate when the test-property is true  -->
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
 					<!-- with optimize=true the code no longer pre-verifies -->
 					<parameter name="optimize" value="false" />
-<!--					<parameter name="shrink" value="true" />-->
+					<!--<parameter name="shrink" value="true" />-->
 					<!-- because BitSet implements clone (which is never called) -->
-<!--					<parameter name="ignorewarnings" value="true" />-->
+<!--					<parameter name="ignorewarnings" value="true" /> -->
 				</obfuscator>
 				<!-- resources to be included in the JAR file -->
 				<resources>

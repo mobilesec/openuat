@@ -164,6 +164,8 @@ public class HostProtocolHandlerTest extends TestCase {
         h.shutdownSocketsCleanly();
     }
     
+    // TODO: test Hollywood style with all 3 different OOB check modes
+    
     private class EventHelper implements AuthenticationProgressHandler
     {
         private int receivedSecrets = 0, receivedFailures = 0, receivedProgress = 0, receivedStarted = 0;

@@ -15,6 +15,8 @@ import java.io.OutputStreamWriter;
 import java.security.SecureRandom;
 import java.util.Hashtable;
 
+import net.mypapit.java.StringTokenizer;
+
 import org.openuat.authentication.exceptions.*;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
@@ -134,7 +136,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     /** This is an optional field in the authentication request line, where the
      * client can pass parameters to the next authentication protocol.
      * @see #Protocol_AuthenticationRequest */
-    public static final String Protocol_AuthenticationRequest_Param = "PARAM ";
+    public static final String Protocol_AuthenticationRequest_Param = "PARAM";
     /** @see #Protocol_Hello */
     public static final String Protocol_AuthenticationAcknowledge = "AUTHACK ";
     /** @see #Protocol_Hello */
@@ -321,15 +323,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	LineReaderWriter.println(toRemote, line);
     }
     
-    /** Tries to receive a properly formatted parameter line from the remote host.
-	 * If the line could not be received (i.e. no line at all or starting with an
-	 * unexpected command), an OnAuthenticaionFailure event is raised.
+    /** Tries to receive a properly formatted line from the remote host.
+	 * If the line could not be received (i.e. no line at all or starting with 
+	 * an unexpected command), an AuthenticaionFailure event is raised.
 	 * 
 	 * @param expectedMsg
-	 *            Gives the message that is expected to be received: for server
-	 *            mode, a Protocol_AuthenticationRequest message is expected,
-	 *            while for client mode, a Protocol_AuthenticationAcknowledge is
-	 *            expected
+	 *            Gives the message that is expected to be received.
 	 * @param remote
 	 *            The remote socket. This is only needed for raising events
 	 *            and is passed unmodified to the event method.
@@ -339,7 +338,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            
 	 * @return The complete parameter line on success, null otherwise.
 	 */
-    protected String helper_getLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
+    protected String getLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
     	String msg = readLine();
         if (msg == null) {
         	logger.warn("helper_getAuthenticationParamLine called with null argument");
@@ -381,54 +380,99 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         return msg;
     }
     
-	/** Tries to decode a properly formatted public key from the parameter line. If 
-     * decoding fails, an OnAuthenticationFailure event is raised.
+	/** Tries to decode properly formatted Strings and numbers from the 
+	 * protocol line. If decoding fails, an AuthenticationFailure event is 
+	 * raised.
      * 
-     * @param paramLine
-     * 	          The complete parameter line from the remote, including the command
+     * @param line
+     * 	          The complete line from the remote, including the command
      *            prefix.
 	 * @param expectedMsg
-	 *            Gives the message that is expected to be received: for server
-	 *            mode, a Protocol_AuthenticationRequest message is expected,
-	 *            while for client mode, a Protocol_AuthenticationAcknowledge is
-	 *            expected
+	 *            Gives the message that is expected to be received. This is
+	 *            simply cut off because we assume getLine already checked for
+	 *            this string to be present.
 	 * @param remote
 	 *            The remote socket. This is only needed for raising events
 	 *            and is passed unmodified to the event method.
+	 * @param isHexNumber
+	 * 			  This array both determines the number of parameters to
+	 * 			  try to decode and which of the parameters should be further
+	 * 			  decoded from String objects to Hex-coded integers.
+	 * @param expectedParts
+	 *            If != null, then this array may contain parameters that are
+	 *            expected to be a equal to the constant string passed in here.
+	 *            All null elements are ignored.
+	 * @param numMandatoryParms
+	 *            The number of parameters that _must_ be found in line after
+	 *            expectedMsg. It may be less than isHexNumber.length.
 	 * 
-	 * @return The extracted public key is returned in this array. If decoding
-	 *         failed, null will be returned instead of the (meaningless) parts
-	 *         that might have been decoded.
+	 * @return The extracted parts are returned in this array, strings (i.e.
+	 *         non-number objects) as String objects, decoded numbers as byte
+	 *         arrays. If decoding failed, null will be returned instead of 
+	 *         the (meaningless) parts that might have been decoded.
 	 * @throws IOException
 	 */
-    private byte[] helper_extractPublicKey(String paramLine, String expectedMsg, RemoteConnection remote) throws IOException
-    {
-    	if (paramLine == null)
+    public Object[] parseLine(String line, String expectedMsg,
+    		boolean[] isHexNumber, String[] expectedParts, 
+    		int numMandatoryParms,
+    		RemoteConnection remote) throws IOException {
+    	if (line == null)
     		return null;
     	
-    	byte[] remotePubKey;
-    	// need to figure out if there is something after the public key (i.e. a space after it)
-    	int secondSpaceOff = paramLine.indexOf(' ', expectedMsg.length());
-    	// if yes, only the part in between the two spaces is the public key, otherwise just the rest of the line
-        String remotePubKeyStr = paramLine.substring(expectedMsg.length(), 
-        		secondSpaceOff != -1 ? secondSpaceOff : paramLine.length());
-        try {
-        	remotePubKey = Hex.decodeHex(remotePubKeyStr.toCharArray());
-        }
-        catch (DecoderException e) {
-            logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            raiseAuthenticationFailureEvent(remote, e, "Protocol error: can not decode remote public key");
+    	// start parsing after the expected message
+    	String rem = line.substring(expectedMsg.length());
+    	// and go through tokens until we are out of them...
+    	StringTokenizer t = new StringTokenizer(rem);
+    	
+    	Object[] ret = new Object[isHexNumber.length];
+    	int i=0; 
+    	while (i<isHexNumber.length && t.hasMoreTokens()) {
+    		String elem = t.nextToken();
+    		
+    		// do we expect a constant here?
+    		if (expectedParts != null && expectedParts.length > i &&
+    			expectedParts[i] != null) {
+    			if (!elem.equals(expectedParts[i])) {
+    	    		String err = "Protocol error: did not find expected string at position " +
+    	    				i + " after expected message '" + expectedMsg + 
+    	    				", element text was '" + elem + 
+    	    				"', while looking for '" + expectedParts[i] + "'"; 
+    	    		logger.warn(err);
+    	    		println(err);
+    	    		raiseAuthenticationFailureEvent(remote, null, err);
+    	    		return null;
+    			}
+    		}
+    		else if (isHexNumber[i]) {
+    	        try {
+    	        	ret[i] = Hex.decodeHex(elem.toCharArray());
+    	        }
+    	        catch (DecoderException e) {
+    	    		String err = "Protocol error: could not decode Hex number at position " +
+    	    				i + " after expected message '" + expectedMsg + 
+    	    				", element text was '" + elem + 
+    	    				"', decoding exception: " + e.toString(); 
+    	    		logger.warn(err);
+    	    		println(err);
+    	    		raiseAuthenticationFailureEvent(remote, e, err);
+    	            return null;
+    	        }
+    		}
+    		else {
+    			ret[i] = elem;
+    		}
+    		i++;
+    	}
+    	if (i < numMandatoryParms) {
+    		String err = "Protocol error: received less parameters than expected (" +
+    				i + " instead of at least " + numMandatoryParms + 
+    				") after expected message '" + expectedMsg + "'"; 
+            logger.warn(err);
+            println(err);
+            raiseAuthenticationFailureEvent(remote, null, err);
             return null;
-        }
-        if (remotePubKey.length < 128)
-        {
-            logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
-            raiseAuthenticationFailureEvent(remote, null, "Protocol error: remote key too short (only " + remotePubKey.length + " bytes instead of 128)");
-            return null;
-        }
-        return remotePubKey;
+    	}
+        return ret;
     }
 
 	/** This method implements the simplest possible commitment scheme for
@@ -492,60 +536,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            ("authenticatee")
 	 */
 /*    protected void performAuthenticationProtocol(boolean serverSide) {
-    	SimpleKeyAgreement ka = null;
-        String inOrOut, serverToClient, clientToServer, remoteAddr=null;
-        int totalTransferTime=0, totalCryptoTime=0;
-        long timestamp=0;
-        
-        try {
-			remoteAddr = connection.getRemoteAddress().toString();
-		} catch (IOException e1) {
-			logger.error("Can not get address of remote. This should not happen!");
-		}
-
-        if (logger.isDebugEnabled()) {
-        	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        	logger.debug("Remote is " + remoteAddr + ", with timeout " + timeoutMs + "ms");
-        }
-
-        if (serverSide) {
-        	inOrOut = "Incoming";
-        	serverToClient = "sent";
-        	clientToServer = "received";
-        } else {
-        	inOrOut = "Outgoing";
-        	serverToClient = "received";
-        	clientToServer = "sent";
-        }
-        
-        if (logger.isDebugEnabled())
-        	logger.debug(inOrOut + " connection to authentication service with " + remoteAddr);
-        
-        SafetyBeltTimer timer = null;
-        try
-        {
-        	fromRemote = connection.getInputStream();
-            // this enables auto-flush
-            toRemote = new OutputStreamWriter(connection.getOutputStream());
-
-            // now that we have the InputStream, bind our timer to it
-            if (timeoutMs > 0)
-            	timer = new SafetyBeltTimer(timeoutMs, fromRemote);
-
-            if (serverSide) {
-            	println(Protocol_Hello);
-            }
-            else {
-                String msg = readLine();
-                if (!msg.equals(Protocol_Hello)) {
-                	raiseAuthenticationFailureEvent(connection, null, "Protocol error: did not get greeting from server");
-                    shutdownConnectionCleanly();
-                    return;
-                }
-        	}
-            raiseAuthenticationProgressEvent(connection, 1, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " greeting");
-
-           	timestamp = System.currentTimeMillis();
             byte[] remotePubKey = null;
             if (serverSide) {
             	String paramLine = helper_getLine(Protocol_AuthenticationRequest, connection, true);
@@ -603,60 +593,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             Object authKey = ka.getAuthenticationKey();
            	totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
-
-            // the authentication success event sent here is just an array of two keys
-            if (keepConnected) {
-            	logger.debug("Not closing socket as requested, but passing it to the success event.");
-            	// don't shut down the streams because this effectively shuts down the connection
-            	// but make sure that the last message has been sent successfully
-            	toRemote.flush();
-            	raiseAuthenticationSuccessEvent(connection, new Object[] {sessKey, authKey,
-            			optionalParameter, connection});
-            }
-            else {
-            	raiseAuthenticationSuccessEvent(connection, new Object[] {sessKey, authKey,
-            			optionalParameter });
-				logger.info("Closing channel that has been used for key agreement");
-            	shutdownConnectionCleanly();
-            }
-            
-            	logger.warn("Key transfers took " + totalTransferTime + 
-            			"ms, crypto took " + totalCryptoTime + "ms");
-        }
-        catch (InternalApplicationException e)
-        {
-            logger.error("Caught exception during host protocol run, aborting: " + e);
-            // also communicate any application exception to interested
-			// listeners
-            raiseAuthenticationFailureEvent(connection, e, null);
-            shutdownConnectionCleanly();
-        }
-        catch (IOException e)
-        {
-            logger.error("Caught exception during host protocol run, aborting: " + e);
-            // even if we ignore the exception and not treat it as an error
-			// case, report it to listeners
-            // so that they can clean up their state of this authentication
-			// (identified by the remote)
-            raiseAuthenticationFailureEvent(connection, null, "Client closed connection unexpectedly or hit timeout");
-            shutdownConnectionCleanly();
-        }
-        catch (Exception e)
-        {
-            logger.fatal("UNEXPECTED EXCEPTION: " + e);
-            e.printStackTrace();
-            shutdownConnectionCleanly();
-        }
-        finally {
-            if (ka != null)
-                ka.wipe();
-            // this is not strictly necessary, but clean up properly
-            if (timer != null)
-            	timer.stop();
-            if (logger.isDebugEnabled())
-            	logger.debug("Ended " + inOrOut + " authentication connection with " + remoteAddr);
-        }
-    }*/
+*/
 	
 	/** MANA-IV:
 	 * 1. Alice computes (c, d) := Com_pk(ka) for random ka and sends (ma, c) 
@@ -761,7 +698,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             byte[] nonce = new byte[NonceByteLength];
             r.nextBytes(nonce);
             // TODO: we should really add our own address to the ID!
-            String myId = new String(Hex.encodeHex(nonce));
+            String myIdStr = new String(Hex.encodeHex(nonce));
 
             byte[] myPubKey = null, remotePubKey = null, 
             	remoteCommitment = null, remoteId = null;
@@ -773,42 +710,34 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	totalCryptoTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
             	println(Protocol_AuthenticationRequest + ProtocolTypeMaDH + 
-            			" " + myId + " " + commitment +
-            			(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
+            			" " + myIdStr + " " + commitment +
+            			(optionalParameter != null ? " " + 
+            			 Protocol_AuthenticationRequest_Param + " " + 
+            			 optionalParameter : ""));
                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             else {
             	// step 1, part 2: Bob receives Alice's commitment
             	String expectedMsg = Protocol_AuthenticationRequest + 
    			 		ProtocolTypeMaDH;
-            	String line = helper_getLine(expectedMsg, connection, true);
-            	
-            	// first part is the remote ID part
-            	int off1 = line.indexOf(' ', expectedMsg.length());
-                String remoteIdStr = line.substring(expectedMsg.length(), off1);
-                // next part is the commitment, which may be the last one
-            	int off2 = line.indexOf(' ', off1+1);
-            	String remoteCommitmentStr = line.substring(off1, 
-                		off2 != -1 ? off2 : line.length());
-                try {
-                	remoteId = Hex.decodeHex(remoteIdStr.toCharArray());
-                	remoteCommitment = Hex.decodeHex(remoteCommitmentStr.toCharArray());
-                }
-                catch (DecoderException e) {
-                    logger.warn("Protocol error: could not parse commitment or remote ID");
-                    println("Protocol error: could not parse commitment or remote ID");
-                    raiseAuthenticationFailureEvent(connection, e, "Protocol error: can not decode remote commitment or ID");
-                    shutdownConnectionCleanly();
+            	String line = getLine(expectedMsg, connection, true);
+            	Object[] parms = parseLine(line, expectedMsg, 
+            			new boolean[] {true, true, false, false}, 
+            			new String[] {null, null, Protocol_AuthenticationRequest_Param, null}, 
+            			2, connection);
+            	if (parms == null) {
+            		shutdownConnectionCleanly();
                     return;
-                }
-               
+            	}
+            		
+            	// first part is the remote ID part
+                remoteId = (byte[]) parms[0];
+                // next part is the commitment, which may be the last one
+               	remoteCommitment = (byte[]) parms[1];
                 // additional parameter from the remote?
-                int optParamOff = line.indexOf(Protocol_AuthenticationRequest_Param);
-                if (optParamOff != -1) {
-                	optionalParameter = line.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
-                	if (logger.isDebugEnabled())
-                		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
-                }
+               	optionalParameter = (String) parms[3];
+               	if (optionalParameter != null && logger.isDebugEnabled())
+               		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             raiseAuthenticationProgressEvent(connection, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
@@ -822,31 +751,24 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	String myPubKeyStr = new String(Hex.encodeHex(myPubKey));
                	totalCryptoTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
-            	println(Protocol_AuthenticationAcknowledge + myId + " " + myPubKeyStr);
+            	println(Protocol_AuthenticationAcknowledge + myIdStr + " " + myPubKeyStr);
                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             else {
             	// step 2, part 2: Alice receives Bob's ID and public key
             	String expectedMsg = Protocol_AuthenticationAcknowledge;
-            	String line = helper_getLine(expectedMsg, 
-            			connection, false);
+            	String line = getLine(expectedMsg, connection, false);
+            	Object[] parms = parseLine(line, expectedMsg, 
+            			new boolean[] {true, true}, null, 2, connection);
+            	if (parms == null) {
+            		shutdownConnectionCleanly();
+                    return;
+            	}
             	
             	// first part is the remote ID part
-            	int off = line.indexOf(' ', expectedMsg.length());
-                String remoteIdStr = line.substring(expectedMsg.length(), off);
-                // next part is the public key
-            	String remotePubKeyStr = line.substring(off, line.length());
-                try {
-                	remoteId = Hex.decodeHex(remoteIdStr.toCharArray());
-                	remotePubKey = Hex.decodeHex(remotePubKeyStr.toCharArray());
-                }
-                catch (DecoderException e) {
-                    logger.warn("Protocol error: could not parse remote public key or ID");
-                    println("Protocol error: could not parse remote public key or ID");
-                    raiseAuthenticationFailureEvent(connection, e, "Protocol error: can not decode remote public key or ID");
-                    shutdownConnectionCleanly();
-                    return;
-                }
+               	remoteId = (byte[]) parms[0];
+               	// second part is the remote public key
+               	remotePubKey = (byte[]) parms[1];
                 if (remotePubKey.length < 128) {
                     logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
                     println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
@@ -868,21 +790,16 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             else {
             	// step 3, part 2: Bob receives Alice's public key
             	String expectedMsg = Protocol_AuthenticationAcknowledge2;
-            	String line = helper_getLine(expectedMsg, 
-            			connection, false);
+            	String line = getLine(expectedMsg, connection, false);
+            	Object[] parms = parseLine(line, expectedMsg, 
+            			new boolean[] {true}, null, 1, connection);
+            	if (parms == null) {
+            		shutdownConnectionCleanly();
+                    return;
+            	}
             	
             	// first and only part is the remote public key
-            	String remotePubKeyStr = line.substring(expectedMsg.length(), line.length());
-                try {
-                	remotePubKey = Hex.decodeHex(remotePubKeyStr.toCharArray());
-                }
-                catch (DecoderException e) {
-                    logger.warn("Protocol error: could not parse remote public key");
-                    println("Protocol error: could not parse remote public key");
-                    raiseAuthenticationFailureEvent(connection, e, "Protocol error: can not decode remote public key");
-                    shutdownConnectionCleanly();
-                    return;
-                }
+               	remotePubKey = (byte[]) parms[0];
                 if (remotePubKey.length < 128) {
                     logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
                     println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
@@ -915,14 +832,14 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                                              presharedShortSecret.length : 0)];
             // order: first client, then server
             if (!serverSide) {
-            	System.arraycopy(myId, 0, oobInput, 0, NonceByteLength);
+            	System.arraycopy(nonce, 0, oobInput, 0, NonceByteLength);
             	System.arraycopy(remoteId, 0, oobInput, NonceByteLength, NonceByteLength);
             	System.arraycopy(myPubKey, 0, oobKey, 0, myPubKey.length);
             	System.arraycopy(remotePubKey, 0, oobKey, myPubKey.length, remotePubKey.length);
             }
             else {
             	System.arraycopy(remoteId, 0, oobInput, 0, NonceByteLength);
-            	System.arraycopy(myId, 0, oobInput, NonceByteLength, NonceByteLength);
+            	System.arraycopy(nonce, 0, oobInput, NonceByteLength, NonceByteLength);
             	System.arraycopy(remotePubKey, 0, oobKey, 0, remotePubKey.length);
             	System.arraycopy(myPubKey, 0, oobKey, remotePubKey.length, myPubKey.length);
             }
@@ -944,6 +861,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             			NonceByteLength*2+myPubKey.length+remotePubKey.length, 
             			presharedShortSecret.length);
 
+            	// TODO
             	// another two-round commitment scheme, but now using a HMAC keyed with a random key
             	// 1. send HMAC_K1(oobInput)
                 byte[] myK = new byte[NonceByteLength];
@@ -975,8 +893,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 // and which user interaction is required -> the ACK, but on which device?
                 // personal device needs to verify, so "service" device needs to
                 // send commitment and R
-                // --> but this is actually the asymmetric transfer case, does not
-                // belong here
             	
             	// transfer or comparison case (depends on OOB channel)
                 oobMsg = keyedHash(oobInput, oobKey);
