@@ -141,6 +141,7 @@
 		<pathelement location="${wtk.home}/lib/cldcapi11.jar"/>
 		<pathelement location="${wtk.home}/lib/jsr082.jar"/>
 		<pathelement location="${wtk.home}/lib/jsr75.jar"/>
+		<pathelement location="${wtk.home}/lib/mmapi.jar"/>
 		<pathelement location="${bin-microlog}"/>
 		<pathelement location="${bin-BC-core}"/>
 	</path>
