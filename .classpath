@@ -24,5 +24,6 @@
 	<classpathentry kind="lib" path="lib/simple-1.3.jar"/>
 	<classpathentry kind="lib" path="lib/TableLayout.jar"/>
 	<classpathentry kind="lib" path="lib/jsapi.jar"/>
+	<classpathentry kind="lib" path="lib/hapadep/mmapi.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
