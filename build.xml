@@ -85,8 +85,7 @@
 	<property name="device" value="Generic/midp2"/>
 	<property name="midp_libs" value="${polish.home}/import/midp-2.0.jar:${polish.home}/import/cldc-1.1-java5.0.jar" />
 	<!-- These classes can only be compiled with J2ME MIDP class libraries -->
-	<property name="midp-only-files1" value="org/openuat/apps/j2me/**/*.java" />
-	<property name="midp-only-files2" value="org/openuat/sensors/j2me/**/*.java" />
+	<property name="midp-only-files" value="**/j2me/**/*.java" />
 	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
@@ -235,8 +234,7 @@
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
 			<exclude name="${java5-files}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files1}" />
-			<exclude name="${midp-only-files2}" />
+			<exclude name="${midp-only-files}" />
 		</javac>
 		
 		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
@@ -281,8 +279,7 @@
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 		       includeJavaRuntime="no">
-			<include name="${midp-only-files1}" />
-			<include name="${midp-only-files2}" />
+			<include name="${midp-only-files}" />
 		</javac>
 	</target>
     
@@ -355,6 +352,26 @@
 				org/openuat/util/SafetyBeltTimer.java
 				net/mypapit/java/StringTokenizer.java" />
 		</copy>
+
+		<!-- additional files for the second and third MIDlets -->
+		<copy todir="${build.midp.temp}" failonerror="true">
+			<fileset dir="${src}" includes="org/openuat/apps/j2me/ShakeMIDlet.java
+				org/openuat/apps/j2me/HapadepMIDlet.java
+				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
+				org/openuat/sensors/SamplesSink_Int.java org/openuat/sensors/SegmentsSink_Int.java
+				org/openuat/sensors/SegmentsSink.java
+				org/openuat/sensors/TimeSeries_Int.java org/openuat/sensors/TimeSeries.java
+				org/openuat/sensors/TimeSeriesAggregator.java org/openuat/sensors/DeviceStateListener.java
+				org/openuat/sensors/TimeSeriesBundle.java
+				org/openuat/sensors/j2me/SymbianTCPAccelerometerReader.java
+				org/openuat/features/FPIntFFT.java org/openuat/features/Coherence_Int.java
+				org/openuat/features/TimeSeriesUtil.java
+				org/openuat/features/Coherence.java org/openuat/features/FFT.java org/openuat/features/Complex.java 
+				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
+				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
+				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
+				org/codec/**/j2me/**/*.java org/codec/utils/*.java" />
+		</copy>
 		<!-- hack ends here -->
 
 		<j2mepolish>
@@ -362,12 +379,12 @@
 		    <!-- Have a look at the <jad>-section for setting specialised attributes.
 		         You can also define localized attributes in the resources/messages.txt files -->
 			<info
-				name="ManualAuthentication"
+				name="Authentication"
 				version="1.0.0"
-				description="A demonstration MIDlet for the Bluetooth, UACAP infrastructure, and manual authentication"
+				description="Some demonstration MIDlets for the Bluetooth, UACAP infrastructure, and out-of-band channels for authentication"
 				vendorName="Rene Mayrhofer"
 				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-bt_mana.jar" 
+				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-auth.jar" 
 				jarUrl="${deploy-url}${polish.jarName}"
 				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
 			/>
@@ -398,9 +415,17 @@
 				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
 				>
 				<!-- midlets definition -->
-				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication"/>
+				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="Bluetooth connections demo"/>
+
+				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe demo"/>
+
+				<midlet class="org.openuat.apps.j2me.HapadepMIDlet" name="Hapadep demo"/>
+
+				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication demo"/>
+
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
+					<variable name="cfg.shakingDemoMode" value="false" />
 				</variables>
 				<!-- activate Java 5 syntax support -->
 				<!-- TODO: this doesn't work yet - proguard emits errors when activated -->
@@ -428,73 +453,8 @@
 			</build>
 		</j2mepolish>		
 
-		<!-- additional files for the second MIDlet -->
-		<copy todir="${build.midp.temp}" failonerror="true">
-			<fileset dir="${src}" includes="org/openuat/apps/j2me/ShakeMIDlet.java
-				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
-				org/openuat/sensors/SamplesSink_Int.java org/openuat/sensors/SegmentsSink_Int.java
-				org/openuat/sensors/SegmentsSink.java
-				org/openuat/sensors/TimeSeries_Int.java org/openuat/sensors/TimeSeries.java
-				org/openuat/sensors/TimeSeriesAggregator.java org/openuat/sensors/DeviceStateListener.java
-				org/openuat/sensors/TimeSeriesBundle.java
-				org/openuat/sensors/j2me/SymbianTCPAccelerometerReader.java
-				org/openuat/features/FPIntFFT.java org/openuat/features/Coherence_Int.java
-				org/openuat/features/TimeSeriesUtil.java
-				org/openuat/features/Coherence.java org/openuat/features/FFT.java org/openuat/features/Complex.java 
-				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
-				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
-				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java" />
-				<!-- org/codec/**/*.java" /> -->
-		</copy>
 
 		<!-- build multiple versions of the ShakeMIDlet - "real" and demo modes -->
-		<delete dir="${build.midp.work}"/>
-		<delete dir="${bin.midp}"/>
-        <mkdir dir="${build.midp.work}"/>
-        <mkdir dir="${bin.midp}"/>
-		<j2mepolish>
-			<info
-				name="Shake Well Before Use"
-				version="1.0.0"
-				description="A demonstration MIDlet for the Shake Well Before Use authentication protocol"
-				vendorName="Rene Mayrhofer"
-				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-shakeme.jar" 
-				jarUrl="${deploy-url}${polish.jarName}"
-				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
-			/>
-			<deviceRequirements>
-				<requirement name="Identifier" value="Generic/multi" />
-				<requirement name="JavaPackage" value="btapi" />
-				<requirement name="JavaPackage" value="mmapi" />
-				<requirement name="JavaPlatform" value="MIDP/2.0+" />
-			</deviceRequirements>
-			<build
-				symbols="ExampleSymbol, AnotherExample"
-				fullscreen="menu"
-				usePolishGui="false"
-				workDir="${build.midp.work}"
-				sourceDir="${build.midp.temp}"
-				destDir="${dist}"
-				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
-				>
-				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
-				<variables includeAntProperties="true">
-					<variable file="${src}/configuration.midp.properties" />
-					<variable name="cfg.shakingDemoMode" value="false" />
-				</variables>
-				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
-					<parameter name="optimize" value="false" />
-				</obfuscator>
-				<resources>
-					<fileset dir="${resources}" includes="*.png" />
-					<fileset dir="${src}" includes="microlog.properties" />
-				</resources>
-				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
-			</build>
-		</j2mepolish>
-
 		<!-- need to build afresh, because the source code is changed by the precompiler (and we patch in the Bluetooth MACs) -->
 		<!-- disabled for now, demo no longer used
 		<delete dir="${build.midp.work}"/>
@@ -918,7 +878,7 @@
 		<delete dir="${build}"/>
 		<!-- <delete dir="${reports}"/> -->
 		<delete>
-			<fileset dir="${dist}" includes="*.jar,*.zip"/>
+			<fileset dir="${dist}" includes="*.jar,*.jad,*.zip"/>
 		</delete>
 		<delete dir="${dist.webstart}"/>
 		<delete dir="${dist.javadoc}"/>
