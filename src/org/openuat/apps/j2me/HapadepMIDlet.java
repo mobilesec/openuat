@@ -1,4 +1,7 @@
 package org.openuat.apps.j2me;
+
+import com.swetake.util.j2me.QRcodeGen;
+import com.swetake.util.j2me.QRCanvas;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -44,6 +47,7 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 	private Command verifyCmd;
 	private Command testDecodeCmd;
 	private Command testEncodeCmd;
+	private Command testQRCmd;
 	//screen 2
 	private Command stopRec;
 	private Command playRec = new Command("Play", Command.SCREEN, 1);
@@ -105,27 +109,32 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 		StringItem encode = new StringItem("Encode", " key from jar file\n", Item.BUTTON);
 		StringItem decode = new StringItem("Decode", " wav file from jar\n", Item.BUTTON);
 
+		StringItem qrgen = new StringItem("GenerateQRCode", "", Item.BUTTON);
+		
 		mainScreen.append(record);
 		mainScreen.append(play);
 		mainScreen.append(encode);
 		mainScreen.append(decode);
-
+		mainScreen.append(qrgen);
 
 		playRecCmd = new Command("Record", Command.ITEM, 1);
 		verifyCmd = new Command("Play", Command.ITEM, 1);
 		testEncodeCmd = new Command("Encode", Command.ITEM, 1);
 		testDecodeCmd = new Command("Decode", Command.ITEM, 1);
+		testQRCmd = new Command("QR Gen", Command.ITEM, 1);
 
 		record.addCommand(playRecCmd);
 		play.addCommand(verifyCmd);
 		encode.addCommand(testEncodeCmd);
 		decode.addCommand(testDecodeCmd);
-
+		qrgen.addCommand(testQRCmd);
+		
 		record.setItemCommandListener(this);
 		play.setItemCommandListener(this);
 		encode.setItemCommandListener(this);
 		decode.setItemCommandListener(this);
-
+		qrgen.setItemCommandListener(this);
+		
 		exit = new Command("Exit", Command.EXIT, 1);
 		mainScreen.addCommand(exit);
 
@@ -257,6 +266,9 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 			}else if (cmd.equals(testEncodeCmd)) {
 				System.out.println("encoding");
 				encode();
+			}else if (cmd.equals(testQRCmd)) {
+				System.out.println("qrgen");
+				generateQRCode("my message".getBytes());
 			}
 		}catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -405,6 +417,22 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 			Display.getDisplay(this).setCurrent(alert);
 		} 
 	}
+	
+	private void generateQRCode(byte d []){
+		QRcodeGen x=new QRcodeGen();
+		x.setQrcodeErrorCorrect('M');
+		x.setQrcodeEncodeMode('B');
+		x.setQrcodeVersion(1);
+
+		
+		Form form = new Form("QR Code");
+		if (d.length>0 && d.length <120){
+			boolean[][] s = x.calQrcode(d);
+			QRCanvas canvas = new QRCanvas(s);
+			Display.getDisplay (this).setCurrent ( canvas );
+
+		}
+	}
 }
 
 class EncoderThread extends Thread{
@@ -491,4 +519,6 @@ class DecoderThread extends Thread{
 //			Display.getDisplay(this).setCurrent(alert);
 		} 
 	}
+	
+
 }
