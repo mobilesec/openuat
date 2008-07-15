@@ -319,7 +319,7 @@ public class AudioUtils {
     public static byte [] encodeFileToWav(InputStream inputStream) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        Encoder.encodeStream(inputStream, baos);
+        AudioEncoder.encodeStream(inputStream, baos);
 
         inputStream.close();
         

@@ -116,7 +116,7 @@ public class StreamDecoder implements Runnable {
             }
 
             if (hasKey) { //we found the key, so decode this duration
-                byte[] decoded = Decoder.decode(startSignals, samples);
+                byte[] decoded = AudioDecoder.decode(startSignals, samples);
                 try {
                     buffer.delete(samples.length);
                     deletedSamples += samples.length;
@@ -149,7 +149,7 @@ public class StreamDecoder implements Runnable {
             //System.out.println("Search Start: " + deletedSamples + " End: " + (deletedSamples + samples.length));
             //System.out.println("Search Time: " + ((float)deletedSamples / org.codec.utils.Constants.kSamplingFrequency) + " End: "
             //		       + ((float)(deletedSamples + samples.length) / org.codec.utils.Constants.kSamplingFrequency));
-            int startIndex = Decoder.findKeySequence(samples, startSignals, initialGranularity);
+            int startIndex = AudioDecoder.findKeySequence(samples, startSignals, initialGranularity);
             if (startIndex > -1) {
                 System.out.println("\nRough Start Index: " + (deletedSamples + startIndex));
                 //System.out.println("Rough Start Time: "
@@ -179,7 +179,7 @@ public class StreamDecoder implements Runnable {
                 //System.out.println("Search Time: " + ((float)deletedSamples / org.codec.utils.Constants.kSamplesPerDuration) + " End: "
                 //		   + ((float)(deletedSamples + samples.length) / org.codec.utils.Constants.kSamplingFrequency));
 
-                startIndex = Decoder.findKeySequence(samples, startSignals, finalGranularity);
+                startIndex = AudioDecoder.findKeySequence(samples, startSignals, finalGranularity);
                 System.out.println("Refined Start Index: " + (deletedSamples + startIndex));
                 //System.out.println("Start Time: " +
                 //	   (deletedSamples + startIndex) / (float)org.codec.utils.Constants.kSamplingFrequency);
@@ -194,7 +194,7 @@ public class StreamDecoder implements Runnable {
 
                     samples = ArrayUtils.subarray(samples, startIndex + Constants.kSamplesPerDuration,
                                                   2 * Constants.kSamplesPerDuration);
-                    Decoder.getKeySignalStrengths(samples, startSignals);
+                    AudioDecoder.getKeySignalStrengths(samples, startSignals);
                     /*
              System.out.println(" f(0): " + startSignals[0] + " f(1): " + startSignals[1] +
              " f(2): " + startSignals[2] + " f(3): " + startSignals[3] +

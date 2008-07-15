@@ -54,7 +54,7 @@ import java.io.ByteArrayOutputStream;
  * @version 1.0
  * 
  */
-public class Decoder implements Constants {
+public class AudioDecoder implements Constants {
 
     /**
      * @param signal          the audio samples to search
@@ -157,7 +157,7 @@ public class Decoder implements Constants {
             //for each bit represented, detect
             for (int j = 0; j < kBitsPerByte * kBytesPerDuration; j++) {
                 signal[j][i] =
-                        complexDetect(durationInput, Encoder.getFrequency(j));
+                        complexDetect(durationInput, AudioEncoder.getFrequency(j));
                 /*
             if (j == 0)
               System.out.println("\nsignal[" + j + "][" + i + "]=" + signal [j][i]);
@@ -172,12 +172,12 @@ public class Decoder implements Constants {
     public static void getKeySignalStrengths(byte[] signal, double[] signalStrengths) {
         byte[] partialSignal = ArrayUtils.subarray(signal, 0, kSamplesPerDuration);
         for (int j = 1; j < kBitsPerByte * kBytesPerDuration; j += 2) {
-            signalStrengths[j] = complexDetect(partialSignal, Encoder.getFrequency(j));
+            signalStrengths[j] = complexDetect(partialSignal, AudioEncoder.getFrequency(j));
         }
 
         byte[] partialSignal2 = ArrayUtils.subarray(signal, kSamplesPerDuration, kSamplesPerDuration);
         for (int j = 0; j < kBitsPerByte * kBytesPerDuration; j += 2) {
-            signalStrengths[j] = complexDetect(partialSignal2, Encoder.getFrequency(j));
+            signalStrengths[j] = complexDetect(partialSignal2, AudioEncoder.getFrequency(j));
             //System.out.println(signalStrengths[j]);
         }
     }

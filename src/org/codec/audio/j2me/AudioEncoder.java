@@ -56,7 +56,7 @@ import java.io.OutputStream;
  * @version 1.0
  * 
  */
-public class Encoder implements Constants {
+public class AudioEncoder implements Constants {
 
     /**
      * encodeStream is the public function of class org.codec.audio.Encoder.
@@ -77,17 +77,17 @@ public class Encoder implements Constants {
         int read = 0;
         byte[] buff = new byte[kBytesPerDuration];
         while ((read = input.read(buff)) == kBytesPerDuration) {
-            output.write(Encoder.encodeDuration(buff));
+            output.write(AudioEncoder.encodeDuration(buff));
         }
         if (read > 0) {
             System.out.println("CHECK");
             for (int i = read; i < kBytesPerDuration; i++) {
                 buff[i] = 0;
             }
-            output.write(Encoder.encodeDuration(buff));
-            output.write(Encoder.encodeDuration(buff));
+            output.write(AudioEncoder.encodeDuration(buff));
+            output.write(AudioEncoder.encodeDuration(buff));
         } else
-            output.write(Encoder.encodeDuration(buff));
+            output.write(AudioEncoder.encodeDuration(buff));
         
     }
 
