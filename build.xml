@@ -449,8 +449,8 @@
 					<!-- doesn't really do anything right now... -->
 					<fileset dir="${src}" includes="microlog.properties" />
 					<fileset dir="${resources}" includes="button_*.png" />
-					<fileset dir="${resources}/qrcode_data" includes="qrv1_0" />
-					<fileset dir="${resources}/qrcode_data" includes="qrvfr1" />
+					<fileset dir="${resources}/qrcode_data" includes="qrv1_0.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="qrvfr1.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="rsc10.dat" />
 					<fileset dir="${resources}/hapadep" includes="**" />
 				</resources>
