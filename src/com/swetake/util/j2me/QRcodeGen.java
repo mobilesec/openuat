@@ -3,6 +3,9 @@ package com.swetake.util.j2me;
 
 import java.io.InputStream;
 
+import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.AlertType;
+import javax.microedition.lcdui.Display;
 import javax.microedition.midlet.MIDlet;
 
 /**
@@ -19,7 +22,7 @@ import javax.microedition.midlet.MIDlet;
  */
 public class QRcodeGen{
 
-static final String QRCODE_DATA_PATH="/";
+static final String QRCODE_DATA_PATH="";
 char qrcodeErrorCorrect;
 char qrcodeEncodeMode;
 int qrcodeVersion;
@@ -29,7 +32,9 @@ int qrcodeStructureappendM;
 int qrcodeStructureappendParity;
 String qrcodeStructureappendOriginaldata;
 
-public QRcodeGen(){
+MIDlet midlet;
+
+public QRcodeGen(MIDlet midlet){
     qrcodeErrorCorrect='M';
     qrcodeEncodeMode='B';
     qrcodeVersion=0;
@@ -38,6 +43,8 @@ public QRcodeGen(){
     qrcodeStructureappendM=0;
     qrcodeStructureappendParity=0;
     qrcodeStructureappendOriginaldata="";
+    
+    this.midlet = midlet;
 }
 
     /**
@@ -376,7 +383,7 @@ public boolean[][] calQrcode(byte[] qrcodeData){
 	String filename=QRCODE_DATA_PATH+"qrv"+Integer.toString(qrcodeVersion)+"_"+Integer.toString(ec)+".dat";
 
 	//InputStream fis =Qrcode.class.getResourceAsStream(filename);
-	 InputStream fis = MIDlet.class.getResourceAsStream(filename);
+	 InputStream fis = midlet.getClass().getResourceAsStream(filename);
 	 System.out.println("filename: "+filename);
 //	fis = new FileInputStream(filename);
 //	BufferedInputStream bis = new BufferedInputStream(fis);
@@ -402,6 +409,7 @@ public boolean[][] calQrcode(byte[] qrcodeData){
 	fis.close();
     } catch(Exception e) {
         e.printStackTrace();
+        log(e);
     }
 
     byte rsBlockOrderLength=1;
@@ -429,7 +437,7 @@ public boolean[][] calQrcode(byte[] qrcodeData){
     try {
         String filename = QRCODE_DATA_PATH+"qrvfr"+Integer.toString(qrcodeVersion)+".dat";
 
-        InputStream fis =QRcodeGen.class.getResourceAsStream(filename);
+        InputStream fis =midlet.getClass().getResourceAsStream(filename);
 //        InputStream fis = new FileInputStream(new File(filename));
 //	BufferedInputStream bis = new BufferedInputStream(fis);
 //            bis.read(frameData);
@@ -439,6 +447,7 @@ public boolean[][] calQrcode(byte[] qrcodeData){
         fis.close();
     } catch(Exception e) {
         e.printStackTrace();
+        log(e);
     }
     
 /*  --- set terminator */
@@ -535,6 +544,11 @@ return out;
 
 }
 
+	private  void log(Exception e) {
+		Alert alert = new Alert("error", e.getClass().toString() + ": "	+ e.getMessage(), null, AlertType.ERROR);
+		Display.getDisplay(midlet).setCurrent(alert);
+	}
+
 
 
 
@@ -614,20 +628,21 @@ private static byte[] divideDataBy8Bits(int[] data ,byte[] bits,int maxDataCodew
     }
 
 
-private static byte[] calculateRSECC(byte[] codewords, byte rsEccCodewords,byte[] rsBlockOrder,int maxDataCodewords,int maxCodewords){
+private  byte[] calculateRSECC(byte[] codewords, byte rsEccCodewords,byte[] rsBlockOrder,int maxDataCodewords,int maxCodewords){
 
     byte[][] rsCalTableArray = new byte[256][rsEccCodewords];
-    System.out.println("wods:"+rsEccCodewords);
+//    System.out.println("wods:"+rsEccCodewords);
     try {
         String filename = QRCODE_DATA_PATH+"rsc"+rsEccCodewords+".dat";
-        System.out.println("opening"+filename);
-        InputStream fis =QRcodeGen.class.getResourceAsStream(filename);
+//        System.out.println("opening"+filename);
+        InputStream fis =midlet.getClass().getResourceAsStream(filename);
             for (int i=0;i<256;i++){
 	        fis.read(rsCalTableArray[i]);
             }
         fis.close();
     } catch(Exception e) {
         e.printStackTrace();
+        log(e);
     }
 
 
