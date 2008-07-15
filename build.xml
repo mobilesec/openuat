@@ -77,7 +77,9 @@
 	<!-- Settings for MIDP builds -->
 	<!-- The polish.home property needs to point to the directory -->
 	<!-- containing the J2ME Polish installation.                 -->
-	<property name="polish.home" location="/opt/J2MEPolish" />
+	
+	<!--<property name="polish.home" location="C:\Program Files\J2ME-Polish" />-->
+	<property name="polish.home" location="/opt/J2MEPolish" /> 
 	<!-- import global properties                                 -->
 	<property file="${polish.home}/global.properties" />
 	<!-- the device for the test mode - you can define it on the command-line
@@ -181,10 +183,12 @@
 	</condition>
 
 	<!-- Include the J2ME Polish tasks for building J2ME packages (but will only use it when haveWTK is set) -->
+	<!--change for win -->
 	<taskdef name="j2mepolish" 
 		classname="de.enough.polish.ant.PolishTask" 
 		classpath="${polish.home}/lib/enough-j2mepolish-build.jar:${polish.home}/lib/jdom.jar"
 	/>
+	
 	<!-- And a task for creating installer packages for Windows -->
 	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
 	<!-- This is a task for checkstyle -->
@@ -370,7 +374,7 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
-				org/codec/**/j2me/**/*.java org/codec/utils/*.java" />
+				**/j2me/**/*.java org/codec/utils/*.java" />
 		</copy>
 		<!-- hack ends here -->
 
@@ -414,6 +418,7 @@
 				compilerDestDir="${bin.midp}"
 				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
 				>
+				<!--change for win -->
 				<!-- midlets definition -->
 				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="Bluetooth connections demo"/>
 
@@ -443,6 +448,10 @@
 				<resources>
 					<!-- doesn't really do anything right now... -->
 					<fileset dir="${src}" includes="microlog.properties" />
+					<fileset dir="${resources}/qrcode_data" includes="qrv1_0" />
+					<fileset dir="${resources}/qrcode_data" includes="qrvfr1" />
+					<fileset dir="${resources}/qrcode_data" includes="rsc10.dat" />
+					<fileset dir="${resources}/hapadep" includes="**" />
 				</resources>
 				<!-- user defined JAD attributes can also be used: -->
 <!--				<jad>
