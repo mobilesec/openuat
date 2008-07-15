@@ -1,7 +1,8 @@
-package com.swetake.util;
-import java.awt.Canvas;
-import java.awt.Color;
-import java.awt.Graphics;
+package com.swetake.util.j2me;
+
+import javax.microedition.lcdui.Canvas;
+import javax.microedition.lcdui.Graphics;
+
 
 /**
  * Simple canvas to quickly display the QR Code result on J2SE
@@ -17,7 +18,7 @@ public class QRCanvas extends Canvas{
 		// TODO Auto-generated constructor stub
 	}
 	public void paint(Graphics g) {
-		//g.setColor(Color.black);
+		g.setColor(0, 0, 0);
 		
 
 	    for (int i=0;i<s.length;i++){
