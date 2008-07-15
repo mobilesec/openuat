@@ -142,6 +142,7 @@
 		<pathelement location="${wtk.home}/lib/cldcapi11.jar"/>
 		<pathelement location="${wtk.home}/lib/jsr082.jar"/>
 		<pathelement location="${wtk.home}/lib/jsr75.jar"/>
+		<pathelement location="${wtk.home}/lib/jsr234.jar"/>
 		<pathelement location="${wtk.home}/lib/mmapi.jar"/>
 		<pathelement location="${bin-microlog}"/>
 		<pathelement location="${bin-BC-core}"/>
@@ -374,6 +375,9 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
+				com/google/zxing/common/**/*.java com/google/zxing/*.java
+				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
+				com/google/zxing/qrcode/**/*.java
 				**/j2me/**/*.java org/codec/utils/*.java" />
 		</copy>
 		<!-- hack ends here -->
@@ -401,9 +405,11 @@
 			<deviceRequirements>
 				<!--<requirement name="Identifier" value="Generic/jtwi,Generic/midp1,Generic/Midp2Cldc11,Nokia/Series40E3,Nokia/Series60E2,Nokia/Series60E3,Sony-Ericsson/JavaPlatform6" />-->
 				<!--<requirement name="Identifier" value="Generic/Midp2Cldc11" />-->
-				<requirement name="Identifier" value="Generic/multi" />
+				<!--<requirement name="Identifier" value="Generic/multi" />-->
+				<requirement name="Identifier" value="Nokia/N95" />
 				<requirement name="JavaPackage" value="btapi" />
 				<requirement name="JavaPackage" value="mmapi" />
+				<!--<requirement name="JavaPackage" value="advancedmultimedia" />-->
 				<requirement name="JavaPlatform" value="MIDP/2.0+" />
 			</deviceRequirements>
 			
@@ -428,6 +434,9 @@
 
 				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication demo"/>
 
+				<midlet class="com.google.zxing.client.j2me.ZXingMIDlet" name="ZXing QR decoder"/>
+				
+				
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 					<variable name="cfg.shakingDemoMode" value="false" />
