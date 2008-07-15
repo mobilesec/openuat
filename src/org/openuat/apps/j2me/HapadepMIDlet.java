@@ -89,6 +89,7 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 	 * Creates the initial UI components.
 	 */
 	protected void startApp() throws MIDletStateChangeException {
+		
 		initGUI();
 
 	}
@@ -419,17 +420,19 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 	}
 	
 	private void generateQRCode(byte d []){
-		QRcodeGen x=new QRcodeGen();
+		
+		
+		QRcodeGen x=new QRcodeGen(this);
 		x.setQrcodeErrorCorrect('M');
 		x.setQrcodeEncodeMode('B');
 		x.setQrcodeVersion(1);
 
 		
-		Form form = new Form("QR Code");
 		if (d.length>0 && d.length <120){
 			boolean[][] s = x.calQrcode(d);
 			QRCanvas canvas = new QRCanvas(s);
 			Display.getDisplay (this).setCurrent ( canvas );
+			canvas.repaint();
 
 		}
 	}
