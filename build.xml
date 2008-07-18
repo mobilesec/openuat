@@ -36,6 +36,8 @@
 	<property name="bin-BC-openssl" location="${build}/bin-bouncycastle-openssl"/>
 	<property name="thirdparty-apache-bzip2" location="${thirdparty}/apache-bzip2"/>
 	<property name="bin-apache-bzip2" location="${build}/bin-apache-bzip2"/>
+	<property name="thirdparty-google-zxing" location="${thirdparty}/zxing"/>
+	<property name="bin-google-zxing" location="${build}/bin-zxing"/>
 	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
@@ -130,6 +132,7 @@
 		<pathelement location="${bin-BC-x509}"/>
 		<pathelement location="${bin-BC-openssl}"/>
 		<pathelement location="${bin-apache-bzip2}"/>
+		<pathelement location="${bin-google-zxing}"/>
 		<!-- We also need SWT to compile, but can't include it in the
 		     distribution JAR because there are multiple OS versions.
 		     Therefore, include it only in this class path but not in
@@ -210,6 +213,7 @@
 		<mkdir dir="${bin-BC-x509}"/>
 		<mkdir dir="${bin-BC-openssl}"/>
 		<mkdir dir="${bin-apache-bzip2}"/>
+		<mkdir dir="${bin-google-zxing}"/>
 	
 		<!-- Keep track of the build number -->
 		<buildnumber/>
@@ -233,6 +237,12 @@
 		<!-- Compile the Apache BZIP2 stream dependencies -->
 		<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
 		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
+		       
+	        <!-- And the Google Zxing QR codes -->
+		<javac srcdir="${thirdparty-google-zxing}" destdir="${bin-google-zxing}" includeAntRuntime="no"
+		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2">
+			<exclude name="${midp-only-files}" />
+		</javac>		       
 
 		<!-- Compile our own classes... -->
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
@@ -293,9 +303,13 @@
 		<jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
 			<fileset dir="${bin}"
-				 includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class org/openuat/features/**/*.class org/openuat/util/**/*.class" />
+				 includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class 
+				 org/openuat/features/**/*.class org/openuat/util/**/*.class
+				 org/codec/**/*.class
+				 net/mypapit/java/*.class com/swetake/util/**/*.class" />
 			<fileset dir="${bin-BC-core}" />
 			<fileset dir="${bin-apache-bzip2}" />
+			<fileset dir="${bin-google-zxing}" />
 			<fileset dir="${src}" includes="*.properties" />
 		</jar>
     
@@ -375,10 +389,10 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
-				com/google/zxing/common/**/*.java com/google/zxing/*.java
-				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
-				com/google/zxing/qrcode/**/*.java
 				**/j2me/**/*.java org/codec/utils/*.java" />
+			<fileset dir="${thirdparty-google-zxing}" includes="com/google/zxing/common/**/*.java com/google/zxing/*.java
+				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
+				com/google/zxing/qrcode/**/*.java com/google/zxing/**/j2me/**/*.java" />
 		</copy>
 		<!-- hack ends here -->
 
