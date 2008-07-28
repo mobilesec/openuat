@@ -1,5 +1,5 @@
 package com.swetake.util;
-import java.awt.Canvas;
+import java.awt.Canvas; 
 import java.awt.Color;
 import java.awt.Graphics;
 
