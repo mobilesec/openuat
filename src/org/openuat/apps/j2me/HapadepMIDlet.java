@@ -498,7 +498,7 @@ class DecoderThread extends Thread{
 		try {
 			ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
 			long start = System.currentTimeMillis();
-			AudioUtils.decodeWavFile2(data, dataStream);
+			AudioUtils.decodeWavFile(data, dataStream);
 			long end = System.currentTimeMillis();
 			byte retrieved [] = dataStream.toByteArray();
 			decodeScreen.deleteAll();
