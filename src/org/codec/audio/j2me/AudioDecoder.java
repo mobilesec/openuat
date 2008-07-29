@@ -3,7 +3,6 @@
  */
 
 package org.codec.audio.j2me;
-
 /**
  * Copyright 2002 by the authors. All rights reserved.
  *
@@ -11,10 +10,11 @@ package org.codec.audio.j2me;
  */
 
 
+import java.io.ByteArrayOutputStream;
+import java.util.Hashtable;
+
 import org.codec.utils.ArrayUtils;
 import org.codec.utils.Constants;
-
-import java.io.ByteArrayOutputStream;
 
 /**
  * Copyright (c) 2007, Regents of the University of California
@@ -107,6 +107,8 @@ public class AudioDecoder implements Constants {
         return decode(startSignals, getSignalStrengths(samples));
     }
 
+    public  static long total = 0;
+    
     /**
      * @param startSignals the signal strengths of each of the frequencies
      * @param signal       the signal strengths for each frequency for each duration [strength][duration index]
@@ -115,6 +117,7 @@ public class AudioDecoder implements Constants {
      */
     private static byte[] decode(double[] startSignals, double[][] signal) {
         //normalize to the start signals
+    	long start = System.currentTimeMillis();
         for (int i = 0; i < (kBitsPerByte * kBytesPerDuration); i++) {
             for (int j = 0; j < signal[i].length; j++) {
                 signal[i][j] = signal[i][j] / startSignals[i];
@@ -134,7 +137,8 @@ public class AudioDecoder implements Constants {
                 baos.write(value);
             }
         }
-
+        long end = System.currentTimeMillis();
+        total += (end-start);
         return baos.toByteArray();
     }
 
@@ -181,7 +185,6 @@ public class AudioDecoder implements Constants {
             //System.out.println(signalStrengths[j]);
         }
     }
-
     /**
      * @param signal    audio samples
      * @param frequence the frequency to search for in signal
@@ -191,12 +194,38 @@ public class AudioDecoder implements Constants {
         double realSum = 0;
         double imaginarySum = 0;
         double u = 2 * Math.PI * frequency / kSamplingFrequency;
+//        System.out.println("u: "+u + " - "+signal.length);
+       
+        float [][] sincos = SinCos.getSinCosValues(u);
+        
         // y = e^(ju) = cos(u) + j * sin(u)
 
         for (int i = 0; i < signal.length; i++) {
             //System.out.println("signal[" +i +"]: " +signal[i] + "; convert: " + (signal[i])/(float)org.codec.utils.Constants.kFloatToByteShift);
-            realSum = realSum + (Math.cos(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
-            imaginarySum = imaginarySum + (Math.sin(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
+        	
+        	float sin, cos;
+//        	if(!t.containsKey(i*u+"")){ 
+        		
+//        		sin = Math.sin(i*u);
+//        		cos = Math.cos(i*u);
+//        		if(sin != sincos[i][0])
+//        			System.out.println(sin + " != "+sincos[i][0]);
+//        	
+        	sin = sincos[i][0];
+        	cos = sincos[i][1];
+//        		t.put(i*u+"", new double[]{sin, cos});
+//        		//System.out.println("added "+i*u+", size:"+t.size());
+//        	}else {
+//        		double sincos [] = (double [])t.get(i*u+"");
+//        		sin = sincos[0];
+//        		cos = sincos[1];
+//        		System.out.print("r");
+//        	}
+            realSum = realSum + (cos * (signal[i] / (float) Constants.kFloatToByteShift));
+            imaginarySum = imaginarySum + (sin * (signal[i] / (float) Constants.kFloatToByteShift));
+//        	
+            //realSum = realSum + (Math.cos(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
+            //imaginarySum = imaginarySum + (Math.sin(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
         }
         //System.out.println("realSum=" + realSum + "; imSum=" + imaginarySum);
         double realAve = realSum / signal.length;

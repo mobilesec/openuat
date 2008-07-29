@@ -1,7 +1,4 @@
 package org.codec.audio.j2me;
-/**
- * @author Iulia Ion
- */
 
 
 
@@ -169,20 +166,37 @@ public class WavCodec {
 	 * @return
 	 */
 	public static byte [] decodeWav(byte wav[]){
-		byte data [] = new byte[wav.length-44];
-		for (int i = 0; i < data.length; i++) {
-			
-			//decode back the data
-			if(wav[ i + 44] < 0){
-				data[i] = (byte)(wav[i+44] + 128);
-			}else {
-				data[i] = (byte)(wav[i+44] - 128);
+		
+		//if sampleSize = 8 bits
+		if((int)wav[34] == 8){
+			byte data [] = new byte[wav.length-44];
+			for (int i = 0; i < data.length; i++) {
+
+				//decode back the data
+				if(wav[i + 44] < 0){
+					data[i] = (byte)(wav[i+44] + 128);
+				}else {
+					data[i] = (byte)(wav[i+44] - 128);
+				}
+
 			}
-			
+			return data;
+		}else if ((int)wav[34] == 16){
+			byte data [] = new byte[(wav.length-44)/2];
+			for (int i = 0; i < data.length; i++) {
+
+				//decode back the data
+
+				data[i] = (byte) ((wav[2*i + 44 + 1] + 256) & 0xFF);
+
+
+			}
+			return data;
 		}
-		return data;
+	//not known
+		return null;
 	}
-	
+
 	/**
 	 * Writes an integer to a 4 byte array using little endian.
 	 * @param value
@@ -196,6 +210,33 @@ public class WavCodec {
         }
         return b;
     }
+    
+	private static long getOutputSampleLongWithoutSign(long outputSampleLongWithSign, long inputUnsignedMax, int inputSampleSize, int outputSampleSize)
+	{
+		// here we want -1 to become 255 for an 8-bit value.
+		long outputSampleLongWithoutSign;
+		if (outputSampleLongWithSign >= 0)
+			outputSampleLongWithoutSign = outputSampleLongWithSign;
+		else
+			outputSampleLongWithoutSign = inputUnsignedMax + 1 + outputSampleLongWithSign;
+		
+		return getOutputSampleLongWithoutSign(outputSampleLongWithoutSign, inputSampleSize, outputSampleSize);
 
+	}
+
+	private static long getOutputSampleLongWithoutSign(long outputSampleLongWithoutSign, int inputSampleSize, int outputSampleSize)
+	{
+		// do calculation with unsigned long, so that sign bits are not shifted in.
+		// apply sample size (truncates, does not round, when going to smaller sample size)
+		if (outputSampleSize > inputSampleSize)
+		{
+			outputSampleLongWithoutSign <<= (outputSampleSize - inputSampleSize);
+		}
+		else if (inputSampleSize > outputSampleSize)
+		{
+			outputSampleLongWithoutSign >>= (inputSampleSize - outputSampleSize);
+		}
+		return outputSampleLongWithoutSign;
+	}
 
 }
