@@ -1,36 +1,60 @@
-package org.codec.audio;
+/**
+ * Modified by Iulia Ion
+ */
+
+package org.codec.audio.common;
+/**
+ * Copyright 2002 by the authors. All rights reserved.
+ *
+ * Author: Cristina V Lopes
+ */
+
+
+import java.io.ByteArrayOutputStream;
+
 
 import org.codec.utils.ArrayUtils;
 import org.codec.utils.Constants;
 
-import java.io.ByteArrayOutputStream;
-
 /**
- * Copyright 2002 by the authors. All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
+ * Copyright (c) 2007, Regents of the University of California
+ * All rights reserved.
+ * ====================================================================
+ * Licensed under the BSD License. Text as follows.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *   - Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   - Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   - Neither the name of University of California,Irvine nor the names
+ *     of its contributors may be used to endorse or promote products 
+ *     derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ * ====================================================================
+ * 
  * @author Crista Lopes (lopes at uci dot edu)
  * @version 1.0
- */
-
-public class Decoder implements Constants {
+ * 
+ */
+public class AudioDecoder implements Constants {
 
     /**
      * @param signal          the audio samples to search
@@ -83,6 +107,8 @@ public class Decoder implements Constants {
         return decode(startSignals, getSignalStrengths(samples));
     }
 
+    public  static long total = 0;
+    
     /**
      * @param startSignals the signal strengths of each of the frequencies
      * @param signal       the signal strengths for each frequency for each duration [strength][duration index]
@@ -91,6 +117,7 @@ public class Decoder implements Constants {
      */
     private static byte[] decode(double[] startSignals, double[][] signal) {
         //normalize to the start signals
+    	long start = System.currentTimeMillis();
         for (int i = 0; i < (kBitsPerByte * kBytesPerDuration); i++) {
             for (int j = 0; j < signal[i].length; j++) {
                 signal[i][j] = signal[i][j] / startSignals[i];
@@ -110,7 +137,8 @@ public class Decoder implements Constants {
                 baos.write(value);
             }
         }
-
+        long end = System.currentTimeMillis();
+        total += (end-start);
         return baos.toByteArray();
     }
 
@@ -133,7 +161,7 @@ public class Decoder implements Constants {
             //for each bit represented, detect
             for (int j = 0; j < kBitsPerByte * kBytesPerDuration; j++) {
                 signal[j][i] =
-                        complexDetect(durationInput, Encoder.getFrequency(j));
+                        complexDetect(durationInput, AudioEncoder.getFrequency(j));
                 /*
             if (j == 0)
               System.out.println("\nsignal[" + j + "][" + i + "]=" + signal [j][i]);
@@ -148,16 +176,15 @@ public class Decoder implements Constants {
     public static void getKeySignalStrengths(byte[] signal, double[] signalStrengths) {
         byte[] partialSignal = ArrayUtils.subarray(signal, 0, kSamplesPerDuration);
         for (int j = 1; j < kBitsPerByte * kBytesPerDuration; j += 2) {
-            signalStrengths[j] = complexDetect(partialSignal, Encoder.getFrequency(j));
+            signalStrengths[j] = complexDetect(partialSignal, AudioEncoder.getFrequency(j));
         }
 
         byte[] partialSignal2 = ArrayUtils.subarray(signal, kSamplesPerDuration, kSamplesPerDuration);
         for (int j = 0; j < kBitsPerByte * kBytesPerDuration; j += 2) {
-            signalStrengths[j] = complexDetect(partialSignal2, Encoder.getFrequency(j));
+            signalStrengths[j] = complexDetect(partialSignal2, AudioEncoder.getFrequency(j));
             //System.out.println(signalStrengths[j]);
         }
     }
-
     /**
      * @param signal    audio samples
      * @param frequence the frequency to search for in signal
@@ -167,12 +194,38 @@ public class Decoder implements Constants {
         double realSum = 0;
         double imaginarySum = 0;
         double u = 2 * Math.PI * frequency / kSamplingFrequency;
+//        System.out.println("u: "+u + " - "+signal.length);
+       
+        float [][] sincos = SinCos.getSinCosValues(u);
+        
         // y = e^(ju) = cos(u) + j * sin(u)
 
         for (int i = 0; i < signal.length; i++) {
             //System.out.println("signal[" +i +"]: " +signal[i] + "; convert: " + (signal[i])/(float)org.codec.utils.Constants.kFloatToByteShift);
-            realSum = realSum + (Math.cos(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
-            imaginarySum = imaginarySum + (Math.sin(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
+        	
+        	float sin, cos;
+//        	if(!t.containsKey(i*u+"")){ 
+        		
+//        		sin = Math.sin(i*u);
+//        		cos = Math.cos(i*u);
+//        		if(sin != sincos[i][0])
+//        			System.out.println(sin + " != "+sincos[i][0]);
+//        	
+        	sin = sincos[i][0];
+        	cos = sincos[i][1];
+//        		t.put(i*u+"", new double[]{sin, cos});
+//        		//System.out.println("added "+i*u+", size:"+t.size());
+//        	}else {
+//        		double sincos [] = (double [])t.get(i*u+"");
+//        		sin = sincos[0];
+//        		cos = sincos[1];
+//        		System.out.print("r");
+//        	}
+            realSum = realSum + (cos * (signal[i] / (float) Constants.kFloatToByteShift));
+            imaginarySum = imaginarySum + (sin * (signal[i] / (float) Constants.kFloatToByteShift));
+//        	
+            //realSum = realSum + (Math.cos(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
+            //imaginarySum = imaginarySum + (Math.sin(i * u) * (signal[i] / (float) Constants.kFloatToByteShift));
         }
         //System.out.println("realSum=" + realSum + "; imSum=" + imaginarySum);
         double realAve = realSum / signal.length;

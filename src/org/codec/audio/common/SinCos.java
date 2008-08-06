@@ -1,6 +1,5 @@
-package org.codec.audio.j2me;
+package org.codec.audio.common;
 
-import javax.microedition.lcdui.List;
 
 public class SinCos {
 	static int cache = 10;

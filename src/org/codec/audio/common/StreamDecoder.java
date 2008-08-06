@@ -2,19 +2,18 @@
  * Modified by Iulia Ion
  */
 
-package org.codec.audio.j2me;
-
+package org.codec.audio.common; 
 /**
  * Copyright 2002 by the authors. All rights reserved.
  *
  * Author: Cristina V Lopes
  */
 
-import org.codec.utils.ArrayUtils;
-import org.codec.utils.Constants;
-
 import java.io.IOException;
 import java.io.OutputStream;
+
+import org.codec.utils.ArrayUtils;
+import org.codec.utils.Constants;
 
 /**
  * Copyright (c) 2007, Regents of the University of California
@@ -82,6 +81,7 @@ public class StreamDecoder implements Runnable {
     }
 
     public void run() {
+    	long start = System.currentTimeMillis();
         synchronized (runLock) {
             running = true;
         }
@@ -107,6 +107,9 @@ public class StreamDecoder implements Runnable {
                         } else {
                             if (end == 2) {
                                 System.out.println("STREAM DECODINF END.");
+                                long end = System.currentTimeMillis();
+                                System.out.println("decoding took: " + (end-start)+ "ms");
+                                System.out.println("decoder total time: " + AudioDecoder.total+ "ms");
                                 return;
                             }
                             Thread.currentThread().yield();

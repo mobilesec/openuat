@@ -2,6 +2,11 @@ package org.codec.audio;
 
 
 import javax.sound.sampled.*;
+
+import org.codec.audio.common.AudioBuffer;
+import org.codec.audio.common.AudioEncoder;
+import org.codec.audio.common.StreamDecoder;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -39,7 +44,7 @@ import java.io.InputStream;
 public class AudioUtils {
 
     //the default format for reading and writing audio information
-    public static AudioFormat kDefaultFormat = new AudioFormat((float) Encoder.kSamplingFrequency,
+    public static AudioFormat kDefaultFormat = new AudioFormat((float) AudioEncoder.kSamplingFrequency,
                                                                (int) 8, (int) 1, true, false);
 
     public static void decodeWavFile(File inputFile, OutputStream out) throws UnsupportedAudioFileException, IOException {
@@ -288,7 +293,7 @@ public class AudioUtils {
     public static void encodeFileToWav(InputStream inputStream, File outputFile) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        Encoder.encodeStream(inputStream, baos);
+        AudioEncoder.encodeStream(inputStream, baos);
 
         inputStream.close();
 
@@ -324,7 +329,7 @@ public class AudioUtils {
     public static void performFile(File file)
             throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Encoder.encodeStream(new FileInputStream(file), baos);
+        AudioEncoder.encodeStream(new FileInputStream(file), baos);
         performData(baos.toByteArray());
     }
 }

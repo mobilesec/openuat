@@ -1,6 +1,9 @@
 package org.codec.audio; 
 
 import javax.sound.sampled.TargetDataLine;
+
+import org.codec.audio.common.AudioBuffer;
+
 import java.io.ByteArrayOutputStream;
 
 /**

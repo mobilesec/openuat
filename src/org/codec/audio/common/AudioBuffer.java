@@ -1,4 +1,4 @@
-package org.codec.audio; 
+package org.codec.audio.common; 
 
 import org.codec.utils.ArrayUtils;
 
