@@ -1,4 +1,5 @@
-package org.codec.audio;
+package org.codec.audio.common;
+
 /**
  * Copyright (c) 2007, Regents of the University of California
  * All rights reserved.
@@ -39,11 +40,11 @@ package org.codec.audio;
  */
 
 
-public class BitArray {
+public class CodecBitArray {
 
 	private byte [] bytes;
 	
-	public BitArray(byte[] bytes){
+	public CodecBitArray(byte[] bytes){
 	
 		this.bytes = bytes;
 		
@@ -81,10 +82,17 @@ public class BitArray {
 		int tmp = pos/8;
 		int mod = pos%8;
 		
-		if ((bytes[tmp]&((int)(Math.pow(2.0,(double)mod)))) !=0)
+		if ((bytes[tmp]&(pow(2,mod))) !=0)
 				return true;
 		else
 			return false;
+	}
+	public int pow (int base, int exp){
+		int result = 1;
+		for (int i = 0; i < exp; i++) {
+			result = result * base;
+		}
+		return result;
 	}
 	
 	public int ValueFour(int pos){

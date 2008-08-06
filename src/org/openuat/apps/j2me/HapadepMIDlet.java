@@ -1,5 +1,6 @@
 package org.openuat.apps.j2me;
 
+
 import com.swetake.util.j2me.QRcodeGen;
 import com.swetake.util.j2me.QRCanvas;
 import java.io.ByteArrayInputStream;
@@ -22,10 +23,12 @@ import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.RecordControl;
+import javax.microedition.media.control.ToneControl;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
 
 import org.codec.audio.j2me.AudioUtils;
+import org.codec.audio.j2me.PlayerPianoJ2ME;
 
 /**
  * Demonstrate the HAPADEP protocol on the mobile phone. This class shows tentative UI, recording and playing audio files. No cryptographic functionality yet and no actual integration with the HAPADEP implementation.
@@ -106,14 +109,15 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 //		mainScreen.append(auth);
 
 		StringItem record = new StringItem("Record", " a sound\n", Item.BUTTON);
-		StringItem play = new StringItem("Play", " wav file from jar\n", Item.BUTTON);
+		StringItem verify = new StringItem("Verify", " hash file from jar\n", Item.BUTTON);
 		StringItem encode = new StringItem("Encode", " key from jar file\n", Item.BUTTON);
 		StringItem decode = new StringItem("Decode", " wav file from jar\n", Item.BUTTON);
+		
 
 		StringItem qrgen = new StringItem("GenerateQRCode", "", Item.BUTTON);
 		
 		mainScreen.append(record);
-		mainScreen.append(play);
+		mainScreen.append(verify);
 		mainScreen.append(encode);
 		mainScreen.append(decode);
 		mainScreen.append(qrgen);
@@ -125,13 +129,13 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 		testQRCmd = new Command("QR Gen", Command.ITEM, 1);
 
 		record.addCommand(playRecCmd);
-		play.addCommand(verifyCmd);
+		verify.addCommand(verifyCmd);
 		encode.addCommand(testEncodeCmd);
 		decode.addCommand(testDecodeCmd);
 		qrgen.addCommand(testQRCmd);
 		
 		record.setItemCommandListener(this);
-		play.setItemCommandListener(this);
+		verify.setItemCommandListener(this);
 		encode.setItemCommandListener(this);
 		decode.setItemCommandListener(this);
 		qrgen.setItemCommandListener(this);
@@ -254,7 +258,13 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 			if (cmd.equals(playRecCmd)) {
 				recordAudio();
 			} else if (cmd.equals(verifyCmd)) {
-				playFile("my_wav.wav");
+				InputStream in = this.getClass().getResourceAsStream("my_hashfile.txt");
+				System.out.println();
+				int a = in.available();
+				byte hash [] = new byte [a];
+				in.read(hash);
+				
+				verify(hash);
 			}else if (cmd.equals(testDecodeCmd)) {
 				InputStream wav = getClass().getResourceAsStream("my_wav.wav");
 				int a = wav.available();
@@ -316,6 +326,26 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 		}
 	}
 
+	/**
+	 * Plays a melodic sound to verify the hash.
+	 */
+	private void verify(byte [] hash){
+		try{ 
+			Player p = Manager.createPlayer(Manager.TONE_DEVICE_LOCATOR); 
+			p.realize(); 
+			ToneControl c = (ToneControl)p.getControl("ToneControl"); 
+
+			String score = PlayerPianoJ2ME.MakeInput(hash);
+			//c.setSequence(PlayerPiano.PlayerPiano("/2 - Gb + . - E - E + Db + Fb + Cb - Db + Fb Cb"));
+			c.setSequence(PlayerPianoJ2ME.PlayerPiano(score));
+
+			p.start(); 
+		} catch (IOException ioe) { 
+		} catch (MediaException me) { }
+
+	}
+
+	
 	/**
 	 * Encodes the key from the file.
 	 */

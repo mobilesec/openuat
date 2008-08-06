@@ -1,6 +1,9 @@
 package org.codec.audio;
 
 import javax.sound.midi.*;
+
+import org.codec.audio.common.CodecBitArray;
+
 import java.io.IOException;
 
 public class PlayerPiano {
@@ -25,7 +28,7 @@ public class PlayerPiano {
     
     public static String MakeInput(byte[] in){
     	
-    	BitArray bits = new BitArray(in);
+    	CodecBitArray bits = new CodecBitArray(in);
     	String out= new String();
     	int octave=0;
     	    

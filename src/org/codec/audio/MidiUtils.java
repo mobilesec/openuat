@@ -8,6 +8,9 @@ import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Track;
+
+import org.codec.audio.common.CodecBitArray;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -48,7 +51,7 @@ public class MidiUtils {
 		
 		inputFile.read(bytes);
 		
-		BitArray bits = new BitArray(bytes);
+		CodecBitArray bits = new CodecBitArray(bytes);
 		
 		
 		Sequence	sequence = null;
