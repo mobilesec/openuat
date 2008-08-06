@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="thirdparty/zxing"/>
 	<classpathentry kind="src" path="thirdparty/microlog"/>
 	<classpathentry kind="src" path="thirdparty/apache-bzip2"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-core-deps"/>
@@ -24,7 +25,7 @@
 	<classpathentry kind="lib" path="lib/simple-1.3.jar"/>
 	<classpathentry kind="lib" path="lib/TableLayout.jar"/>
 	<classpathentry kind="lib" path="lib/jsapi.jar"/>
-	<classpathentry kind="lib" path="lib/hapadep/mmapi.jar"/>
 	<classpathentry kind="lib" path="lib/jsr234.jar"/>
+	<classpathentry kind="lib" path="lib/mmapi.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
