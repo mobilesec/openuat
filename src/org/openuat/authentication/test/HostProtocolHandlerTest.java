@@ -81,7 +81,7 @@ public class HostProtocolHandlerTest extends TestCase {
         sw.flush();
     }
 
-    public void testCompleteAuthentication() throws UnknownHostException, IOException, InterruptedException
+    public void testCompleteAuthentication_OOBVerificationMode() throws UnknownHostException, IOException, InterruptedException
     {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
@@ -102,6 +102,36 @@ public class HostProtocolHandlerTest extends TestCase {
 
         Assert.assertEquals(2, h.getReceivedSecrets());
         Assert.assertTrue(h.areSharedSecretsEqual());
+
+        h.shutdownSocketsCleanly();
+    }
+    
+    public void testCompleteAuthentication_SecretPreInputMode() throws UnknownHostException, IOException, InterruptedException
+    {
+    	byte[] presharedShortSecret = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    	
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+        server.setPresharedShortSecret(presharedShortSecret);
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        		presharedShortSecret,
+        		10000, false, "", useJSSEClient);
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(10, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSessionKeysEqual() && h.areOObMsgsEmpty());
 
         h.shutdownSocketsCleanly();
     }
@@ -230,6 +260,20 @@ public class HostProtocolHandlerTest extends TestCase {
         int getReceivedStarted()
         {
                 return receivedStarted;
+        }
+        
+        boolean areSessionKeysEqual() {
+            if (receivedSecrets != 2)
+                return false;
+            else
+                return SimpleKeyAgreementTest.compareByteArray(sharedSessionKeys[0], sharedSessionKeys[1]);
+        }
+        
+        boolean areOObMsgsEmpty() {
+            if (receivedSecrets != 2)
+                return false;
+            else
+                return sharedOObMsgs[0] == null && sharedOObMsgs[1] == null;
         }
 
         boolean areSharedSecretsEqual()

@@ -45,6 +45,12 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	
 	/** If =! 1, specifies a timeout for the (incoming) protocol runs started in the background. */
 	protected int protocolTimeoutMs;
+	
+    /** If this is set, then we have some form of user input that has been
+     * created _before_ starting a specific protocol instance and is assumed to be
+     * secret.
+     */
+    protected byte[] presharedShortSecret = null;
 
 	/** This only keeps the command handlers so that they can be pre-registered
 	 * and then be passed onto HostProtocolHandler objects when they are 
@@ -94,6 +100,19 @@ public abstract class HostServerBase extends AuthenticationEventSender
     		return false;
     	protocolCommandHandlers = handlers;
     	return true;
+    }
+
+    /** Sets a preshared short secret as entered by the user. This <b>must</b>
+     * remain secret until the protocol finished and <b>must not</b> be re-used 
+     * again for another protocol run!
+     */
+    public void setPresharedShortSecret(byte[] presharedShortSecret) {
+    	this.presharedShortSecret = presharedShortSecret;
+    }
+    
+    /** Returns the user-input preshared short secret. */
+    public byte[] getPresharedShortSecret() {
+    	return presharedShortSecret;
     }
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */

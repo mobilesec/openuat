@@ -22,4 +22,6 @@ public interface OOBChannel {
 	public Object getPeer();
 	
 	public void transmit(Object peer, byte[] message);
+	
+	public byte[] receive(Object peer);
 }

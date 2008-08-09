@@ -141,7 +141,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     public static final String Protocol_AuthenticationAcknowledge = "AUTHACK ";
     /** @see #Protocol_Hello */
     public static final String Protocol_AuthenticationAcknowledge2 = "AUTHACK2 ";
-    
+
+    public static final String Protocol_AuthenticationInputCommit = "AUTHINPCOM ";
+
+    public static final String Protocol_AuthenticationInputOpen = "AUTHINPOPEN ";
+
+
     /** At the moment, the whole protocol consists of 5 stages. */
     public static final int AuthenticationStages = 5;
     
@@ -229,13 +234,31 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		this.useJSSE = useJSSE;
 		this.timeoutMs = timeoutMs;
     }
-    
+
+    /** This constructor should only be used by HostServerBase for incoming
+	 * connections or with the static startAuthenticatingWith method for
+	 * outgoing connections. It constructs the protocol in PlainObject style
+	 * for <b>secret input</b> verification. The user input must must already
+	 * have been entered and <b>must</b> remain secret until AuthenticationSuccess
+	 * (or failure) is emitted and <b>must not</b> be re-used.
+	 * 
+	 * @param presharedShortSecret The secret, shared key entered by the user
+	 *        on both sides before any interaction takes place on the wireless
+	 *        channel. This <b>must</b> remain secret until the protocol finishes
+	 *        and <b>must not</b> be re-used.
+	 */
+    public HostProtocolHandler(RemoteConnection con, byte[] presharedShortSecret, int timeoutMs, 
+    		boolean keepConnected, boolean useJSSE) {
+    	this(con, timeoutMs, keepConnected, useJSSE);
+    	this.presharedShortSecret = presharedShortSecret;
+    }
+
 /*    public HostProtocolHandler(OOBChannel oobChannel, RemoteConnection con, int timeoutMs, 
     		boolean keepConnected, boolean useJSSE) {
     	this(con, timeoutMs, keepConnected, useJSSE);
     	this.oobChannel = oobChannel;
     }*/
-
+    
     /** Adds a protocol command handler.
      * 
      * @param command The command to react to.
@@ -826,10 +849,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // step 3, part 3: Alice and Bob compute the out-of-band message
            	timestamp = System.currentTimeMillis();
            	// TODO: might want to add local and remote addresses
-            byte[] oobInput = new byte[2*NonceByteLength]; 
-            byte[] oobKey = new byte[myPubKey.length + remotePubKey.length + 
-                                     (presharedShortSecret != null ? 
-                                             presharedShortSecret.length : 0)];
+            byte[] oobInput = new byte[2*NonceByteLength +
+                                       (presharedShortSecret != null ? 
+                                               presharedShortSecret.length : 0)]; 
+            byte[] oobKey = new byte[myPubKey.length + remotePubKey.length];
             // order: first client, then server
             if (!serverSide) {
             	System.arraycopy(nonce, 0, oobInput, 0, NonceByteLength);
@@ -849,9 +872,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             //           important: the used must press "yes" on the former if and only if the latter accepted (1-bit OOB)
             // comparison: user needs to enter yes/no on both sides after being shown oobMsg somehow
             // input: additional steps required
-            // TODO: need to distinguish between two input cases:
-            // a) *short* secret message that needs to be input after the protocol has started!
-            // b) long authentic message (doesn't need to be secret) that can be used for pre-authentication
+            // TODO: need to distinguish between three input cases:
+            // a) *short* *secret* message that can be pre-entered
+            // b) *short* non-secret message that needs to be input after the protocol has started!
+            // c) long non-secret but authentic message that can be used for pre-authentication
             if (presharedShortSecret != null) {
             	// case 1: MANA III assuming the user input to be secret, but it
             	// may have already been entered before even starting the protocol
@@ -861,31 +885,85 @@ public class HostProtocolHandler extends AuthenticationEventSender {
  * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
  * assumption: R remains secret */
             	System.arraycopy(presharedShortSecret, 0, oobInput, 
-            			NonceByteLength*2+myPubKey.length+remotePubKey.length, 
-            			presharedShortSecret.length);
+            			NonceByteLength*2, presharedShortSecret.length);
 
-            	// TODO
             	// another two-round commitment scheme, but now using a HMAC keyed with a random key
             	// 1. send HMAC_K1(oobInput)
                 byte[] myK = new byte[NonceByteLength];
                 r.nextBytes(myK);
-                //byte[] myM = hmac(myK, oobInput);
+                byte[] myM = keyedHash(oobInput, myK);
+                totalCryptoTime += System.currentTimeMillis()-timestamp;
+               	timestamp = System.currentTimeMillis();
+
+                String myMStr = new String(Hex.encodeHex(myM));
+                println(Protocol_AuthenticationInputCommit + myMStr);
+
                 // 2. receive M2
+            	String line = getLine(Protocol_AuthenticationInputCommit, connection, false);
+            	Object[] parms = parseLine(line, Protocol_AuthenticationInputCommit, 
+            			new boolean[] {true}, null, 1, connection);
+            	if (parms == null) {
+            		shutdownConnectionCleanly();
+                    return;
+            	}
+            	byte[] remoteM = (byte[]) parms[0];
+                if (remoteM.length < 128) {
+                    logger.warn("Protocol error: could not parse commitment for short shared secret, expected 128 Bytes hex-encoded.");
+                    println("Protocol error: could not parse input commitment for short shared secret, expected 128 Bytes hex-encoded.");
+                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment too short (only " + remotePubKey.length + " bytes instead of 128)");
+                    shutdownConnectionCleanly();
+                    return;
+                }
                 
-                // if we have an input case and R is _not_ secret, then it must 
-                // be entered on both sides exactly here in the protocol, not
+                // if we have an input case and R1/2 are _not_ secret, then they must 
+                // be input to the respective other sides exactly here in the protocol, not
                 // earlier and not later
-                // it is important that R is not made available to an attacker 
+                // it is important that R1/2 is not made available to an attacker 
                 // before the commitments M1/M2 have been exchanged because
                 // otherwise it could create valid commitments with different
                 // public keys (and different K1/K2, as long as R is known)
                 // need to block at this stage until both devices received R
+               	
+               	// TODO for non-secret short input (i.e. user-generated keys):
+                // this case will only work in Hollywood mode
+               	// byte[] remoteShortSecret = oobChannel.receive();
                                 
                 // 3. send K1
+                String myKStr = new String(Hex.encodeHex(myK));
+                println(Protocol_AuthenticationInputOpen + myKStr);
+
                 // 4. receive K2
+            	line = getLine(Protocol_AuthenticationInputOpen, connection, false);
+            	parms = parseLine(line, Protocol_AuthenticationInputOpen, 
+            			new boolean[] {true}, null, 1, connection);
+            	if (parms == null) {
+            		shutdownConnectionCleanly();
+                    return;
+            	}
+            	byte[] remoteK = (byte[]) parms[0];
+                if (remoteK.length < 128) {
+                    logger.warn("Protocol error: could not parse remote K, expected 128 Bytes hex-encoded.");
+                    println("Protocol error: could not parse remote K, expected 128 Bytes hex-encoded.");
+                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote K too short (only " + remotePubKey.length + " bytes instead of 128)");
+                    shutdownConnectionCleanly();
+                    return;
+                }
+                totalTransferTime += System.currentTimeMillis()-timestamp;
+               	timestamp = System.currentTimeMillis();
+                
                 // 5. compare M1 and M2
-                //byte[] remoteMExpected = hmac(remoteK, oobInput);
-                //if (!Arrays.equals(remoteMExpected, remoteM))
+                byte[] remoteMExpected = keyedHash(oobInput, remoteK);
+               	// grml, no java.util.Arrays class in J2ME - this simply sucks
+               	for (int i=0; i<remoteCommitment.length; i++) {
+                    if (remoteM[i] != remoteMExpected[i]) {
+                        logger.warn("Protocol error: remote input commitment does not match");
+                        println("Protocol error: remote input commitment does not match");
+                        raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote input commitment does not match");
+                        shutdownConnectionCleanly();
+                        return;
+                    }
+               	}
+                totalCryptoTime += System.currentTimeMillis()-timestamp;
                 
                 // already authenticated!
                 oobMsg = null;
@@ -901,7 +979,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 oobMsg = keyedHash(oobInput, oobKey);
             }
             totalCryptoTime += System.currentTimeMillis()-timestamp;
-            raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
+            raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, commitment");
 
             // final step: finish DH computation, but _only use keys after OOB message has been accepted by both sides_
             // TODO: in Hollywood mode, don't do this until we accept
@@ -1021,6 +1099,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * authenticate with the host given as remote. Callers need to subscribe to
 	 * the Authentication* events to get notifications of authentication
 	 * success, failure and progress.
+	 * When presharedShortSecret is set to null, the protocol will use 
+	 * <b>transfer</b> or <b>verification</b> mode. When it is set to some
+	 * value, <b>secret pre-input</b> mode is used.
 	 * 
 	 * @param remote
 	 *            The remote connection to use for key agreement.
@@ -1030,6 +1111,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            null, it will be registered with a new HostProtocolHandler
 	 *            object before starting the authentication protocol so that it
 	 *            is guaranteed that all events are posted to the event handler.
+	 * @param presharedShortSecret
+	 * 			  If a user has already entered the same short <b>secret</b> 
+	 *            key into both sides, it may be passed in this parameter to
+	 *            avoid further authentication via out-of-band channel. It is
+	 *            important this this <b>must</b> remain secret until the 
+	 *            protocol finishes and that it <b>must not</b> be re-used.
 	 * @param timeoutMs
 	 * 			  The maximum duration in milliseconds that this authentication
 	 * 			  protocol may take before it will abort with an AuthenticationFailed
@@ -1051,6 +1138,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     static public void startAuthenticationWith(RemoteConnection remote,
 			AuthenticationProgressHandler eventHandler,
+			byte[] presharedShortSecret,
 			int timeoutMs,
 			boolean keepConnected, String optionalParameter,
 			boolean useJSSE) throws IOException {
@@ -1058,7 +1146,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     		logger.info("Starting authentication with " + 
     				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(remote, 
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(remote, presharedShortSecret,
 				timeoutMs, keepConnected, useJSSE);
 		tmpProtocolHandler.useJSSE = useJSSE;
 		if (eventHandler != null)
@@ -1083,5 +1171,18 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 				outer.performAuthenticationProtocol(false);
 			}
 		}).start();
+    }
+
+    /** This is a convenience wrapper setting presharedShortSecret to null and
+     * thus starting the protocol in <b>transfer</b> or <b>verification</b> mode.
+     * @see startAuthenticationWith
+     */
+    static public void startAuthenticationWith(RemoteConnection remote,
+			AuthenticationProgressHandler eventHandler,
+			int timeoutMs,
+			boolean keepConnected, String optionalParameter,
+			boolean useJSSE) throws IOException {
+    	startAuthenticationWith(remote, eventHandler, null, timeoutMs,
+    			keepConnected, optionalParameter, useJSSE);
     }
 }
