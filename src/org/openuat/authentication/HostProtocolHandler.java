@@ -849,6 +849,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             //           important: the used must press "yes" on the former if and only if the latter accepted (1-bit OOB)
             // comparison: user needs to enter yes/no on both sides after being shown oobMsg somehow
             // input: additional steps required
+            // TODO: need to distinguish between two input cases:
+            // a) *short* secret message that needs to be input after the protocol has started!
+            // b) long authentic message (doesn't need to be secret) that can be used for pre-authentication
             if (presharedShortSecret != null) {
             	// case 1: MANA III assuming the user input to be secret, but it
             	// may have already been entered before even starting the protocol
