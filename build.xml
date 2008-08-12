@@ -107,7 +107,8 @@
 		<include name="log4j-1.2.jar"/>
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
-		<include name="avetanaBT.jar"/>
+		<!--<include name="avetanaBT.jar"/> -->
+		<include name="bluecove-2.0.2.jar"/>
 		<include name="jsapi.jar"/>
 		<include name="TableLayout.jar"/>
 		<include name="freetts.jar"/>
@@ -149,6 +150,7 @@
 		<pathelement location="${wtk.home}/lib/mmapi.jar"/>
 		<pathelement location="${bin-microlog}"/>
 		<pathelement location="${bin-BC-core}"/>
+		<pathelement location="${bin-google-zxing}"/>
 	</path>
 	
 	<path id="cobertura.classpath">
@@ -367,9 +369,14 @@
 				org/openuat/authentication/SimpleKeyAgreement.java org/openuat/util/Hash.java
 				org/openuat/authentication/KeyManager.java org/openuat/util/HostAuthenticationServer.java
 				org/openuat/authentication/AuthenticationEventSender.java
+				org/openuat/authentication/OOBChannel.java
+				org/openuat/authentication/OOBMessageHandler.java
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java
 				org/openuat/util/SafetyBeltTimer.java
 				net/mypapit/java/StringTokenizer.java" />
+			<fileset dir="${thirdparty-google-zxing}" includes="com/google/zxing/common/**/*.java com/google/zxing/*.java
+				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
+				com/google/zxing/qrcode/**/*.java com/google/zxing/**/j2me/**/*.java" />
 		</copy>
 
 		<!-- additional files for the second and third MIDlets -->
@@ -389,10 +396,8 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
-				**/j2me/**/*.java  **/common/**/*.java org/codec/utils/*.java" />
-			<fileset dir="${thirdparty-google-zxing}" includes="com/google/zxing/common/**/*.java com/google/zxing/*.java
-				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
-				com/google/zxing/qrcode/**/*.java com/google/zxing/**/j2me/**/*.java" />
+				**/j2me/**/*.java  **/common/**/*.java org/codec/utils/*.java org/codec/mad/*.java" />
+
 		</copy>
 		<!-- hack ends here -->
 
@@ -448,7 +453,9 @@
 
 				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication demo"/>
 
-				<midlet class="com.google.zxing.client.j2me.ZXingMIDlet" name="ZXing QR decoder"/>
+				<!-- <midlet class="com.google.zxing.client.j2me.ZXingMIDlet" name="ZXing QR decoder"/>-->
+				
+				<midlet class="org.openuat.apps.j2me.OpenUATmidlet" name="OpenUAT Toolkit"/>
 				
 				
 				<variables includeAntProperties="true">
