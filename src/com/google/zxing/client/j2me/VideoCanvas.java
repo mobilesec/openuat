@@ -23,6 +23,8 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.midlet.MIDlet;
 
+import org.openuat.apps.j2me.VisualChannel;
+
 /**
  * The main {@link Canvas} onto which the camera's field of view is painted.
  * This class manages decoding via {@link SnapshotThread}.

@@ -27,6 +27,8 @@ import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.VideoControl;
 
+import org.openuat.apps.j2me.VisualChannel;
+
 /**
  * Thread which does the work of capturing a frame and decoding it.
  *

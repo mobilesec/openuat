@@ -243,7 +243,7 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 			decodeScreen.addCommand(new Command("Back", Command.BACK, 1));
 			Display.getDisplay(this).setCurrent(decodeScreen);
 			
-			new DecoderThread(decodeScreen, this, audiodata).start();
+			new TestDecoderThread(decodeScreen, Display.getDisplay(this), audiodata).start();
 	}
 
 	/**
@@ -408,7 +408,7 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 			Display.getDisplay(this).setCurrent(encodeScreen);
 		}
 	}
-
+	
 
 	/**
 	 * Starts recording the audio sequence. Then the MIDlet waits for the user to press the STOP button.
@@ -514,13 +514,13 @@ class EncoderThread extends Thread{
 		}
 	}
 }
-class DecoderThread extends Thread{
+class TestDecoderThread extends Thread{
 	Form decodeScreen;
-	MIDlet midlet;
+	Display display;
 	byte data[];
-	public DecoderThread(Form decodeScreen, MIDlet midlet, byte data[]) {
+	public TestDecoderThread(Form decodeScreen, Display display, byte data[]) {
 		this.decodeScreen = decodeScreen;
-		this.midlet = midlet;
+		this.display = display;
 		this.data = data;
 	}
 
@@ -541,7 +541,7 @@ class DecoderThread extends Thread{
 //			}
 
 
-			Display.getDisplay(midlet).setCurrent(decodeScreen);
+			display.setCurrent(decodeScreen);
 
 			//} catch (IOException e) {
 		} catch (Exception e) {

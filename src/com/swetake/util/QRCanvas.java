@@ -1,5 +1,5 @@
 package com.swetake.util;
-import java.awt.Canvas; 
+import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Graphics;
 
@@ -23,7 +23,7 @@ public class QRCanvas extends Canvas{
 	    for (int i=0;i<s.length;i++){
 			for (int j=0;j<s.length;j++){
 			    if (s[j][i]) {
-			    	g.fillRect(j*10,i*10,10,10);
+			    	g.fillRect(j*5+100,i*5+100,5,5);
 			    	//System.out.print("X");
 			    }
 			    //else System.out.print("O");

@@ -837,10 +837,11 @@ public class QRcodeGen{
 		QRcodeGen x=new QRcodeGen();
 		x.setQrcodeErrorCorrect('M');
 		x.setQrcodeEncodeMode('B');
-		x.setQrcodeVersion(2);
+		x.setQrcodeVersion(3);
 
 
-		byte[] d ="my message is the best".getBytes();
+		byte[] d ="my message is the besthellohello".getBytes();
+		System.out.println(d.length);
 		if (d.length>0 && d.length <120){
 			boolean[][] s = x.calQrcode(d);
 
@@ -851,17 +852,6 @@ public class QRcodeGen{
 			panel.add(canvas);
 			frame.setContentPane(panel);
 			canvas.repaint();
-//			for (int i=0;i<s.length;i++){
-//			for (int j=0;j<s.length;j++){
-//			if (s[j][i]) {
-//			Graphics g = Graphics.nel.getGraphics();;
-//			g.drawRect(j*3,i*3,3,3);
-//			canvas.paint(g);
-//			System.out.print("X");
-//			}else System.out.print("O");
-//			}
-//			System.out.println();
-//			}
 		}
 		panel.repaint();
 		frame.setSize(300, 300);

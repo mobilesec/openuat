@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.zxing.client.j2me;
+package org.openuat.apps.j2me;
 
 import java.io.IOException;
 
@@ -30,10 +30,11 @@ import javax.microedition.media.control.VideoControl;
 import javax.microedition.midlet.MIDlet;
 
 import org.apache.log4j.Logger;
-import org.openuat.apps.j2me.OpenUATmidlet;
 import org.openuat.authentication.OOBChannel;
 
 import com.google.zxing.Result;
+import com.google.zxing.client.j2me.AdvancedMultimediaManager;
+import com.google.zxing.client.j2me.VideoCanvas;
 
 /**
  * <p>The actual reader application {@link MIDlet}.</p>
@@ -51,11 +52,11 @@ public class VisualChannel {
     return canvas;
   }
 
-  Player getPlayer() {
+  public Player getPlayer() {
     return player;
   }
 
-  VideoControl getVideoControl() {
+  public VideoControl getVideoControl() {
     return videoControl;
   }
 
@@ -137,7 +138,7 @@ public class VisualChannel {
     showAlert(alert);
   }
 
-  void showError(Throwable t) {
+  public void showError(Throwable t) {
     String message = t.getMessage();
     if (message != null && message.length() > 0) {
       showError(message);
@@ -146,7 +147,7 @@ public class VisualChannel {
     }
   }
 
-  void showError(String message) {
+  public void showError(String message) {
     showAlert(new Alert("Error", message, null, AlertType.ERROR));
   }
 
