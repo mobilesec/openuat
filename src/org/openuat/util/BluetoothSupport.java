@@ -35,6 +35,8 @@ public class BluetoothSupport {
 		if (System.getProperty("os.name") != null && System.getProperty("os.name").startsWith("Linux")) {
 			// running on Linux: try to initialize the JSR82 implementations
 			return initAvetana();
+		}else if (System.getProperty("os.name") != null && System.getProperty("os.name").startsWith("Windows XP")) {
+			return initAvetana();
 		}
 		else if (System.getProperty( "microedition.platform") != null) {
 			// running on J2ME, but need to check if we have JSR82 support
@@ -54,7 +56,7 @@ public class BluetoothSupport {
 		logger.debug("Trying to initializing Avetana JSR82 implementation");
 		// Initialize the java stack.
 		try {
-			de.avetana.bluetooth.stack.BluetoothStack.init(new de.avetana.bluetooth.stack.AvetanaBTStack());
+			//de.avetana.bluetooth.stack.BluetoothStack.init(new de.avetana.bluetooth.stack.AvetanaBTStack());
 			LocalDevice localDevice = LocalDevice.getLocalDevice();
 			logger.info("Initialized Avetana Bluetooth adapter successfully, local device has address " +
 					localDevice.getBluetoothAddress() + " with friendly name '" +
