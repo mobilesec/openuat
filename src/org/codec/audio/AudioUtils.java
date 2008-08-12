@@ -141,6 +141,22 @@ public class AudioUtils {
 
         ais.close();
     }
+    
+    public static void writeWav(ByteArrayOutputStream outputStream, byte[] data, AudioFormat format) throws IllegalArgumentException, IOException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
+
+        AudioInputStream ais = new AudioInputStream(bais,
+                                                    format,
+                                                    data.length);
+
+        AudioSystem.write(ais,
+                          AudioFileFormat.Type.WAVE,
+                          outputStream);
+        outputStream.flush();
+        outputStream.close();
+
+        ais.close();
+    }
 
     public static byte[] writeWav(byte[] data, AudioFormat format) throws IllegalArgumentException, IOException {
         ByteArrayInputStream bais = new ByteArrayInputStream(data);
@@ -300,6 +316,19 @@ public class AudioUtils {
         writeWav(outputFile,
                  baos.toByteArray(),
                  kDefaultFormat);
+    }
+    
+    public static byte [] encodeFileToWav(InputStream inputStream) throws IOException {
+       
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        AudioEncoder.encodeStream(inputStream, baos);
+
+        inputStream.close();
+
+        return writeWav(baos.toByteArray(),
+                 kDefaultFormat);
+        
     }
 
     public static void performData(byte[] data)
