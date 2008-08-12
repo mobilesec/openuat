@@ -14,7 +14,6 @@
 	<classpathentry kind="lib" path="lib/jfreechart-1.0.1.jar"/>
 	<classpathentry kind="lib" path="lib/RXTXcomm.jar"/>
 	<classpathentry kind="lib" path="lib/linux/swt-3.1.1_gtk.linux.x86.jar"/>
-	<classpathentry kind="lib" path="lib/avetanaBT.jar"/>
 	<classpathentry kind="lib" path="lib/jcommon-1.0.5.jar"/>
 	<classpathentry kind="lib" path="lib/relate-2.2-apps.jar"/>
 	<classpathentry kind="lib" path="lib/relate-2.2-core.jar"/>
@@ -27,5 +26,6 @@
 	<classpathentry kind="lib" path="lib/jsapi.jar"/>
 	<classpathentry kind="lib" path="lib/jsr234.jar"/>
 	<classpathentry kind="lib" path="lib/mmapi.jar"/>
+	<classpathentry kind="lib" path="lib/bluecove-2.0.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
