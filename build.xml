@@ -142,12 +142,12 @@
 	</path>
 
 	<path id="lib.path.midp">
-		<pathelement location="${wtk.home}/lib/midpapi20.jar"/>
-		<pathelement location="${wtk.home}/lib/cldcapi11.jar"/>
-		<pathelement location="${wtk.home}/lib/jsr082.jar"/>
-		<pathelement location="${wtk.home}/lib/jsr75.jar"/>
-		<pathelement location="${wtk.home}/lib/jsr234.jar"/>
-		<pathelement location="${wtk.home}/lib/mmapi.jar"/>
+		<pathelement location="${lib}/j2me/midpapi20.jar"/>
+		<pathelement location="${lib}/j2me/cldcapi11.jar"/>
+		<pathelement location="${lib}/j2me/jsr082.jar"/>
+		<pathelement location="${lib}/j2me/jsr75.jar"/>
+		<pathelement location="${lib}/j2me/jsr234.jar"/>
+		<pathelement location="${lib}/j2me/mmapi.jar"/>
 		<pathelement location="${bin-microlog}"/>
 		<pathelement location="${bin-BC-core}"/>
 		<pathelement location="${bin-google-zxing}"/>
