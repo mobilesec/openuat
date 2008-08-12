@@ -8,7 +8,7 @@
 package org.codec.mad;
 
 import java.io.UnsupportedEncodingException;
-import java.util.StringTokenizer;
+import net.mypapit.java.StringTokenizer;
 import java.util.Vector;
 
 public class MadLib
@@ -118,6 +118,14 @@ public class MadLib
 
 		return byMsgDigest;
 	}
+    
+	private int pow (int base, int exp){
+		int result = 1;
+		for (int i = 0; i < exp; i++) {
+			result = result * base;
+		}
+		return result;
+	}
 
    /*****
     * String GetMadLib(int nCollapsedSize ) -- Returns a Madlib in vector form that allows for easy string replacement
@@ -199,7 +207,7 @@ public class MadLib
 				{
 					if( szIndex.charAt(conv) == '1' )
 					{
-						nIndex |= (int)Math.pow(2.0, 7.0-conv );
+						nIndex |= pow(2, 7-conv );
 					}
 				}
 
