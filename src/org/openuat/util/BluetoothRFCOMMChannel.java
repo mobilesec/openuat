@@ -197,8 +197,10 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 
 	/** Just a small helper function to construct the correct URL string. */
 	private static String constructURL(String remoteDeviceAddress, int remoteChannelNumber) {
+//		return "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
+//		";authenticate=false;master=true;encrypt=false";
 		return "btspp://" + remoteDeviceAddress + ":" + remoteChannelNumber + 
-		";authenticate=false;master=true;encrypt=false";
+		";authenticate=false;master=false;encrypt=false";
 	}
 	
 	/** Opens a channel to the endpoint given to the constructor.

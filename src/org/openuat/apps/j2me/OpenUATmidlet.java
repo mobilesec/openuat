@@ -17,6 +17,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Choice;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
@@ -38,6 +39,7 @@ import org.apache.log4j.Logger;
 import org.codec.audio.j2me.PlayerPianoJ2ME;
 import org.codec.mad.MadLib;
 import org.openuat.authentication.AuthenticationProgressHandler;
+import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -46,7 +48,6 @@ import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.Hash;
-import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
 
@@ -149,15 +150,15 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		serv_list.setCommandListener(this);
 
 		main_list.append("Find Devices", null);
-		main_list.append("Automatically pair to first compatible device", null);
+		//main_list.append("Automatically pair to first compatible device", null);
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	public void startApp() {
 		logForm.setPreviousScreen(main_list);
 
-		main_list.append("----", null);
-		main_list.append("Server started, waiting for incomming connections", null);
+//		main_list.append("----", null);
+//		main_list.append("Server started, waiting for incomming connections", null);
 		display.setCurrent(main_list);
 	}
 	public void commandAction(Command com, Displayable dis) {
@@ -182,14 +183,36 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 			}
 			if (dis == dev_list) { //select triggered from the device list
 				if (dev_list.getSelectedIndex() >= 0) { //find services
+					
 					RemoteDevice[] devices = peerManager.getPeers();
 
-					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x1002); // publicly browsable services
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
-						this.do_alert("Error in initiating search", 4000);
+//					serv_list.deleteAll(); //empty the list of services in case user has pressed back
+//					UUID uuid = new UUID(0x1002); // publicly browsable services
+//					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
+//						this.do_alert("Error in initiating search", 4000);
+//					}
+//					do_alert("Inquiring device for services...", Alert.FOREVER);
+//					
+					RemoteDevice peer = devices[dev_list.getSelectedIndex()];
+					
+					peer.getBluetoothAddress();
+					boolean keepConnected = true;
+					String optionalParam = null;
+					logger.info("starting authentication with "+ peer.getBluetoothAddress());
+					try {
+						BluetoothRFCOMMChannel c;
+
+
+						c = new BluetoothRFCOMMChannel(peer.getBluetoothAddress(), 5);
+						c.open();
+						HostProtocolHandler.startAuthenticationWith(c,
+								this, 20000, keepConnected, optionalParam, true);
+
+					} catch (IOException e) {
+						logger.error(e);
+						do_alert("error", Alert.FOREVER);
 					}
-					do_alert("Inquiring device for services...", Alert.FOREVER);
+					//do_alert("Connecting to device...", Alert.FOREVER);
 				}
 			}
 			if (dis == serv_list) {
@@ -199,10 +222,10 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 
 					// TODO: ask for authentication type and direction
 
-					/*					HostProtocolHandler.startAuthenticationWith(new BluetoothRFCOMMChannel(),
-							this, 10000, keepConnected, optionalParam, false);*/
+//									HostProtocolHandler.startAuthenticationWith(new BluetoothRFCOMMChannel(),
+//					this, 10000, keepConnected, optionalParam, false);
 				}
-			}
+			}	
 		}
 		else if (com == back) {
 			if (dis == serv_list) { //back button is pressed in devices list
@@ -320,7 +343,15 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 
 		main_list.append("Authentication started with", null);
 		main_list.append( remote.toString(), null);
+		
 		logger.info("authentication started");
+		
+		//do you want to continue?
+		final int pair = 0;
+		Alert alert = new Alert("Incoming connection", "Pairing with" + remote.toString(), null, AlertType.CONFIRMATION);
+		alert.setTimeout(Alert.FOREVER);
+		display.setCurrent(main_list);
+		display.setCurrent(alert);
 		return true;
 	}
 
@@ -332,7 +363,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		byte[] sharedKey = (byte[]) res[0];
 		// and extract the shared authentication key for phase 2
 		authKey = (byte[]) res[1];
-		// then extraxt the optional parameter
+		// then extract the optional parameter
 		String param = (String) res[2];
 		logger.info("Extracted session key of length " + sharedKey.length +
 				", authentication key of length " + authKey.length + 
@@ -341,7 +372,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 
 		Form chooseMethod = new Form("How to verify");
 		chooseMethod.append("Key exchange finished successfully. How do you want to verify the key transfer?");
-		chooseMethod.append("visual, audio, slowcode, or madlib");
+		chooseMethod.append("visual,\n audio,\n slowcode,\n or madlib");
 		chooseMethod.addCommand(new Command("visual", Command.SCREEN, 1));
 		chooseMethod.addCommand(new Command("audio", Command.SCREEN, 1));
 		chooseMethod.addCommand(new Command("slowcodec", Command.SCREEN, 1));

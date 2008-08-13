@@ -207,11 +207,27 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		
 	}
 
-	//@Override
+	/**
+	 * Encodes the message in audio format and plays it.
+	 */
 	public void transmit(byte[] message) {
-		
-		// TODO encode and play
-		
+		try {
+			byte[]encodedtoSend = AudioUtils.encodeFileToWav(new ByteArrayInputStream(message));
+			
+			//press play when to start singing ?? 
+			Player player = Manager.createPlayer(new ByteArrayInputStream(encodedtoSend), "encoding=pcm&rate=44100&bits=8&channels=1&endian=little&signed=true");
+
+			player.prefetch(); 
+			player.realize(); 
+			player.start();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MediaException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 //	@Override
