@@ -1,5 +1,6 @@
 package com.swetake.util.j2me;
 
+
 import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Graphics;
 
@@ -10,21 +11,25 @@ import javax.microedition.lcdui.Graphics;
  *
  */
 public class QRCanvas extends Canvas{
-	boolean [][] s;
-	public QRCanvas(boolean [][] qrcode){
-		this.s = qrcode;
+	boolean [][] qrCode;
+	public QRCanvas(boolean [][] qrCode){
+		this.qrCode = qrCode;
 	}
     public QRCanvas() {
 		// TODO Auto-generated constructor stub
 	}
 	public void paint(Graphics g) {
-		g.setColor(0, 0, 0);
+		//g.setColor(0, 0, 0);
 		
-
-	    for (int i=0;i<s.length;i++){
-			for (int j=0;j<s.length;j++){
-			    if (s[j][i]) {
-			    	g.fillRect(j*10,i*10,10,10);
+	int width = getWidth();
+	int heigth = getHeight();
+	int length = qrCode.length;
+	
+	int unit = Math.min(width/(length+4), heigth/(length+4));
+	    for (int i=0;i<qrCode.length;i++){
+			for (int j=0;j<qrCode.length;j++){
+			    if (qrCode[j][i]) {
+			    	g.fillRect(j*unit + 2*unit,i*unit +2*unit, unit, unit);
 			    	//System.out.print("X");
 			    }
 			    //else System.out.print("O");
@@ -34,10 +39,10 @@ public class QRCanvas extends Canvas{
     	
     }
 	public boolean[][] getS() {
-		return s;
+		return qrCode;
 	}
 	public void setS(boolean[][] s) {
-		this.s = s;
+		this.qrCode = s;
 	}
 
 }

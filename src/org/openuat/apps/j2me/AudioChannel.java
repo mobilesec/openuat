@@ -15,6 +15,7 @@ import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.RecordControl;
+import javax.microedition.media.control.VolumeControl;
 
 import org.apache.log4j.Logger;
 import org.codec.audio.j2me.AudioUtils;
@@ -77,6 +78,9 @@ public class AudioChannel implements OOBChannel, CommandListener {
 			playRecording();
 		}else if(com.equals(decodeCmd)){
 			decodeAudio(recorded);
+		}
+		else if(com.getCommandType() == Command.BACK){
+			display.setCurrent(mainProgram.main_list);
 		}
 
 	}
@@ -214,9 +218,17 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		try {
 			byte[]encodedtoSend = AudioUtils.encodeFileToWav(new ByteArrayInputStream(message));
 			
+			Alert play = new Alert ("Encoded", "Play?", null, AlertType.CONFIRMATION);
+			play.setTimeout(Alert.FOREVER);
+			display.setCurrent(play);
 			//press play when to start singing ?? 
 			Player player = Manager.createPlayer(new ByteArrayInputStream(encodedtoSend), "encoding=pcm&rate=44100&bits=8&channels=1&endian=little&signed=true");
-
+			   // get volume control for player and set volume to max
+			VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
+			   if(vc != null) {
+				   logger.info("volume level: "+vc.getLevel());
+			      vc.setLevel(50);
+			   }
 			player.prefetch(); 
 			player.realize(); 
 			player.start();

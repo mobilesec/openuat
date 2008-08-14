@@ -88,6 +88,7 @@ final class SnapshotThread implements Runnable {
         zXingMIDlet.showError(re);
       }
     } while (!done);
+    
   }
 
   private byte[] takeSnapshot() throws MediaException {

@@ -482,6 +482,12 @@
 					<fileset dir="${resources}/qrcode_data" includes="qrv1_0.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="qrvfr1.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="rsc10.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="qrv2_0.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="qrvfr2.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="rsc16.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="qrv3_0.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="qrvfr3.dat" />
+					<fileset dir="${resources}/qrcode_data" includes="rsc26.dat" />
 					<fileset dir="${resources}/hapadep" includes="**" />
 				</resources>
 				<!-- user defined JAD attributes can also be used: -->

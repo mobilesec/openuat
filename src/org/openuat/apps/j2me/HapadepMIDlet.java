@@ -24,6 +24,7 @@ import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.RecordControl;
 import javax.microedition.media.control.ToneControl;
+import javax.microedition.media.control.VolumeControl;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
 
@@ -339,6 +340,8 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 			//c.setSequence(PlayerPiano.PlayerPiano("/2 - Gb + . - E - E + Db + Fb + Cb - Db + Fb Cb"));
 			c.setSequence(PlayerPianoJ2ME.PlayerPiano(score));
 
+
+				
 			p.start(); 
 		} catch (IOException ioe) { 
 		} catch (MediaException me) { }

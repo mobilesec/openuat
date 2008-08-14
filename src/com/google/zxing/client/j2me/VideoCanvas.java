@@ -35,14 +35,14 @@ public final class VideoCanvas extends Canvas implements CommandListener {
 
   private static final Command exit = new Command("Exit", Command.EXIT, 1);
 
-  private final VisualChannel zXingMIDlet;
+  private final VisualChannel visualChannel;
   private final SnapshotThread snapshotThread;
 
-  public VideoCanvas(VisualChannel zXingMIDlet) {
-    this.zXingMIDlet = zXingMIDlet;
+  public VideoCanvas(VisualChannel visualChannel) {
+    this.visualChannel = visualChannel;
     addCommand(exit);
     setCommandListener(this);
-    snapshotThread = new SnapshotThread(zXingMIDlet);
+    snapshotThread = new SnapshotThread(visualChannel);
     new Thread(snapshotThread).start();
   }
 
@@ -63,6 +63,8 @@ public final class VideoCanvas extends Canvas implements CommandListener {
     int type = command.getCommandType();
     if (type == Command.EXIT || type == Command.STOP || type == Command.BACK || type == Command.CANCEL) {
       snapshotThread.stop();
+      visualChannel.stop();
     }
+    
   }
 }

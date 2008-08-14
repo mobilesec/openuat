@@ -8,6 +8,7 @@
  */
 package org.openuat.apps.j2me;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Vector;
@@ -26,8 +27,10 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.List;
 import javax.microedition.media.Manager;
+import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.ToneControl;
+import javax.microedition.media.control.VolumeControl;
 import javax.microedition.midlet.MIDlet;
 
 import net.sf.microlog.Level;
@@ -36,6 +39,7 @@ import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
+import org.codec.audio.j2me.AudioUtils;
 import org.codec.audio.j2me.PlayerPianoJ2ME;
 import org.codec.mad.MadLib;
 import org.openuat.authentication.AuthenticationProgressHandler;
@@ -150,7 +154,8 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		serv_list.setCommandListener(this);
 
 		main_list.append("Find Devices", null);
-		//main_list.append("Automatically pair to first compatible device", null);
+		main_list.append("pair with my N95", null);
+		main_list.append("pair with my N82", null);
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
@@ -174,11 +179,45 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		}
 		else if (com == List.SELECT_COMMAND) {
 			if (dis == main_list) { //select triggered from the main from
-				if (main_list.getSelectedIndex() >= 0) { //find devices
+				if (main_list.getSelectedIndex() == 0) { //find devices
 					if (!peerManager.startInquiry(false)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					do_alert("Searching for devices...", Alert.FOREVER);
+				}if (main_list.getSelectedIndex() == 1) { //demo
+					boolean keepConnected = true;
+					String optionalParam = null;  
+					logger.info("starting authentication ");
+					try {
+						BluetoothRFCOMMChannel c;
+
+
+						c = new BluetoothRFCOMMChannel("001C9AF755EB", 5);
+						c.open();
+						HostProtocolHandler.startAuthenticationWith(c,
+								this, 20000, keepConnected, optionalParam, true);
+
+					} catch (IOException e) {
+						logger.error(e);
+						do_alert("error", Alert.FOREVER);
+					}
+				}else if (main_list.getSelectedIndex() == 2) { //demo
+					boolean keepConnected = true;
+					String optionalParam = null;  
+					logger.info("starting authentication ");
+					try {
+						BluetoothRFCOMMChannel c;
+
+
+						c = new BluetoothRFCOMMChannel("001DFD71C3C3", 5);
+						c.open();
+						HostProtocolHandler.startAuthenticationWith(c,
+								this, 20000, keepConnected, optionalParam, true);
+
+					} catch (IOException e) {
+						logger.error(e);
+						do_alert("error", Alert.FOREVER);
+					}
 				}
 			}
 			if (dis == dev_list) { //select triggered from the device list
@@ -236,10 +275,15 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		}
 		else if (com == log) {
 			display.setCurrent(logForm);
-		}else if (com.getLabel().equals("visual")){
+		}else if (com.getLabel().equals("visual-send")){
+			logger.info("visual-send");
+			sendViaVisualChannel();
+		}else if (com.getLabel().equals("visual-capture")){
 			getInputViaVisualChannel();
-		}else if(com.getLabel().equals("audio")){
-			authenticateAudio(authKey);
+		}else if(com.getLabel().equals("audio-send")){
+			sendViaAudioChannel();
+		}else if(com.getLabel().equals("audio-capture")){
+			authenticateAudio();
 		}else if(com.getLabel().equals("slowcodec")){
 			verify(authKey);
 		}else if(com.getLabel().equals("madlib")){
@@ -259,6 +303,56 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 				e.printStackTrace();
 			}
 		}
+
+	}
+
+	private void sendViaAudioChannel() {
+		byte [] trimmedHash = new byte[8];
+		 byte[] hash;
+
+		 try {
+			hash = Hash.doubleSHA256(authKey, false);
+			System.arraycopy(hash, 0, trimmedHash, 0, 8);
+			byte[] toSend = new String(Hex.encodeHex(trimmedHash)).getBytes();
+			//we add some padding after the hash
+			byte [] padded = new byte[toSend.length + 10];
+			System.arraycopy(toSend, 0, padded, 0, toSend.length);
+			byte [] sound = AudioUtils.encodeFileToWav(new ByteArrayInputStream(padded));
+
+			Player player = Manager.createPlayer(new ByteArrayInputStream(sound), "encoding=pcm&rate=44100&bits=8&channels=1&endian=little&signed=true");
+
+			player.prefetch(); 
+			player.realize(); 
+			player.start();
+		 }catch (InternalApplicationException e) {
+				logger.error(e);
+			} catch (IOException e) {
+				logger.error(e);
+		} catch (MediaException e) {
+			logger.error(e);
+		}
+		
+	}
+
+	private void sendViaVisualChannel() {
+		logger.info("sendViaVisualChannel");
+		byte [] trimmedHash = new byte[7];
+		byte[] hash= null;
+
+		try {
+			hash = Hash.doubleSHA256(authKey, false);
+		} catch (InternalApplicationException e) {
+
+			logger.error(e);
+			return;
+		}
+		System.arraycopy(hash, 0, trimmedHash, 0, 7);
+		String toSend = new String(Hex.encodeHex(trimmedHash));
+		logger.info("creating visual channel");
+		VisualChannel verifier = new VisualChannel(this);
+
+		verifier.transmit(toSend.getBytes());
+
 
 	}
 
@@ -289,7 +383,13 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 			String score = PlayerPianoJ2ME.MakeInput(hash);
 			//c.setSequence(PlayerPiano.PlayerPiano("/2 - Gb + . - E - E + Db + Fb + Cb - Db + Fb Cb"));
 			c.setSequence(PlayerPianoJ2ME.PlayerPiano(score));
-
+			
+			   // get volume control for player and set volume to max
+			VolumeControl  vc = (VolumeControl) p.getControl("VolumeControl");
+			   if(vc != null) {
+				   logger.info("volume level: "+vc.getLevel());
+			      vc.setLevel(45);
+			   }
 			p.start(); 
 		} catch (Exception e) { 
 			logger.error(e);
@@ -341,8 +441,8 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 	public boolean AuthenticationStarted(Object sender, Object remote) {
 		// just ignore for this demo application
 
-		main_list.append("Authentication started with", null);
-		main_list.append( remote.toString(), null);
+//		main_list.append("Authentication started with", null);
+//		main_list.append( remote.toString(), null);
 		
 		logger.info("authentication started");
 		
@@ -356,6 +456,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 	}
 
 	private byte [] authKey;
+	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 		logger.info("Successful authentication");
 		Object[] res = (Object[]) result;
@@ -371,10 +472,12 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		RemoteConnection connectionToRemote = (RemoteConnection) res[3];
 
 		Form chooseMethod = new Form("How to verify");
-		chooseMethod.append("Key exchange finished successfully. How do you want to verify the key transfer?");
+		chooseMethod.append("Key exchange finished successfully. \n How do you want to verify the key transfer? \n");
 		chooseMethod.append("visual,\n audio,\n slowcode,\n or madlib");
-		chooseMethod.addCommand(new Command("visual", Command.SCREEN, 1));
-		chooseMethod.addCommand(new Command("audio", Command.SCREEN, 1));
+		chooseMethod.addCommand(new Command("visual-send", Command.SCREEN, 1));
+		chooseMethod.addCommand(new Command("visual-capture", Command.SCREEN, 1));
+		chooseMethod.addCommand(new Command("audio-send", Command.SCREEN, 1));
+		chooseMethod.addCommand(new Command("audio-capture", Command.SCREEN, 1));
 		chooseMethod.addCommand(new Command("slowcodec", Command.SCREEN, 1));
 		chooseMethod.addCommand(new Command("madlib", Command.SCREEN, 1));
 
@@ -405,8 +508,8 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 		byte hash[];
 		try {
 			hash = Hash.doubleSHA256(authKey, false);
-			byte [] trimmedHash = new byte[8];
-			System.arraycopy(hash, 0, trimmedHash, 0, 8);
+			byte [] trimmedHash = new byte[7];
+			System.arraycopy(hash, 0, trimmedHash, 0, 7);
 			String localHash = new String(Hex.encodeHex(trimmedHash));
 			logger.info("local hash: " + localHash);
 
@@ -424,7 +527,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 
 	}
 
-	private void authenticateAudio(byte[] authKey) {
+	private void authenticateAudio() {
 		AudioChannel audioVerifier = new AudioChannel(this);
 		audioVerifier.setOOBMessageHandler(this);
 		audioVerifier.capture();
@@ -436,8 +539,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 
 	private void getInputViaVisualChannel() {
 		VisualChannel verifier = new VisualChannel(this);
-		//smth like this
-		//verifier.start();
+		verifier.capture();
 	}
 
 
@@ -467,14 +569,14 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 			logger.info("local hash: " + localHash);
 			logger.info("remote hash: " + remoteHash);
 
-			if(remoteHash.equals(localHash)){
-				logger.info("verification ended");
-				logger.info("hashes are equal");
-
-				main_list.append("verification successfull", null);
-
-			}else{
-				logger.info("hashes differ");
+//			if(remoteHash.equals(localHash)){
+//				logger.info("verification ended");
+//				logger.info("hashes are equal");
+//
+//				main_list.append("verification successfull", null);
+//
+//			}else{
+//				logger.info("hashes differ");
 				boolean equal = true;
 				byte [] toCompare = localHash.getBytes();
 				for (int i = 0; i < toCompare.length; i++) {
@@ -486,11 +588,14 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 				}
 				if (equal){
 					logger.info("verification successful. first bits are the same.");
+					main_list.append("----", null);
+					main_list.append("Successful pairing", null);
+					
 				}else{
 					main_list.append("authentication failed", null);
 				}
 
-			}
+//			}
 			main_list.append("check out the log for details", null);
 			display.setCurrent(main_list);
 		} catch (InternalApplicationException e) {
