@@ -539,6 +539,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler, OOBMessa
 
 	private void getInputViaVisualChannel() {
 		VisualChannel verifier = new VisualChannel(this);
+		verifier.setOOBMessageHandler(this);
 		verifier.capture();
 	}
 

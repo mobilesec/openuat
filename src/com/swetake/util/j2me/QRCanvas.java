@@ -19,12 +19,17 @@ public class QRCanvas extends Canvas{
 		// TODO Auto-generated constructor stub
 	}
 	public void paint(Graphics g) {
-		//g.setColor(0, 0, 0);
+		//
 		
+	
 	int width = getWidth();
 	int heigth = getHeight();
 	int length = qrCode.length;
-	
+	//delete what was before
+	g.setColor(255, 255, 255);
+	g.fillRect(0, 0, width, heigth);
+	//redraw
+	g.setColor(0, 0, 0);
 	int unit = Math.min(width/(length+4), heigth/(length+4));
 	    for (int i=0;i<qrCode.length;i++){
 			for (int j=0;j<qrCode.length;j++){

@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Google Inc.
+ * Copyright 2007 ZXing authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,12 +38,14 @@ final class SnapshotThread implements Runnable {
 
   private final VisualChannel zXingMIDlet;
   private final Object waitLock;
-  private boolean done;
+  private volatile boolean done;
+  private final MultimediaManager multimediaManager;
 
   SnapshotThread(VisualChannel zXingMIDlet) {
     this.zXingMIDlet = zXingMIDlet;
     waitLock = new Object();
     done = false;
+    multimediaManager = new DefaultMultimediaManager();
   }
 
   void continueRun() {
@@ -68,28 +70,32 @@ final class SnapshotThread implements Runnable {
   }
 
   public void run() {
-    Player player = zXingMIDlet.getPlayer();
-    do {
-      waitForSignal();
-      try {
-        AdvancedMultimediaManager.setFocus(player);
-        byte[] snapshot = takeSnapshot();
-        Image capturedImage = Image.createImage(snapshot, 0, snapshot.length);
-        MonochromeBitmapSource source = new LCDUIImageMonochromeBitmapSource(capturedImage);
-        Reader reader = new MultiFormatReader();
-        Result result = reader.decode(source);
-        zXingMIDlet.handleDecodedText(result);
-      } catch (ReaderException re) {
-        // Show a friendlier message on a mere failure to read the barcode
-        zXingMIDlet.showError("Sorry, no barcode was found.");
-      } catch (MediaException me) {
-        zXingMIDlet.showError(me);
-      } catch (RuntimeException re) {
-        zXingMIDlet.showError(re);
-      }
-    } while (!done);
-    
-  }
+	    Player player = zXingMIDlet.getPlayer();
+	    Result result = null;
+	    do {
+	      waitForSignal();
+	      
+	      try {
+	        multimediaManager.setFocus(player);
+	        byte[] snapshot = takeSnapshot();
+	        Image capturedImage = Image.createImage(snapshot, 0, snapshot.length);
+	        MonochromeBitmapSource source = new LCDUIImageMonochromeBitmapSource(capturedImage);
+	        Reader reader = new MultiFormatReader();
+	        result = reader.decode(source);
+	        if(result != null) {done = true; break;} 
+	      } catch (ReaderException re) {
+	        // Show a friendlier message on a mere failure to read the barcode
+	        zXingMIDlet.showError("Sorry, no barcode was found.");
+	      } catch (MediaException me) {
+	        zXingMIDlet.showError(me);
+	      } catch (RuntimeException re) {
+	        zXingMIDlet.showError(re);
+	      }
+	      
+	    } while (!done);
+	    
+	    if(result != null) zXingMIDlet.handleDecodedText(result);
+	  }
 
   private byte[] takeSnapshot() throws MediaException {
     VideoControl videoControl = zXingMIDlet.getVideoControl();

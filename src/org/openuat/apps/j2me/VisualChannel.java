@@ -202,8 +202,7 @@ public class VisualChannel implements OOBChannel{
 		x.setQrcodeVersion(version);
 
 		logger.info("computing code - lenght:"+ message.length);
-		//boolean[][] s = x.calQrcode(message);
-		boolean[][] s = x.calQrcode("hello".getBytes());
+		boolean[][] s = x.calQrcode(message);
 		logger.info("done computing");
 		if(s==null){logger.warn("qr encode is null");
 		
@@ -226,6 +225,7 @@ public class VisualChannel implements OOBChannel{
 
 	public void stop() {
 		destroyApp(true);
+		Display.getDisplay (mainProgram).setCurrent ( mainProgram.main_list );
 	}
 
 }
