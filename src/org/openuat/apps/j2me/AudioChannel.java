@@ -72,7 +72,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 //			display.setCurrent(logForm);
 //		}else 
 			if(com.equals(stopRec)){
-			stopRecording();
+			finishCapturing();
 		}
 		else if(com.equals(playRec)){
 			playRecording();
@@ -114,7 +114,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		captureAudioPlayer.close();
 	}
 	private Form decodeScreen;
-	private void decodeAudio(byte [] audiodata) {
+	public byte [] decodeAudio(byte [] audiodata) {
 		
 		
 		decodeScreen = new Form("decoding...\n");
@@ -124,11 +124,31 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		decodeScreen.addCommand(new Command("Back", Command.BACK, 1));
 		display.setCurrent(decodeScreen);
 		
-		new DecoderThread(decodeScreen, display, this, audiodata).start();
+//		new DecoderThread(decodeScreen, display, this, audiodata).start();
+		ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
+		long start = System.currentTimeMillis();
+		try {
+			AudioUtils.decodeWavFile(audiodata, dataStream);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		long end = System.currentTimeMillis();
+		byte retrieved [] = dataStream.toByteArray();
+		logger.info("decoded data size: "+ retrieved.length+". \n");
+
+		logger.info("decoded data: " + new String(retrieved)+"\n");
+		logger.info("decoding took: " + (end - start) + " ms.\n");
+//		for (int i = 0; i < retrieved.length; i++) {
+//		decodeScreen.append( retrieved [i] + ", ");
+//		}
+
+return retrieved;
+//		handleAudioDecodedText(retrieved);
 }
 	
 	
-	private void stopRecording() {
+	public byte [] finishCapturing() {
 		try {
 			//stop recording
 			rc.commit();
@@ -148,6 +168,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 
 			recordScreen.addCommand(playRec);
 			recordScreen.addCommand(decodeCmd);
+			
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -158,6 +179,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 			Alert alert = new Alert("error", e.getClass().toString() + ": " + e.getMessage(), null, AlertType.ERROR);
 			display.setCurrent(alert);
 		}
+		return recorded;
 	}
 	
 	
@@ -268,21 +290,7 @@ class DecoderThread extends Thread{
 
 	public void run(){
 		try {
-			ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
-			long start = System.currentTimeMillis();
-			AudioUtils.decodeWavFile(data, dataStream);
-			long end = System.currentTimeMillis();
-			byte retrieved [] = dataStream.toByteArray();
-			logger.info("decoded data size: "+ retrieved.length+". \n");
-
-			logger.info("decoded data: " + new String(retrieved)+"\n");
-			logger.info("decoding took: " + (end - start) + " ms.\n");
-//			for (int i = 0; i < retrieved.length; i++) {
-//			decodeScreen.append( retrieved [i] + ", ");
-//			}
-
-
-			audioVerifier.handleAudioDecodedText(retrieved);
+			
 
 			//} catch (IOException e) {
 		} catch (Exception e) {

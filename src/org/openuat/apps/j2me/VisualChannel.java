@@ -146,7 +146,11 @@ public class VisualChannel implements OOBChannel{
 
 	public void handleDecodedText(Result theResult) {
 //		destroyApp(true);
+		stop();
 		handler.handleOOBMessage(OOBChannel.VIDEO_CHANNEL, theResult.getText().getBytes());
+		
+		
+		
 	}
 
 	public void capture() {
@@ -225,7 +229,7 @@ public class VisualChannel implements OOBChannel{
 
 	public void stop() {
 		destroyApp(true);
-		Display.getDisplay (mainProgram).setCurrent ( mainProgram.main_list );
+		//Display.getDisplay (mainProgram).setCurrent ( mainProgram.main_list );
 	}
 
 }
