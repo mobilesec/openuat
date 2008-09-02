@@ -36,8 +36,9 @@ import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
 import org.openuat.sensors.SamplesSink_Int;
+import org.openuat.sensors.SamplesSource;
 import org.openuat.sensors.TimeSeriesAggregator;
-import org.openuat.sensors.j2me.SymbianTCPAccelerometerReader;
+import org.openuat.sensors.j2me.NokiaAccelerometerReader;
 import org.openuat.util.BluetoothOpportunisticConnector;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
@@ -104,7 +105,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	// our logger
 	Logger logger = Logger.getLogger("");
 
-	SymbianTCPAccelerometerReader reader;
+	SamplesSource reader;
 	TimeSeriesAggregator aggregator;
 	
 	// this is used for controlling the volume
@@ -268,7 +269,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			return false;
 		}
 		
-		reader = new SymbianTCPAccelerometerReader();
+		reader = new NokiaAccelerometerReader();
 		// this is a test/debug sink to stream the values across Bluetooth - THIS CAN BE DISABLED LATER ON
 		reader.addSink(new int[] {0,1,2}, new SamplesSink_Int[] {
 				new TestBTStreamingSamplesHandler(0), 
@@ -276,9 +277,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				new TestBTStreamingSamplesHandler(2)});
 		// this is the "proper" sink
 		aggregator = new TimeSeriesAggregator(3, // 3 dimensions 
-				SymbianTCPAccelerometerReader.SAMPLERATE/2, // this should be about 1/2s 
-				SymbianTCPAccelerometerReader.SAMPLERATE*4, // use segments of 4s length 
-				SymbianTCPAccelerometerReader.SAMPLERATE*4);
+				NokiaAccelerometerReader.SAMPLERATE/2, // this should be about 1/2s 
+				NokiaAccelerometerReader.SAMPLERATE*4, // use segments of 4s length 
+				NokiaAccelerometerReader.SAMPLERATE*4);
 		aggregator.setParameters(reader.getParameters_Int());
 		/* The integer TimeSeriesAggregator part does _not_ take the square 
 		 * roots when computing the magnitudes, so expect to square the 
