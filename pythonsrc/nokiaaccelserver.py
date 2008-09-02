@@ -20,6 +20,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# create a package with ensymble.py py2sis  \
+        #--uid=0x20012345 \
+        #--appname=AccelerometerServer  \
+        #--version=0.0.1 \
+        #--lang=EN \
+        #--shortcaption="AccServ" \
+        #--caption="Accelerometer Server"  \
+        #--drive=C \
+        #--caps=ALL-TCB-DRM-AllFiles \
+        #--vendor="OpenUAT"  \
+        #--autostart \
+        #--runinstall \
+        #--verbose \
+        #--cert=certs/mydevcert.cer  \
+        #--privkey=certs/mydevcert.key \
+        #python/nokiaaccelserver.py dist/NokiaAccServer.sis
 
 import socket
 #import e32
