@@ -125,6 +125,109 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 			logger.error("Unable to connect to Symbian sensor API wrapper, can not continue");
 			return;
 		}
+		
+/*        connector = new XYZConnect(new Callback(){
+            public void callback(int x, int y, int z) {
+                displayable1.update(x,y,z);
+            }
+            
+        });
+        connector.start();
+        
+public class MyCanvas extends Canvas{
+    
+    int x;
+    int y;
+    int z;
+    
+    
+    public void update(int x,int y,int z){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.repaint();
+    }
+    
+    public void paint(Graphics gc){
+        int width = this.getWidth();
+        int height = this.getHeight();
+    
+        gc.setColor(255,255,255);
+        gc.fillRect(0,0,width,height);
+        
+        int mx = width/2+x;
+        int my = height/2+x;
+        gc.setColor(0,0,0);
+        gc.fillArc(mx,my,z+60,z+60,0,360);
+        
+        gc.drawString(""+x+" "+y+" "+z,0,40,Graphics.TOP|Graphics.LEFT);
+        
+    }
+    
+}        
+
+public class XYZConnect extends Thread{
+    Callback callback = null;
+    boolean running = true;
+    
+    public XYZConnect(Callback callback) {
+        this.callback = callback;
+    }
+    
+    StringBuffer sb = new StringBuffer();
+    
+    public void run(){
+        try{
+            StreamConnection streamCon = (StreamConnection) Connector.open("socket://127.0.0.1:12008");
+            DataInputStream is = streamCon.openDataInputStream();
+            byte[] buffer = new byte[16];
+            do{
+                int b = is.read();
+                if(b==-1){
+                    break;
+                }
+                
+                char c = (char)(b);
+                if(c!='*'){
+                    sb.append(c);
+                } else {
+                    String s = sb.toString();
+                    sb.delete(0,sb.length());
+                    String xS = s.substring(0,s.indexOf(","));
+                    s=s.substring(s.indexOf(",")+1);
+                    
+                    String yS = s.substring(0,s.indexOf(","));
+                    s=s.substring(s.indexOf(",")+1);                    
+                    
+                    String zS = s;
+                    
+                    int x = Integer.parseInt(xS);
+                    int y = Integer.parseInt(yS);
+                    int z = Integer.parseInt(zS);
+                    
+                    callback.callback(x,y,z);
+                    
+                }
+                
+            }while(running);
+            
+            is.close();
+            streamCon.close();
+            
+        }catch(Exception ee){
+            ee.printStackTrace();
+        }
+    }
+    
+    
+    public void stopIt(){
+        running = false;
+    }
+    
+}
+
+
+*/		
 	}
 	
 	/** This overrides the SamplesSource.stop implementation to also properly
