@@ -29,14 +29,16 @@
         #--shortcaption="AccServ" \
         #--caption="Accelerometer Server"  \
         #--drive=C \
-        #--caps=ALL-TCB-DRM-AllFiles \
+        ####--caps=ALL-TCB-DRM-AllFiles \
         #--vendor="OpenUAT"  \
         #--autostart \
         #--runinstall \
         #--verbose \
-        #--cert=certs/mydevcert.cer  \
-        #--privkey=certs/mydevcert.key \
+        #--cert=/data/installers/symbian-devel/symbiansigned-rene.cer \
+        #--privkey=/data/installers/symbian-devel/symbiansigned-rene.key \
         #python/nokiaaccelserver.py dist/NokiaAccServer.sis
+# For self-signed (e.g. the built-in certificate shipped with ensymble.py)
+# packages, autostart and caps as well as a protected uid are NOT supported!
 
 import socket
 #import e32
