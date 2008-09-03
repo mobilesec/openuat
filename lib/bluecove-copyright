@@ -1,0 +1,13 @@
+From http://www.bluecove.org/, last retrieved 2008-09-03:
+
+BlueCove is a Java library for Bluetooth (JSR-82 implementation) that currently interfaces with the Mac OS X, WIDCOMM, BlueSoleil and Microsoft Bluetooth stack found in Windows XP SP2 or Windows Vista and WIDCOMM and Microsoft Bluetooth stack on Windows Mobile.
+
+BlueCove-GPL is additional GPL licensed module to support BlueCove runtime on Linux BlueZ.
+
+BlueCove JSR-82 Emulator module is additional module for BlueCove to simulate Bluetooth stack.
+
+BlueCove is licensed under GNU Lesser General Public License . The LGPL license allows linking and distributing commercial software with BlueCove.
+
+BlueCove BlueZ module is licensed under GNU General Public License .
+
+For various technical and legal reasons, BlueCove library is not legally referred to as an implementation of JSR-82 . In order to legally refer to a piece of software as a JSR, it must pass the JSR-82 TCK or Sun TCK . Current BlueCove JSR-82 TCK compatibility status can be found here . Mainly there are some missing APIs in native stacks to implement full TCK compatibility.
