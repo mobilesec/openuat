@@ -10,10 +10,8 @@ package org.openuat.sensors.j2me;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import javax.microedition.io.Connector;
-import javax.microedition.io.ServerSocketConnection;
 import javax.microedition.io.StreamConnection;
 
 import org.apache.log4j.Logger;
@@ -62,6 +60,9 @@ public class NokiaAccelerometerReader extends SamplesSource {
 	 * @see #handleSample
 	 */ 
 	private int[] bytes = new int[3];
+	
+	/** Again keep this buffer for performance reasons. */
+	StringBuffer readBuffer = new StringBuffer();
 	
 	/** Initializes the reader.
 	 */
@@ -137,7 +138,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 		}
 
 		try {
-			StringBuffer sb = new StringBuffer();
+			readBuffer.delete(0, readBuffer.length());
 			int x = 0;
 			while ((char) x != '*') {
 				x = sensorDataIn.read();
@@ -145,16 +146,17 @@ public class NokiaAccelerometerReader extends SamplesSource {
 					logger.error("Symbian sensor wrapper terminated connection, aborting reading");
 					return false;
 				}
-                sb.append(x);
+				if ((char) x != '*')
+					readBuffer.append((char) x);
 			}
 
-			String s = sb.toString();
-            sb.delete(0,sb.length());
-            String xS = s.substring(0,s.indexOf(","));
-            s=s.substring(s.indexOf(",")+1);
+			String s = readBuffer.toString();
+            
+            String xS = s.substring(0, s.indexOf(","));
+            s = s.substring(s.indexOf(",")+1);
                 
-            String yS = s.substring(0,s.indexOf(","));
-            s=s.substring(s.indexOf(",")+1);                    
+            String yS = s.substring(0, s.indexOf(","));
+            s = s.substring(s.indexOf(",")+1);                    
                 
             String zS = s;
                 
@@ -165,6 +167,10 @@ public class NokiaAccelerometerReader extends SamplesSource {
 			emitSample(bytes);
 		} catch (IOException e) {
 			logger.error("Unable to read from socket: " + e);
+			return false;
+		}
+		catch (Exception e) {
+			logger.error("UNKOWN EXCEPTION reading data from sensor server: " + e);
 			return false;
 		}
 
