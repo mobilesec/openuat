@@ -107,8 +107,9 @@
 		<include name="log4j-1.2.jar"/>
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
-		<!--<include name="avetanaBT.jar"/> -->
-		<include name="bluecove-2.0.2.jar"/>
+		<!--<include name="avetanaBT.jar"/>-->
+		<include name="bluecove-2.0.3.jar"/>
+		<include name="bluecove-gpl-2.0.3.jar"/>
 		<include name="jsapi.jar"/>
 		<include name="TableLayout.jar"/>
 		<include name="freetts.jar"/>

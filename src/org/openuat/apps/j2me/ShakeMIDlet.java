@@ -249,6 +249,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				bt.addProtocolCommandHandler(Command_Debug_Streaming, 
 						new TestBTStreamingCommandHandler());
 				protocol.startListening();
+				logger.warn("Opened Bluetooth RFCOMM service at " + bt.getRegisteredServiceURL());
 			}
 			else {
 				// hard-code a simple RFCOMM server that stays connected

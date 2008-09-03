@@ -161,6 +161,14 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		return singleton;
 	}
 
+	/** Returns the URL under which the Bluetooth service is reachable for 
+	 * incoming authentication requests. This URL may be used by clients to
+	 * connect (when e.g. transmitted over some out-of-band means).
+	 */
+	public String getRegisteredServiceURL() {
+		return service.getRegisteredServiceURL();
+	}
+
 	/** Gets the current value of keepConnected.
 	 * 
 	 * @return true if RFCOMM channels will be left open after successful key
