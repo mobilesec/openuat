@@ -272,6 +272,45 @@ return retrieved;
 		recordAudio();
 		
 	}
+
+	/**
+	 * Record nothing just to get rid of the security promt
+	 */
+	public static void prepare() {
+		Player testPlayer;
+		try {
+			testPlayer = Manager.createPlayer("capture://audio?encoding=pcm&rate=44100");
+			testPlayer.realize();
+			// Get the RecordControl, set the record stream,
+			// start the Player and record until stop
+			RecordControl rc = (RecordControl) testPlayer.getControl("RecordControl");
+			ByteArrayOutputStream output = new ByteArrayOutputStream();
+			rc.setRecordStream(output);
+			
+			rc.startRecord();
+			testPlayer.start();
+			
+			rc.commit();
+			rc.stopRecord();
+			
+			testPlayer.stop();
+			testPlayer.close();
+			output.close();
+			output = null;
+			rc = null;
+			testPlayer = null;
+			System.gc();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MediaException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+
+		
+	}
 }
 
 class DecoderThread extends Thread{
