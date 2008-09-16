@@ -168,8 +168,16 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 //		main_list.append("----", null);
 //		main_list.append("Server started, waiting for incomming connections", null);
 		display.setCurrent(main_list);
+		
+		dummyRecord();
+		dummyRecord();
 	}
 	
+	private void dummyRecord() {
+		AudioChannel.prepare();
+		
+	}
+
 	public void commandAction(Command com, Displayable dis) {
 		if (com == exit) { //exit triggered from the main form
 			if (rfcommServer != null)
@@ -400,6 +408,7 @@ class KeyVerifier implements CommandListener, OOBMessageHandler  {
 	}
 	public void commandAction(Command com, Displayable arg1) {
 		List option = (List) arg1;
+		mainProgram.do_alert("Invoked command"+com, 1000);
 		if (com.getCommandType() == Command.EXIT){
 			//mainProgram.destroyApp(unconditional)
 		}
