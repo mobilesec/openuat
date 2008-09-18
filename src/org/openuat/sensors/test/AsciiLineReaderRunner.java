@@ -131,12 +131,14 @@ public class AsciiLineReaderRunner {
 	static class ThreeDimSegmentsConvert extends TimeSeriesBundle {
 		private String id;
 		private String trailer;
+		private int sensorNum;
 		
-		protected ThreeDimSegmentsConvert(String id, String trailer, int numSeries, int windowSize,
+		protected ThreeDimSegmentsConvert(String id, String trailer, int sensorNum, int numSeries, int windowSize,
 				int minSegmentSize, int maxSegmentSize) {
 			super(numSeries, windowSize, minSegmentSize, maxSegmentSize);
 			this.id = id;
 			this.trailer = trailer;
+			this.sensorNum = sensorNum;
 		}
 		protected void sampleAddedLine(int lineIndex, double sample,
 				int numSample) {
@@ -157,7 +159,25 @@ public class AsciiLineReaderRunner {
 		}
 
 		private void newSample(double[] coord) {
-			System.out.print(id + " " + coord[0] + " " + coord[1] + " " + coord[2] + trailer);
+			print(id + coord[0] + " " + coord[1] + " " + coord[2] + trailer, sensorNum);
+		}
+		
+		// only print a whole line when the first and the second sensor have called print
+		static int expectNum = 1;		
+		static String lineBuffer;
+		static void print(String part, int sensorNum) {
+			if (expectNum == sensorNum && expectNum == 1) {
+				lineBuffer = part;
+				expectNum = 2;
+			}
+			else if (expectNum == sensorNum && expectNum == 2) {
+				System.out.print(lineBuffer + part);
+				expectNum = 1;
+			}
+			else {
+				//System.err.println("Received sensor " + sensorNum + " vector while expecting " + expectNum + ", not printing this line");
+				expectNum = 1;
+			}
 		}
 	}
 
@@ -241,8 +261,8 @@ public class AsciiLineReaderRunner {
 		}
 		else {
 			// if we should only export the active segments, then need TimesSriesAggregators
-			ThreeDimSegmentsConvert aggr_a = new ThreeDimSegmentsConvert("[1]", "", 3, windowsize, minsegmentsize, -1);
-			ThreeDimSegmentsConvert aggr_b = new ThreeDimSegmentsConvert(" [2]", "\n", 3, windowsize, minsegmentsize, -1);
+			ThreeDimSegmentsConvert aggr_a = new ThreeDimSegmentsConvert(/*"[1] "*/ "", "", 1, 3, windowsize, minsegmentsize, -1);
+			ThreeDimSegmentsConvert aggr_b = new ThreeDimSegmentsConvert(/*" [2] "*/ " ", "\n", 2, 3, windowsize, minsegmentsize, -1);
 			r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 			r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
 			aggr_a.setParameters(r.getParameters());

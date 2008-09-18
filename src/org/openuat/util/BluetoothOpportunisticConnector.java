@@ -266,7 +266,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 * @param connectionURL The URL to connect to.
 	 */
 	private boolean attemptConnection(String connectionURL) {
-		logger.debug("Attempting to connect to '" + connectionURL + "'");
+		// TODO: debug
+		logger.warn("Attempting to connect to '" + connectionURL + "'");
 		BluetoothRFCOMMChannel channel;
 		int numRetries = -1;
 
@@ -334,7 +335,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		if (numRetries == 0) {
 			if (localAddress.compareTo(remoteAddress) > 0) {
 				if (logger.isInfoEnabled())
-					logger.info("My Bluetooth address '" + localAddress +
+					// TODO: debug
+					logger.warn("My Bluetooth address '" + localAddress +
 						"' is higher than the remote address to connect to '" + 
 						remoteAddress + "', backing off and waiting for remote to connect");
 				// but this counts as a failed attempt, or we would never do it...
@@ -347,11 +349,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		boolean wasRunning = manager.isInquiryActive();
 		if (wasRunning) {
 			if (!manager.stopInquiry(false))
-				logger.info("Unable to stop background inquiry, connection attempt may fail");
+				// TODO: info
+				logger.warn("Unable to stop background inquiry, connection attempt may fail");
 		}
 		try {
 			if (!manager.waitForBackgroundSearchToFinish(retryConnectionDelay))
-				logger.info("Unable to wait for background search to finish, connection attempt may fail");
+				// TODO: info
+				logger.warn("Unable to wait for background search to finish, connection attempt may fail");
 		}
 		catch (InterruptedException e) {
 			// just ignore, doesn't matter
@@ -360,15 +364,18 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		boolean success;
 		try {
 			if (logger.isDebugEnabled())
-				logger.debug("Attempting to connect to '" + connectionURL + "' with " +
+				// TODO: debug
+				logger.warn("Attempting to connect to '" + connectionURL + "' with " +
 					numRetries + " failures so far");
 			channel.open();
 			if (logger.isDebugEnabled())
-				logger.debug("Connection to '" + connectionURL + "' established, starting key agreement");
+				// TODO: debug
+				logger.warn("Connection to '" + connectionURL + "' established, starting key agreement");
 			HostProtocolHandler.startAuthenticationWith(channel, 
 					new AuthenticationEventsHandler(false), maximumKeyAgreementRuntime,
 					keepConnected, optionalParameter, useJSSE);
-			logger.info("Discovered remote device  " + 
+			// TODO: info
+			logger.warn("Discovered remote device  " + 
 					channel.getRemoteAddress() + "/'" + 
 					channel.getRemoteName() + 
 					"' which advertises opportunistic authentication, started key agreement");
@@ -396,7 +403,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					}
 					else
 						connectionsQueue.put(connectionURL, new Integer(++numRetries));
-					logger.info("Could not connect to remote service '" + connectionURL + 
+					// TODO: info
+					logger.warn("Could not connect to remote service '" + connectionURL + 
 							"' after " + (numRetries-1) + " previously failed attempts, will retry in " + 
 							retryConnectionDelay + "ms");
 					// if we get here, we have re-scheduled, so maybe need to start the timer
@@ -468,7 +476,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 
 		public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
 			if (logger.isInfoEnabled())
-				logger.debug("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
+				// TODO: debug
+				logger.warn("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
 					"/'" + BluetoothPeerManager.resolveName(remoteDevice) + "' with " +
 					services.size() + " matching authentication services");
 			
@@ -478,7 +487,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 				DataElement ser_de = sr.getAttributeValue(0x100);
 				String name = (String) ser_de.getValue();
 				if (! name.equals(serviceName)) {
-					logger.debug("Ignoring discovered service with name '" + name +
+					// TODO: info
+					logger.warn("Ignoring discovered service with name '" + name +
 							"', expected '" + serviceName + "'");
 				}
 				else {
