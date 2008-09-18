@@ -186,7 +186,7 @@ public class AsciiLineReaderRunner {
 		AsciiLineReaderBase r = null;
 		if (runClassName.equals("ParallelPortPWMReader")) {
 			FileInputStream is = new FileInputStream(filename);
-			r = new ParallelPortPWMReader(new GZIPInputStream(is), 600);
+			r = new ParallelPortPWMReader(new GZIPInputStream(is), 512);
 		}
 		else if (runClassName.equals("WiTiltRawReader")) {
 			r = new WiTiltRawReader();
