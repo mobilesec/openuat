@@ -36,6 +36,7 @@ import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.TimeSeries;
 import org.openuat.sensors.TimeSeriesAggregator;
+import org.openuat.sensors.TimeSeriesBundle;
 import org.openuat.sensors.VectorSamplesSink;
 import org.openuat.sensors.WiTiltRawReader;
 
@@ -94,10 +95,11 @@ public class AsciiLineReaderRunner {
 		}
 	}
 	
-	static class VectorsConvertSink implements VectorSamplesSink {
+	static class RawVectorsConvertSink implements VectorSamplesSink {
 /*		boolean done = false;
 		boolean active = false;*/
 		
+		// this is for VectorSamplesSink
 		public void addSample(double[] sample, int index) {
 			// HACK HACK HACK: don't print numbers 4 and 8
 //			if (active)
@@ -105,7 +107,7 @@ public class AsciiLineReaderRunner {
 					sample[4] + " " + sample[5] + " " + sample[6]);
 		}
 
-		// these meethods don'tt get called yet
+		// these methods don'tt get called yet
 		public void segmentEnd(int index) {
 /*			if (active) {
 				logger.warn("Ending segment at index " + index);
@@ -124,6 +126,39 @@ public class AsciiLineReaderRunner {
 			else
 				logger.warn("Not starting a second segment at index " + index);
 */		}
+	}
+	
+	static class ThreeDimSegmentsConvert extends TimeSeriesBundle {
+		private String id;
+		private String trailer;
+		
+		protected ThreeDimSegmentsConvert(String id, String trailer, int numSeries, int windowSize,
+				int minSegmentSize, int maxSegmentSize) {
+			super(numSeries, windowSize, minSegmentSize, maxSegmentSize);
+			this.id = id;
+			this.trailer = trailer;
+		}
+		protected void sampleAddedLine(int lineIndex, double sample,
+				int numSample) {
+			newSample(curSample);
+		}
+		protected void sampleAddedLine(int lineIndex, int sample, int numSample) {
+			// don't use int in here
+			
+		}
+		protected void toActiveFirstLine(int numSample) {
+			// don't care about segment start
+			// sampleAddedLine is called anyways only within an active segment
+			
+		}
+		protected void toQuiescentLastLine(int numSample) {
+			// don't care about segment end
+			// sampleAddedLine is called anyways only within an active segment
+		}
+
+		private void newSample(double[] coord) {
+			System.out.print(id + " " + coord[0] + " " + coord[1] + " " + coord[2] + trailer);
+		}
 	}
 
 	// a helper function for creating a graph of a time series
@@ -182,26 +217,40 @@ public class AsciiLineReaderRunner {
 		}
 	}
 
-	private static void convertToSimpleFormat(String runClassName, String filename) throws IOException {
+	private static void convertToSimpleFormat(String runClassName, String filename, boolean onlyActiveSegments) throws IOException {
+		// hard-coded optimal values for variance 
+		int samplerate = 512;
+		int windowsize = samplerate/2; // 1/2 second
+		int minsegmentsize = samplerate*3; // 3 seconds
+		float varthreshold = ShakeWellBeforeUseParameters.activityVarianceThreshold;
+		
 		AsciiLineReaderBase r = null;
 		if (runClassName.equals("ParallelPortPWMReader")) {
 			FileInputStream is = new FileInputStream(filename);
-			r = new ParallelPortPWMReader(new GZIPInputStream(is), 512);
+			r = new ParallelPortPWMReader(new GZIPInputStream(is), samplerate);
 		}
-		else if (runClassName.equals("WiTiltRawReader")) {
-			r = new WiTiltRawReader();
-			((WiTiltRawReader) r).openSerial(filename, false);
-		} 
-		else if (runClassName.equals("MainboardAccelerometerReader"))
-			r = MainboardAccelerometerReaderFactory.createInstance(100);
 		else {
 			System.err.println("Unknown derived class name!");
 			System.exit(200);
 		}
 
-		VectorsConvertSink s = new VectorsConvertSink();
-		r.addSink(s);
-		r.simulateSampling();
+		if (!onlyActiveSegments) {
+			RawVectorsConvertSink s = new RawVectorsConvertSink();
+			r.addSink(s);
+			r.simulateSampling();
+		}
+		else {
+			// if we should only export the active segments, then need TimesSriesAggregators
+			ThreeDimSegmentsConvert aggr_a = new ThreeDimSegmentsConvert("[1]", "", 3, windowsize, minsegmentsize, -1);
+			ThreeDimSegmentsConvert aggr_b = new ThreeDimSegmentsConvert(" [2]", "\n", 3, windowsize, minsegmentsize, -1);
+			r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
+			r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+			aggr_a.setParameters(r.getParameters());
+			aggr_b.setParameters(r.getParameters());
+			aggr_a.setActiveVarianceThreshold(varthreshold);
+			aggr_b.setActiveVarianceThreshold(varthreshold);
+			r.simulateSampling();
+		}
 	}
 	
 	private static void computeSimilarityMeasures(String runClassName, String filename, 
@@ -576,9 +625,14 @@ public class AsciiLineReaderRunner {
 			paramSearch_matches = true;
 		if (args.length > 1 && args[1].equals("estimate_entropy"))
 			estimateEntropy = true;
-		if (args.length > 1 && args[1].equals("convert")) {
+		if (args.length > 1 && args[1].equals("convert_all")) {
 			// only convert
-			convertToSimpleFormat(runClassName, filename);
+			convertToSimpleFormat(runClassName, filename, false);
+			return;
+		}
+		if (args.length > 1 && args[1].equals("convert_active")) {
+			// only convert
+			convertToSimpleFormat(runClassName, filename, true);
 			return;
 		}
 		
@@ -587,7 +641,7 @@ public class AsciiLineReaderRunner {
 			plotTimeSeries(runClassName, filename);
 		}
 		
-		/////// test 2: plot the 2 extracted segments from the first and the second device		int[] samplerates;
+		/////// test 2: plot the 2 extracted segments from the first and the second device
 		if (!estimateEntropy)
 			computeSimilarityMeasures(runClassName, filename, paramSearch_coherence, paramSearch_matches, graph);
 		else

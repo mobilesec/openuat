@@ -125,6 +125,7 @@ public abstract class TimeSeriesBundle {
 			// TODO: maybe also check that all numSample values match for the current sample? would be a good sanity check
 			curSample[lineIndex] = sample;
 			curSampleReceived[lineIndex] = true;
+			
 			if (curActiveSegmentLength >= 0 && isCurSampleComplete()) {
 				// this time step is now complete, so immediately process
 				curSampleIndex = numSample;
