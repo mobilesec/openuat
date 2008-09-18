@@ -80,14 +80,15 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 	}
 
 	protected void toQuiescentLastLine(int numSample) {
-	  if (
+	  if (logger.isDebugEnabled() && (
 //#if cfg.haveFloatSupport
 			(aggregatedSeries != null && aggregatedSeries.size() > windowSize) ||
 //#endif					
-			(aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && aggregatedSeriesIndex_Int > windowSize))
-				logger.warn("Unexpected index of segment end, got " + numSample 
+			(aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && aggregatedSeriesIndex_Int > windowSize))) {
+				logger.debug("Unexpected index of segment end, got " + numSample 
 						+ ", expected either " + curSampleIndex
 						+ " or " +  + (curSampleIndex+1));
+	  }
 			
 //#if cfg.haveFloatSupport
 		if (aggregatedSeries != null && aggregatedSeries.size() > windowSize) {

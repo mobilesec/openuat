@@ -386,7 +386,7 @@
 				org/openuat/apps/j2me/HapadepMIDlet.java
 				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
 				org/openuat/sensors/SamplesSink_Int.java org/openuat/sensors/SegmentsSink_Int.java
-				org/openuat/sensors/SegmentsSink.java
+				org/openuat/sensors/SegmentsSink.java org/openuat/sensors/VectorSamplesSink.java
 				org/openuat/sensors/TimeSeries_Int.java org/openuat/sensors/TimeSeries.java
 				org/openuat/sensors/TimeSeriesAggregator.java org/openuat/sensors/DeviceStateListener.java
 				org/openuat/sensors/TimeSeriesBundle.java
@@ -674,16 +674,20 @@
 
 	<target name="push-midp" depends="jar-midp" description="Push the generated MIDP applications to a device via OBEX push">
 		<exec executable="obexftp">
-			<arg line="-b 00:18:0F:A4:C9:97"/>
+			<arg line="-b 00:1C:9A:1F:9B:11"/>
        		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
 			<!--<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>-->
-			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
+			<arg line="-p ${dist}/Nokia-N95-auth.jar"/>
 		</exec>
 		<exec executable="obexftp">
 			<arg line="-b 00:18:0F:A3:A1:D4"/>
-			<arg line="-p ${dist}/Generic-multi-shakeme.jar"/>
+       		<!-- can add as many as necessary -->
+		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
+			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
+			<!--<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>-->
+			<arg line="-p ${dist}/Nokia-N95-auth.jar"/>
 		</exec>
 
 <!--		<exec executable="obexftp">

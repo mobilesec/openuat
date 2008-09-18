@@ -42,8 +42,8 @@ public abstract class SamplesSource {
 		public boolean equals(Object o) {
 			return o instanceof ListenerCombination &&
 				((ListenerCombination) o).lines.equals(lines) &&
-				(intSinks == null && ((ListenerCombination) o).doubleSinks.equals(doubleSinks)) ||
-				(doubleSinks == null && ((ListenerCombination) o).intSinks.equals(intSinks));
+				(doubleSinks != null && ((ListenerCombination) o).doubleSinks.equals(doubleSinks)) &&
+				(intSinks != null && ((ListenerCombination) o).intSinks.equals(intSinks));
 		}
 	}
 	
@@ -55,6 +55,12 @@ public abstract class SamplesSource {
 	 * @see #removeSink(int[], SamplesSink_Int[])
 	 */
 	private Vector listeners;
+	
+	/** This holds all registered vector sinks.
+	 * @see #addSink(VectorSamplesSink)
+	 * @see #removeSink(VectorSamplesSink)
+	 */
+	private Vector vectorListeners;
 
 	/** The total number of samples read until currently. Changed by emitSample.
 	 * @see #emitSample(double[]) 
@@ -95,6 +101,7 @@ public abstract class SamplesSource {
 	 */
 	protected SamplesSource(int maxNumLines, int sleepBetweenReads) {
 		this.listeners = new Vector();
+		this.vectorListeners = new Vector();
 		this.numSamples = 0;
 		this.maxNumLines = maxNumLines;
 		this.sleepBetweenReads = sleepBetweenReads;
@@ -163,6 +170,14 @@ public abstract class SamplesSource {
 		addSinkHelper(lines, new ListenerCombination(lines, null, intSinks));
 	}
 
+	/** Registers a sink, which will receive all new vectors as they are sampled.
+	 * @param vectorSinks These sinks will be notified with complete samples.  
+	 */
+	public void addSink(VectorSamplesSink vectorSink) throws IllegalArgumentException {
+		if (vectorListeners != null && !vectorListeners.contains(vectorSink))
+			vectorListeners.addElement(vectorSink);
+	}
+
 	/** Removes a previously registered sink.
 	 * 
 	 * @param doubleSinks The time series to stop filling.
@@ -184,6 +199,15 @@ public abstract class SamplesSource {
 	 */
 	public boolean removeSink_Int(int[] lines, SamplesSink_Int[] intSinks) {
 		return listeners.removeElement(new ListenerCombination(lines, null, intSinks));
+	}
+
+	/** Removes a previously registered sink.
+	 * 
+	 * @param vectorSinks The time series to stop notifying.
+	 * @return true if removed, false if not (i.e. if it has not been added previously).
+	 */
+	public boolean removeSink(VectorSamplesSink vectorSink) {
+		return vectorListeners.removeElement(vectorSink);
 	}
 	
 	/** Starts a new background thread to read from the file and create sample
@@ -271,6 +295,13 @@ public abstract class SamplesSource {
    				if (l.intSinks != null)
 					for (int i=0; i<l.lines.length; i++)
     					l.intSinks[i].addSample((int) sample[l.lines[i]], numSamples);
+    		}
+    	
+    	if (vectorListeners != null)
+    		for (int j=0; j<vectorListeners.size(); j++) {
+    			VectorSamplesSink l = (VectorSamplesSink) vectorListeners.elementAt(j);
+    			if (l != null)
+    				l.addSample(sample, numSamples);
     		}
 		numSamples++;
 	}

@@ -36,6 +36,7 @@ import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.TimeSeries;
 import org.openuat.sensors.TimeSeriesAggregator;
+import org.openuat.sensors.VectorSamplesSink;
 import org.openuat.sensors.WiTiltRawReader;
 
 public class AsciiLineReaderRunner {
@@ -92,6 +93,38 @@ public class AsciiLineReaderRunner {
 				logger.warn("Already received segment " + index + ", this is a second significant one!");
 		}
 	}
+	
+	static class VectorsConvertSink implements VectorSamplesSink {
+/*		boolean done = false;
+		boolean active = false;*/
+		
+		public void addSample(double[] sample, int index) {
+			// HACK HACK HACK: don't print numbers 4 and 8
+//			if (active)
+				System.out.println(sample[0] + " " + sample[1] + " " + sample[2] + " ; " +
+					sample[4] + " " + sample[5] + " " + sample[6]);
+		}
+
+		// these meethods don'tt get called yet
+		public void segmentEnd(int index) {
+/*			if (active) {
+				logger.warn("Ending segment at index " + index);
+				done = true;
+				active = false;
+			}
+			else
+				logger.warn("Not ending segment at index " + index + " as it has not been active");
+*/		}
+
+		public void segmentStart(int index) {
+/*			if (!done) {
+				active = true;
+				logger.warn("Starting segment at index " + index);
+			}
+			else
+				logger.warn("Not starting a second segment at index " + index);
+*/		}
+	}
 
 	// a helper function for creating a graph of a time series
 	private static void createGraph(double[] series, String seriesName, String xName, String yName, String graphTitle, String outFile) throws IOException {
@@ -147,6 +180,28 @@ public class AsciiLineReaderRunner {
 					"Sample", segData, PlotOrientation.VERTICAL, true, true, false);
 			ChartUtilities.saveChartAsJPEG(new File("/tmp/seg" + i + ".jpg"), segChart, 500, 300);
 		}
+	}
+
+	private static void convertToSimpleFormat(String runClassName, String filename) throws IOException {
+		AsciiLineReaderBase r = null;
+		if (runClassName.equals("ParallelPortPWMReader")) {
+			FileInputStream is = new FileInputStream(filename);
+			r = new ParallelPortPWMReader(new GZIPInputStream(is), 600);
+		}
+		else if (runClassName.equals("WiTiltRawReader")) {
+			r = new WiTiltRawReader();
+			((WiTiltRawReader) r).openSerial(filename, false);
+		} 
+		else if (runClassName.equals("MainboardAccelerometerReader"))
+			r = MainboardAccelerometerReaderFactory.createInstance(100);
+		else {
+			System.err.println("Unknown derived class name!");
+			System.exit(200);
+		}
+
+		VectorsConvertSink s = new VectorsConvertSink();
+		r.addSink(s);
+		r.simulateSampling();
 	}
 	
 	private static void computeSimilarityMeasures(String runClassName, String filename, 
@@ -521,6 +576,11 @@ public class AsciiLineReaderRunner {
 			paramSearch_matches = true;
 		if (args.length > 1 && args[1].equals("estimate_entropy"))
 			estimateEntropy = true;
+		if (args.length > 1 && args[1].equals("convert")) {
+			// only convert
+			convertToSimpleFormat(runClassName, filename);
+			return;
+		}
 		
 		/////// test 1: just plot all time series
 		if (graph) {

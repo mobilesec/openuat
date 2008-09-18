@@ -77,9 +77,9 @@ public abstract class TimeSeriesBundle {
 		//@Override
 		protected void toQuiescent(int lineIndex, int numSample) {
 			// +1 because first and last samples are added
-			if (curSampleIndex != numSample && curSampleIndex+1 != numSample && 
-			    curSampleIndex-windowSize != numSample && curSampleIndex-windowSize+1 != numSample)
-				logger.warn("Unexpected index of segment end, got " + numSample 
+			if (logger.isDebugEnabled() && (curSampleIndex != numSample && curSampleIndex+1 != numSample && 
+			    curSampleIndex-windowSize != numSample && curSampleIndex-windowSize+1 != numSample))
+				logger.debug("Unexpected index of segment end, got " + numSample 
 						+ ", expected either " + curSampleIndex
 						+ " or " +  + (curSampleIndex+1));
 

@@ -39,6 +39,9 @@
         #python/nokiaaccelserver.py dist/NokiaAccServer.sis
 # For self-signed (e.g. the built-in certificate shipped with ensymble.py)
 # packages, autostart and caps as well as a protected uid are NOT supported!
+#
+# Requirements for running the application installed by the SIS package:
+# Python for S60 (tested with version 1.4.4, any newer will probably work).
 
 import socket
 #import e32

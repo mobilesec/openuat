@@ -288,7 +288,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		 * [-1;1] but [-1024;1024]. The variance threshold is computed over
 		 * THIS DEPENDS HEAVILY ON THE WINDOW SIZE SET ABOVE IN THE CONSTRUCTOR
 		 */
-		aggregator.setActiveVarianceThreshold(150*4
+		aggregator.setActiveVarianceThreshold(5000*4
 				/*(ShakeWellBeforeUseParameters.activityVarianceThreshold*
 				ShakeWellBeforeUseParameters.activityVarianceThreshold) *
 				(SymbianTCPAccelerometerReader.VALUE_RANGE*SymbianTCPAccelerometerReader.VALUE_RANGE)*/);

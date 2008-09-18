@@ -21,7 +21,7 @@ import org.openuat.sensors.TimeSeries_Int;
 
 /** This class implements an accelerometer sensor reader that gets its data 
  * from a small Python wrapper around the Nokia sensor SDK. It connect to
- * the python server via a TCP socket.
+ * the Python server via a TCP socket.
  * 
  * @author Rene Mayrhofer
  * @version 1.1, changes to 1.0: Not using the Symbian wrapper any more but 
@@ -34,9 +34,22 @@ public class NokiaAccelerometerReader extends SamplesSource {
 	private final static int Port = 12008;
 	
 	/** This is only approximate, we can't control the sample rate on the device. */
-	public final static int SAMPLERATE = 30;
+	public static int SAMPLERATE;
 	
-	public final static int VALUE_RANGE = 512;
+	/** This is only approximate! It's not sure what value range the Nokia Sensor API really uses. */
+	public static int VALUE_RANGE;
+	
+	/** Accelerometer values will be multiplied with this value (only returned 
+	 * by getParameters_Int for use in TimeSeries_Int). 
+	 */
+	private static int MULTIPLICATOR;
+	/** Accelerometer values will be divided by this value (only returned 
+	 * by getParameters_Int for use in TimeSeries_Int). 
+	 */
+	private static int DIVISOR;
+	
+	/** When true, then minimum and maximum values will be logged. */
+	private static boolean needValueLogging = false;
 
 	/** When the connection to the Sensor API wrapper has been opened
 	 * successfully, this contains the data connection object.
@@ -61,8 +74,50 @@ public class NokiaAccelerometerReader extends SamplesSource {
 	 */ 
 	private int[] bytes = new int[3];
 	
+	private int[] minValues = new int[3];
+	private int[] maxValues = new int[3];
+	
 	/** Again keep this buffer for performance reasons. */
 	StringBuffer readBuffer = new StringBuffer();
+	
+	static {
+		// try to guess the sensor range from the platform
+		String phone = System.getProperty("microedition.platform");
+		String model = phone.substring(0, phone.indexOf('/'));
+		String version = phone.substring(phone.indexOf('/')+1);
+
+		if (model.equals("Nokia5500d")) {
+			logger.warn("Detected Nokia 5500 phone");
+			VALUE_RANGE = 2048;
+			// normalize to 1024 range
+			MULTIPLICATOR = 1;
+			DIVISOR = 2;
+			// this is only roughly true on average, it seems to differ between 25 and 35 Hz, which is _very_ bad for frequency analysis...
+			SAMPLERATE = 30;
+		} else if (model.equals("NokiaN95")) {
+			if (version.compareTo("20.0.015") < 0)
+				logger.warn("Detected Nokia N95 with old firmware (" + version + "). This may not work!");
+			else
+				logger.warn("Detected Nokia N95 with new firmware");
+			VALUE_RANGE = 680;
+			// normalize roughly to 1024 range
+			MULTIPLICATOR = 3;
+			DIVISOR = 2;
+			// this is only roughly true on average, it seems to differ between 25 and 40 Hz, which is _very_ bad for frequency analysis...
+			SAMPLERATE = 35;
+		} else {
+			logger.warn("Detected unknown phone, using defaults. This may now work!");
+			TimeSeries_Int.forceSampleRateEstimation = true;
+			needValueLogging = true;
+			
+			// these are only guesses
+			SAMPLERATE = 30;
+			VALUE_RANGE = 2048;
+			// normalize to 1024 range
+			MULTIPLICATOR = 1;
+			DIVISOR = 2;
+		}
+	}
 	
 	/** Initializes the reader.
 	 */
@@ -71,6 +126,9 @@ public class NokiaAccelerometerReader extends SamplesSource {
 		 * <30Hz, thus don't sleep between reads but read as quickly as 
 		 * possible (read is blocking anyway). */
 		super(3, 0);
+		
+		for (int i=0; i<3; i++)
+			minValues[i] = maxValues[i] = 0;
 	}
 	
 	/** This overrides the SamplesSource.start implementation, because we need
@@ -163,6 +221,31 @@ public class NokiaAccelerometerReader extends SamplesSource {
             bytes[0] = Integer.parseInt(xS);
             bytes[1] = Integer.parseInt(yS);
             bytes[2] = Integer.parseInt(zS);
+            
+            if (needValueLogging) {
+            	/** Just log the minimum and maximum values for now. 
+            	 * Result on N95 with quite vicious shaking: 
+            	 *   -675<x<680, -675<y<680, -680<z<675
+            	 * Result on 5500 with quite vicious shaking:
+            	 *   -2048<x<2047, -2048<y<2047, -2048<z<2047
+            	 * */
+            	boolean minMaxChanged = false;
+            	for (int i=0; i<3; i++) {
+            		if (bytes[i] < minValues[i]) {
+            			minValues[i] = bytes[i];
+            			minMaxChanged = true;
+            		}
+            		if (bytes[i] > maxValues[i]) {
+            			maxValues[i] = bytes[i];
+            			minMaxChanged = true;
+            		}
+            	}
+            	if (minMaxChanged) {
+            		logger.warn(minValues[0] + "<x<" + maxValues[0] + " " +
+            				minValues[1] + "<y<" + maxValues[1] + " " +
+            				minValues[2] + "<z<" + maxValues[2]);
+            	}
+            }
 
 			emitSample(bytes);
 		} catch (IOException e) {
@@ -204,14 +287,14 @@ public class NokiaAccelerometerReader extends SamplesSource {
 				 * Therefore already divide by VALUE_RANGE (which would be set
 				 * as divisor below) to avoid this.
 				 */ 
-				return 2;
+				return MULTIPLICATOR;
 			}
 
 			public int getDivisor() {
 				/* We would set this to VALUE_RANGE, but see above for the 
 				 * reason why we return 1 here.
 				 */ 
-				return 1;
+				return DIVISOR;
 			}
 
 			public int getOffset() {

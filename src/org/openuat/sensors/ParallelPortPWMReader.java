@@ -33,7 +33,7 @@ public class ParallelPortPWMReader extends AsciiLineReaderBase {
 
 	public final static int VALUE_RANGE = 256;
 	
-	/** The length of s sample period, i.e. the sample width, in µsec. */
+	/** The length of s sample period, i.e. the sample width, in microseconds. */
 	private int sampleWidth;
 	
 	/** The current samples, i.e. all sample values that fall into the current sample period. */

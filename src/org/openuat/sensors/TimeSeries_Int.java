@@ -51,6 +51,11 @@ public class TimeSeries_Int implements SamplesSink_Int {
 	 * N seconds, where N is this number.
 	 */
 	private static final int reportSampleRateSeconds = 10;
+	
+	/** If this is set to true, then the sample rate will be estimated even 
+	 * when not logging on level debug.
+	 */
+	public static boolean forceSampleRateEstimation = false;
 
 	/** This is the internal circular buffer used to hold the values inside the time window. 
 	 * These values are already normalized. */
@@ -255,7 +260,7 @@ public class TimeSeries_Int implements SamplesSink_Int {
     	}
     	
     	// enable the sample rate
-    	if (logger.isDebugEnabled()) {
+    	if (logger.isDebugEnabled() || forceSampleRateEstimation) {
     		if (totalNum % estimateSampleRateWidth == 0) {
 				long curTime = System.currentTimeMillis();
     			if (lastSampleRateEstimated >= 0) {
@@ -264,7 +269,11 @@ public class TimeSeries_Int implements SamplesSink_Int {
     					curTime - lastSampleRateReported >= reportSampleRateSeconds) {
     					lastSampleRateReported = curTime;
     					float sampleRate = (curTime - lastSampleRateEstimated) / (float) estimateSampleRateWidth;
-    					logger.debug("Current sample rate: " + sampleRate + " Hz");
+        				lastSampleRateEstimated = curTime;
+    					if (forceSampleRateEstimation)
+    						logger.warn("Current sample rate: " + sampleRate + " Hz");
+    					else
+    						logger.debug("Current sample rate: " + sampleRate + " Hz");
     				}
     			}
     			else
