@@ -181,7 +181,7 @@ public class BluetoothPeerManager {
 	 * while a backgound inquiry is running.
 	 * @see #automaticServiceDiscovery
 	 * @param automaticServiceDiscovery Set to true if services should be 
-	 *                                  discocered automatically for newly found
+	 *                                  discovered automatically for newly found
 	 *                                  devices.
 	 */
 	public void setAutomaticServiceDiscovery(boolean automaticServiceDiscovery) {
@@ -258,7 +258,8 @@ public class BluetoothPeerManager {
 			if (force) {
 				// if running, try to cancel an active inquiry
 				if (eventsHandler.isInquiryRunning()) {
-					logger.info("Inquiry currently running, aborting now");
+					// TODO: info
+					logger.warn("Inquiry currently running, aborting now");
 					agent.cancelInquiry(eventsHandler);
 				}
 			
@@ -267,7 +268,8 @@ public class BluetoothPeerManager {
 				for (int i=0; i<devs.length; i++) {
 					RemoteDeviceDetail dev = getDeviceDetail(devs[i]);
 					if (dev.serviceSearchTransId > -1) {
-						logger.info("Service search on device " + 
+						// TODO: info
+						logger.warn("Service search on device " + 
 								devs[i].getBluetoothAddress() +
 								"currently running, aborting now");
 						agent.cancelServiceSearch(dev.serviceSearchTransId);
@@ -302,11 +304,13 @@ public class BluetoothPeerManager {
 			Thread.sleep(100);
 		}
 		if (eventsHandler.isInquiryRunning()) {
-			logger.info("Timeout while waiting for background inquiry to finish: still running after " +
+			// TODO: info
+			logger.warn("Timeout while waiting for background inquiry to finish: still running after " +
 					timeoutMs + "ms, aborting wait");
 			return false;
 		}
-		logger.debug("Background inquiry finished");
+		// TODO: debug
+		logger.warn("Background inquiry finished");
 		
 		synchronized (foundDevices) {
 			for (Enumeration devices = foundDevices.elements(); devices.hasMoreElements(); ) {
@@ -504,12 +508,13 @@ public class BluetoothPeerManager {
 							if (!waitForServiceSearch(dev, 
 									(inquiryThread != null ? TIMEOUT_SERVICE_SEARCH : -1), 
 									startWait)) {
-								logger.info("Service search on " + device.getBluetoothAddress() +
+								// TODO: info
+								logger.warn("Service search on " + device.getBluetoothAddress() +
 										" timed out, aborting it");
 								if (dev.serviceSearchTransId > -1)
 									agent.cancelServiceSearch(dev.serviceSearchTransId);
 								else
-									logger.info("Tried to cancel service search on " + 
+									logger.warn("Tried to cancel service search on " + 
 											device.getBluetoothAddress() + 
 											", but no transaction ID known, can not cancel");
 							}
@@ -569,7 +574,8 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			logger.debug("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
+			// TODO: debug
+			logger.warn("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
 					" named '" + resolveName(remoteDevice) + "' of class " + 
 					deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
 			synchronized(foundDevices) {
@@ -621,13 +627,15 @@ public class BluetoothPeerManager {
 				}
 				
 				if (newDevices.size() == 0) {
-					if (logger.isDebugEnabled())
-						logger.debug("Discovery completed, found " + newDevices.size() + 
+//					if (logger.isDebugEnabled())
+						// TODO: debug
+						logger.warn("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				else {
-					if (logger.isInfoEnabled())
-						logger.info("Discovery completed, found " + newDevices.size() + 
+//					if (logger.isInfoEnabled())
+						// TODO: info
+						logger.warn("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				for (int i=0; i<listeners.size(); i++)
@@ -673,8 +681,9 @@ public class BluetoothPeerManager {
 
 
 		public void servicesDiscovered(int transID, ServiceRecord[] serviceRecord) {
-			if (logger.isInfoEnabled())
-				logger.info("Discovered " + serviceRecord.length + " services for remote device " +
+//			if (logger.isInfoEnabled())
+				// TODO: info
+				logger.warn("Discovered " + serviceRecord.length + " services for remote device " +
 					currentRemoteDevice + " with transaction id " + transID);
 			if (currentRemoteDevice == null) {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
@@ -754,8 +763,9 @@ public class BluetoothPeerManager {
 				}
 
 				synchronized (services) { 
-					if (logger.isInfoEnabled())
-						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
+//					if (logger.isInfoEnabled())
+						// TODO: info
+						logger.warn("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
 								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
 					if (logger.isDebugEnabled()) {
@@ -770,19 +780,22 @@ public class BluetoothPeerManager {
 				
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_DEVICE_NOT_REACHABLE:
-				logger.info("Device not reachable while trying to perform service discovery");
+				// TODO: info
+				logger.warn("Device not reachable while trying to perform service discovery");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
-				logger.info("Service serch error");
+				// TODO: info
+				logger.warn("Service serch error");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
-				logger.info("No matching records returned for service search on " +
+				// TODO: info
+				logger.warn("No matching records returned for service search on " +
 						currentRemoteDevice.getBluetoothAddress());
 				synchronized (dev) {
 					// in this case, service search was actually finished correctly (even if we didn't get any records)
@@ -790,7 +803,8 @@ public class BluetoothPeerManager {
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
-				logger.info("Service search cancelled");
+				// TODO: info
+				logger.warn("Service search cancelled");
 				synchronized (dev) {
 					dev.serviceSearchFinished = false;
 				}
@@ -858,7 +872,8 @@ public class BluetoothPeerManager {
 				dev.wait(500);
 			}
 			if (!dev.serviceSearchFinished) {
-				logger.info("Timeout while waiting for service search to finish: still running after " +
+				// TODO: info
+				logger.warn("Timeout while waiting for service search to finish: still running after " +
 						timeoutMs + "ms, aborting wait");
 				return false;
 			}

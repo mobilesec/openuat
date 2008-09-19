@@ -476,7 +476,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// announce shaking complete
 			status.setText("verifying");
 			// and be sure to overwrite the status when we don't reach a conclusion
-			previousStatus = "NO PEER DEVICE";
+			previousStatus = "UNKNOWN";
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
