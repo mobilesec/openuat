@@ -880,10 +880,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (presharedShortSecret != null) {
             	logger.info("Preshared short secret is available, entering this protocol path on " 
             			+ (serverSide ? "server" : "client"));
-            	// case 1: MANA III assuming the user input to be secret, but it
-            	// may have already been entered before even starting the protocol
-            	// instead of transmitting/comparing oobMsg, add the short secret to it 
-            	// and make it a commitment scheme
+            	/* Case 1: MANA III assuming the user input to be secret, but it
+            	 * may have already been entered before even starting the protocol.
+            	 * Instead of transmitting/comparing oobMsg, add the short secret to it 
+            	 * and make it a commitment scheme.
+            	 */
             	/* A generates random K1, computes M1 = HMAC_K1 (Ia | DH-key | R) where
  * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
  * assumption: R remains secret */
@@ -921,14 +922,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     return;
                 }
                 
-                // if we have an input case and R1/2 are _not_ secret, then they must 
-                // be input to the respective other sides exactly here in the protocol, not
-                // earlier and not later
-                // it is important that R1/2 is not made available to an attacker 
-                // before the commitments M1/M2 have been exchanged because
-                // otherwise it could create valid commitments with different
-                // public keys (and different K1/K2, as long as R is known)
-                // need to block at this stage until both devices received R
+                /* If we have an input case and R1/2 are _not_ secret, then they must 
+                 * be input to the respective other sides exactly here in the protocol, not
+                 * earlier and not later.
+                 * It is important that R1/2 is not made available to an attacker 
+                 * before the commitments M1/M2 have been exchanged because
+                 * otherwise it could create valid commitments with different
+                 * public keys (and different K1/K2, as long as R is known).
+                 * Need to block at this stage until both devices received R!
+                 */
                	
                	// TODO for non-secret short input (i.e. user-generated keys):
                 // this case will only work in Hollywood mode
