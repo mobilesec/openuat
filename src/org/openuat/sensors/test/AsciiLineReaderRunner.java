@@ -239,9 +239,9 @@ public class AsciiLineReaderRunner {
 
 	private static void convertToSimpleFormat(String runClassName, String filename, boolean onlyActiveSegments) throws IOException {
 		// hard-coded optimal values for variance 
-		int samplerate = 512;
-		int windowsize = samplerate/2; // 1/2 second
-		int minsegmentsize = samplerate*3; // 3 seconds
+		int samplerate = ShakeWellBeforeUseParameters.samplerate; // 256 Hz
+		int windowsize = ShakeWellBeforeUseParameters.activityDetectionWindowSize; // 1/2 second
+		int minsegmentsize = ShakeWellBeforeUseParameters.activityMinimumSegmentSize; // 3 seconds
 		float varthreshold = ShakeWellBeforeUseParameters.activityVarianceThreshold;
 		
 		AsciiLineReaderBase r = null;
@@ -265,8 +265,9 @@ public class AsciiLineReaderRunner {
 			ThreeDimSegmentsConvert aggr_b = new ThreeDimSegmentsConvert(/*" [2] "*/ " ", "\n", 2, 3, windowsize, minsegmentsize, -1);
 			r.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
 			r.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
-			aggr_a.setParameters(r.getParameters());
-			aggr_b.setParameters(r.getParameters());
+			// this would normalize to [-1;1]
+			/*aggr_a.setParameters(r.getParameters());
+			aggr_b.setParameters(r.getParameters());*/
 			aggr_a.setActiveVarianceThreshold(varthreshold);
 			aggr_b.setActiveVarianceThreshold(varthreshold);
 			r.simulateSampling();
