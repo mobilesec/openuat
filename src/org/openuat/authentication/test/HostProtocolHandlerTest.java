@@ -97,7 +97,7 @@ public class HostProtocolHandlerTest extends TestCase {
             i++;
         }
         Assert.assertEquals(0, h.getReceivedFailures());
-        Assert.assertEquals(10, h.getReceivedProgress());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
         Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
@@ -127,7 +127,7 @@ public class HostProtocolHandlerTest extends TestCase {
             i++;
         }
         Assert.assertEquals(0, h.getReceivedFailures());
-        Assert.assertEquals(10, h.getReceivedProgress());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
         Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());
@@ -180,7 +180,7 @@ public class HostProtocolHandlerTest extends TestCase {
             i++;
         }
         Assert.assertEquals(0, h.getReceivedFailures());
-        Assert.assertEquals(10, h.getReceivedProgress());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
         Assert.assertEquals(2, h.getReceivedStarted());
 
         Assert.assertEquals(2, h.getReceivedSecrets());

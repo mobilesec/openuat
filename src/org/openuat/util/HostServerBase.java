@@ -159,7 +159,8 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 * @param remote The (already opened) remote connection to use.
 	 */
 	protected void startProtocol(RemoteConnection remote) {
-		HostProtocolHandler h = new HostProtocolHandler(remote, protocolTimeoutMs, keepConnected, useJSSE);
+		HostProtocolHandler h = new HostProtocolHandler(remote, presharedShortSecret, 
+				protocolTimeoutMs, keepConnected, useJSSE);
 		// before starting the background thread, register all our own listeners with this new event sender
 		h.setAuthenticationProgressHandlers(eventsHandlers);
 		h.setProtocolCommandHandlers(protocolCommandHandlers);

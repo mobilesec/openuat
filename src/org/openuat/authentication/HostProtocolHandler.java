@@ -363,7 +363,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     protected String getLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
     	String msg = readLine();
-        if (msg == null) {
+    	if (msg == null) {
         	logger.warn("helper_getAuthenticationParamLine called with null argument");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: no message received");
             return null;
@@ -400,6 +400,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: unknown message");
             return null;
         }
+
         return msg;
     }
     
@@ -835,7 +836,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	timestamp = System.currentTimeMillis();
                	byte[] remoteCommitmentExpected = commitment(remotePubKey);
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
-               	for (int i=0; i<remoteCommitment.length; i++) {
+               	for (int i=0; i<remoteCommitment.length && i<remoteCommitmentExpected.length; i++) {
                     if (remoteCommitment[i] != remoteCommitmentExpected[i]) {
                         logger.warn("Protocol error: remote commitment does not match public key");
                         println("Protocol error: remote commitment does not match public key");
@@ -867,7 +868,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	System.arraycopy(myPubKey, 0, oobKey, remotePubKey.length, myPubKey.length);
             }
             byte[] oobMsg;
-            
+
             // transfer: one device sends oobMsg to the other, the latter compares
             //           important: the used must press "yes" on the former if and only if the latter accepted (1-bit OOB)
             // comparison: user needs to enter yes/no on both sides after being shown oobMsg somehow
@@ -877,6 +878,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // b) *short* non-secret message that needs to be input after the protocol has started!
             // c) long non-secret but authentic message that can be used for pre-authentication
             if (presharedShortSecret != null) {
+            	logger.info("Preshared short secret is available, entering this protocol path on " 
+            			+ (serverSide ? "server" : "client"));
             	// case 1: MANA III assuming the user input to be secret, but it
             	// may have already been entered before even starting the protocol
             	// instead of transmitting/comparing oobMsg, add the short secret to it 
@@ -903,14 +906,17 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	Object[] parms = parseLine(line, Protocol_AuthenticationInputCommit, 
             			new boolean[] {true}, null, 1, connection);
             	if (parms == null) {
+                    logger.warn("Protocol error: remote did not send commitment for short shared secret.");
+                    println("Protocol error: remote did not send input commitment for short shared secret.");
+                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: no remote commitment");
             		shutdownConnectionCleanly();
                     return;
             	}
             	byte[] remoteM = (byte[]) parms[0];
-                if (remoteM.length < 128) {
-                    logger.warn("Protocol error: could not parse commitment for short shared secret, expected 128 Bytes hex-encoded.");
-                    println("Protocol error: could not parse input commitment for short shared secret, expected 128 Bytes hex-encoded.");
-                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment too short (only " + remotePubKey.length + " bytes instead of 128)");
+                if (remoteM.length < 16) {
+                    logger.warn("Protocol error: could not parse commitment for short shared secret, expected 128 Bits hex-encoded.");
+                    println("Protocol error: could not parse input commitment for short shared secret, expected 128 Bits hex-encoded.");
+                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment too short (only " + remotePubKey.length + " bytes instead of 16)");
                     shutdownConnectionCleanly();
                     return;
                 }
@@ -927,7 +933,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	// TODO for non-secret short input (i.e. user-generated keys):
                 // this case will only work in Hollywood mode
                	// byte[] remoteShortSecret = oobChannel.receive();
-                                
+
                 // 3. send K1
                 String myKStr = new String(Hex.encodeHex(myK));
                 println(Protocol_AuthenticationInputOpen + myKStr);
@@ -941,20 +947,20 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     return;
             	}
             	byte[] remoteK = (byte[]) parms[0];
-                if (remoteK.length < 128) {
-                    logger.warn("Protocol error: could not parse remote K, expected 128 Bytes hex-encoded.");
-                    println("Protocol error: could not parse remote K, expected 128 Bytes hex-encoded.");
-                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote K too short (only " + remotePubKey.length + " bytes instead of 128)");
+                if (remoteK.length < 16) {
+                    logger.warn("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
+                    println("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
+                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote K too short (only " + remotePubKey.length + " bytes instead of 16)");
                     shutdownConnectionCleanly();
                     return;
                 }
                 totalTransferTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
-                
+
                 // 5. compare M1 and M2
                 byte[] remoteMExpected = keyedHash(oobInput, remoteK);
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
-               	for (int i=0; i<remoteCommitment.length; i++) {
+               	for (int i=0; i<remoteM.length && i<remoteMExpected.length; i++) {
                     if (remoteM[i] != remoteMExpected[i]) {
                         logger.warn("Protocol error: remote input commitment does not match");
                         println("Protocol error: remote input commitment does not match");
@@ -964,7 +970,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                     }
                	}
                 totalCryptoTime += System.currentTimeMillis()-timestamp;
-                
+
                 // already authenticated!
                 oobMsg = null;
             }
