@@ -6,32 +6,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.Scanner;
-import java.util.logging.Logger;
 
 import javax.bluetooth.UUID;
-import javax.microedition.lcdui.Alert;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.codec.audio.AudioUtils;
 import org.codec.audio.PlayerPiano;
 import org.codec.audio.WavPlayer;
 import org.codec.mad.MadLib;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.oob.VisualChannel;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
-
-import com.swetake.util.QRCanvas;
-import com.swetake.util.QRcodeGen;
 
 public class OpenUATtoolkit {
 	/** verification methods */
@@ -40,7 +31,12 @@ public class OpenUATtoolkit {
 	public static final String SLOWCODEC = "SLOWCODEC";
 	public static final String MADLIB = "MADLIB";
 
-
+	/** how many bytes of the key are used for the Audio method */	
+	private static final int AUDIO_KEY_LENGTH = 7;
+	
+	/** with how many bits to pad the hash before sending */
+	private static final int AUDIO_PADDING = 6;
+	
 	/** synchronization commands */
 	public static final String VERIFY = "VERIFY";
 	public static final String ACK = "OK";
@@ -57,6 +53,7 @@ public class OpenUATtoolkit {
 	/** informs that verification was successful */
 	public static final String SUCCESS = "SUCCESS";
 
+	private static Logger logger = Logger.getLogger("org.openuat.apps.OpenUATtoolkit");
 
 	//#if cfg.includeTestCode 
 	///////////////////////////////////////// test code begins here //////////////////////
@@ -122,7 +119,7 @@ public class OpenUATtoolkit {
 			//String param = (String) res[2];
 
 			RemoteConnection connectionToRemote = (RemoteConnection) res[3];
-			System.out.println("reading line");
+			
 			String verify = readLine(connectionToRemote);
 			System.out.println(verify);
 			if (verify.equals(VERIFY)){
@@ -152,52 +149,90 @@ public class OpenUATtoolkit {
 						System.arraycopy(hash, 0, trimmedHash, 0, 7);
 						String toSend = new String(Hex.encodeHex(trimmedHash));
 						System.out.println("hash: -------" + toSend);
-
-						JFrame qrcode = generateAndShowQRCode(toSend.getBytes());
+						VisualChannel channel = new VisualChannel();
+						channel.transmit(toSend.getBytes());
 
 						String success = readLine(connectionToRemote);
 
 						if(success.equals(SUCCESS)){
-							qrcode.setVisible(false);
-							qrcode.dispose();
 
 							System.out.println("success!!");
+						}else {
+							System.out.println("failure!!");
 						}
+						channel.close();
 					}
 				}else if (method.equals(AUDIO)){
 					method = AUDIO;
 					send (ACK, connectionToRemote);
-//					audio codec encode sound and play
+					byte [] trimmedHash = new byte[AUDIO_KEY_LENGTH];
+					
 					try {
-					byte [] trimmedHash = new byte[8];
-					System.arraycopy(hash, 0, trimmedHash, 0, 8);
-					String toSend = new String(Hex.encodeHex(trimmedHash));
+						hash = Hash.doubleSHA256(authKey, false);
+						System.arraycopy(hash, 0, trimmedHash, 0, AUDIO_KEY_LENGTH);
+						byte[] toSend = new String(Hex.encodeHex(trimmedHash)).getBytes();
+						//we add some padding after the hash
+						byte [] padded = new byte[toSend.length + AUDIO_PADDING];
+						System.arraycopy(toSend, 0, padded, 0, toSend.length);
 					System.out.println("hash: -------" + toSend);
 
-					byte [] sound = AudioUtils.encodeFileToWav(new ByteArrayInputStream(toSend.getBytes()));
+					byte [] sound = AudioUtils.encodeFileToWav(new ByteArrayInputStream(padded));
 					String start = readLine(connectionToRemote);
 					if(start.equals(START)){
 						System.out.println("Playing");
 						WavPlayer.PlayWav(new ByteArrayInputStream(sound));
 						System.out.println("done");
 						send(DONE, connectionToRemote);
+						String done = readLine(connectionToRemote);
+						if(done.equals(SUCCESS)){
+							System.out.println("Success!!");
+						}else{
+							System.out.println(done);
+						}
 					}
 					
 					} catch (Exception ioex) {
 					ioex.printStackTrace();
 					}
 
-//				send(VERIFY);
-//				send(VISUAL);
-//				
-//				String response = readLine();
-//				//System.out.println("response "+response);
-//				if (response.equals(ACK)){
-//					send (START);
-//					getInputViaVisualChannel();
-//				}
+				}else if (method.equals(MADLIB)){
+					send (ACK, connectionToRemote);
+					MadLib madLib = new MadLib();
+					try {
+					String text = madLib.GenerateMadLib(hash, 0, 5);
+					System.out.println(text);
+					} catch (UnsupportedEncodingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					}
+					send (DONE, connectionToRemote);
+					String done = readLine(connectionToRemote);
+					if(done.equals(SUCCESS)){
+						System.out.println("Success!!");
+					}else{
+						System.out.println(done);
+					}
+				}else if (method.equals(SLOWCODEC)){
+					send (ACK, connectionToRemote);
+					String done = readLine(connectionToRemote);
+					if(done.equals(DONE))
+					try{
+						String score = PlayerPiano.MakeInput(hash);
+						PlayerPiano.PlayerPiano(score);
+					} catch (Exception ioex) {
+						ioex.printStackTrace();
+					}
+					send (DONE, connectionToRemote);
+					String answer = readLine(connectionToRemote);
+					if(answer.equals(SUCCESS)){
+						System.out.println("Success!!");
+					}else{
+						System.out.println(done);
+					}
 				}
 			}
+			
+
 		}
 
 //		byte[] hash;
@@ -298,47 +333,7 @@ public class OpenUATtoolkit {
 		}
 	}
 
-	//put this in a visual channel class
-	private static JFrame generateAndShowQRCode(byte [] content) {
-		JFrame frame = new JFrame("Key hash");
-		JPanel panel = new JPanel();
-		
-		int version = 0;
-		
-		if (content.length <15){
-			version = 1;
-		}else if (content.length <27){
-			version = 2;
-		}else if (content.length <43){
-			version = 3;
-		}else{
-			System.out.println("message length is too big - qr code generator");
-		}
-
-		QRcodeGen x=new QRcodeGen();
-		x.setQrcodeErrorCorrect('M');
-		x.setQrcodeEncodeMode('B');
-		x.setQrcodeVersion(version);
-
-		System.out.println("hash length: "+content.length);
-
-		if (content.length>0 && content.length <120){
-			boolean[][] s = x.calQrcode(content);
-
-			QRCanvas canvas =  new QRCanvas(s);
-			canvas.setSize(1000, 1000);
-			canvas.setBackground(java.awt.Color.white);
-
-			panel.add(canvas);
-			frame.setContentPane(panel);
-			canvas.repaint();
-		}
-		panel.repaint();
-		frame.setSize(1000, 1000);
-		frame.setVisible(true);
-		
-		return frame;
-	}
+	
 
 
 	public static void main(String[] args) throws IOException, NumberFormatException, InterruptedException {
@@ -348,8 +343,8 @@ public class OpenUATtoolkit {
 		}
 
 		try {
-			BluetoothRFCOMMServer rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "Test Service", 
-					10000, true, false);
+			BluetoothRFCOMMServer rfcommServer = new BluetoothRFCOMMServer(null, new UUID(0x0001), "OpenUAT- Print document", 
+					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(new TempHandler(false, false));
 			rfcommServer.start();
 			System.out.println("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
@@ -357,45 +352,6 @@ public class OpenUATtoolkit {
 			System.out.println("Error initializing BlutoothRFCOMMServer: " + e);
 			e.printStackTrace();
 		}
-
-//		BluetoothRFCOMMChannel c;
-
-
-//		if (args[0].equals("URL"))
-//		c = new BluetoothRFCOMMChannel(args[1]);
-//		else
-//		c = new BluetoothRFCOMMChannel(args[0], Integer.parseInt(args[1]));
-//		c.open();
-
-
-
-//		if (args.length > 2 && args[2].equals("DH")) {
-//		boolean attack = false, requestStream = false;
-//		if (args.length > 3 && args[3].equals("mirror"))
-//		attack = true;
-//		if (args.length > 3 && args[3].equals("stream"))
-//		requestStream = true;
-//		// this is our test client, keep connected, and use JSSE (interoperability tests...)
-//		org.openuat.authentication.HostProtocolHandler.startAuthenticationWith(
-//		c, new TempHandler(attack, requestStream), 20000, true, null, true);
-//		System.out.println("Waiting for protocol to run in the background");
-//		while (true) Thread.sleep(500);
-//		}
-//		else {
-//		InputStream i = c.getInputStream();
-//		if (args.length > 2 && args[2].equals("stream")) {
-//		OutputStream o = c.getOutputStream();
-//		OutputStreamWriter ow = new OutputStreamWriter(o);
-//		ow.write("DEBG_Stream\n");
-//		ow.flush();
-//		}
-
-//		int tmp = i.read();
-//		while (tmp != -1) {
-//		System.out.print((char) tmp);
-//		tmp = i.read();
-//		}
-//		}
 
 
 	}
