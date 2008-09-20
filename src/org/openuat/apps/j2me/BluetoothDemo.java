@@ -155,6 +155,19 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 					do_alert("Inquiring device for services...", Alert.FOREVER);
 				}
 			}
+			if (dis == serv_list) { //select triggered from the device list
+				if (serv_list.getSelectedIndex() >= 0) { //find services
+					RemoteDevice[] devices = peerManager.getPeers();
+					
+					serv_list.deleteAll(); //empty the list of services in case user has pressed back
+					UUID uuid = new UUID(0x1002); // publicly browsable services
+					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
+						this.do_alert("Error in initiating search", 4000);
+					}
+					do_alert("Inquiring device for services...", Alert.FOREVER);
+				}
+			}
+			
 		}
 		else if (com == back) {
 			if (dis == serv_list) { //back button is pressed in devices list
