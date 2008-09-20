@@ -23,7 +23,7 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.midlet.MIDlet;
 
-import org.openuat.apps.j2me.VisualChannel;
+import org.openuat.channel.oob.j2me.J2MEVisualChannel;
 
 /**
  * The main {@link Canvas} onto which the camera's field of view is painted.
@@ -35,10 +35,10 @@ public final class VideoCanvas extends Canvas implements CommandListener {
 
   private static final Command exit = new Command("Exit", Command.EXIT, 1);
 
-  private final VisualChannel visualChannel;
+  private final J2MEVisualChannel visualChannel;
   private final SnapshotThread snapshotThread;
 
-  public VideoCanvas(VisualChannel visualChannel) {
+  public VideoCanvas(J2MEVisualChannel visualChannel) {
     this.visualChannel = visualChannel;
     addCommand(exit);
     setCommandListener(this);

@@ -27,7 +27,7 @@ import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.VideoControl;
 
-import org.openuat.apps.j2me.VisualChannel;
+import org.openuat.channel.oob.j2me.J2MEVisualChannel;
 
 /**
  * Thread which does the work of capturing a frame and decoding it.
@@ -36,12 +36,12 @@ import org.openuat.apps.j2me.VisualChannel;
  */
 final class SnapshotThread implements Runnable {
 
-  private final VisualChannel zXingMIDlet;
+  private final J2MEVisualChannel zXingMIDlet;
   private final Object waitLock;
   private volatile boolean done;
   private final MultimediaManager multimediaManager;
 
-  SnapshotThread(VisualChannel zXingMIDlet) {
+  SnapshotThread(J2MEVisualChannel zXingMIDlet) {
     this.zXingMIDlet = zXingMIDlet;
     waitLock = new Object();
     done = false;
