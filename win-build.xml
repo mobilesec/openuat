@@ -446,7 +446,7 @@
 				binaryLibraries="${bin-avetanaNoop};${bin-microlog};${bin-BC-core}"
 				>
 				
-				<!-- midlets definition -->
+				<!-- midlets definition 
 				
 				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="Bluetooth connections demo"/>
 
@@ -454,10 +454,12 @@
 
 				<midlet class="org.openuat.apps.j2me.HapadepMIDlet" name="Hapadep demo"/>
 
-				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication demo"/>
+				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication demo"/>-->
 				
-				<!-- <midlet class="com.google.zxing.client.j2me.ZXingMIDlet" name="ZXing QR decoder"/>-->
-				
+				<midlet class="org.openuat.apps.j2me.VisualOpenUATmidlet" name="Visual midlet"/>
+				<midlet class="org.openuat.apps.j2me.AudioOpenUATmidlet" name="Audio midlet"/>
+				<midlet class="org.openuat.apps.j2me.SlowCodecOpenUATmidlet" name="SlowCodecOpenUATmidlet"/>
+				<midlet class="org.openuat.apps.j2me.MadLibOpenUATmidlet" name="MADlib midlet"/>
 				<midlet class="org.openuat.apps.j2me.OpenUATmidlet" name="OpenUAT Toolkit"/>
 	
 				<variables includeAntProperties="true">
