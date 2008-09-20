@@ -9,6 +9,9 @@
 package org.openuat.util;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InterruptedIOException;
+import java.io.OutputStream;
 
 import javax.bluetooth.BluetoothStateException;
 import javax.bluetooth.DiscoveryAgent;
@@ -142,6 +145,55 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				if (logger.isInfoEnabled())
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 							channel.getRemoteName() + "'");
+				
+				
+				//do mambo jumbo
+				
+//				InputStream in = channel.getInputStream();
+//				OutputStream out = channel.getOutputStream();
+//				try{
+////				Thread.sleep(10000);
+//				
+//					String line ;
+//					line = LineReaderWriter.readLine(in, 2000);
+//					logger.info("read: "+line);
+//					Thread.sleep(2000);
+//					LineReaderWriter.println(out, "MSG2");
+//					
+//					line = LineReaderWriter.readLine(in,4000);
+//					logger.info("read: "+line);
+//					Thread.sleep(4000);
+//					LineReaderWriter.println(out, "MSG4");
+//					
+//					line = LineReaderWriter.readLine(in, 6000);
+//					logger.info("read: "+line);
+//					Thread.sleep(6000);
+//					LineReaderWriter.println(out, "MSG6");
+//					
+//					line = LineReaderWriter.readLine(in, 8000);
+//					logger.info("read: "+line);
+//					Thread.sleep(8000);
+//					LineReaderWriter.println(out, "MSG8");
+//					
+//					
+//					line = LineReaderWriter.readLine(in, 10000);
+//					logger.info("read: "+line);
+//					Thread.sleep(10000);
+//					LineReaderWriter.println(out, "MSG10");
+//					
+//					line = LineReaderWriter.readLine(in, 12000);
+//					logger.info("read: "+line);
+//					Thread.sleep(12000);
+//					LineReaderWriter.println(out, "MSG12");
+//					
+//					line = LineReaderWriter.readLine(in, 14000);
+//					logger.info("read: "+line);
+//					Thread.sleep(14000);
+//					LineReaderWriter.println(out, "MSG14");
+//					
+//				}catch(Exception e){
+//					logger.error(e);
+//				}
 				startProtocol(channel);
     			
     			/* It turns out that we need to add a sleep before starting the 

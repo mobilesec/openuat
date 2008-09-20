@@ -224,14 +224,16 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		synchronized (openChannels) {
 			// sanity check
 			if (openChannels.contains(this)) {
-				logger.warn("This BluetoothRFCOMMChannel object to " + 
-						remoteDeviceAddress + 
-						" does not seem to have an open connection, but is already in openChannels. This should not happen, aborting connection attempt!");
-				return false;
+				openChannels.removeElement(this);
+//				logger.warn("This BluetoothRFCOMMChannel object to " + 
+//						remoteDeviceAddress + 
+//						" does not seem to have an open connection, but is already in openChannels. This should not happen, aborting connection attempt!");
+//				return false;
 			}
 			openChannels.addElement(this);
 		}
 		try {
+			logger.info("Trying to reopen connection");
 			// this can take some time...
 			connection = (StreamConnection) Connector.open(serviceURL);
 			fromRemote = connection.openInputStream();
@@ -294,15 +296,22 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Implementation of RemoteConnection.isOpen. */
 	public boolean isOpen() {
 		if (connection == null || fromRemote == null || toRemote == null) {
-			logger.debug(this + " is not open because connection, fromRemote, or toRemote are null");
+			logger.debug(this + " is not open because connection, fromRemote, or toRemote are null: "+connection+"-"+fromRemote+"-"+toRemote);
 			return false;
 		}
 		try {
 			fromRemote.available();
+		}
+		catch (IOException e) {
+			logger.debug(this + " is not open because fromRemote.available throw an exception: " + e);
+			return false;
+		}
+		
+		try {
 			toRemote.flush();
 		}
 		catch (IOException e) {
-			logger.debug(this + " is not open because fromRemote.available or toRemote.flush throw an exception: " + e);
+			logger.debug(this + " is not open because toRemote.flush throw an exception: " + e);
 			return false;
 		}
 		return true;
