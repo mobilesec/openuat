@@ -328,7 +328,7 @@ public class AudioUtils {
         
         byte data [] = baos.toByteArray();
         
-        return new WavCodec().encodeToWav(data);
+        return WavCodec.encodeToWav(data);
 
         
 //        writeWav(outputFile,
