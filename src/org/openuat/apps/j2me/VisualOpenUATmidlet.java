@@ -29,6 +29,7 @@ import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
 import org.apache.log4j.Logger;
+import org.openbandy.service.LogService;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -87,71 +88,72 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	public void startApp() {
-		logForm.setPreviousScreen(getMain_list());
+//		logForm.setPreviousScreen(getMain_list());
 		display.setCurrent(getMain_list());
 		
 	}
 	
 
 	public void commandAction(Command com, Displayable dis) {
-		if (com == exit) { //exit triggered from the main form
-			if (rfcommServer != null)
-				try {
-					rfcommServer.stop();
-				} catch (InternalApplicationException e) {
-					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
-				}
-				destroyApp(false);
-				notifyDestroyed();
-		}else if (com == getSuccessCmd()){
-			informSuccess(true);
-		}else if (com == getFailure()){
-			informSuccess(false);
-		}else if (com == sendToPhone){
-			connectTo(btAdd, 5);
-		}
-//		else if (com == List.SELECT_COMMAND) {
-//			if (dis == main_list) { //select triggered from the main from
-//				if (main_list.getSelectedIndex() == 0) { //find devices
-//					if (!peerManager.startInquiry(false)) {
-//						this.do_alert("Error in initiating search", 4000);
-//					}
-//					do_alert("Searching for devices...", Alert.FOREVER);
-//				}if (main_list.getSelectedIndex() == 1) { //demo - hack for demo purposes
-//					String btAdd = "001C9AF755EB"; //N95
-//					connectTo(btAdd, 5);
-//				}else if (main_list.getSelectedIndex() == 2) { //demo
-//					String btAdd = "001DFD71C3C3"; //N82
-//					connectTo(btAdd, 5);
-//				}else if(main_list.getSelectedIndex() == 3) { //demo computer
-//					String btAdd = "001F5B7B16F7";
-//					connectTo(btAdd, 2);
+		super.commandAction(com, dis);
+//		if (com == exit) { //exit triggered from the main form
+//			if (rfcommServer != null)
+//				try {
+//					rfcommServer.stop();
+//				} catch (InternalApplicationException e) {
+//					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
 //				}
-//			}
-//			if (dis == dev_list) { //select triggered from the device list
-//				if (dev_list.getSelectedIndex() >= 0) { //find services
-//					
-//					RemoteDevice[] devices = peerManager.getPeers();
-//					RemoteDevice peer = devices[dev_list.getSelectedIndex()];
-//					
-//					String btAdd = peer.getBluetoothAddress();
-//					connectTo(btAdd, 5);
-//				}
-//			}
+//				destroyApp(false);
+//				notifyDestroyed();
+//		}else if (com == getSuccessCmd()){
+//			informSuccess(true);
+//		}else if (com == getFailure()){
+//			informSuccess(false);
+//		}else if (com == sendToPhone){
+//			connectTo(btAdd, 5);
 //		}
-//		else if (com == back) {
-//			display.setCurrent(main_list);
+////		else if (com == List.SELECT_COMMAND) {
+////			if (dis == main_list) { //select triggered from the main from
+////				if (main_list.getSelectedIndex() == 0) { //find devices
+////					if (!peerManager.startInquiry(false)) {
+////						this.do_alert("Error in initiating search", 4000);
+////					}
+////					do_alert("Searching for devices...", Alert.FOREVER);
+////				}if (main_list.getSelectedIndex() == 1) { //demo - hack for demo purposes
+////					String btAdd = "001C9AF755EB"; //N95
+////					connectTo(btAdd, 5);
+////				}else if (main_list.getSelectedIndex() == 2) { //demo
+////					String btAdd = "001DFD71C3C3"; //N82
+////					connectTo(btAdd, 5);
+////				}else if(main_list.getSelectedIndex() == 3) { //demo computer
+////					String btAdd = "001F5B7B16F7";
+////					connectTo(btAdd, 2);
+////				}
+////			}
+////			if (dis == dev_list) { //select triggered from the device list
+////				if (dev_list.getSelectedIndex() >= 0) { //find services
+////					
+////					RemoteDevice[] devices = peerManager.getPeers();
+////					RemoteDevice peer = devices[dev_list.getSelectedIndex()];
+////					
+////					String btAdd = peer.getBluetoothAddress();
+////					connectTo(btAdd, 5);
+////				}
+////			}
+////		}
+////		else if (com == back) {
+////			display.setCurrent(main_list);
+////		}
+//		else if (com == log) {
+////			display.setCurrent(logForm);
 //		}
-		else if (com == log) {
-			display.setCurrent(logForm);
-		}
 
 	}
 
 
 	public boolean AuthenticationStarted(Object sender, Object remote) {
 		
-		logger.info("authentication started");
+		LogService.info(this, "authentication started");
 		
 		Alert alert = new Alert("Incoming connection", "Pairing with" + remote.toString(), null, AlertType.CONFIRMATION);
 		alert.setTimeout(Alert.FOREVER);
@@ -163,7 +165,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	
 	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-		logger.info("Successful authentication");
+		LogService.info(this, "Successful authentication");
 		Object[] res = (Object[]) result;
 		// remember the secret key shared with the other device
 		byte[] sharedKey = (byte[]) res[0];
@@ -171,7 +173,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		authKey = (byte[]) res[1];
 		// then extract the optional parameter
 		String param = (String) res[2];
-		logger.info("Extracted session key of length " + sharedKey.length +
+		LogService.info(this, "Extracted session key of length " + sharedKey.length +
 				", authentication key of length " + authKey.length + 
 				" and optional parameter '" + param + "'");
 		RemoteConnection connectionToRemote = (RemoteConnection) res[3];

@@ -23,14 +23,18 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
+import javax.microedition.lcdui.Gauge;
+import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.List;
+import javax.microedition.lcdui.TextField;
+import javax.microedition.lcdui.Ticker;
+import javax.microedition.lcdui.game.Sprite;
 import javax.microedition.midlet.MIDlet;
 
-import net.sf.microlog.Level;
-import net.sf.microlog.appender.FormAppender;
-import net.sf.microlog.ui.LogForm;
-
 import org.apache.log4j.Logger;
+import org.openbandy.log.LogImpl;
+import org.openbandy.service.LogService;
+import org.openbandy.ui.MainMenu;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -65,6 +69,8 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	private Command successCmd;
 	private Command failure;
 	
+	ProgressScreen progressScreen;
+	
 	List verify_method;
 	Command log;
 
@@ -75,8 +81,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	BluetoothPeerManager peerManager;
 
 	BluetoothRFCOMMServer rfcommServer;
-
-	LogForm logForm;
+	Gauge bluetoothProgressGauge;
 
 	/** Tells whether this device initiated the set-up or not. If it did, it will be the one coordinating the verification process.	 */
 	protected boolean initiator = false;
@@ -85,7 +90,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	protected byte [] authKey;
 	
 	// our logger
-	Logger logger = Logger.getLogger("");
+//	Logger logger = Logger.getLogger("");
 
 	public OpenUATmidlet() {
 		display = Display.getDisplay(this);
@@ -98,20 +103,21 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		}
 
 		try {
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "OpenUAT- Exchange vCard", 
+
+			rfcommServer = new BluetoothRFCOMMServer(null, new UUID(0x0001), "OpenUAT- Exchange vCard", 
 					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
-			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
+			LogService.info(this, "Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
+			LogService.error(this, "Error initializing BlutoothRFCOMMServer: ", e);
 		}
 
 		try {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(this);
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothPeerManager: " + e);
+			LogService.error(this, "Error initializing BlutoothPeerManager",  e);
 			return;
 		}
 
@@ -119,16 +125,16 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	}
 
 	protected void initGui() {
-		setMain_list(new List("Select Operation", Choice.IMPLICIT)); //the main menu
+		setMain_list(new List("OpenUAT", Choice.IMPLICIT)); //the main menu
 		dev_list = new List("Select Device", Choice.IMPLICIT); //the list of devices
 		serv_list = new List("Available Services", Choice.IMPLICIT); //the list of services
 		exit = new Command("Exit", Command.EXIT, 1);
 		setBack(new Command("Back", Command.BACK, 1));
 		log = new Command("Log", Command.ITEM, 2);
 
-		getMain_list().addCommand(exit);
-		getMain_list().addCommand(log);
-		getMain_list().setCommandListener(this);
+		main_list.addCommand(exit);
+		main_list.addCommand(log);
+		main_list.setCommandListener(this);
 		dev_list.addCommand(exit);
 		dev_list.addCommand(log);
 		dev_list.setCommandListener(this);
@@ -136,28 +142,54 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		serv_list.addCommand(back);
 		serv_list.setCommandListener(this);
 
-		getMain_list().append("Find Devices", null);
-		getMain_list().append("pair with my N95", null);
-		getMain_list().append("pair with my N82", null);
-		getMain_list().append("pair with computer", null);
+		main_list.append("Find devices", null);
+		main_list.append("pair with my N95", null);
+//		main_list.append("pair with my N82", null);
+//		main_list.append("pair with computer", null);
+		
+		main_list.append("Send vCard to phone", null);
+		main_list.append("Print document", null);
+		
+		
+		
+//		/* create new text fiel */
+//		TextField textField = new TextField(preference.name, preference.value, MAX_SIZE, TextField.ANY);
+//
+//		/* add text field to screen */
+//		append(textField);
 		
 		setSuccessCmd(new Command("Success", Command.SCREEN, 1));
 		setFailure(new Command("Failure", Command.SCREEN, 1));
+		
+//		/* assemble the GUI */
+//
+//		/* create main menu and set it as the current screen */
+//		MainMenu mainMenu = new MainMenu(this, display);
+//		display.setCurrent(mainMenu);
+//
+//		/* add the log to the main menu */
+//		mainMenu.addScreen(LogService.getLog());
 	}
 
 	protected void initLogger() {
-		net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
-		logForm = new LogForm();
-		logForm.setDisplay(display);
-		logBackend.addAppender(new FormAppender(logForm));
-		//logBackend.addAppender(new RecordStoreAppender());
-		logBackend.setLogLevel(Level.DEBUG);
-		logger.info("Microlog initialized");
+		/* A first log message */
+		LogService.info(this, "Welcome to Bandy! Enjoy coding..");
+		
+
+		/* add the log to the main menu */
+		
+//		net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
+//		logForm = new LogForm();
+//		logForm.setDisplay(display);
+//		logBackend.addAppender(new FormAppender(logForm));
+//		//logBackend.addAppender(new RecordStoreAppender());
+//		logBackend.setLogLevel(Level.DEBUG);
+//		LogService.info(this, "Microlog initialized");
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	public void startApp() {
-		logForm.setPreviousScreen(getMain_list());
+//		logForm.setPreviousScreen(getMain_list());
 
 		display.setCurrent(getMain_list());
 		
@@ -181,7 +213,10 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 					if (!peerManager.startInquiry(false)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
-					do_alert("Searching for devices...", Alert.FOREVER);
+					do_alert_gauge("Bluetooth", "Searching for devices...", "/xmag.png", 15);
+//					do_alert_gauge("Bluetooth", "Searching for devices...", "xmag.png", 15)
+
+					
 				}if (getMain_list().getSelectedIndex() == 1) { //demo - hack for demo purposes
 					String btAdd = "001C9AF755EB";
 					connectTo(btAdd, 5);
@@ -195,15 +230,18 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			}
 			if (dis == dev_list) { //select triggered from the device list
 				if (dev_list.getSelectedIndex() >= 0) { //find services
-					logger.info("selected index: "+dev_list.getSelectedIndex());
+					LogService.info(this, "selected index: "+dev_list.getSelectedIndex());
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x0001); // publicly browsable services
+					UUID uuid = new UUID(0x0002); // publicly browsable services
 					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
-					do_alert("Inquiring device for services...", Alert.FOREVER);
+					
+					progressScreen = new ProgressScreen("/bluetooth_icon_small.png", 10);
+					progressScreen.showActionAtStartupGauge("Inquiring device for services...");
+					display.setCurrent(progressScreen);
 				}
 			}
 			if (dis == serv_list){
@@ -219,7 +257,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			display.setCurrent(getMain_list());
 		}
 		else if (com == log) {
-			display.setCurrent(logForm);
+			display.setCurrent(LogService.getLog());
 		}
 
 	}
@@ -231,7 +269,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	protected void connectTo(String btAdd, int channel) {
 		boolean keepConnected = true;
 		String optionalParam = null;  
-		logger.info("starting authentication ");
+		LogService.info(this, "starting authentication ");
 		try {
 			initiator = true;
 			BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(btAdd, channel);
@@ -239,7 +277,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			HostProtocolHandler.startAuthenticationWith(c, this, 200000, keepConnected, optionalParam, true);
 
 		} catch (IOException e) {
-			logger.error(e);
+			LogService.error(this, "Could not conenct to "+btAdd, e);
 			do_alert("error", Alert.FOREVER);
 		}
 	}
@@ -252,7 +290,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	protected void connectTo(String connectionURL) {
 		boolean keepConnected = true;
 		String optionalParam = null;  
-		logger.info("starting authentication ");
+		LogService.info(this, "starting authentication ");
 		try {
 			initiator = true;
 			BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(connectionURL);
@@ -260,7 +298,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			HostProtocolHandler.startAuthenticationWith(c, this, 200000, keepConnected, optionalParam, true);
 
 		} catch (IOException e) {
-			logger.error(e);
+			LogService.error(this, "could not connect to "+connectionURL, e);
 			do_alert("error", Alert.FOREVER);
 		}
 	}
@@ -277,6 +315,37 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		}
 	}
 
+	public void do_alert_gauge(String title, String msg, String img, int max_time) {
+		Image icon = null;
+		try {
+			icon = Image.createImage(img);
+		}
+		catch (IOException ioe) {
+			LogService.error(this, "could not load image bluetooth_icon.png",ioe);
+		}
+		Gauge gauge = new Gauge("Progress", false, max_time, 0);
+		Alert alert = new Alert(title);
+		alert.setString(msg);
+		alert.setImage(icon);
+		alert.setTimeout(Alert.FOREVER);
+		alert.setIndicator(gauge);
+//		new Thread(){
+//			public void run(){
+//				int i = 0;
+//				while (i < gauge.getMaxValue()){
+//					gauge.setValue(i++);
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}	
+//				}
+//			}
+//		}.start();
+		alert.setTicker(new Ticker("----"));
+		display.setCurrent(alert);
+	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
@@ -295,7 +364,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		for (int i=0; i<newDevices.size(); i++) {
 			String device_name = BluetoothPeerManager.resolveName((RemoteDevice) newDevices.elementAt(i));
 			this.dev_list.append(device_name, null);
-			logForm.setPreviousScreen(dev_list);
+//			logForm.setPreviousScreen(dev_list);
 			display.setCurrent(dev_list);
 		}
 	}
@@ -310,7 +379,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	}
 	public boolean AuthenticationStarted(Object sender, Object remote) {
 		
-		logger.info("authentication started");
+		LogService.info(this, "authentication started");
 		
 		Alert alert = new Alert("Incoming connection", "Pairing with" + remote.toString(), null, AlertType.CONFIRMATION);
 		alert.setTimeout(Alert.FOREVER);
@@ -321,7 +390,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-		logger.info("Successful authentication");
+		LogService.info(this, "Successful authentication");
 		Object[] res = (Object[]) result;
 		// remember the secret key shared with the other device
 		byte[] sharedKey = (byte[]) res[0];
@@ -329,7 +398,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		authKey = (byte[]) res[1];
 		// then extract the optional parameter
 		String param = (String) res[2];
-		logger.info("Extracted session key of length " + sharedKey.length +
+		LogService.info(this, "Extracted session key of length " + sharedKey.length +
 				", authentication key of length " + authKey.length + 
 				" and optional parameter '" + param + "'");
 		RemoteConnection connectionToRemote = (RemoteConnection) res[3];

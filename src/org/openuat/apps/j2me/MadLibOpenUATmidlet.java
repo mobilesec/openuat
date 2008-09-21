@@ -31,6 +31,7 @@ import net.sf.microlog.ui.LogForm;
 
 import org.apache.log4j.Logger;
 import org.codec.mad.MadLib;
+import org.openbandy.service.LogService;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -90,7 +91,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	public void startApp() {
-		logForm.setPreviousScreen(getMain_list());
+//		logForm.setPreviousScreen(getMain_list());
 		display.setCurrent(getMain_list());
 		
 	}
@@ -146,7 +147,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 //			display.setCurrent(main_list);
 //		}
 		else if (com == log) {
-			display.setCurrent(logForm);
+//			display.setCurrent(logForm);
 		}
 
 	}
@@ -154,7 +155,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	public boolean AuthenticationStarted(Object sender, Object remote) {
 		
-		logger.info("authentication started");
+		LogService.info(this, "authentication started");
 		
 		Alert alert = new Alert("Incoming connection", "Pairing with" + remote.toString(), null, AlertType.CONFIRMATION);
 		alert.setTimeout(Alert.FOREVER);
@@ -166,7 +167,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	
 	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-		logger.info("Successful authentication");
+		LogService.info(this, "Successful authentication");
 		Object[] res = (Object[]) result;
 		// remember the secret key shared with the other device
 		byte[] sharedKey = (byte[]) res[0];
@@ -174,7 +175,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		authKey = (byte[]) res[1];
 		// then extract the optional parameter
 		String param = (String) res[2];
-		logger.info("Extracted session key of length " + sharedKey.length +
+		LogService.info(this, "Extracted session key of length " + sharedKey.length +
 				", authentication key of length " + authKey.length + 
 				" and optional parameter '" + param + "'");
 		RemoteConnection connectionToRemote = (RemoteConnection) res[3];
