@@ -39,6 +39,7 @@
 	<property name="thirdparty-google-zxing" location="${thirdparty}/zxing"/>
 	<property name="bin-google-zxing" location="${build}/bin-zxing"/>
 	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
+	<property name="thirdparty-bandy" location="${thirdparty}/bandy"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
 	<property name="bin-microlog" location="${build}/bin-microlog"/>
@@ -108,7 +109,8 @@
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
 		<!--<include name="avetanaBT.jar"/> -->
-		<include name="bluecove-2.0.2.jar"/>
+		<include name="bluecove-2.0.3.jar"/>
+		<include name="bluecove-gpl-2.0.3.jar"/>
 		<include name="jsapi.jar"/>
 		<include name="TableLayout.jar"/>
 		<include name="freetts.jar"/>
@@ -149,6 +151,7 @@
 		<pathelement location="${lib}/j2me/jsr234.jar"/>
 		<pathelement location="${lib}/j2me/mmapi.jar"/>
 		<pathelement location="${bin-microlog}"/>
+		<pathelement location="${bin-bandy}"/>
 		<pathelement location="${bin-BC-core}"/>
 		<pathelement location="${bin-google-zxing}"/>
 	</path>
@@ -279,16 +282,21 @@
 	 Java language level 1.2. -->
 	<target name="compile-midp" description="Compile special classes for MIDP2.0" if="haveWTK">
 		<mkdir dir="${bin-microlog}"/>
+		<mkdir dir="${bin-bandy}"/>
 		<mkdir dir="${bin-avetanaNoop}"/>
 
 		<!-- Compile the MicroLog dependencies -->
 		<javac srcdir="${thirdparty-microlog}" destdir="${bin-microlog}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
-
+		
 		<!-- And the wrapper around it to have it usable under the log4j package name -->
 		<javac srcdir="${thirdparty-microlog-wrapper}" destdir="${bin-microlog}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
 
+		<!-- Compile the Bandy dependencies -->
+		<javac srcdir="${thirdparty-bandy}" destdir="${bin-bandy}" includeAntRuntime="no"
+		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
+		
 		<!-- This is just a no-op avenata class when we can't use the JAR -->
 		<javac srcdir="${thirdparty-avetanaNoop}" destdir="${bin-avetanaNoop}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
@@ -385,7 +393,7 @@
 				org/openuat/apps/j2me/HapadepMIDlet.java
 				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
 				org/openuat/sensors/SamplesSink_Int.java org/openuat/sensors/SegmentsSink_Int.java
-				org/openuat/sensors/SegmentsSink.java
+				org/openuat/sensors/SegmentsSink.java org/openuat/sensors/VectorSamplesSink.java
 				org/openuat/sensors/TimeSeries_Int.java org/openuat/sensors/TimeSeries.java
 				org/openuat/sensors/TimeSeriesAggregator.java org/openuat/sensors/DeviceStateListener.java
 				org/openuat/sensors/TimeSeriesBundle.java
@@ -396,7 +404,7 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseParameters.java
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
-				**/j2me/**/*.java **/common/**/*.java org/codec/utils/*.java org/codec/mad/*.java" />
+				**/j2me/**/*.java  **/common/**/*.java org/codec/utils/*.java org/codec/mad/*.java" />
 
 		</copy>
 
@@ -443,7 +451,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop};${bin-microlog};${bin-BC-core}"
+				binaryLibraries="${bin-avetanaNoop};${bin-microlog};${bin-bandy};${bin-BC-core}"
 				>
 				
 				<!-- midlets definition 
@@ -482,7 +490,8 @@
 				<resources>
 					<!-- doesn't really do anything right now... -->
 					<fileset dir="${src}" includes="microlog.properties" />
-					<fileset dir="${resources}" includes="button_*.png" />
+					<fileset dir="${resources}" includes="button**.png" />
+					<fileset dir="${resources}" includes="**small.png" />
 					<fileset dir="${resources}/qrcode_data" includes="qrv1_0.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="qrvfr1.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="rsc10.dat" />
