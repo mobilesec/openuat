@@ -450,7 +450,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
+				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-bandy}:${bin-BC-core}"
 				>
 				<!--change for win -->
 				<!-- midlets definition -->
