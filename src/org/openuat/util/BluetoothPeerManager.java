@@ -299,7 +299,7 @@ public class BluetoothPeerManager {
 		while (eventsHandler.isInquiryRunning() && 
 			   System.currentTimeMillis()-startWait <= timeoutMs) {
 			logger.trace("Waiting for background inquiry to finish...");
-			Thread.sleep(100);
+			Thread.sleep(200);
 		}
 		if (eventsHandler.isInquiryRunning()) {
 			logger.info("Timeout while waiting for background inquiry to finish: still running after " +
@@ -898,8 +898,8 @@ public class BluetoothPeerManager {
 		synchronized (dev) {
 			while (!dev.serviceSearchFinished && 
 					System.currentTimeMillis()-startWait <= timeoutMs) {
-				logger.debug("Waiting for service search to finish...");
-				dev.wait(500);
+				logger.trace("Waiting for service search to finish...");
+				dev.wait(200);
 			}
 			if (!dev.serviceSearchFinished) {
 				logger.info("Timeout while waiting for service search for " +
