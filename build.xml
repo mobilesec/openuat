@@ -39,12 +39,12 @@
 	<property name="thirdparty-google-zxing" location="${thirdparty}/zxing"/>
 	<property name="bin-google-zxing" location="${build}/bin-zxing"/>
 	<property name="thirdparty-microlog" location="${thirdparty}/microlog"/>
-	<property name="thirdparty-bandy" location="${thirdparty}/bandy"/>
-	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
-	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
 	<property name="bin-microlog" location="${build}/bin-microlog"/>
+	<property name="thirdparty-bandy" location="${thirdparty}/bandy"/>
 	<property name="bin-bandy" location="${build}/bin-bandy"/>
+	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
+	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
 	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
 	<property name="build.midp.work" location="${build}/midp-work"/>
 	<property name="build.midp.temp" location="${build}/midp-tmp"/>
@@ -407,7 +407,6 @@
 				org/openuat/authentication/accelerometer/ShakeWellBeforeUseProtocol1.java
 				org/openuat/authentication/DHWithVerification.java org/openuat/authentication/InterlockProtocol.java
 				**/j2me/**/*.java  **/common/**/*.java org/codec/utils/*.java org/codec/mad/*.java" />
-
 		</copy>
 		<!-- hack ends here -->
 
@@ -513,7 +512,7 @@
 
 		<!-- build multiple versions of the ShakeMIDlet - "real" and demo modes -->
 		<!-- need to build afresh, because the source code is changed by the precompiler (and we patch in the Bluetooth MACs) -->
-		<!-- disabled for now, demo no longer used
+		<!-- disabled for now, demo no longer used -->
 		<delete dir="${build.midp.work}"/>
 		<delete dir="${bin.midp}"/>
         <mkdir dir="${build.midp.work}"/>
@@ -530,7 +529,7 @@
 				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
 			/>
 			<deviceRequirements>
-				<requirement name="Identifier" value="Generic/multi" />
+				<requirement name="Identifier" value="Nokia/N95" />
 				<requirement name="JavaPackage" value="btapi" />
 				<requirement name="JavaPackage" value="mmapi" />
 				<requirement name="JavaPlatform" value="MIDP/2.0+" />
@@ -543,14 +542,13 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
-				>
+				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-bandy}:${bin-BC-core}">
 				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 					<variable name="cfg.shakingDemoMode" value="true" />
-					<variable name="demo.peer1" value="00180FA4C997" />
-					<variable name="demo.peer2" value="00180FA3A1D4" />
+					<variable name="demo.peer1" value="001C9A1F9B11" /> <!-- N95 -->
+					<variable name="demo.peer2" value="00180FA3A1D4" /> <!-- 5500 Shakeme 2 -->
 				</variables>
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
 					<parameter name="optimize" value="false" />
@@ -562,55 +560,6 @@
 				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
 			</build>
 		</j2mepolish>
-		<delete dir="${build.midp.work}"/>
-		<delete dir="${bin.midp}"/>
-        <mkdir dir="${build.midp.work}"/>
-        <mkdir dir="${bin.midp}"/>
-		<j2mepolish>
-			<info
-				name="Shake Well Before Use"
-				version="1.0.0"
-				description="A demonstration MIDlet for the Shake Well Before Use authentication protocol"
-				vendorName="Rene Mayrhofer"
-				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-shakeme-DEMOSET2.jar" 
-				jarUrl="${deploy-url}${polish.jarName}"
-				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
-			/>
-			<deviceRequirements>
-				<requirement name="Identifier" value="Generic/multi" />
-				<requirement name="JavaPackage" value="btapi" />
-				<requirement name="JavaPackage" value="mmapi" />
-				<requirement name="JavaPlatform" value="MIDP/2.0+" />
-			</deviceRequirements>
-			<build
-				symbols="ExampleSymbol, AnotherExample"
-				fullscreen="menu"
-				usePolishGui="false"
-				workDir="${build.midp.work}"
-				sourceDir="${build.midp.temp}"
-				destDir="${dist}"
-				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
-				>
-				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
-				<variables includeAntProperties="true">
-					<variable file="${src}/configuration.midp.properties" />
-					<variable name="cfg.shakingDemoMode" value="true" />
-					<variable name="demo.peer1" value="00180FA3A1D7" />
-					<variable name="demo.peer2" value="00180FA3A1D0" />
-				</variables>
-				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
-					<parameter name="optimize" value="false" />
-				</obfuscator>
-				<resources>
-					<fileset dir="${resources}" includes="button_*.png" />
-					<fileset dir="${src}" includes="microlog.properties" />
-				</resources>
-				<sign key="authentication" password="authentication" keystore="${dist}/keystore" unless="test" />
-			</build>
-		</j2mepolish> 
-		-->
 		
 		<!-- create JAD files -->
 <!--		<wtkjad jadfile="${build}/HelloProperty.jad"

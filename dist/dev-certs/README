@@ -1,0 +1,6 @@
+Created using:
+openssl genrsa -des3 -out openuat-ca.key 2048
+# in this step, it is important to specify "MIDP2" as the Common Name - but it still can't be imported...
+openssl req -new -x509 -days 3650 -key openuat-ca.key -outform der -out openuat-ca.crt
+openssl x509 -text -inform der -in openuat-ca.crt -outform pem -out openuat-ca.pem
+openssl x509 -req -days 365 -in code-sign.csr -CA openuat-ca.pem -CAkey openuat-ca.key -set_serial 01 -out code-sign.crt
