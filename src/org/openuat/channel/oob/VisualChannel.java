@@ -73,9 +73,7 @@ public class VisualChannel implements OOBChannel{
 
 	}
 	//put this in a visual channel class
-	private static JFrame generateAndShowQRCode(byte [] content) {
-		frame = new JFrame("Key hash");
-		JPanel panel = new JPanel();
+	private static void generateAndShowQRCode(byte [] content, JPanel panel) {
 		
 		int version = 0;
 		
@@ -100,25 +98,24 @@ public class VisualChannel implements OOBChannel{
 			boolean[][] s = x.calQrcode(content);
 
 			QRCanvas canvas =  new QRCanvas(s);
-			canvas.setSize(1000, 1000);
+//			canvas.setSize(1000, 1000);
 			canvas.setBackground(java.awt.Color.white);
 
 			panel.add(canvas);
-			frame.setContentPane(panel);
 			canvas.repaint();
 		}
 		panel.repaint();
-		frame.setSize(1000, 1000);
-		frame.setVisible(true);
-		
-		return frame;
 	}
 	
+	JPanel pane;
 	public void transmit(byte[] message) {
-		generateAndShowQRCode(message);
+		generateAndShowQRCode(message, pane);
 		
 	}
 	
+	public void setPane(JPanel pane) {
+		this.pane = pane;
+	}
 	
 
 }

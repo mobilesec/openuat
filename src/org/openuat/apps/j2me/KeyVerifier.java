@@ -7,11 +7,16 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
 import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
+import javax.microedition.lcdui.Image;
+import javax.microedition.lcdui.ImageItem;
+import javax.microedition.lcdui.Item;
+import javax.microedition.lcdui.ItemCommandListener;
 import javax.microedition.lcdui.List;
 import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
@@ -24,6 +29,7 @@ import org.apache.log4j.Logger;
 import org.codec.audio.j2me.AudioUtils;
 import org.codec.audio.j2me.PlayerPianoJ2ME;
 import org.codec.mad.MadLib;
+import org.openbandy.service.LogService;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -34,7 +40,7 @@ import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
-public class KeyVerifier implements CommandListener, OOBMessageHandler  {
+public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMessageHandler  {
 	
 	/** how many bytes of the key are used for the Audio method */	
 	private static final int AUDIO_KEY_LENGTH = 7;
@@ -68,7 +74,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 	/** informs that verification was NOT successful */
 	public static final String FAILURE = "FAILURE";
 	
-	Logger logger = Logger.getLogger("");
+//	Logger logger = Logger.getLogger("");
 	byte [] authKey;
 	OpenUATmidlet mainProgram;
 	RemoteConnection connectionToRemote;
@@ -76,6 +82,8 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 	InputStream in ;
 	
 	Command successCmd;
+	Image yes;
+	Image no;
 	Command failure;
 	
 	public KeyVerifier(byte [] authKey, RemoteConnection connectionToRemote, OpenUATmidlet mainProgram ) {
@@ -86,12 +94,20 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 			out = connectionToRemote.getOutputStream();
 			in = connectionToRemote.getInputStream();
 		} catch (IOException e) {
-			logger.error(e);
+			LogService.error(this, "IOException", e);
 		}
 		mainProgram.do_alert("Key exchanges successfully. Starting verification process.", 1000);
 		
 		successCmd = new Command("Success", Command.SCREEN, 1);
 		failure = new Command("Failure", Command.SCREEN, 1);
+		
+		try {
+			yes = Image.createImage("/button_ok.png");
+		} catch (IOException e) {}
+		try {
+			no = Image.createImage("/button_cancel.png");
+		} catch (IOException e) {}
+		
 	}
 	
 	
@@ -99,11 +115,10 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 		try {
 			
 			LineReaderWriter.println(out, message);
-			logger.info("sent message:"+message);
+			LogService.info(this, "sent message:"+message);
 			return true;
 		} catch (IOException e) {
-			logger.info("Failed to send message: "+message);
-			logger.error(e);
+			LogService.info(this, "Failed to send message: "+message);
 			if (!connectionToRemote.isOpen()){
 				if (connectionToRemote instanceof BluetoothRFCOMMChannel) {
 					
@@ -117,7 +132,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 						//try again
 						send(message);
 					} catch (IOException e1) {
-						logger.info("Failed to reopen BT connection ");
+						LogService.info(this, "Failed to reopen BT connection ");
 					}
 					
 				}
@@ -125,12 +140,12 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 //				
 //				boolean open = connectionToRemote.open();
 //				if(! open)
-//					logger.info("Could not reopen connection");
+//					LogService.info(this, "Could not reopen connection");
 //			}
 //			
 //			LineReaderWriter.println(out, message);
 //			return true;
-			logger.debug("Unable to open stream to remote: " + e);
+			LogService.debug(this, "Unable to open stream to remote: " + e);
 			mainProgram.do_alert("Unable to open stream to remote to send message"+message, 10000);
 		}
 		return false;
@@ -148,12 +163,12 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 			try {
 
 				line = LineReaderWriter.readLine(in, -1);
-				logger.info("read: " + line);
+				LogService.info(this, "read: " + line);
 			} 
 			catch (InterruptedIOException e) {
 
 
-				logger.debug("InterruptedIOException while reading: " + e);
+				LogService.debug(this, "InterruptedIOException while reading: " + e);
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e1) {
@@ -166,7 +181,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 //				try {
 //				String address = connectionToRemote.getRemoteAddress().toString();
 //				int number = ((BluetoothRFCOMMChannel)connectionToRemote).getRemoteChannelNumber();
-//				logger.info("trying to reopen connection to "+address + " - "+number);
+//				LogService.info(this, "trying to reopen connection to "+address + " - "+number);
 //				connectionToRemote = new BluetoothRFCOMMChannel(address, number);
 //				connectionToRemote.open();
 //				out = connectionToRemote.getOutputStream();
@@ -174,21 +189,21 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 //				//try again
 //				return readLine();
 //				} catch (IOException e1) {
-//				logger.info("Failed to reopen BT connection ");
-//				logger.error(e1);
+//				LogService.info(this, "Failed to reopen BT connection ");
+//				LogService.error(this, "", e1);
 //				}
 
 //				}
 			}catch (IOException e) {
-				logger.debug("Unable to open stream to remote: " + e);
-				logger.debug(": " + e.getMessage());
+				LogService.debug(this, "Unable to open stream to remote: " + e);
+				LogService.debug(this, "" + e.getMessage());
 //				if (!connectionToRemote.isOpen()){
 //				if (connectionToRemote instanceof BluetoothRFCOMMChannel) {
 
 //				try {
 //				String address = connectionToRemote.getRemoteAddress().toString();
 //				int number = ((BluetoothRFCOMMChannel)connectionToRemote).getRemoteChannelNumber();
-//				logger.info("trying to reopen connection to "+address + " - "+number);
+//				LogService.info(this, "trying to reopen connection to "+address + " - "+number);
 //				connectionToRemote = new BluetoothRFCOMMChannel(address, number);
 //				connectionToRemote.open();
 //				out = connectionToRemote.getOutputStream();
@@ -196,8 +211,8 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 //				//try again
 //				return readLine();
 //				} catch (IOException e1) {
-//				logger.info("Failed to reopen BT connection ");
-//				logger.error(e1);
+//				LogService.info(this, "Failed to reopen BT connection ");
+//				LogService.error(this, "", e1);
 //				}
 
 //				}
@@ -231,7 +246,6 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 		if (com == List.SELECT_COMMAND) {
 			if (option.getSelectedIndex() == 0){
 				verifyVisual();
-
 			}else if (option.getSelectedIndex() == 1){
 				verifyAudio();
 			}else if (option.getSelectedIndex() == 2){ 
@@ -246,48 +260,81 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 	public void verifyAudio() {
 		send(VERIFY);
 		send(AUDIO);
-		
+		Form progress = new Form("OpenUAT");
+
+		progress.addCommand(mainProgram.log);
+		progress.addCommand(mainProgram.exit);
+
+		progress.setCommandListener(mainProgram);
+		Display.getDisplay(mainProgram).setCurrent(progress);
 		String response = readLine();
 		//System.out.println("response "+response);
 		if (response.equals(ACK)){
-			
+			mainProgram.display.setCurrent(progress);
 			J2MEAudioChannel verifier = new J2MEAudioChannel(mainProgram);
 			verifier.setOOBMessageHandler(this);
-			
 			verifier.capture();
-			//let's see if permission is modal.
-//			mainProgram.do_alert("Started to capture", -1);
-			try {
-				Thread.sleep(200);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+
+//			try {
+//				Thread.sleep(200);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+			Display.getDisplay(mainProgram).setCurrent(progress);
+			progress.append("Capturing...\n");
 //			try {
 //				Thread.sleep(3500);
 //			} catch (InterruptedException e) {
 //				// TODO Auto-generated catch block
 //				e.printStackTrace();
 //			}
-			Form progress = new Form("OpenUAT");
-			progress.append("Capturing...\n");
-			progress.addCommand(mainProgram.log);
-			progress.addCommand(mainProgram.exit);
-
-			progress.setCommandListener(this);
 			
-			mainProgram.display.setCurrent(progress);
 //			byte recorded [] = verifier.finishCapturing();
 			send (START);
 			String done = readLine();
 			if(done.equals(DONE)){
 				
-				logger.info("finishing audio capture");
+				LogService.info(this, "finishing audio capture");
 //				mainProgram.do_alert("finishing capture", Alert.FOREVER);
 				byte recorded [] = verifier.finishCapturing();
 				progress.append("Done.\n");
 				progress.append("decoding "+recorded.length+ " bytes...\n");
+				LogService.info(this, "captured "+recorded.length+ " ...\n");
+				
+				ByteArrayInputStream recordedStream = new ByteArrayInputStream(recorded);
+				Player player;
+				try {
+					player = Manager.createPlayer(recordedStream, "audio/x-wav");
+
+					player.prefetch(); 
+					player.realize();
+					
+					
+					VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
+					   if(vc != null) {
+						   LogService.info(this, "volume level: "+vc.getLevel());
+					      vc.setLevel(45);
+					   }
+					   player.start(); 
+//					recordScreen.deleteAll();
+//					recordScreen.setTitle("Playing recording ");
+//					recordScreen.append("This is the recorded sequence.");
+//					recordScreen.removeCommand(playRec);
+
+				} catch (Exception e) {
+					LogService.error(this, "could not play recording", e);
+				}
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				long begin = System.currentTimeMillis();
 				byte decoded [] = verifier.decodeAudio(recorded);
+				long end = System.currentTimeMillis();
+				LogService.info(this, "decoding took "+(end-begin) + "ms");
 				progress.append("Done. \n");
 				handleOOBMessage(J2MEAudioChannel.AUDIO_CHANNEL, decoded);
 			}
@@ -296,7 +343,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 
 
 	public void verifyVisual() {
-		logger.info("visual-send");
+		LogService.info(this, "visual-send");
 		send(VERIFY);
 		send(VISUAL);
 		
@@ -326,11 +373,11 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 //			player.realize(); 
 //			player.start();
 //		 }catch (InternalApplicationException e) {
-//				logger.error(e);
+//				LogService.error(this, "", e);
 //			} catch (IOException e) {
-//				logger.error(e);
+//				LogService.error(this, "", e);
 //		} catch (MediaException e) {
-//			logger.error(e);
+//			LogService.error(this, "", e);
 //		}
 //		
 //	}
@@ -341,7 +388,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 		 * @param remoteHash
 		 */
 		private void handleAudioMessage(byte[] data) {
-			logger.info("audio verification result ---------- " );
+			LogService.info(this, "audio verification result ---------- " );
 	
 			byte hash[];
 			try {
@@ -350,17 +397,17 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 				System.arraycopy(hash, 0, trimmedHash, 0, AUDIO_KEY_LENGTH);
 				String localHash = new String(Hex.encodeHex(trimmedHash));
 				String remoteHash = new String(data);
-				logger.info("local hash: " + localHash);
-				logger.info("remote hash: " + remoteHash);
+				LogService.info(this, "local hash: " + localHash);
+				LogService.info(this, "remote hash: " + remoteHash);
 	
 	//			if(remoteHash.equals(localHash)){
-	//				logger.info("verification ended");
-	//				logger.info("hashes are equal");
+	//				LogService.info(this, "verification ended");
+	//				LogService.info(this, "hashes are equal");
 	//
 	//				main_list.append("verification successfull", null);
 	//
 	//			}else{
-	//				logger.info("hashes differ");
+	//				LogService.info(this, "hashes differ");
 					boolean equal = true;
 					byte [] toCompare = localHash.getBytes();
 					for (int i = 0; i < toCompare.length; i++) {
@@ -371,7 +418,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 						}
 					}
 					if (equal){
-						logger.info("verification successful. first bits are the same.");
+						LogService.info(this, "verification successful. first bits are the same.");
 //						mainProgram.do_alert("verification successful.", Alert.FOREVER);
 //						main_list.append("----", null);
 //						main_list.append("Successful pairing", null);
@@ -387,37 +434,52 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 //				main_list.append("check out the log for details", null);
 //				display.setCurrent(main_list);
 			} catch (InternalApplicationException e) {
-				logger.error(e);
+				LogService.error(this, "", e);
 			}
 	
 		}
 
 		/** not as initiator */
 		public boolean verify(){
+			Form verification = new Form ("OpenUAT");
+			verification.append("Verifying the key transfer");
+			Image img = null;
+			try {
+				img = Image.createImage("/running.png");
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			verification.append(img);
+			verification.addCommand(mainProgram.exit);
+			verification.addCommand(mainProgram.log);
+			verification.setCommandListener(mainProgram);
+			Display.getDisplay(mainProgram).setCurrent(verification);
+			
 			String verify = readLine();
 			if (verify.equals(VERIFY)){
 				String method = readLine();
-				logger.info(method);
+				LogService.info(this, method);
 				byte[] hash = null;
 				try {
 					hash = Hash.doubleSHA256(authKey, false);
 				} catch (InternalApplicationException e) {
-					logger.error(e);
+					LogService.error(this, "", e);
 				}
 				if (method.equals(VISUAL)){
 					send (ACK);
 
-					logger.info("start sleeping:"+System.currentTimeMillis());
+					LogService.info(this, "start sleeping:"+System.currentTimeMillis());
 					String start = readLine();
 					if(start.equals(START)){
 						
 						sendViaVisualChannel();
 						//prepare the input
-						logger.info("done to sleep:"+System.currentTimeMillis());
+						LogService.info(this, "done to sleep:"+System.currentTimeMillis());
 						try {
 							Thread.sleep(2000);
 						} catch (InterruptedException e) {
-							logger.error(e);
+							LogService.error(this, "", e);
 						}
 						String success = readLine();
 							
@@ -425,10 +487,10 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 							success = readLine();
 						}
 						if(success.equals(SUCCESS)){
-							logger.info("success");
+							LogService.info(this, "success");
 							return true;
 						}else{
-							logger.info("auth failed");
+							LogService.info(this, "auth failed");
 							return false;
 						}
 					}
@@ -455,28 +517,20 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 							
 							VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
 							   if(vc != null) {
-								   logger.info("volume level: "+vc.getLevel());
+								   LogService.info(this, "volume level: "+vc.getLevel());
 							      vc.setLevel(45);
 							   }
-							Form screen = new Form("Audio transmission");
-							
-							screen.addCommand(mainProgram.exit);
-							screen.addCommand(mainProgram.log);
-							screen.setCommandListener(this);
 
-							mainProgram.display.setCurrent(screen);
-							
-							
 							String start = readLine();
 							if(start.equals(START)){
-								screen.append("Sending data...\n");
+								verification.append("Sending data...\n");
 								player.start();
-								Thread.sleep(3000);
+								Thread.sleep(3200);
 								send(DONE);
-								screen.append("Finished sending.\n");
+								verification.append("Finished sending.\n");
 								String outcome = readLine();
 								
-								logger.info(outcome);
+								LogService.info(this, outcome);
 								if(outcome.equals(SUCCESS)){
 									return true;
 								}else{
@@ -485,48 +539,61 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 							}
 
 						} catch (Exception ioex) {
-							logger.error(ioex);
+							LogService.error(this, "", ioex);
 						}
 
 				}else if (method.equals(MADLIB)){
 					send (ACK);
 					MadLib madLib = new MadLib();
 					try {
-						logger.info("Madlib for key");
+						LogService.info(this, "Madlib for key");
 						String text = madLib.GenerateMadLib(Hash.doubleSHA256(authKey, false), 0, 5);
 						Form outcome = new Form("OpenUAT");
 						outcome.append("Verify the following sentence:\n");
+						Image img_madlib = null;
+						try {
+							img_madlib = Image.createImage("/madlib_sm.png");
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						outcome.append(img_madlib);
 						outcome.append(text);
-						logger.info(": "+text);
+						LogService.info(this, ": "+text);
 						outcome.addCommand(mainProgram.log);
 						outcome.addCommand(mainProgram.exit);
 //						outcome.addCommand(successCmd);
 //						outcome.addCommand(failure);
 
 						outcome.setCommandListener(this);
-						logger.info("set comands "+text);
+						LogService.info(this, "set comands "+text);
 						mainProgram.display.setCurrent(outcome);
 						
 						send(DONE);
 						String result = readLine();
 						
-						logger.info(result);
+						LogService.info(this, result);
 						if(result.equals(SUCCESS)){
-							logger.info("returning true");
+							LogService.info(this, "returning true");
 							return true;
 						}else{
 							return false;
 						}
 
 					} catch (UnsupportedEncodingException e) {
-						logger.error(e);
+						LogService.error(this, "", e);
 					} catch (InternalApplicationException e) {
-						logger.error(e);
+						LogService.error(this, "", e);
 					};
 				}else if (method.equals(SLOWCODEC)){
 					send (ACK);
 					Form outcome = new Form("OpenUAT");
-					outcome.append("Listen to the tune and compare:\n");
+					try {
+						Image slowcodec = Image.createImage("/slowcodec_sm.png");
+						outcome.append(slowcodec);
+					} catch (IOException e2) {
+					}
+					outcome.append("Listen to the tune and compare\n");
 					outcome.addCommand(mainProgram.log);
 					outcome.addCommand(mainProgram.exit);
 //					outcome.addCommand(successCmd);
@@ -540,9 +607,9 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 					}
 					String result = readLine();
 
-					logger.info(result);
+					LogService.info(this, result);
 					if(result.equals(SUCCESS)){
-						logger.info("returning true");
+						LogService.info(this, "returning true");
 						return true;
 					}else{
 						return false;
@@ -571,12 +638,12 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 			   // get volume control for player and set volume to max
 			VolumeControl  vc = (VolumeControl) p.getControl("VolumeControl");
 			   if(vc != null) {
-				   logger.info("volume level: "+vc.getLevel());
+				   LogService.info(this, "volume level: "+vc.getLevel());
 			      vc.setLevel(45);
 			   }
 			p.start(); 
 		} catch (Exception e) { 
-			logger.error(e);
+			LogService.error(this, "", e);
 		}
 	
 	}
@@ -584,24 +651,24 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 		//	TODO notify successin a nice manner
 		private void handleVisualDecodedText(String text) {
 			String remoteHash = text;
-			logger.info("visual verification result ---------- " );
-			logger.info("remote hash: " + remoteHash);
+			LogService.info(this, "visual verification result ---------- " );
+			LogService.info(this, "remote hash: " + remoteHash);
 			byte hash[];
 			try {
 				hash = Hash.doubleSHA256(authKey, false);
 				byte [] trimmedHash = new byte[7];
 				System.arraycopy(hash, 0, trimmedHash, 0, 7);
 				String localHash = new String(Hex.encodeHex(trimmedHash));
-				logger.info("local hash: " + localHash);
+				LogService.info(this, "local hash: " + localHash);
 	
 				if(remoteHash.equals(localHash)){
-					logger.info("verification ended");
-					logger.info("hashes are equal");
+					LogService.info(this, "verification ended");
+					LogService.info(this, "hashes are equal");
 					boolean b = send(SUCCESS);
 					mainProgram.informSuccess(true);					
 				}
 			} catch (InternalApplicationException e) {
-				logger.error(e);
+				LogService.error(this, "", e);
 			}
 	
 		}
@@ -619,7 +686,7 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 	}
 
 	private void sendViaVisualChannel() {
-		logger.info("sendViaVisualChannel");
+		LogService.info(this, "sendViaVisualChannel");
 		byte [] trimmedHash = new byte[7];
 		byte[] hash= null;
 
@@ -627,12 +694,12 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 			hash = Hash.doubleSHA256(authKey, false);
 		} catch (InternalApplicationException e) {
 
-			logger.error(e);
+			LogService.error(this, "", e);
 			return;
 		}
 		System.arraycopy(hash, 0, trimmedHash, 0, 7);
 		String toSend = new String(Hex.encodeHex(trimmedHash));
-		logger.info("creating visual channel");
+		LogService.info(this, "creating visual channel");
 		J2MEVisualChannel verifier = new J2MEVisualChannel(mainProgram);
 
 		verifier.transmit(toSend.getBytes());
@@ -661,25 +728,42 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 		if (response.equals(ACK)){
 			MadLib madLib = new MadLib();
 			try {
-				logger.info("Madlib for key");
+				LogService.info(this, "Madlib for key");
 				String text = madLib.GenerateMadLib(Hash.doubleSHA256(authKey, false), 0, 5);
 				Form outcome = new Form("OpenUAT");
 				outcome.append("Verify the following sentence:\n");
+				Image img_madlib = null;
+				try {
+					img_madlib = Image.createImage("/madlib_sm.png");
+				} catch (IOException e) {}
+				
+				outcome.append(img_madlib);
 				outcome.append(text);
-				logger.info(": "+text);
+				
+				ImageItem yes_btn = new ImageItem("YES", yes,ImageItem.LAYOUT_CENTER, "");
+				outcome.append(yes_btn);
+				
+				ImageItem no_btn = new ImageItem("NO", no, ImageItem.LAYOUT_CENTER, "");
+				outcome.append(no_btn);
+				no_btn.addCommand(failure);
+				yes_btn.addCommand(successCmd);
+				no_btn.setItemCommandListener(this);
+				yes_btn.setItemCommandListener(this);
+				
+				LogService.info(this, ": "+text);
 				outcome.addCommand(mainProgram.log);
 				outcome.addCommand(mainProgram.exit);
 				outcome.addCommand(successCmd);
 				outcome.addCommand(failure);
 
 				outcome.setCommandListener(this);
-				logger.info("set comands "+text);
+				LogService.info(this, "set comands "+text);
 				mainProgram.display.setCurrent(outcome);
 
 			} catch (UnsupportedEncodingException e) {
-				logger.error(e);
+				LogService.error(this, "", e);
 			} catch (InternalApplicationException e) {
-				logger.error(e);
+				LogService.error(this, "", e);
 			}
 		}
 	}
@@ -687,14 +771,32 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 	public void verifySlowCodec() {
 		send(VERIFY);
 		send(SLOWCODEC);
+		Form outcome = new Form("OpenUAT");
 		String response = readLine();
 		//System.out.println("response "+response);
 		if (response.equals(ACK)){
 
-
-			logger.info("slowcodec for key");
-			Form outcome = new Form("OpenUAT");
-			outcome.append("Listen to the tune and compare:\n");
+			
+			
+			LogService.info(this, "slowcodec for key");
+			
+			
+			try {
+				Image slowcodec = Image.createImage("/slowcodec_sm.png");
+				outcome.append(slowcodec);
+			} catch (IOException e2) {
+			}
+			outcome.append("Listen to the tune and compare\n");
+			ImageItem yes_btn = new ImageItem("YES", yes,ImageItem.LAYOUT_CENTER, "");
+			outcome.append(yes_btn);
+			
+			ImageItem no_btn = new ImageItem("NO", no, ImageItem.LAYOUT_CENTER, "");
+			outcome.append(no_btn);
+			no_btn.addCommand(failure);
+			yes_btn.addCommand(successCmd);
+			no_btn.setItemCommandListener(this);
+			yes_btn.setItemCommandListener(this);
+			
 			outcome.addCommand(mainProgram.log);
 			outcome.addCommand(mainProgram.exit);
 			outcome.addCommand(successCmd);
@@ -705,14 +807,29 @@ public class KeyVerifier implements CommandListener, OOBMessageHandler  {
 
 			slowCodec(authKey);
 			try {
-				Thread.sleep(3000);
+				Thread.sleep(5000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			//give chance to replay tune
 			
 			send(DONE);
 		}
+	}
+
+
+	public void commandAction(Command com, Item arg1) {
+		if (com == successCmd){
+			send(SUCCESS);
+			mainProgram.informSuccess(true);
+			return;
+		}else if (com == failure){
+			send(FAILURE);
+			mainProgram.informSuccess(false);
+			return;
+		}
+		
 	}
 	
 }

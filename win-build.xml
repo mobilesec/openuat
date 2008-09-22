@@ -43,6 +43,7 @@
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
 	<property name="bin-microlog" location="${build}/bin-microlog"/>
+	<property name="bin-bandy" location="${build}/bin-bandy"/>
 	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
 	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
 	<property name="build.midp.work" location="${build}/midp-work"/>
@@ -546,7 +547,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-BC-core}"
+				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-bandy}:${bin-BC-core}"
 				>
 				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
 				<variables includeAntProperties="true">

@@ -21,6 +21,7 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
+import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.List;
 import javax.microedition.midlet.MIDlet;
 
@@ -51,7 +52,7 @@ import org.openuat.util.RemoteConnection;
 public class VisualOpenUATmidlet extends OpenUATmidlet implements CommandListener,
 BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
-	String btAdd = "001DFD71C3C3";
+	String btAdd = "001DFD71C3C3"; //N82
 
 	Command sendToPhone;
 	
@@ -63,7 +64,17 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	protected void initGui() {
 		
 		Form mainForm = new Form("OpenUAT - Visual channel");
+		
 		mainForm.append("Welcome to OpenUAT\n");
+		try {
+			Image img = Image.createImage("/vcard_sm.png");
+			
+			mainForm.append(img);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		mainForm.append("Send vCard to phone\n");
 		
 		exit = new Command("Exit", Command.EXIT, 2);
@@ -95,7 +106,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	
 
 	public void commandAction(Command com, Displayable dis) {
-		super.commandAction(com, dis);
+		
 //		if (com == exit) { //exit triggered from the main form
 //			if (rfcommServer != null)
 //				try {
@@ -109,9 +120,11 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 //			informSuccess(true);
 //		}else if (com == getFailure()){
 //			informSuccess(false);
-//		}else if (com == sendToPhone){
-//			connectTo(btAdd, 5);
-//		}
+		if (com == sendToPhone){
+			connectTo(btAdd, 5);
+		}else {
+			super.commandAction(com, dis);
+		}
 ////		else if (com == List.SELECT_COMMAND) {
 ////			if (dis == main_list) { //select triggered from the main from
 ////				if (main_list.getSelectedIndex() == 0) { //find devices

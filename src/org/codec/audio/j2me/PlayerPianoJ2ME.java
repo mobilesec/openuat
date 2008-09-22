@@ -99,8 +99,12 @@ public class PlayerPianoJ2ME {
     int t = 0; // time in ticks for the composition
 
     // These values persist and apply to all notes 'till changed
-    int notelength = 16; // default to quarter notes
-    int velocity = 64;   // default to middle volume
+//    int notelength = 16; // default to quarter notes
+//    int velocity = 64;   // default to middle volume
+    
+    int notelength = 8; // default to quarter notes
+    int velocity = 50;   // default to middle volume
+    
     int basekey = ToneControl.C4;    // 60 is middle C. Adjusted up and down by octave
     boolean sustain = false;   // is the sustain pedal depressed?
     int numnotes = 0;    // How many notes in current chord?

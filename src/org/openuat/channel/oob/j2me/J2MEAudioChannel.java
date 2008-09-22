@@ -116,7 +116,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 	}
 	private Form decodeScreen;
 	public byte [] decodeAudio(byte [] audiodata) {
-		
+
 		
 //		decodeScreen = new Form("decoding...\n");
 //		decodeScreen.setCommandListener(this);
@@ -198,7 +198,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 //			recordScreen.addCommand(stopRec);
 //			recordScreen.addCommand(new Command("Back", Command.BACK, 1));
 //			recordScreen.setCommandListener(this);
-			display.setCurrent(recordScreen);
+//			display.setCurrent(recordScreen);
 
 			// Create a Player that captures live audio.
 			//captureAudioPlayer = Manager.createPlayer("capture://audio?encoding=pcm&rate=44100&bits=8&channels=1&endian=little&signed=true");

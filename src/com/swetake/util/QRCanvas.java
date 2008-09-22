@@ -23,7 +23,7 @@ public class QRCanvas extends Canvas{
 	    for (int i=0;i<s.length;i++){
 			for (int j=0;j<s.length;j++){
 			    if (s[j][i]) {
-			    	g.fillRect(j*10+100,i*10+100,10,10);
+			    	g.fillRect(j*10+20,i*10+20,10,10);
 			    	//System.out.print("X");
 			    }
 			    //else System.out.print("O");

@@ -142,13 +142,24 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		serv_list.addCommand(back);
 		serv_list.setCommandListener(this);
 
-		main_list.append("Find devices", null);
-		main_list.append("pair with my N95", null);
+		Image search = null;
+		Image vCard = null;
+		Image print = null;
+		try {
+			search = Image.createImage("/search_sm.png");
+			vCard = Image.createImage("/vcard_sm.png");
+			print = Image.createImage("/print_sm.png");
+		} catch (IOException e) {
+			LogService.info(this, "could not load image");
+			
+		}
+		main_list.append("Find devices", search);
+//		main_list.append("pair with my N95", null);
 //		main_list.append("pair with my N82", null);
 //		main_list.append("pair with computer", null);
 		
-		main_list.append("Send vCard to phone", null);
-		main_list.append("Print document", null);
+		main_list.append("Send vCard", vCard);
+		main_list.append("Print document", print);
 		
 		
 		
@@ -213,17 +224,17 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 					if (!peerManager.startInquiry(false)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
-					do_alert_gauge("Bluetooth", "Searching for devices...", "/xmag.png", 15);
-//					do_alert_gauge("Bluetooth", "Searching for devices...", "xmag.png", 15)
-
+					progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 10);
+					progressScreen.showActionAtStartupGauge("Searching for devices...");
+					display.setCurrent(progressScreen);
 					
-				}if (getMain_list().getSelectedIndex() == 1) { //demo - hack for demo purposes
-					String btAdd = "001C9AF755EB";
-					connectTo(btAdd, 5);
-				}else if (getMain_list().getSelectedIndex() == 2) { //demo
+//				}if (getMain_list().getSelectedIndex() == 1) { //demo - N95
+//					String btAdd = "001C9AF755EB";
+//					connectTo(btAdd, 5);
+				}else if (getMain_list().getSelectedIndex() == 1) { //demo N82
 					String btAdd = "001DFD71C3C3";
 					connectTo(btAdd, 5);
-				}else if(getMain_list().getSelectedIndex() == 3) { //demo
+				}else if(getMain_list().getSelectedIndex() == 2) { //demo computer
 					String btAdd = "001F5B7B16F7";
 					connectTo(btAdd, 2);
 				}
@@ -234,12 +245,12 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x0002); // publicly browsable services
+					UUID uuid = new UUID(0x0001); // publicly browsable services
 					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					
-					progressScreen = new ProgressScreen("/bluetooth_icon_small.png", 10);
+					progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 15);
 					progressScreen.showActionAtStartupGauge("Inquiring device for services...");
 					display.setCurrent(progressScreen);
 				}
@@ -247,8 +258,12 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			if (dis == serv_list){
 				int selectedIndex = dev_list.getSelectedIndex();
 				ServiceRecord service = (ServiceRecord) services.elementAt(selectedIndex);
+				progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 15);
+				
+				display.setCurrent(progressScreen);
 //				String btAdd = service.getHostDevice().getBluetoothAddress();
 				String connectionURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
+				progressScreen.showActionAtStartupGauge("Connecting to service: "+connectionURL);
 				connectTo(connectionURL);
 				
 			}
@@ -274,7 +289,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			initiator = true;
 			BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(btAdd, channel);
 			c.open();
-			HostProtocolHandler.startAuthenticationWith(c, this, 200000, keepConnected, optionalParam, true);
+			HostProtocolHandler.startAuthenticationWith(c, this, -1, keepConnected, optionalParam, true);
 
 		} catch (IOException e) {
 			LogService.error(this, "Could not conenct to "+btAdd, e);
@@ -404,8 +419,18 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		RemoteConnection connectionToRemote = (RemoteConnection) res[3];
 
 		if(initiator){
-
-			verify_method = new List("Method", List.IMPLICIT, new String[]{"visual","audio","slowcode","madlib"}, null);
+			Image[] images = null;
+			try {
+				images = new Image[]{
+						Image.createImage("/visual_sm.png"),
+						Image.createImage("/audio_sm.png"),
+						Image.createImage("/slowcodec_sm.png"),
+						Image.createImage("/madlib_sm.png"),
+				};
+			} catch (IOException e) {
+				LogService.warn(this, "error loading picture");
+			}
+			verify_method = new List("Method", List.IMPLICIT, new String[]{"Visual channel","Audio channel","Compare tunes","Compare text"}, images);
 //			options.addCommand(cmd)
 			verify_method.setCommandListener(new KeyVerifier(authKey, connectionToRemote, this));
 
@@ -439,11 +464,22 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	public void informSuccess(boolean success) {
 		Form outcome = new Form ("OpenUAT");
+		
 		if(success){
-			outcome.append("Congratulations. Authentication successful.");
+			try {
+				outcome.append(Image.createImage("/button_ok.png"));
+			} catch (IOException e) {
+			}
+			outcome.append("Congratulations! Authentication successful!\n");
+			outcome.append("Your connection is now secure!\n");
+			try {
+				outcome.append(Image.createImage("/secure_sm.png"));
+			} catch (IOException e) {
+			}
 		}
 		else{
-			outcome.append("Error. Authentication failed.");
+			outcome.append("Error. Authentication failed.\n");
+			outcome.append("Please try again.\n");
 		}
 		outcome.addCommand(exit);
 		outcome.addCommand(log);
