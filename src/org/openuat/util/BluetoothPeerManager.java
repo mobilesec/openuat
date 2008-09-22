@@ -805,7 +805,7 @@ public class BluetoothPeerManager {
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
 				logger.info("Service search error reported by Bluetooth stack for current device " +
 						currentRemoteDevice.getBluetoothAddress() + 
-						". Maybe the other device is busy?");
+						". Most probably the other device has no matching service or it might be busy. This is ok.");
 				synchronized (dev) {
 					// the actual service search transaction has finished, but with an error
 					dev.serviceSearchFinished = true;
