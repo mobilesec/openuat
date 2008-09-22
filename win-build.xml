@@ -343,6 +343,7 @@
 			<fileset dir="${bin-BC-x509}" />
 			<fileset dir="${bin-BC-openssl}" />
 			<fileset dir="${bin-apache-bzip2}" />
+			<fileset dir="resources" includes="printer.png"/>
 			<fileset dir="${src}" includes="*.properties" />
 			<!-- Merge library jars into final jar file -->
 			<zipgroupfileset refid="lib.bundleinclude-jars" />
@@ -491,7 +492,7 @@
 					<!-- doesn't really do anything right now... -->
 					<fileset dir="${src}" includes="microlog.properties" />
 					<fileset dir="${resources}" includes="button**.png" />
-					<fileset dir="${resources}" includes="**small.png" />
+					<fileset dir="${resources}" includes="**_sm.png" />
 					<fileset dir="${resources}/qrcode_data" includes="qrv1_0.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="qrvfr1.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="rsc10.dat" />
