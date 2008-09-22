@@ -85,7 +85,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	public final static int maxConnectionRetries = 3;
 	
 	/** The sleep time before re-attempting a connection in ms. */
-	public final static int retryConnectionDelay = 10000;
+	public final static int retryConnectionDelay = 20000;
 	
 	/** The maximum duration, in ms, that we allow a key agreement to take. */
 	public final static int maximumKeyAgreementRuntime = 15000;

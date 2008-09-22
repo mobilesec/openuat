@@ -9,9 +9,6 @@
 package org.openuat.util;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InterruptedIOException;
-import java.io.OutputStream;
 
 import javax.bluetooth.BluetoothStateException;
 import javax.bluetooth.DiscoveryAgent;
@@ -76,7 +73,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		}
 
 		// construct the Bluetooth service URL
-		serviceURL = "btspp://localhost:" + serviceUUID + 
+		serviceURL = "btspp://localhost:" + serviceUUID.toString() + 
 			(channel != null ? ":" + channel.intValue() : "") + ";name=" + serviceName + 
 			";authenticate=false;encrypt=false;authorize=false;master=false";
 		// the service itself will be created later when calling startListening

@@ -34,9 +34,14 @@ public class BluetoothSupport {
 		
 		if (System.getProperty("os.name") != null && System.getProperty("os.name").startsWith("Linux")) {
 			// running on Linux: try to initialize the JSR82 implementations
-			return initAvetana();
+			//return initAvetana();
+			// using Bluecove now under Windows and Linux, which doesn't need any init code
+			initialized = true;
+			return true;
 		}else if (System.getProperty("os.name") != null && System.getProperty("os.name").startsWith("Windows XP")) {
-			return initAvetana();
+			//return initAvetana();
+			initialized = true;
+			return true;
 		}
 		else if (System.getProperty( "microedition.platform") != null) {
 			// running on J2ME, but need to check if we have JSR82 support
@@ -52,7 +57,7 @@ public class BluetoothSupport {
 		return false;
 	}
 	
-	private static boolean initAvetana() {
+/*	private static boolean initAvetana() {
 		logger.debug("Trying to initializing Avetana JSR82 implementation");
 		// Initialize the java stack.
 		try {
@@ -68,5 +73,5 @@ public class BluetoothSupport {
 			e.printStackTrace();
 			return false;
 		}
-	}
+	}*/
 }

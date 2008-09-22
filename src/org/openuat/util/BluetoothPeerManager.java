@@ -54,12 +54,12 @@ public class BluetoothPeerManager {
 	/** The minimum sleep time between two inquiry runs in milliseconds.
 	 * Automatic sleep time adaptation will not set it lower than this. 
 	 */
-	public final static int MINIMUM_SLEEP_TIME = 10000;
+	public final static int MINIMUM_SLEEP_TIME = 20000;
 	
 	/** The maximum time we wait for a service search to finish in milliseconds.
-	 * After this time, the service search request is cancelled.
+	 * After this time, the service search request is canceled.
 	 */
-	public final static int TIMEOUT_SERVICE_SEARCH = 10000;
+	public final static int TIMEOUT_SERVICE_SEARCH = 20000;
 	
 	/** Re-scan services every nth time that a device is discovered by the
 	 * inquiry process.
@@ -170,7 +170,7 @@ public class BluetoothPeerManager {
 	
 	/** Returns the state of automatic service discovery.
 	 * @see #automaticServiceDiscovery
-	 * @return true if services are discocered automatically for newly found
+	 * @return true if services are discovered automatically for newly found
 	 *         devices.
 	 */
 	public boolean getAutomaticServiceDiscovery() {
@@ -178,7 +178,7 @@ public class BluetoothPeerManager {
 	}
 	
 	/** Sets the state of automatic service discovery. This may be changed even 
-	 * while a backgound inquiry is running.
+	 * while a background inquiry is running.
 	 * @see #automaticServiceDiscovery
 	 * @param automaticServiceDiscovery Set to true if services should be 
 	 *                                  discovered automatically for newly found
@@ -237,7 +237,7 @@ public class BluetoothPeerManager {
 
 	/** Stops a background inquiry.
 	 * @param force If set to true, then any inquiry or service search that 
-	 *              may be running in the background will be cancelled. If
+	 *              may be running in the background will be canceled. If
 	 *              set to false, they will be left running (and 
 	 *              waitForBackgroundSearchToFinish can be used to wait for 
 	 *              them to finish).
@@ -258,8 +258,7 @@ public class BluetoothPeerManager {
 			if (force) {
 				// if running, try to cancel an active inquiry
 				if (eventsHandler.isInquiryRunning()) {
-					// TODO: info
-					logger.warn("Inquiry currently running, aborting now");
+					logger.info("Inquiry currently running, aborting now (probably because we want to start another Bluetooth task)");
 					agent.cancelInquiry(eventsHandler);
 				}
 			
@@ -268,10 +267,9 @@ public class BluetoothPeerManager {
 				for (int i=0; i<devs.length; i++) {
 					RemoteDeviceDetail dev = getDeviceDetail(devs[i]);
 					if (dev.serviceSearchTransId > -1) {
-						// TODO: info
-						logger.warn("Service search on device " + 
+						logger.info("Service search on device " + 
 								devs[i].getBluetoothAddress() +
-								"currently running, aborting now");
+								"currently running, aborting now (probably because we want to start another Bluetooth task)");
 						agent.cancelServiceSearch(dev.serviceSearchTransId);
 					}
 				}
@@ -300,22 +298,20 @@ public class BluetoothPeerManager {
 		long startWait = System.currentTimeMillis();
 		while (eventsHandler.isInquiryRunning() && 
 			   System.currentTimeMillis()-startWait <= timeoutMs) {
-			logger.debug("Waiting for background inquiry to finish...");
+			logger.trace("Waiting for background inquiry to finish...");
 			Thread.sleep(100);
 		}
 		if (eventsHandler.isInquiryRunning()) {
-			// TODO: info
-			logger.warn("Timeout while waiting for background inquiry to finish: still running after " +
+			logger.info("Timeout while waiting for background inquiry to finish: still running after " +
 					timeoutMs + "ms, aborting wait");
 			return false;
 		}
-		// TODO: debug
-		logger.warn("Background inquiry finished");
+		logger.info("Background inquiry finished");
 		
 		synchronized (foundDevices) {
-			for (Enumeration devices = foundDevices.elements(); devices.hasMoreElements(); ) {
-				RemoteDeviceDetail dev = (RemoteDeviceDetail) devices.nextElement();
-				if (!waitForServiceSearch(dev, timeoutMs, startWait))
+			for (Enumeration devices = foundDevices.keys(); devices.hasMoreElements(); ) {
+				if (!waitForServiceSearch((RemoteDevice) devices.nextElement(), 
+						timeoutMs, startWait))
 					return false;
 			}
 		}
@@ -376,15 +372,27 @@ public class BluetoothPeerManager {
 			dev.services.removeAllElements();
 
 			try {
+				logger.info("Starting service search on " + device.getBluetoothAddress());
 				dev.serviceSearchTransId = agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
+				if (dev.serviceSearchTransId < 0)
+					logger.warn("Started service search for remote device " +
+							device.getBluetoothAddress() +
+							" but returned transaction id <0 (" +
+							dev.serviceSearchTransId + "). This should not happen!");
 				return true;
 			} catch (BluetoothStateException e) {
-				logger.warn("Could not initiate service search: " + e);
-				e.printStackTrace();
+				logger.warn("Could not initiate service search for remote device " +
+						device.getBluetoothAddress() + ": " + e);
+				LoggingHelper.debugWithException(logger, 
+						"BluetoothStateException while starting service search for " +
+						device.getBluetoothAddress(), e);
 				return false;
 			} catch (IllegalArgumentException e) {
-				logger.warn("Could not initiate service search: " + e);
-				e.printStackTrace();
+				logger.warn("Could not initiate service search for remote device " +
+						device.getBluetoothAddress() + ": " + e);
+				LoggingHelper.debugWithException(logger, 
+						"IllegalArgumentException while starting service search for " +
+						device.getBluetoothAddress(), e);
 				return false;
 			}
 		}
@@ -488,10 +496,11 @@ public class BluetoothPeerManager {
 	private class InquiryThread implements Runnable {
 		public void run() {
 			while (inquiryThread != null) {
+				logger.debug("Main inquiry thread: starting next inquiry");
 				if (!startInquiry())
 					return;
 				try {
-					// before starting the next inquire run, wait for this one to finish
+					// before starting the next inquiry run, wait for this one to finish
 					synchronized (eventsHandler) {
 						while (eventsHandler.isInquiryRunning())
 							eventsHandler.wait();
@@ -500,16 +509,17 @@ public class BluetoothPeerManager {
 					synchronized (serviceSearchQueue) {
 						for (int i=0; i<serviceSearchQueue.size(); i++) {
 							RemoteDevice device = (RemoteDevice) serviceSearchQueue.elementAt(i);
+							logger.debug("Main inquiry thread: processing service search queue request for " + 
+									device.getBluetoothAddress());
 							startServiceSearch(device, automaticServiceDiscoveryUUID);
 							// wait for the previous service scan to finish before starting the next
 							long startWait = System.currentTimeMillis();
 							RemoteDeviceDetail dev = getDeviceDetail(device);
 							// if already shutting down, don't wait but cancel immediately
-							if (!waitForServiceSearch(dev, 
+							if (!waitForServiceSearch(device, 
 									(inquiryThread != null ? TIMEOUT_SERVICE_SEARCH : -1), 
 									startWait)) {
-								// TODO: info
-								logger.warn("Service search on " + device.getBluetoothAddress() +
+								logger.info("Service search on " + device.getBluetoothAddress() +
 										" timed out, aborting it");
 								if (dev.serviceSearchTransId > -1)
 									agent.cancelServiceSearch(dev.serviceSearchTransId);
@@ -520,6 +530,7 @@ public class BluetoothPeerManager {
 							}
 						}
 						serviceSearchQueue.removeAllElements();
+						logger.debug("Main inquiry thread: service search queue processed, emptying now");
 					}
 					// and sleep (but only if not exiting)
 					if (inquiryThread != null)
@@ -537,8 +548,14 @@ public class BluetoothPeerManager {
 	private class RemoteDeviceDetail {
 		boolean newlyDiscovered = true;
 		long lastSeen = System.currentTimeMillis();
+		/* Every nth time the respective device is found in inquiry, a service
+		 * search is triggered. It is also triggered when set to 0 and thus 
+		 * this field is slightly abused as a "service search error" flag that
+		 * is reset to 0 when a service search aborts with an error. 
+		 */
 		int numNoServiceScans = 0;
 		Vector services = new Vector();
+		// this should only be false _while a service search is actively running_
 		boolean serviceSearchFinished = false;
 		int serviceSearchTransId = -1; // -1 when not in progress 
 	}
@@ -574,8 +591,7 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			// TODO: debug
-			logger.warn("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
+			logger.debug("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
 					" named '" + resolveName(remoteDevice) + "' of class " + 
 					deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
 			synchronized(foundDevices) {
@@ -589,7 +605,7 @@ public class BluetoothPeerManager {
 
 		public void inquiryCompleted(int param) {
 			if (currentRemoteDevice != null) {
-				logger.error("Remote device set, but discovered devices. This should not happen, ignoring devices!");
+				logger.error("Remote device not set, but discovered devices. This should not happen, ignoring devices!");
 				return;
 			}
 
@@ -608,7 +624,7 @@ public class BluetoothPeerManager {
 								newDevices.addElement(device);
 							}
 							// and start service discovery if requested the first and every nth time
-							// NOTE: all service searches are started in parallel
+							// NOTE: service searches are started consecutively by processing the search queue
 							if (automaticServiceDiscovery) {
 								if (entry.numNoServiceScans >= SCAN_SERVICES_FACTOR || entry.numNoServiceScans == 0 ||
 										// but also start it if the last search finished with an error
@@ -627,15 +643,13 @@ public class BluetoothPeerManager {
 				}
 				
 				if (newDevices.size() == 0) {
-//					if (logger.isDebugEnabled())
-						// TODO: debug
-						logger.warn("Discovery completed, found " + newDevices.size() + 
+					if (logger.isDebugEnabled())
+						logger.debug("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				else {
-//					if (logger.isInfoEnabled())
-						// TODO: info
-						logger.warn("Discovery completed, found " + newDevices.size() + 
+					if (logger.isInfoEnabled())
+						logger.info("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				for (int i=0; i<listeners.size(); i++)
@@ -681,10 +695,10 @@ public class BluetoothPeerManager {
 
 
 		public void servicesDiscovered(int transID, ServiceRecord[] serviceRecord) {
-//			if (logger.isInfoEnabled())
-				// TODO: info
-				logger.warn("Discovered " + serviceRecord.length + " services for remote device " +
-					currentRemoteDevice + " with transaction id " + transID);
+			if (logger.isInfoEnabled())
+				logger.info("Discovered " + serviceRecord.length + " services for remote device " +
+					currentRemoteDevice.getBluetoothAddress() + 
+					" with transaction id " + transID);
 			if (currentRemoteDevice == null) {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
@@ -733,6 +747,13 @@ public class BluetoothPeerManager {
 			// no need to report the error here, the helper method does that
 			if (dev == null) return;
 			synchronized (dev) {
+				// sanity check
+				if (dev.serviceSearchFinished) {
+					logger.warn("Service search for remote device " + currentRemoteDevice +
+							" has already finished, can not finish twice, ignoring");
+					return;
+				}
+
 				// and another sanity check
 				if (dev.serviceSearchTransId != transID) {
 					logger.warn("Finished service discovery with transaction id " + 
@@ -748,24 +769,15 @@ public class BluetoothPeerManager {
 			case DiscoveryListener.SERVICE_SEARCH_COMPLETED:
 				Vector services;
 				synchronized (dev) {
-					// sanity check
-					if (dev.serviceSearchFinished) {
-						logger.warn("Service search for remote device " + currentRemoteDevice +
-								" has already finished, can not finish twice, ignoring");
-						return;
-					}
 					dev.serviceSearchFinished = true;
-					
 					services = dev.services;
-					
 					// finished with that service, wake up when we are waiting for it
 					dev.notifyAll();
 				}
 
 				synchronized (services) { 
-//					if (logger.isInfoEnabled())
-						// TODO: info
-						logger.warn("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
+					if (logger.isInfoEnabled())
+						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
 								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
 					if (logger.isDebugEnabled()) {
@@ -780,36 +792,51 @@ public class BluetoothPeerManager {
 				
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_DEVICE_NOT_REACHABLE:
-				// TODO: info
-				logger.warn("Device not reachable while trying to perform service discovery");
+				logger.info("Device not reachable while trying to perform service discovery on current device " +
+						currentRemoteDevice.getBluetoothAddress() + 
+						". Maybe the other device is running an inquiry or has an open connection?");
 				synchronized (dev) {
-					dev.serviceSearchFinished = false;
+					// the actual service search transaction has finished, but with an error
+					dev.serviceSearchFinished = true;
+					dev.numNoServiceScans = 0;
+					dev.notifyAll();
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
-				// TODO: info
-				logger.warn("Service serch error");
+				logger.info("Service search error reported by Bluetooth stack for current device " +
+						currentRemoteDevice.getBluetoothAddress() + 
+						". Maybe the other device is busy?");
 				synchronized (dev) {
-					dev.serviceSearchFinished = false;
+					// the actual service search transaction has finished, but with an error
+					dev.serviceSearchFinished = true;
+					dev.numNoServiceScans = 0;
+					dev.notifyAll();
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
-				// TODO: info
-				logger.warn("No matching records returned for service search on " +
+				logger.info("No matching records returned for service search on current device " +
 						currentRemoteDevice.getBluetoothAddress());
 				synchronized (dev) {
 					// in this case, service search was actually finished correctly (even if we didn't get any records)
 					dev.serviceSearchFinished = true;
+					dev.notifyAll();
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
-				// TODO: info
-				logger.warn("Service search cancelled");
+				logger.info("Service search cancelled by stack on current device " +
+						currentRemoteDevice.getBluetoothAddress());
 				synchronized (dev) {
-					dev.serviceSearchFinished = false;
+					// the actual service search transaction has finished, but with an error
+					dev.serviceSearchFinished = true;
+					dev.numNoServiceScans = 0;
+					dev.notifyAll();
 				}
 				break;
 			}
+			if (!dev.serviceSearchFinished)
+				logger.warn("serviceSearchCompleted handler exiting, but serviceSearchFinished still not true for " +
+						currentRemoteDevice.getBluetoothAddress() + 
+						". This should not happen! Please investigate right now!");
 		}
 	}
 	
@@ -830,7 +857,8 @@ public class BluetoothPeerManager {
 			return true;
 		} catch (BluetoothStateException e) {
 			logger.error("Could not initiate inquiry: " + e);
-			e.printStackTrace();
+			LoggingHelper.debugWithException(logger, 
+					"BluetoothStateException while starting inquiry", e);
 			return false;
 		}
 	}
@@ -864,7 +892,9 @@ public class BluetoothPeerManager {
 	 *         (something is still running).
 	 * @throws InterruptedException 
 	 */
-	private boolean waitForServiceSearch(RemoteDeviceDetail dev, int timeoutMs, long startWait) throws InterruptedException {
+	private boolean waitForServiceSearch(RemoteDevice device,
+			int timeoutMs, long startWait) throws InterruptedException {
+		RemoteDeviceDetail dev = getDeviceDetail(device);
 		synchronized (dev) {
 			while (!dev.serviceSearchFinished && 
 					System.currentTimeMillis()-startWait <= timeoutMs) {
@@ -872,8 +902,9 @@ public class BluetoothPeerManager {
 				dev.wait(500);
 			}
 			if (!dev.serviceSearchFinished) {
-				// TODO: info
-				logger.warn("Timeout while waiting for service search to finish: still running after " +
+				logger.info("Timeout while waiting for service search for " +
+						device.getBluetoothAddress() + 
+						" to finish: still running after " +
 						timeoutMs + "ms, aborting wait");
 				return false;
 			}

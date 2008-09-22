@@ -29,5 +29,6 @@
 	<classpathentry kind="lib" path="lib/j2me/cldcapi11.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/midpapi20.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/jsr75.jar"/>
+	<classpathentry kind="lib" path="lib/bluecove-emu-2.0.3.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
