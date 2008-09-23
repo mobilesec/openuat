@@ -29,7 +29,7 @@ public class DHOverTCPWithVerificationTest extends TestCase {
 	private class TestHelper extends DHWithVerification {
 		protected TestHelper(int tcpPort, boolean keepConnected, String instanceId, boolean useJSSE, 
 				boolean succeed, boolean failHard) {
-			super(new TCPPortServer(tcpPort, 10000, keepConnected, useJSSE), false, keepConnected, instanceId, useJSSE);
+			super(new TCPPortServer(tcpPort, 10000, keepConnected, useJSSE), false, keepConnected, keepConnected, instanceId, useJSSE);
 			this.succeed = succeed;
 			this.failHard = failHard;
 			this.tcpPort = tcpPort;

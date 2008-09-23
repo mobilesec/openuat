@@ -70,6 +70,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		FIXED_DEMO_MODE = true;
 		//#= FIXED_DEMO_PEER_1 = "${ demo.peer1 }";
 		//#= FIXED_DEMO_PEER_2 = "${ demo.peer2 }";
+//#else
+		FIXED_DEMO_MODE = false;
 //#endif
 	}
 	
@@ -357,6 +359,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		ShakeAuthenticator(HostAuthenticationServer server, ShakeMIDlet outer) {
 			super(server,  
 					FIXED_DEMO_MODE, // don't keep channel open (unless in demo mode)
+					FIXED_DEMO_MODE, // but if we are in demo mode, not even close on shaking-auth-error for quicker retries
 					true, // we support multiple authentications 
 					CoherenceThresholdSucceed,
 					CoherenceThresholdFailHard,
@@ -476,7 +479,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			// announce shaking complete
 			status.setText("verifying");
 			// and be sure to overwrite the status when we don't reach a conclusion
-			previousStatus = "UNKNOWN";
+			previousStatus = "UNKNOWN - RETRY";
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
@@ -616,7 +619,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 							// ignore
 						}
 					}
-					logger.info("Connection to " + remoteAddr + " has been closed");
+					logger.warn("Connection to " + remoteAddr + " has been closed, will re-establish");
 					connected = false;
 				} catch (IOException e) {
 					logger.error("Unable to connect to " + remoteAddr + 

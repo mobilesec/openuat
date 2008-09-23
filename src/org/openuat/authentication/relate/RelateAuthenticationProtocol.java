@@ -171,7 +171,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	public RelateAuthenticationProtocol(String serialPort, MeasurementManager manager, boolean useJSSE,
 				boolean keepSocketConnected, ProgressEventHandler relateEventHandler) {
 		super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, KeyAgreementProtocolTimeout, false, true),
-				keepSocketConnected, false, serialPort, useJSSE);
+				keepSocketConnected, false, false, serialPort, useJSSE);
 		
 		if (!simulation) {
 			// when simulating, we won't have these

@@ -37,7 +37,7 @@ import org.apache.log4j.Logger;
  * 
  * The protocol is called UACAP (unified auxiliary channel authentication 
  * protocol) and is based on the MANA IV family of multi-channel authentication
- * protocols as specified in [Sven Laur and Kaisa Nyberg: "Efﬁcient Mutual Data 
+ * protocols as specified in [Sven Laur and Kaisa Nyberg: "Efficient Mutual Data 
  * Authentication Using Manually Authenticated Strings: Extended Version"],
  * specifically the MA-DH variant. However, it additionally implements an
  * optional commitment-based exchange instead of just producing an out-of-band
@@ -49,7 +49,7 @@ import org.apache.log4j.Logger;
  * either by driving the steps in the protocol from an outside caller on the 
  * instantiated object (henceforth referred to as the PlainObject style) or by 
  * registering an out-of-band channel that is subsequently used by 
- * HostProtocolHandler to handle the complete protocol run (hanceforth referred 
+ * HostProtocolHandler to handle the complete protocol run (henceforth referred 
  * to as the Hollywood style, cf. http://c2.com/cgi/wiki?HollywoodPrinciple). 
  * The PlainObject style is more flexible, as all steps "outside" the basic 
  * crypto protocol can be handled in any way, and is used by instantiating the 
@@ -95,7 +95,7 @@ import org.apache.log4j.Logger;
  * object (the session key) may only be used <b>after</b> successful (mutual)
  * verification of the out-of-band message.
  * An optional fourth object will be included with the array when the 
- * keepSocketConnected flag was set. This fourth paramater will then contain 
+ * keepSocketConnected flag was set. This fourth parameter will then contain 
  * the still connected channel object. <br>
  * 
  * If, in addition to UACAP, the server part of this HostProtocolHandler 
@@ -158,7 +158,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	
     /** The (already opened) connection used to communicate with the remote end, for both incoming and outgoing connections. */
     protected RemoteConnection connection;
-    /** If set to false, connection will be closed after the protocol finished. 
+    /** If set to false, connection will be closed after the protocol finished
+     * successfully. Setting this to true does not leave the connection open in
+     * all cases, because it will still be shut down on I/O errors (which are
+     * basically non-recoverable) or protocol errors (unexpected messages etc.).
      * @see #connection
      * @see #HostProtocolHandler(RemoteConnection, boolean, boolean)
      */
@@ -207,7 +210,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            before the protocol handler methods return, depending on the
 	 *            parameter keepConnected. The reason for this asymmetry (the 
 	 *            connection must be connected by the caller, but is closed by 
-	 *            the methods of this class) lies in the asynchronity: the 
+	 *            the methods of this class) lies in the asynchronicity: the 
 	 *            protocol handler methods are called in background threads 
 	 *            and must therefore dispose the objects before exiting.
 	 *
@@ -217,12 +220,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * 			  exception. Set to -1 to disable the timeout.
 	 *            
 	 * @param keepConnected
-	 *            If set to true, the opened connection con is passed to the
+	 *            If set to true, the open connection con is passed to the
 	 *            authentication success event (in the results parameter) for 
 	 *            further re-use of the connection (e.g. passing additional 
 	 *            information about further protocol steps). If set to false, the
 	 *            socket will be closed when this protocol is done with it.
-	 *
+	 *            Even when set to true, the connection will still be closed
+	 *            upon any protocol failure (e.g. I/O error or unparseable
+	 *            messages).
+	 * 
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
@@ -504,7 +510,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * security proof for this scheme yet, as discussed in the original
 	 * Mana IV article:
 	 * 
-	 * Practical implementations [ZJC06,WUS06] of the MA–DH protocol use 
+	 * Practical implementations [ZJC06,WUS06] of the MA-DH protocol use 
 	 * c = H(g^a) and such a relaxed security proof would bridge the gap 
 	 * between theory and practice.
 	 * 
@@ -517,7 +523,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      * of commitments, as such constructions are hundred times faster and there 
      * are no setup assumptions. Let H be a collision resistant hash function. 
      * Then the hash commitment is computed as (c, d) := Com(x, r) with 
-     * c = H(x||r) and d = (x, r) or, as in HMAC, c = H(r ⊕ opad||H(r ⊕ ipad||x)) 
+     * c = H(x||r) and d = (x, r) or, as in HMAC, c = H(r XOR opad||H(r XOR ipad||x)) 
      * with d = r. Both constructions are a priori not hiding. We would like to 
      * have a provably secure construction. In theory, we could use one-wayness 
      * of H and define commitment with hard-core bits but this leads to large 
@@ -555,71 +561,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * partner. fromRemote and toRemote will be initialized as streams connected
 	 * to this socket.
 	 * 
-	 * @param serverSide
-	 *            true for server side ("authenticator"), false for client side
-	 *            ("authenticatee")
-	 */
-/*    protected void performAuthenticationProtocol(boolean serverSide) {
-            byte[] remotePubKey = null;
-            if (serverSide) {
-            	String paramLine = helper_getLine(Protocol_AuthenticationRequest, connection, true);
-                remotePubKey = helper_extractPublicKey(paramLine, Protocol_AuthenticationRequest, connection);
-                if (remotePubKey == null) {
-                    shutdownConnectionCleanly();
-                    return;
-                }
-                int optParamOff = paramLine.indexOf(Protocol_AuthenticationRequest_Param);
-                if (optParamOff != -1) {
-                	optionalParameter = paramLine.substring(optParamOff + Protocol_AuthenticationRequest_Param.length());
-                	if (logger.isDebugEnabled())
-                		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
-                }
-               	totalTransferTime += System.currentTimeMillis()-timestamp;
-            }
-            else {
-            	// now send my first message, but already need the public key for it
-            	ka = new SimpleKeyAgreement(useJSSE);
-            	String myPubKey = new String(Hex.encodeHex(ka.getPublicKey()));
-               	totalCryptoTime += System.currentTimeMillis()-timestamp;
-               	timestamp = System.currentTimeMillis();
-            	println(Protocol_AuthenticationRequest + myPubKey +
-            			(optionalParameter != null ? " " + Protocol_AuthenticationRequest_Param + optionalParameter : ""));
-               	totalTransferTime += System.currentTimeMillis()-timestamp;
-            }
-            raiseAuthenticationProgressEvent(connection, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
-
-           	timestamp = System.currentTimeMillis();
-            if (serverSide) {
-                // for performance reasons: only now start the DH phase
-            	ka = new SimpleKeyAgreement(useJSSE);
-            	String myPubKey = new String(Hex.encodeHex(ka.getPublicKey()));
-               	totalCryptoTime += System.currentTimeMillis()-timestamp;
-               	timestamp = System.currentTimeMillis();
-            	println(Protocol_AuthenticationAcknowledge + myPubKey);
-               	totalTransferTime += System.currentTimeMillis()-timestamp;
-            }
-            else {
-            	remotePubKey = helper_extractPublicKey(
-            			helper_getLine(Protocol_AuthenticationAcknowledge, connection, false),
-                		Protocol_AuthenticationAcknowledge, connection);
-                if (remotePubKey == null)
-                {
-                    shutdownConnectionCleanly();
-                    return;
-                }
-               	totalTransferTime += System.currentTimeMillis()-timestamp;
-            }
-            raiseAuthenticationProgressEvent(connection, 3, AuthenticationStages, inOrOut + " authentication connection, " + serverToClient + " public key");
-
-           	timestamp = System.currentTimeMillis();
-            ka.addRemotePublicKey(remotePubKey);
-            Object sessKey = ka.getSessionKey();
-            Object authKey = ka.getAuthenticationKey();
-           	totalCryptoTime += System.currentTimeMillis()-timestamp;
-            raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
-*/
-	
-	/** MANA-IV:
+	 * MANA-IV:
 	 * 1. Alice computes (c, d) := Com_pk(ka) for random ka and sends (ma, c) 
 	 *    to Bob.
 	 * 2. Bob chooses random kb and sends (mb, kb) to Alice.
@@ -630,13 +572,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * 4. Both parties accept (ma, mb) iff the local l-bit test values ooba 
 	 *    and oobb coincide.
      *
-     * Speciﬁcation: h is a keyed hash function with sub-keys ka, kb from a 
+     * Specification: h is a keyed hash function with sub-keys ka, kb from a 
      * message space of commitment scheme. The hash function h and the public 
-     * parameters pk of the commitment scheme are ﬁxed and distributed by a 
+     * parameters pk of the commitment scheme are fixed and distributed by a 
      * trusted authority.
-	 */
-
-	/** MA-DH:
+	 *
+	/* MA-DH:
 	 * 1. Alice computes (c, d) := Com_pk(ka) for ka = g^a, a = random 
 	 *    and sends (ida, c) to Bob.
 	 * 2. Bob computes kb = g^b for random b and sends (idb, kb) to Alice.
@@ -657,6 +598,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      * In this implementation, Alice is the client and Bob the server. This 
      * protocol is only assumed to be secure for a <b>bidirectional and
      * authentic</b> out-of-band channel.
+     * 
+	 * @param serverSide
+	 *            true for server side ("authenticator"), false for client side
+	 *            ("authenticatee")
 	 */
     protected void performAuthenticationProtocol(boolean serverSide) {
     	SimpleKeyAgreement ka = null;
@@ -1130,9 +1075,13 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * 			  protocol may take before it will abort with an AuthenticationFailed
 	 * 			  exception. Set to -1 to disable the timeout.
 	 * @param keepConnected
-	 *            When set to true, the connection created in this method is not
-	 *            closed but passed to the authentation success event for
-	 *            further reuse.
+	 *            When set to true, the connection passed into this method in 
+	 *            the form of the remote parameter is not closed on success but 
+	 *            passed to the authentation success event for further reuse.
+	 *            Even if set to true, it will be closed when any protocol
+	 *            failure occurs, though, because this most probably means that
+	 *            the connection itself suffers from I/O errors or that it is
+	 *            being tampered with.
 	 * @param optionalParameter
 	 *            If not null, this string will be passed to the server in the
 	 *            authentication request message. Both the server and the client 
@@ -1148,7 +1097,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			AuthenticationProgressHandler eventHandler,
 			byte[] presharedShortSecret,
 			int timeoutMs,
-			boolean keepConnected, String optionalParameter,
+			boolean keepConnected, 
+			String optionalParameter,
 			boolean useJSSE) throws IOException {
     	if (logger.isInfoEnabled())
     		logger.info("Starting authentication with " + 
@@ -1187,8 +1137,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      */
     static public void startAuthenticationWith(RemoteConnection remote,
 			AuthenticationProgressHandler eventHandler,
-			int timeoutMs,
-			boolean keepConnected, String optionalParameter,
+			int timeoutMs, boolean keepConnected,
+			String optionalParameter,
 			boolean useJSSE) throws IOException {
     	startAuthenticationWith(remote, eventHandler, null, timeoutMs,
     			keepConnected, optionalParameter, useJSSE);

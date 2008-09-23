@@ -163,11 +163,12 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
 	 */
-	public ShakeWellBeforeUseProtocol1(HostAuthenticationServer server, boolean keepConnected, 
+	public ShakeWellBeforeUseProtocol1(HostAuthenticationServer server, 
+			boolean keepConnectedOnSuccess, boolean keepConnectedOnFailure,
 			boolean concurrentVerificationSupported, 
 			double coherenceThresholdSucceed,  double coherenceThresholdFailHard, 
 			int windowSize, boolean useJSSE) {
-		super(server, keepConnected, concurrentVerificationSupported, null, useJSSE);
+		super(server, keepConnectedOnSuccess, keepConnectedOnFailure, concurrentVerificationSupported, null, useJSSE);
 		// also register our command handler for split phase operation
 		server.addProtocolCommandHandler(MotionVerificationCommand, new MotionVerificationCommandHandler());
 		this.coherenceThresholdSucceed = coherenceThresholdSucceed;
@@ -829,9 +830,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		s1 = new org.openuat.util.TCPPortServer(TcpPort, KeyAgreementProtocolTimeout, keepConnected, true);
 		// this will not be started
 		s2 = new org.openuat.util.TCPPortServer(0, KeyAgreementProtocolTimeout, keepConnected, true); 
-		ShakeWellBeforeUseProtocol1 ma1 = new ShakeWellBeforeUseProtocol1(s1, keepConnected, false,
+		ShakeWellBeforeUseProtocol1 ma1 = new ShakeWellBeforeUseProtocol1(s1, keepConnected, keepConnected, false,
 				0.82, 0.2, ShakeWellBeforeUseParameters.coherenceWindowSize, true); 
-		ShakeWellBeforeUseProtocol1 ma2 = new ShakeWellBeforeUseProtocol1(s2, keepConnected, false,
+		ShakeWellBeforeUseProtocol1 ma2 = new ShakeWellBeforeUseProtocol1(s2, keepConnected, keepConnected, false,
 				0.82, 0.2, ShakeWellBeforeUseParameters.coherenceWindowSize, true);
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);

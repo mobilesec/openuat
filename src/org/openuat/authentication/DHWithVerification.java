@@ -33,7 +33,7 @@ import org.openuat.util.RemoteConnection;
  * depending on the outcome of the check. Upon calling one of the methods, a 
  * status exchange with the remote host will be done over the communication 
  * channel to arrive at a common decision if the whole protocol succeeded. 
- * The final verdict will be signalled by emitting standard authentication 
+ * The final verdict will be signaled by emitting standard authentication 
  * events (as defined by AuthenticationProgressHandler) and by calling either 
  * the protocolSucceededHook or the protocolFailedHook function. In short, 
  * the whole authentication protocol should be used as follows:
@@ -58,8 +58,8 @@ import org.openuat.util.RemoteConnection;
  * 5. When a local decision about the key verification for a specific host has 
  *    been made, call either verificationSucceess or verificationFailure.
  * 6. The local decisions will be communicated over the communication channel and if both
- *    devices signalled success, the protocolSucceededHook will be called. In any
- *    other case (both or either of the devices signalled failure on verification),
+ *    devices signaled success, the protocolSucceededHook will be called. In any
+ *    other case (both or either of the devices signaled failure on verification),
  *    the protocolFailedHook will be called.
  * Generally, events will be emitted by this class to all registered listeners.
  * 
@@ -88,11 +88,23 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 
 	/** If set to true, the connection to the remote host will not be closed after a successful 
 	 * authentication, but will be passed as a parameter to the success event. This allows re-use for
-	 * additional communication. It will still be closed on authentication failures.
+	 * additional communication. It will still be closed on authentication failures unless 
+	 * keepConnectedOnFailure is also set to true.
 	 * If set to false, it will also be closed on authentication success.
 	 */
-	private boolean keepConnected;
-	
+	private boolean keepConnectedOnSuccess;
+
+	/** If set to true, the connection to the remote host will not be closed after an 
+	 * authentication failure. This support graceful retries when the user-level 
+	 * interaction method used for authentication provides it. It will still be closed 
+	 * on protocol and I/O failures, though, because these are usually not recoverable
+	 * by normal retry.
+	 * If set to false, it will be closed on authentication failure. <b>This should be the
+	 * default unless you understand the security implications and handle them on the
+	 * user level.</b>
+	 */
+	private boolean keepConnectedOnFailure;
+
 	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
 	protected boolean useJSSE;
 
@@ -115,14 +127,21 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
 	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
 	 *                Lightweight API classes will be used.
-	 * @param keepConnected
+	 * @param keepConnectedOnSuccess
 	 *            If set to true, the opened client connection is passed to the
 	 *            authentication success event (in the results parameter) for 
 	 *            further re-use of the connection (e.g. passing additional 
 	 *            information about further protocol steps). If set to false, the
 	 *            socket will be closed when this protocol is done with it. The socket
-	 *            will always be closed on authentication failures.
-	 *            If in doubt, set to false;
+	 *            will always be closed on authentication failures unless 
+	 *            keepConnectedOnFailure is also set to true.
+	 *            If in doubt, set to false.
+	 * @param keepConnectedOnFailure
+	 * 			  If set to true, the opened client connected will not be
+	 *            closed even on high-level authentication failure (i.e. when the
+	 *            verificationFailure method is called by derived classes)
+	 *            to support graceful retry. 
+	 *            <b>If in doubt, set to false.</b>
 	 * @param concurrentVerificationSupported If set to false, then only one 
 	 *        remote host can be in STATE_VERIFICATION at any time. This can 
 	 *        be used when the sensor hardware used for key verification can 
@@ -133,9 +152,12 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 *                   this class running on the same machine. It will be used in logging
 	 *                   and error messages. May be set to null.
 	 */
-	protected DHWithVerification(HostAuthenticationServer server, boolean keepConnected,
+	protected DHWithVerification(HostAuthenticationServer server, 
+			boolean keepConnectedOnSuccess,
+			boolean keepConnectedOnFailure,
 			boolean concurrentVerificationSupported, String instanceId, boolean useJSSE) {
-		this.keepConnected = keepConnected;
+		this.keepConnectedOnSuccess = keepConnectedOnSuccess;
+		this.keepConnectedOnFailure = keepConnectedOnFailure;
 		this.useJSSE = useJSSE;
 		this.instanceId = instanceId;
 		keyManager = new KeyManager(concurrentVerificationSupported, instanceId);
@@ -279,9 +301,10 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		
 		// also allow derived classes to do special failure handling
 		protocolFailedHook(failHard, remote, optionalVerificationId, e, message);
-		
-		// no need to keep the connection around in any case - close it properly
-		remote.close();
+
+		if (!keepConnectedOnFailure)
+			// we shouldn't keep it open after failure, so properly close
+			remote.close();
 		
 		if (failHard)
 			reset(remote);
@@ -384,7 +407,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        // first also call the hook to allow the derived classes to react too
 		        protocolSucceededHook(remote, optionalVerificationId, optionalParameterFromRemote, sessionKey);
 
-		        if (!keepConnected) {
+		        if (!keepConnectedOnSuccess) {
 			        /* our result object is here the secret key that is shared (host authentication) 
 			           and now spatially authenticated (dongle authentication) */
 		        	raiseAuthenticationSuccessEvent(remoteParam, sessionKey);
@@ -398,7 +421,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        }
 		        		
 				// if the socket is not going to be re-used, don't forget to close it properly
-				if (!keepConnected) {
+				if (!keepConnectedOnSuccess) {
 					logger.info("Closing channel that has been used for key verification");
 					remote.close();
 				}
@@ -556,11 +579,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	protected abstract void resetHook(RemoteConnection remote);
 	
 	/** This hook will be called when the final verdict is that the whole 
-	 * authentication protocol succeeded, i.e. both hosts signalled success on
+	 * authentication protocol succeeded, i.e. both hosts signaled success on
 	 * key verification.
 	 * @param remote The remote host with which the key exchange succeeded. If 
 	 *               it has not been requested that the connection should stay 
-	 *               open (keepConnected==true), then this will be closed 
+	 *               open (keepConnectedOnSuccess==true), then this will be closed 
 	 *               immediately after the hook method returns. 
 	 * @param optionalVerificationId If the key verification step yielded any
 	 *        ID or reference that can be referred to, then this will be set.
@@ -582,13 +605,13 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 *                 there can be no retry without another key agreement
 	 *                 protocol run. Key material will be wiped after this
 	 *                 hook returns.
-	 *                 If false, only a soft failure occured, meaning that 
+	 *                 If false, only a soft failure occurred, meaning that 
 	 *                 the connection will be closed, but key material will
 	 *                 not be wiped yet. Retrying key verification (i.e.
 	 *                 authenticating the key agreement) will be possible.
 	 * @param remote The remote host with which the key exchange failed. If 
 	 *               it has not been requested that the connection should stay 
-	 *               open (keepConnected==true), then this will be closed 
+	 *               open (keepConnectedOnFailure==true), then this will be closed 
 	 *               immediately after the hook method returns. 
 	 * @param optionalVerificationId If the key verification step yielded any
 	 *        ID or reference that can be referred to, then this will be set.

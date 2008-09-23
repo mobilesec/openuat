@@ -58,7 +58,7 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 		protected Protocol1Hooks() {
 			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
 					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, true, true), 
-					true, false,
+					true, true, false,
 					/* TODO: how to deal with the difference between the "real" threshold for
 					   usability and the threshold set here for maximum positive/negative
 					   distinction?*/ 

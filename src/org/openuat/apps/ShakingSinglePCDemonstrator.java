@@ -350,7 +350,7 @@ public class ShakingSinglePCDemonstrator {
 			super(new TCPPortServer(ShakeWellBeforeUseProtocol1.TcpPort, 
 					ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout,
 					keepConnected, useJSSE), 
-					keepConnected, concurrentVerificationSupported,
+					keepConnected,keepConnected,  concurrentVerificationSupported,
 					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, 
 					ShakeWellBeforeUseParameters.coherenceWindowSize, useJSSE);
 		}
