@@ -47,69 +47,36 @@ public QRcodeGen(MIDlet midlet){
     this.midlet = midlet;
 }
 
-    /**
-     *エラー訂正レベルを設定します。
-     *@param ecc-エラー訂正レベル('L','M','Q','H')
-     *
-     */
+
 public void setQrcodeErrorCorrect(char ecc){
     qrcodeErrorCorrect=ecc;
 }
 
-    /**
-     *現在設定されているエラー訂正レベルを取得します。
-     *@return エラー訂正レベル('L','M','Q','H')
-     *
-     */
+
 public char getQrcodeErrorCorrect(){
     return qrcodeErrorCorrect;
 }
 
-    /**
-     *現在設定されているバージョンを取得します。
-     *@return バージョン 0から40の整数。0の場合は自動設定。
-     *
-     */
+
 public int getQrcodeVersion(){
     return qrcodeVersion;
 }
 
-    /**
-     *バージョンを設定します。
-     *0を設定すると自動設定になります。
-     *@param version  0から40の整数
-     *
-     */
+   
 public void setQrcodeVersion(int ver){
     if (ver>=0 && ver<=40){
 	qrcodeVersion=ver;
     }
 }
 
-    /**
-     *エンコードモードを設定します。
-     *'N':数字モード  'A':英数字モード　その他:8bit byteモード
-     *@param encMode エンコードモード('N','A' or other)
-     *
-     */
 public void setQrcodeEncodeMode(char encMode){
     qrcodeEncodeMode=encMode;
 }
 
-    /**
-     *現在設定されているエンコードモードを取得します。
-     *@return エンコードモード ('N','A' or other)
-     *
-     */
 public char getQrcodeEncodeMode(){
     return qrcodeEncodeMode;
 }
 
-    /**
-     *連結関連のメソッドです。
-     *(試験導入です。)
-     *
-     */
 public void setStructureappend(int m,int n,int p){
     if (n>1 && n<=16 && m>0 && m<=16 && p>=0 && p<=255){
         qrcodeStructureappendM=m;
@@ -118,10 +85,6 @@ public void setStructureappend(int m,int n,int p){
     }
 }
 
-    /**
-     *連結に用いるパリティを算出します。
-     *(試験導入です。)
-     */
 public int calStructureappendParity(byte[] originaldata){
     int originaldataLength;
     int i=0;
@@ -141,12 +104,7 @@ public int calStructureappendParity(byte[] originaldata){
     return structureappendParity;
 }
 
-    /**
-     *与えられたデータ列からQRコードエンコードデータを
-     *boolean二次元配列で返します。
-     *@param data エンコードするデータ
-     *@return　QRコードエンコードデータ
-     */
+
 public boolean[][] calQrcode(byte[] qrcodeData){
     int dataLength;
     int dataCounter=0;
