@@ -68,7 +68,7 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 	/** informs that transmission was completed */
 	public static final String DONE = "DONE";
 	
-	/** informs that verification was successful */
+	/** informs that verification was successful */ 
 	public static final String SUCCESS = "SUCCESS";
 	
 	/** informs that verification was NOT successful */
