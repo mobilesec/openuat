@@ -51,10 +51,10 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
 	
-	/** Allow the (incoming) key agreement to take at maximum this amout of ms. */
+	/** Allow the (incoming) key agreement to take at maximum this amount of ms. */
 	public static final int KeyAgreementProtocolTimeout = 15000;
 	
-	/** The maximimum time that the interlock exchange of active segments
+	/** The maximum time that the interlock exchange of active segments
 	 * with the remote host is allowed to take in ms.
 	 */
 	public static final int RemoteInterlockExchangeTimeout = 10000;
@@ -668,6 +668,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				} while (continuousChecking);
 			} catch (IOException e) {
+				// THIS HAPPENS ON ONE OF THE DEVICES IMMEDIATELY AFTER BEING SHAKING WITH ERROR "is closed"
+				// TODO: FIND OUT WHY
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
