@@ -24,7 +24,9 @@ import java.security.SecureRandom;
  * this order or a KeyAgreementProtocolException will be thrown.
  * 
  * @author Rene Mayrhofer
- * @version 1.0
+ * @version 1.1, changes to 1.0: Now supports re-using the local key pair for
+ *               subsequent key agreement runs. The instance needs to be 
+ *               constructed for this, though (by setting the flag to true).
  */
 public class SimpleKeyAgreement {
 	/* These are our states of the key agreement protocol: 
@@ -46,6 +48,9 @@ public class SimpleKeyAgreement {
 	/** If set to true, the JSSE will be used, if set to false, the 
 	 * Bouncycastle Lightweight API. */
 	private boolean useJSSE;
+	
+	/** If set to true, some checks are relaxed. */
+	private boolean permanentLocalKeyPair = false;
 
 	/** The current state of the protocol, i.e. one of STATE_INITIALIZED, 
 	 * STATE_INTRANSIT, or STATE_COMPLETED. */
@@ -143,9 +148,39 @@ public class SimpleKeyAgreement {
 	 *                provider of the JVM will be used for cryptographic 
 	 *                operations. If set to false, an internal copy of the 
 	 *                Bouncycastle Lightweight API classes will be used.
+	 * @param permanentLocalKeyPair Is set to true, then a few checks are
+	 *                relaxed and the same key agreement instance may be
+	 *                used for multiple Diffie-Hellman rounds with different
+	 *                remote public keys. Before a second key agreement round
+	 *                can be started, resetRemotePart() <b>must</b> be called.
+	 *                This option should be used only in special circumstances
+	 *                when ephemeral keys can not be supported!
 	 */
-	public SimpleKeyAgreement(boolean useJSSE) throws InternalApplicationException {
+	public SimpleKeyAgreement(boolean useJSSE, boolean permanentLocalKeyPair) 
+			throws InternalApplicationException {
+		this.permanentLocalKeyPair = permanentLocalKeyPair;
 		init(useJSSE);
+	}
+
+	/** Initialized a fresh key agreement, simply by calling init(). 
+	 * @see #init
+	 * @param useJSSE If set to true, the JSSE API with the default JCE 
+	 *                provider of the JVM will be used for cryptographic 
+	 *                operations. If set to false, an internal copy of the 
+	 *                Bouncycastle Lightweight API classes will be used.
+	 */
+	public SimpleKeyAgreement(boolean useJSSE) 
+			throws InternalApplicationException {
+		this(useJSSE, false);
+	}
+
+	public SimpleKeyAgreement(byte[] localKeyPair) {
+		// TODO: implement deserializing of local key pair!
+	}
+	
+	public byte[] storeLocalKeyPair() {
+		// TODO: implement serializing of local key pair!
+		return null;
 	}
 
 	/** Initializes the random nonce of this side for generating the shared 
@@ -177,7 +212,6 @@ public class SimpleKeyAgreement {
 
 		// this also generates the private value X with a bit length of 256
 		try {
-			dh = javax.crypto.KeyAgreement.getInstance(KEYAGREEMENT_ALGORITHM);
 			java.security.KeyPairGenerator kg = java.security.KeyPairGenerator
 					.getInstance(KEYAGREEMENT_ALGORITHM);
 
@@ -186,16 +220,12 @@ public class SimpleKeyAgreement {
 			kg.initialize(ps);
 			myKeypair = kg.generateKeyPair();
 
-			((javax.crypto.KeyAgreement) dh).init(((java.security.KeyPair) myKeypair).getPrivate());
-
+			initFromLocalKeyPair_JSSE();
+			
 			state = STATE_INITIALIZED;
 		} catch (java.security.NoSuchAlgorithmException e) {
 			throw new InternalApplicationException(
 					"Required key agreement algorithm is unknown to the installed cryptography provider(s)",
-					e);
-		} catch (java.security.InvalidKeyException e) {
-			throw new InternalApplicationException(
-					"Generated private key is not accepted by the key agreement algorithm",
 					e);
 		} catch (java.security.InvalidAlgorithmParameterException e) {
 			throw new InternalApplicationException(
@@ -211,18 +241,53 @@ public class SimpleKeyAgreement {
 		// before overwriting the object references, wipe the old values in memory to really destroy them
 		wipe();
 
-		// this also generates the private value X with a bit length of 256
-		dh = new org.bouncycastle.crypto.agreement.DHBasicAgreement();
-		
 		org.bouncycastle.crypto.generators.DHBasicKeyPairGenerator kg = new org.bouncycastle.crypto.generators.DHBasicKeyPairGenerator();
 		kg.init(new org.bouncycastle.crypto.params.DHKeyGenerationParameters(new SecureRandom(), 
 				new org.bouncycastle.crypto.params.DHParameters(skip1024Modulus, skip1024Base)));
 		myKeypair = kg.generateKeyPair();
-		
-		((org.bouncycastle.crypto.agreement.DHBasicAgreement) dh).init(
-				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPrivate());
+
+		initFromLocalKeyPair_BCAPI();
 
 		state = STATE_INITIALIZED;
+	}
+
+	/** (Re-)Initializes the key agreement from the permanent local key pair.
+	 * This is an internal helper function called from init and resetRemotePart().
+	 */
+	private void initFromLocalKeyPair() throws InternalApplicationException {
+//#if cfg.includeJSSESupport
+		if (useJSSE)
+			initFromLocalKeyPair_JSSE();
+		else
+//#endif
+			initFromLocalKeyPair_BCAPI();
+	}
+
+//#if cfg.includeJSSESupport
+	/** This is an implementation of initFromLocalKeyPair() using the Sun JSSE API. */
+	private void initFromLocalKeyPair_JSSE() throws InternalApplicationException {
+		try {
+			dh = javax.crypto.KeyAgreement.getInstance(KEYAGREEMENT_ALGORITHM);
+			((javax.crypto.KeyAgreement) dh).init(((java.security.KeyPair) myKeypair).getPrivate());
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new InternalApplicationException(
+					"Required key agreement algorithm is unknown to the installed cryptography provider(s)",
+					e);
+		} catch (java.security.InvalidKeyException e) {
+			throw new InternalApplicationException(
+					"Generated private key is not accepted by the key agreement algorithm",
+					e);
+		}
+	}
+//#endif
+
+	/** This is an implementation of initFromLocalKeyPair() using the Bouncycastle Lightweight 
+	 * API. */
+	private void initFromLocalKeyPair_BCAPI() {
+		// this also generates the private value X with a bit length of 256
+		dh = new org.bouncycastle.crypto.agreement.DHBasicAgreement();
+		((org.bouncycastle.crypto.agreement.DHBasicAgreement) dh).init(
+				((org.bouncycastle.crypto.AsymmetricCipherKeyPair) myKeypair).getPrivate());
 	}
 
 	/** This method performs a secure wipe of the cryptographic key material 
@@ -241,11 +306,7 @@ public class SimpleKeyAgreement {
 	 * @see #dh
 	 */
 	public void wipe() {
-		if (sharedKey != null) {
-			for (int i=0; i<sharedKey.length; i++)
-				sharedKey[i] = 0;
-			sharedKey = null;
-		}
+		wipeSharedKeys();
 		// TODO: can not wipe myKeyPair, because there is no access to its internal data structures!
 		myKeypair = null;
 		// TODO: can not wipe dh, because there is no access to its internal data structures!
@@ -256,12 +317,43 @@ public class SimpleKeyAgreement {
 		// special state: unusable!
 		state = 0;
 	}
+	
+	/** A small helper to wipe shared keys from memory. Called by wipe and
+	 * resetRemotePart.
+	 */
+	private void wipeSharedKeys() {
+		if (sharedKey != null) {
+			for (int i=0; i<sharedKey.length; i++)
+				sharedKey[i] = 0;
+			sharedKey = null;
+		}
+	}
+
+	/** This resets the remote parts (if they have already been added) so that
+	 * another round can be started with the same local key pair. Calling this
+	 * method is only supported when this instance has been constructed with
+	 * permanentLocalKeyPair=true.
+	 * @throws KeyAgreementProtocolException 
+	 * @throws InternalApplicationException 
+	 */
+	public void resetRemotePart() throws KeyAgreementProtocolException, InternalApplicationException {
+		if (!permanentLocalKeyPair)
+			throw new KeyAgreementProtocolException(
+					"Key agreement can only be reset when it has been constructed" +
+					" to support a permanent local key pair. This one has not." +
+					" Refusing to reset.");
+
+		wipeSharedKeys();
+		initFromLocalKeyPair();
+
+		state = STATE_INTRANSIT;
+	}
 
 	/** Get the public key for the key agreement protocol. This byte array 
 	 * should be transmitted to the remote side. This method can only be 
 	 * called in state initialized and changes it to inTransit. */
 	public byte[] getPublicKey() throws KeyAgreementProtocolException {
-		if (state != STATE_INITIALIZED)
+		if (state != STATE_INITIALIZED && !permanentLocalKeyPair)
 			throw new KeyAgreementProtocolException(
 					"getPublicKey called in unallowed state! The public key "
 							+ "can only transmitted once and immediately after it has been initialized to prevent any kind "

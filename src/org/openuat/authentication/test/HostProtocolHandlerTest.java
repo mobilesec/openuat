@@ -116,7 +116,7 @@ public class HostProtocolHandlerTest extends TestCase {
         server.setPresharedShortSecret(presharedShortSecret);
         Socket socket = new Socket("127.0.0.1", PORT);
         HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
-        		presharedShortSecret,
+        		null, presharedShortSecret, null,
         		10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
@@ -136,6 +136,179 @@ public class HostProtocolHandlerTest extends TestCase {
         h.shutdownSocketsCleanly();
     }
 
+    public void testCompleteAuthentication_LongPreAuthenticationMode_Server() throws UnknownHostException, IOException, InterruptedException, InternalApplicationException
+    {
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+		SimpleKeyAgreement serverKa = new SimpleKeyAgreement(useJSSEServer, true);
+		server.setPermanentKeyAgreementInstance(serverKa);
+        byte[] serverPreAuthentication = server.getPermanentPreAuthenticationMessage();
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        		null, null, serverPreAuthentication,
+        		10000, false, "", useJSSEClient);
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSessionKeysEqual());
+        Assert.assertTrue(h.isOneOObMsgEmpty());
+        Assert.assertFalse(h.areOObMsgsEmpty());
+
+        h.shutdownSocketsCleanly();
+    }
+
+    public void testCompleteAuthentication_LongPreAuthenticationMode_Client() throws UnknownHostException, IOException, InterruptedException, InternalApplicationException, KeyAgreementProtocolException
+    {
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+		SimpleKeyAgreement clientKa = new SimpleKeyAgreement(useJSSEClient, true);
+		// this is a bit of catch here: getting the commitment is not easy via public methods from HostProtocolHandler
+		// just do it "manually"
+		server.setPreAuthenticationMessageFromClient(HostProtocolHandler.commitment(clientKa.getPublicKey(), useJSSEClient));
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        		clientKa, null, null,
+        		10000, false, "", useJSSEClient);
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSessionKeysEqual());
+        Assert.assertTrue(h.isOneOObMsgEmpty());
+        Assert.assertFalse(h.areOObMsgsEmpty());
+
+        h.shutdownSocketsCleanly();
+    }
+
+    public void testCompleteAuthentication_LongPreAuthenticationMode_Mutual() throws UnknownHostException, IOException, InterruptedException, InternalApplicationException, KeyAgreementProtocolException
+    {
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+		SimpleKeyAgreement serverKa = new SimpleKeyAgreement(useJSSEServer, true);
+		server.setPermanentKeyAgreementInstance(serverKa);
+        byte[] serverPreAuthentication = server.getPermanentPreAuthenticationMessage();
+		SimpleKeyAgreement clientKa = new SimpleKeyAgreement(useJSSEClient, true);
+		// this is a bit of catch here: getting the commitment is not easy via public methods from HostProtocolHandler
+		// just do it "manually"
+		server.setPreAuthenticationMessageFromClient(HostProtocolHandler.commitment(clientKa.getPublicKey(), useJSSEClient));
+        Socket socket = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        		clientKa, null, serverPreAuthentication,
+        		10000, false, "", useJSSEClient);
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSessionKeysEqual());
+        Assert.assertTrue(h.areOObMsgsEmpty());
+
+        h.shutdownSocketsCleanly();
+    }
+
+    public void testCompleteAuthentication_LongPreAuthenticationMode_ServerPermanentTwoClients() throws UnknownHostException, IOException, InterruptedException, InternalApplicationException {
+    	helperCompleteAuthentication_LongPreAuthenticationMode_ServerPermanentTwoClients(true);
+    }
+
+    public void testCompleteAuthentication_ServerTwoClients() throws UnknownHostException, IOException, InterruptedException, InternalApplicationException {
+    	helperCompleteAuthentication_LongPreAuthenticationMode_ServerPermanentTwoClients(false);
+    }
+
+    private void helperCompleteAuthentication_LongPreAuthenticationMode_ServerPermanentTwoClients(boolean permanentKeyPair) throws UnknownHostException, IOException, InterruptedException, InternalApplicationException
+    {
+        EventHelper h = new EventHelper();
+        // need to listen for both the server and the client authentication events
+        server.addAuthenticationProgressHandler(h);
+		SimpleKeyAgreement serverKa = new SimpleKeyAgreement(useJSSEServer, permanentKeyPair);
+		if (permanentKeyPair)
+			server.setPermanentKeyAgreementInstance(serverKa);
+        byte[] serverPreAuthentication = server.getPermanentPreAuthenticationMessage();
+        
+        // client 1 with first protocol run
+        Socket socket1 = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket1), h, 
+        		null, null, serverPreAuthentication,
+        		10000, false, "", useJSSEClient);
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        int i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSessionKeysEqual());
+		if (permanentKeyPair)
+			Assert.assertTrue(h.isOneOObMsgEmpty());
+		else
+			Assert.assertFalse(h.isOneOObMsgEmpty());
+		Assert.assertFalse(h.areOObMsgsEmpty());
+
+        h.reset();
+        
+        // client 2 with second protocol run with the SAME server pre-authentication commitment
+        Socket socket2 = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket2), h, 
+        		null, null, serverPreAuthentication,
+        		10000, false, "", useJSSEClient);
+        // this should be enough time for the authentication to complete
+        // localhost authentication within the same process, therefore we should receive 2 success messages
+        i = 0;
+        while (i < 50 && h.getReceivedSecrets() != 2 && h.getReceivedFailures() == 0)
+        {
+            Thread.sleep(100);
+            i++;
+        }
+        Assert.assertEquals(0, h.getReceivedFailures());
+        Assert.assertEquals(2*HostProtocolHandler.AuthenticationStages, h.getReceivedProgress());
+        Assert.assertEquals(2, h.getReceivedStarted());
+
+        Assert.assertEquals(2, h.getReceivedSecrets());
+        Assert.assertTrue(h.areSessionKeysEqual());
+		if (permanentKeyPair)
+			Assert.assertTrue(h.isOneOObMsgEmpty());
+		else
+			Assert.assertFalse(h.isOneOObMsgEmpty());
+        Assert.assertFalse(h.areOObMsgsEmpty());
+
+        h.shutdownSocketsCleanly();
+    }
+    
     public void testCompleteAuthenticationWithParam() throws UnknownHostException, IOException, InterruptedException
     {
         EventHelper h = new EventHelper();
@@ -193,8 +366,8 @@ public class HostProtocolHandlerTest extends TestCase {
 
         h.shutdownSocketsCleanly();
     }
-    
-    // TODO: test Hollywood style with all 3 different OOB check modes
+  
+    // TODO: test Hollywood style with all 5 different OOB check modes
     
     private class EventHelper implements AuthenticationProgressHandler
     {
@@ -203,6 +376,13 @@ public class HostProtocolHandlerTest extends TestCase {
         private String[] optionalParameters = new String[2];
         private Socket[] sockets = new Socket[2];
 
+        public void reset() {
+        	receivedSecrets = 0; receivedFailures = 0; receivedProgress = 0; receivedStarted = 0;
+        	receivedSecrets = 0; receivedFailures = 0; receivedProgress = 0; receivedStarted = 0;
+        	optionalParameters = new String[2];
+        	sockets = new Socket[2];
+        }
+        
         public void AuthenticationSuccess(Object sender, Object remote, Object result)
         {
             synchronized (this)
@@ -267,6 +447,13 @@ public class HostProtocolHandlerTest extends TestCase {
                 return false;
             else
                 return SimpleKeyAgreementTest.compareByteArray(sharedSessionKeys[0], sharedSessionKeys[1]);
+        }
+        
+        boolean isOneOObMsgEmpty() {
+            if (receivedSecrets != 2)
+                return false;
+            else
+                return sharedOObMsgs[0] == null || sharedOObMsgs[1] == null;
         }
         
         boolean areOObMsgsEmpty() {

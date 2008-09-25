@@ -155,6 +155,28 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	
 	/** If != -1 and the protocol has been running for longer than this, it will be aborted. */
 	protected int timeoutMs = -1;
+
+	/** This holds the single instance of our (Diffie-Hellman) based key
+	 * agreement protocol. For the "pre-authentication transfer" case, it will
+	 * be initialized before the actual protocol starts to be able to commit
+	 * to our public key. In all other cases, it will be initialized only as 
+	 * soon as necessary in the protocol run.
+	 */
+	protected SimpleKeyAgreement keyAgreement = null;
+	
+	/** As soon as keyAgreement is initialized, this will also be set to our
+	 * public key. It is the same as keyAgreement.getPublicKey() but cached
+	 * here for better performance.
+	 */
+	protected byte[] myPublicKey = null;
+	
+	/** If ephemeral Diffie-Hellman keys should not be used (for example,
+	 * because this host must use permanent keys because its pre-authentication
+	 * commitment is on a printed sticker that can't be changed), then this can
+	 * be set to true. Be careful, though! Ephemeral keys should be used 
+	 * whenever possible!
+	 */
+	protected boolean dontWipeKeyAgreement = false;
 	
     /** The (already opened) connection used to communicate with the remote end, for both incoming and outgoing connections. */
     protected RemoteConnection connection;
@@ -189,6 +211,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
      */
     protected byte[] presharedShortSecret = null;
 
+    
+	protected byte[] remotePreAuthenticationMessage = null;
+	           	
     /** There may be additional handlers to call, depending on the first line
      * that is received from the other side. Keys are of type String and 
      * specify the first word (command) that a handler reacts to, values are
@@ -244,19 +269,45 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     /** This constructor should only be used by HostServerBase for incoming
 	 * connections or with the static startAuthenticatingWith method for
 	 * outgoing connections. It constructs the protocol in PlainObject style
-	 * for <b>secret input</b> verification. The user input must must already
-	 * have been entered and <b>must</b> remain secret until AuthenticationSuccess
+	 * for <b>secret input</b> verification and/or <b>pre-authentication</b>
+	 * transfer. The secret user input (if not null) must already have been 
+	 * entered and <b>must</b> remain secret until AuthenticationSuccess
 	 * (or failure) is emitted and <b>must not</b> be re-used.
+	 * 
+	 * When this protocol instances finishes (successfully or not), it can 
+	 * still not be re-used and a fresh HostProtocolHandler object must always
+	 * be created for each protocol run. However, the permanentKeyAgreement
+	 * object passed in here (if not null) will <b>not</b> be wiped of its own 
+	 * key pair but only of the agreed session key (and the remote public key, 
+	 * of course). This allows another protocol instance to use <b>the same key 
+	 * pair</b> and thus generate <b>the same pre-authentication commitment</b>. 
+	 * The only sensible use-case for this constructor is when such static
+	 * commitments must be used (for example, because it is printed on a 
+	 * sticker attached to the case of this device and therefore can't be
+	 * changed). In all other cases <b>avoid using this constructor</b>. 
+	 * Although there are no known security weaknesses of using it, ephemeral
+	 * Diffie-Hellman keys with a fresh keyAgreement object for each protocol
+	 * run still add another layer of defense.
 	 * 
 	 * @param presharedShortSecret The secret, shared key entered by the user
 	 *        on both sides before any interaction takes place on the wireless
 	 *        channel. This <b>must</b> remain secret until the protocol finishes
 	 *        and <b>must not</b> be re-used.
+	 *        May be null, in which case no pre-shared short secret will be used.
+	 * @param permanentKeyAgreement The key agreement instance (i.e. private
+	 *        and public Diffie-Hellman key pair) to be used. If set, it will
+	 *        not be wiped on protocol end.
+	 *        May be null, in which case a new, ephemeral key agreement 
+	 *        instance will be created during the protocol run.
 	 */
-    public HostProtocolHandler(RemoteConnection con, byte[] presharedShortSecret, int timeoutMs, 
-    		boolean keepConnected, boolean useJSSE) {
+    public HostProtocolHandler(RemoteConnection con, 
+    		byte[] presharedShortSecret, SimpleKeyAgreement permanentKeyAgreement, 
+    		int timeoutMs, boolean keepConnected, boolean useJSSE) {
     	this(con, timeoutMs, keepConnected, useJSSE);
     	this.presharedShortSecret = presharedShortSecret;
+    	this.keyAgreement = permanentKeyAgreement;
+    	if (permanentKeyAgreement != null)
+    		this.dontWipeKeyAgreement = true;
     }
 
 /*    public HostProtocolHandler(OOBChannel oobChannel, RemoteConnection con, int timeoutMs, 
@@ -442,7 +493,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *         the (meaningless) parts that might have been decoded.
 	 * @throws IOException
 	 */
-    public Object[] parseLine(String line, String expectedMsg,
+    protected Object[] parseLine(String line, String expectedMsg,
     		boolean[] isHexNumber, String[] expectedParts, 
     		int numMandatoryParms,
     		RemoteConnection remote) throws IOException {
@@ -542,7 +593,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @return
 	 * @throws InternalApplicationException 
 	 */
-	protected byte[] commitment(byte[] ownPublicKey) throws InternalApplicationException {
+	public static byte[] commitment(byte[] ownPublicKey, boolean useJSSE) throws InternalApplicationException {
 		return Hash.doubleSHA256(ownPublicKey, useJSSE);
 	}
 	
@@ -550,7 +601,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * l-Bit out-of-band message. It uses the standard HMAC-SHA256 
 	 * construction.
 	 */
-	protected byte[] keyedHash(byte[] oobInput, byte[] oobKey) throws InternalApplicationException {
+	public static byte[] keyedHash(byte[] oobInput, byte[] oobKey, boolean useJSSE) throws InternalApplicationException {
 		return Hash.hmacSHA256(oobInput, oobKey, useJSSE);
 	}
     
@@ -604,7 +655,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *            ("authenticatee")
 	 */
     protected void performAuthenticationProtocol(boolean serverSide) {
-    	SimpleKeyAgreement ka = null;
         String inOrOut, serverToClient, clientToServer, remoteAddr=null;
         int totalTransferTime=0, totalCryptoTime=0;
         long timestamp=0;
@@ -669,13 +719,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // TODO: we should really add our own address to the ID!
             String myIdStr = new String(Hex.encodeHex(nonce));
 
-            byte[] myPubKey = null, remotePubKey = null, 
-            	remoteCommitment = null, remoteId = null;
+            byte[] remotePubKey = null, remoteCommitment = null, remoteId = null;
             if (!serverSide) {
             	// step 1: Alice computes her public key and sends the commitment
-            	ka = new SimpleKeyAgreement(useJSSE);
-            	myPubKey = ka.getPublicKey();
-            	String commitment = new String(Hex.encodeHex(commitment(myPubKey)));
+            	byte[] myCommitment = getPublicKeyCommitment();
+            	String commitment = new String(Hex.encodeHex(myCommitment));
                	totalCryptoTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
             	println(Protocol_AuthenticationRequest + ProtocolTypeMaDH + 
@@ -715,9 +763,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (serverSide) {
             	// step 2: Bob sends his public key and ID
                 // for performance reasons: only now start the DH phase
-            	ka = new SimpleKeyAgreement(useJSSE);
-            	myPubKey = ka.getPublicKey();
-            	String myPubKeyStr = new String(Hex.encodeHex(myPubKey));
+            	getPublicKeyCommitment();
+            	String myPubKeyStr = new String(Hex.encodeHex(myPublicKey));
                	totalCryptoTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
             	println(Protocol_AuthenticationAcknowledge + myIdStr + " " + myPubKeyStr);
@@ -752,7 +799,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
            	timestamp = System.currentTimeMillis();
             if (!serverSide) {
             	// step 3: Alice sends her public key
-            	String myPubKeyStr = new String(Hex.encodeHex(myPubKey));
+            	String myPubKeyStr = new String(Hex.encodeHex(myPublicKey));
             	println(Protocol_AuthenticationAcknowledge2 + myPubKeyStr);
                	totalTransferTime += System.currentTimeMillis()-timestamp;            	
             }
@@ -779,7 +826,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 // and check that it matches the commitment
                 totalTransferTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
-               	byte[] remoteCommitmentExpected = commitment(remotePubKey);
+               	byte[] remoteCommitmentExpected = commitment(remotePubKey, useJSSE);
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
                	for (int i=0; i<remoteCommitment.length && i<remoteCommitmentExpected.length; i++) {
                     if (remoteCommitment[i] != remoteCommitmentExpected[i]) {
@@ -798,21 +845,21 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             byte[] oobInput = new byte[2*NonceByteLength +
                                        (presharedShortSecret != null ? 
                                                presharedShortSecret.length : 0)]; 
-            byte[] oobKey = new byte[myPubKey.length + remotePubKey.length +
+            byte[] oobKey = new byte[myPublicKey.length + remotePubKey.length +
                                      (presharedShortSecret != null ?
                                     		 NonceByteLength : 0)];
             // order: first client, then server
             if (!serverSide) {
             	System.arraycopy(nonce, 0, oobInput, 0, NonceByteLength);
             	System.arraycopy(remoteId, 0, oobInput, NonceByteLength, NonceByteLength);
-            	System.arraycopy(myPubKey, 0, oobKey, 0, myPubKey.length);
-            	System.arraycopy(remotePubKey, 0, oobKey, myPubKey.length, remotePubKey.length);
+            	System.arraycopy(myPublicKey, 0, oobKey, 0, myPublicKey.length);
+            	System.arraycopy(remotePubKey, 0, oobKey, myPublicKey.length, remotePubKey.length);
             }
             else {
             	System.arraycopy(remoteId, 0, oobInput, 0, NonceByteLength);
             	System.arraycopy(nonce, 0, oobInput, NonceByteLength, NonceByteLength);
             	System.arraycopy(remotePubKey, 0, oobKey, 0, remotePubKey.length);
-            	System.arraycopy(myPubKey, 0, oobKey, remotePubKey.length, myPubKey.length);
+            	System.arraycopy(myPublicKey, 0, oobKey, remotePubKey.length, myPublicKey.length);
             }
             byte[] oobMsg;
 
@@ -843,8 +890,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 byte[] myK = new byte[NonceByteLength];
                 r.nextBytes(myK);
                 System.arraycopy(myK, 0, oobKey, 
-                		myPubKey.length + remotePubKey.length, myK.length);
-                byte[] myM = keyedHash(oobInput, oobKey);
+                		myPublicKey.length + remotePubKey.length, myK.length);
+                byte[] myM = keyedHash(oobInput, oobKey, useJSSE);
                 totalCryptoTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
 
@@ -910,8 +957,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
                 // 5. compare M1 and M2
                 System.arraycopy(remoteK, 0, oobKey, 
-                		myPubKey.length + remotePubKey.length, remoteK.length);
-                byte[] remoteMExpected = keyedHash(oobInput, oobKey);
+                		myPublicKey.length + remotePubKey.length, remoteK.length);
+                byte[] remoteMExpected = keyedHash(oobInput, oobKey, useJSSE);
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
                	for (int i=0; i<remoteM.length && i<remoteMExpected.length; i++) {
                     if (remoteM[i] != remoteMExpected[i]) {
@@ -927,6 +974,27 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 // already authenticated!
                 oobMsg = null;
             }
+            else if (remotePreAuthenticationMessage != null) {
+            	if (logger.isInfoEnabled())
+            		logger.info("Using pre-authentication message to verify remote public key on "
+            			+ (serverSide ? "server" : "client"));
+            	// we have a pre-authentication message, so check if it matches the remote public key
+               	byte[] remoteCommitmentExpected = commitment(remotePubKey, useJSSE);
+               	// grml, no java.util.Arrays class in J2ME - this simply sucks
+               	for (int i=0; i<remotePreAuthenticationMessage.length && i<remoteCommitmentExpected.length; i++) {
+                    if (remotePreAuthenticationMessage[i] != remoteCommitmentExpected[i]) {
+                        logger.warn("Protocol error: remote pre-authentication does not match public key");
+                        println("Protocol error: remote pre-authentication does not match public key");
+                        raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote pre-authentication does not match public key");
+                        shutdownConnectionCleanly();
+                        return;
+                    }
+               	}
+                totalCryptoTime += System.currentTimeMillis()-timestamp;
+
+            	// already authenticated!
+            	oobMsg = null;
+            }
             else {
                 // TODO: define asymmetric case from Wong/Stajano page 11
                 // need to be clear which messages may be omitted (none for consistency?)
@@ -935,7 +1003,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 // send commitment and R
             	
             	// transfer or comparison case (depends on OOB channel)
-                oobMsg = keyedHash(oobInput, oobKey);
+                oobMsg = keyedHash(oobInput, oobKey, useJSSE);
             }
             totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 4, AuthenticationStages, inOrOut + " authentication connection, commitment");
@@ -945,8 +1013,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             
             // in PlainObject mode, generate the final session key and the OOB string and forward both
             timestamp = System.currentTimeMillis();
-            ka.addRemotePublicKey(remotePubKey);
-            Object sessKey = ka.getSessionKey();
+            keyAgreement.addRemotePublicKey(remotePubKey);
+            Object sessKey = keyAgreement.getSessionKey();
             Object authKey = oobMsg;
            	totalCryptoTime += System.currentTimeMillis()-timestamp;
             raiseAuthenticationProgressEvent(connection, 5, AuthenticationStages, inOrOut + " authentication connection, computed shared secret");
@@ -995,8 +1063,23 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             shutdownConnectionCleanly();
         }
         finally {
-            if (ka != null)
-                ka.wipe();
+            if (keyAgreement != null) {
+            	if (!dontWipeKeyAgreement)
+            		keyAgreement.wipe();
+				else
+					try {
+						keyAgreement.resetRemotePart();
+					} catch (KeyAgreementProtocolException e) {
+						logger.error("Aieh! Resetting permanent key agreement instance " + 
+								"failed while trying to properly end protocol. " +
+								"The next protocol run will fail and I can't recover from here! " + e);
+					} catch (InternalApplicationException e) {
+						logger.error("Aieh! Resetting permanent key agreement instance " + 
+								"failed while trying to properly end protocol. " +
+								"The next protocol run will fail and I can't recover from here! " + e);
+					}
+            }
+            keyAgreement = null;
             // this is not strictly necessary, but clean up properly
             if (timer != null)
             	timer.stop();
@@ -1013,6 +1096,80 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     		protected AsynchronousCallHelper(HostProtocolHandler outer) {
     			this.outer = outer;
     		}
+    }
+
+    /** This is an internal helper to initalize keyAgreement and myPublicKey
+     * and return a commitment to myPublicKey. When keyAgreement and 
+     * myPublicKey are null when this method is first called, they will be
+     * initialized. Another call to this method will return the same commitment
+     * as it will not re-initialize keyAgreement.
+     * @return A commitment to myPublicKey.
+     */
+    private byte[] getPublicKeyCommitment() 
+    		throws InternalApplicationException, KeyAgreementProtocolException {
+		if (keyAgreement == null) {
+			keyAgreement = new SimpleKeyAgreement(useJSSE, false);
+        	myPublicKey = keyAgreement.getPublicKey();
+		}
+		if (myPublicKey == null)
+        	myPublicKey = keyAgreement.getPublicKey();
+		
+		return commitment(myPublicKey, useJSSE);
+    }
+    
+    /** For the pre-authentication transfer case, this method returns our
+     * pre-authentication message. It may be provided to the other side using
+     * its setPreAuthenticationMessage() method, which will make the protocol
+     * run non-interactive with regards to the out-of-band channel.
+     * 
+     * Calling this method doesn't hurt in any case and is idempotent - it 
+     * will always return the same message as long as the protocol run has not
+     * finished. The pre-authentication commitment may or may not be used. 
+     * 
+     * @return Our pre-authentication commitment to our public Diffie-Hellman
+     *         key. This may be made public.
+     */
+    public byte[] getPreAuthenticationMessage() {
+    	try {
+    		return getPublicKeyCommitment();
+    	}
+        catch (InternalApplicationException e)
+        {
+            logger.error("Caught exception during pre-authentication, can not continue: " + e);
+            return null;
+        } catch (KeyAgreementProtocolException e) {
+            logger.error("Caught exception during pre-authentication, can not continue: " + e);
+            return null;
+		}
+    }
+
+    /** Set the remote pre-authentication message. It will only influence the
+     * protocol when set <b>before</b> the protocol run actually starts. When
+     * set, no further out-of-band verification will be done.
+     *
+     * @param publicKeyCommitment The pre-authentication commitment to the 
+     *        remote public key as returned by the other side's
+     *        getPreAuthenticationMessage() method and <b>transmitted over
+     *        an authentic channel</b>. This is highly important for security:
+     *        The pre-authentication commitment <b>must be guaranteed</b> to
+     *        have been created by the legitimate remote device and have not
+     *        been tampered with.
+     */
+    public void setPreAuthenticationMessage(byte[] publicKeyCommitment) {
+    	if (publicKeyCommitment == null)
+    		// in this case, silently ignore because this is used by HostServerBase
+    		return;
+    	
+    	if (remotePreAuthenticationMessage != null)
+    		logger.error("Already set remote pre-authentication message, not overwriting it!");
+    	else {
+            if (publicKeyCommitment.length < 16) {
+                logger.error("Expected at least 128 Bits of remote pre-authentication message, but got " + 
+                		publicKeyCommitment.length + " bytes, not setting it!");
+                return;
+            }
+    		remotePreAuthenticationMessage = publicKeyCommitment;
+    	}
     }
 
     /** Starts a background thread for handling an incoming authentication
@@ -1101,7 +1258,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     static public void startAuthenticationWith(RemoteConnection remote,
 			AuthenticationProgressHandler eventHandler,
+			SimpleKeyAgreement permanentKeyAgreementInstance,
 			byte[] presharedShortSecret,
+			byte[] remotePreAuthenticationMessage,
 			int timeoutMs,
 			boolean keepConnected, 
 			String optionalParameter,
@@ -1110,12 +1269,16 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     		logger.info("Starting authentication with " + 
     				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 
-		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(remote, presharedShortSecret,
+		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(
+				remote, presharedShortSecret, permanentKeyAgreementInstance,
 				timeoutMs, keepConnected, useJSSE);
-		tmpProtocolHandler.useJSSE = useJSSE;
+		tmpProtocolHandler.optionalParameter = optionalParameter;
+		
+		if (remotePreAuthenticationMessage != null)
+			tmpProtocolHandler.setPreAuthenticationMessage(remotePreAuthenticationMessage);
+		
 		if (eventHandler != null)
 			tmpProtocolHandler.addAuthenticationProgressHandler(eventHandler);
-		tmpProtocolHandler.optionalParameter = optionalParameter;
 		/* The very first thing to do is to fire off the respective started event.
 		 * This is done even before starting a potential background thread 
 		 * (and thus not in performAuthenticationProtocol, but with code 
@@ -1137,7 +1300,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		}).start();
     }
 
-    /** This is a convenience wrapper setting presharedShortSecret to null and
+    /** This is a convenience wrapper setting all options to null and
      * thus starting the protocol in <b>transfer</b> or <b>verification</b> mode.
      * @see startAuthenticationWith
      */
@@ -1146,7 +1309,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			int timeoutMs, boolean keepConnected,
 			String optionalParameter,
 			boolean useJSSE) throws IOException {
-    	startAuthenticationWith(remote, eventHandler, null, timeoutMs,
-    			keepConnected, optionalParameter, useJSSE);
+    	startAuthenticationWith(remote, eventHandler, null, null, null,
+    			timeoutMs, keepConnected, optionalParameter, useJSSE);
     }
 }

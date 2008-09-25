@@ -14,6 +14,7 @@ import java.util.Hashtable;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.HostProtocolHandler;
+import org.openuat.authentication.SimpleKeyAgreement;
 import org.openuat.authentication.exceptions.*;
 
 /** This is a base class for listening to connections and spawning 
@@ -51,6 +52,18 @@ public abstract class HostServerBase extends AuthenticationEventSender
      * secret.
      */
     protected byte[] presharedShortSecret = null;
+
+    /** If this is set, then we have received a (long) pre-authentication
+     * message from the client and will use it to verify its public key.
+     * This must be set before the client connects to us (and thus before
+     * the HostProtocolHandler instance gets created) to have any effect.
+     */
+    protected byte[] preAuthenticationMessageFromClient = null;
+    
+    /** If set, this will be passed on to the constructed HostProtocolHandler
+     * objects.
+     */
+    protected SimpleKeyAgreement permanentKeyAgreementInstance = null;
 
 	/** This only keeps the command handlers so that they can be pre-registered
 	 * and then be passed onto HostProtocolHandler objects when they are 
@@ -110,9 +123,61 @@ public abstract class HostServerBase extends AuthenticationEventSender
     	this.presharedShortSecret = presharedShortSecret;
     }
     
-    /** Returns the user-input preshared short secret. */
+    /** Returns the user-input preshared short secret.
+    * May be null when not used. 
+    */
     public byte[] getPresharedShortSecret() {
     	return presharedShortSecret;
+    }
+
+    /** Sets a pre-authentication message received from the client and
+     * committing it to its public key that it will use when starting the
+     * proper protocol run.
+     * This must be set before the client connects to us (and thus before
+     * the HostProtocolHandler instance gets created) to have any effect.
+     */
+    public void setPreAuthenticationMessageFromClient(byte[] publicKeyCommitment) {
+    	this.preAuthenticationMessageFromClient = publicKeyCommitment;
+    }
+    
+    /** Returns the pre-authentication message received from the client.
+    * May be null when not used. 
+    */
+    public byte[] getPreAuthenticationMessageFromClient() {
+    	return preAuthenticationMessageFromClient;
+    }
+    
+    /** Sets the permanent key agreement instance to use for all subsequent 
+     * HostProtocolHandler invocations. This should be used with care and
+     * only if ephemeral Diffie-Hellman keys can not be supported. The only
+     * real use case at the time of this writing is pre-authentication with
+     * long public key commitments when those need to be static (e.g. printed
+     * on the case of a device).
+     */
+    public void setPermanentKeyAgreementInstance(SimpleKeyAgreement keyAgreement) {
+    	this.permanentKeyAgreementInstance = keyAgreement;
+    }
+    
+    /** Returns the permanent key agreement instance. 
+     * May be null when not used. 
+     */
+    public SimpleKeyAgreement getPermanentKeyAgreementInstance() {
+    	return permanentKeyAgreementInstance;
+    }
+    
+    public byte[] getPermanentPreAuthenticationMessage() {
+    	/* This is a bad hack, but at least we only need the commitment
+    	 * implementation in HostProtocolHandler. Just construct a temporary
+    	 * object for the sake of getting the commitment from the key
+    	 * agreement instance.
+    	 */
+    	if (permanentKeyAgreementInstance == null) {
+    		logger.warn("Can not derive permanent pre-authentication commitment when no permanent key agreement instance has been set");
+    		return null;
+    	}
+    	return new HostProtocolHandler(null, 
+				presharedShortSecret, permanentKeyAgreementInstance, 
+				protocolTimeoutMs, keepConnected, useJSSE).getPreAuthenticationMessage();
     }
 
 	/** Starts a background thread (using the run() method of this class) that will listen for incoming connections. */
@@ -159,11 +224,13 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 * @param remote The (already opened) remote connection to use.
 	 */
 	protected void startProtocol(RemoteConnection remote) {
-		HostProtocolHandler h = new HostProtocolHandler(remote, presharedShortSecret, 
+		HostProtocolHandler h = new HostProtocolHandler(remote, 
+				presharedShortSecret, permanentKeyAgreementInstance, 
 				protocolTimeoutMs, keepConnected, useJSSE);
 		// before starting the background thread, register all our own listeners with this new event sender
 		h.setAuthenticationProgressHandlers(eventsHandlers);
 		h.setProtocolCommandHandlers(protocolCommandHandlers);
+		h.setPreAuthenticationMessage(preAuthenticationMessageFromClient);
 		// call the protocol asynchronously
 		logger.debug("Accepted incoming channel, now starting host protocol");
 		h.startIncomingAuthenticationThread(true);

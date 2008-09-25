@@ -327,11 +327,8 @@ public class SimpleKeyAgreementTest extends TestCase {
 			}
 		}
 		
-		public void testCorrectAgreement() throws KeyAgreementProtocolException, InternalApplicationException
-		{
-			SimpleKeyAgreement ag1 = new SimpleKeyAgreement(useJSSE);
-			SimpleKeyAgreement ag2 = new SimpleKeyAgreement(useJSSE2);
-			
+		private void testCorrectAgreement(SimpleKeyAgreement ag1, SimpleKeyAgreement ag2) 
+				throws KeyAgreementProtocolException, InternalApplicationException {
 			byte[] msg1 = ag1.getPublicKey();
 			byte[] msg2 = ag2.getPublicKey();
 			
@@ -354,5 +351,38 @@ public class SimpleKeyAgreementTest extends TestCase {
 			Assert.assertTrue(ag1.getSessionKey().length == 32);
 			Assert.assertTrue(ag2.getSessionKey().length == 32);
 		}
+		
+		public void testCorrectAgreement() throws KeyAgreementProtocolException, InternalApplicationException
+		{
+			SimpleKeyAgreement ag1 = new SimpleKeyAgreement(useJSSE);
+			SimpleKeyAgreement ag2 = new SimpleKeyAgreement(useJSSE2);
+
+			testCorrectAgreement(ag1, ag2);
+		}
 	
+		public void testCorrectAgreements_PermanentLocal() throws KeyAgreementProtocolException, InternalApplicationException
+		{
+			SimpleKeyAgreement ag1 = new SimpleKeyAgreement(useJSSE, true);
+			SimpleKeyAgreement ag2 = new SimpleKeyAgreement(useJSSE2);
+			SimpleKeyAgreement ag3 = new SimpleKeyAgreement(useJSSE2);
+
+			testCorrectAgreement(ag1, ag2);
+			
+			// now a second round with ag1 - reset
+			ag1.resetRemotePart();
+			testCorrectAgreement(ag1, ag3);
+		}
+
+		public void testStates_resetRemotePart_notAllowed() throws InternalApplicationException
+		{
+			SimpleKeyAgreement ka1 = new SimpleKeyAgreement(useJSSE);
+			
+			// this should not work since we are not in permanent mode
+			try {
+				ka1.resetRemotePart();
+				Assert.fail();
+			} catch (KeyAgreementProtocolException e) {
+				Assert.assertTrue(true);
+			}
+		}
 }
