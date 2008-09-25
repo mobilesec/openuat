@@ -798,7 +798,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             byte[] oobInput = new byte[2*NonceByteLength +
                                        (presharedShortSecret != null ? 
                                                presharedShortSecret.length : 0)]; 
-            byte[] oobKey = new byte[myPubKey.length + remotePubKey.length];
+            byte[] oobKey = new byte[myPubKey.length + remotePubKey.length +
+                                     (presharedShortSecret != null ?
+                                    		 NonceByteLength : 0)];
             // order: first client, then server
             if (!serverSide) {
             	System.arraycopy(nonce, 0, oobInput, 0, NonceByteLength);
@@ -830,7 +832,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	 * Instead of transmitting/comparing oobMsg, add the short secret to it 
             	 * and make it a commitment scheme.
             	 */
-            	/* A generates random K1, computes M1 = HMAC_K1 (Ia | DH-key | R) where
+            	/* A generates random K1, computes M1 = HMAC_(DH-key | K1) (Ia | R) where
  * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
  * assumption: R remains secret */
             	System.arraycopy(presharedShortSecret, 0, oobInput, 
@@ -840,7 +842,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	// 1. send HMAC_K1(oobInput)
                 byte[] myK = new byte[NonceByteLength];
                 r.nextBytes(myK);
-                byte[] myM = keyedHash(oobInput, myK);
+                System.arraycopy(myK, 0, oobKey, 
+                		myPubKey.length + remotePubKey.length, myK.length);
+                byte[] myM = keyedHash(oobInput, oobKey);
                 totalCryptoTime += System.currentTimeMillis()-timestamp;
                	timestamp = System.currentTimeMillis();
 
@@ -905,7 +909,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	timestamp = System.currentTimeMillis();
 
                 // 5. compare M1 and M2
-                byte[] remoteMExpected = keyedHash(oobInput, remoteK);
+                System.arraycopy(remoteK, 0, oobKey, 
+                		myPubKey.length + remotePubKey.length, remoteK.length);
+                byte[] remoteMExpected = keyedHash(oobInput, oobKey);
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
                	for (int i=0; i<remoteM.length && i<remoteMExpected.length; i++) {
                     if (remoteM[i] != remoteMExpected[i]) {
