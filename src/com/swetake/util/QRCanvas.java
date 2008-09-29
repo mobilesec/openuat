@@ -11,19 +11,19 @@ import java.awt.Graphics;
 public class QRCanvas extends Canvas{
 	boolean [][] s;
 	public QRCanvas(boolean [][] qrcode){
+		System.out.println("creating canvas");
 		this.s = qrcode;
 	}
-    public QRCanvas() {
-		// TODO Auto-generated constructor stub
-	}
+
 	public void paint(Graphics g) {
 		//g.setColor(Color.black);
 		
-
+//		System.out.println("paint called");
 	    for (int i=0;i<s.length;i++){
 			for (int j=0;j<s.length;j++){
 			    if (s[j][i]) {
-			    	g.fillRect(j*10+20,i*10+20,10,10);
+			    	g.fillRect(j*10+40,i*10+40,10,10);
+//			    	System.out.println("printing canvas");
 			    	//System.out.print("X");
 			    }
 			    //else System.out.print("O");

@@ -39,7 +39,7 @@ public class TrayIconHelper extends TimerTask implements ActionListener {
 		timer.schedule(this, 1000, 1000);
 	}
 	
-	@Override
+	//@Override
 	public void run() {
 		Graphics g = image.getGraphics();
 		g.setColor(Color.white);

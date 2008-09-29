@@ -81,7 +81,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 			decodeAudio(recorded);
 		}
 		else if(com.getCommandType() == Command.BACK){
-			display.setCurrent(mainProgram.getMain_list());
+			display.setCurrent(mainProgram.getHomeScreen());
 		}
 
 	}

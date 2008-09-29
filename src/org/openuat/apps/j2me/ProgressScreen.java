@@ -31,7 +31,7 @@ import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.ImageItem;
 import javax.microedition.lcdui.StringItem;
 
-import org.openbandy.service.LogService;
+//import org.openbandy.service.LogService;
 
 
 /**
@@ -73,7 +73,7 @@ public class ProgressScreen extends Form {
 			logo = Image.createImage(imgname);
 		}
 		catch (IOException ioe) {
-			LogService.error(this, "could not load image bluetooth_icon.png",ioe);
+			//LogService.error(this, "could not load image bluetooth_icon.png",ioe);
 		}
 		
 		/* initialize the gauge and the startup text */
@@ -107,7 +107,7 @@ public class ProgressScreen extends Form {
 			startupProgressGauge.setValue(gaugeLastIndex++);
 		}
 		else {
-			LogService.error(this, "Gauge reached max value", null);
+			//LogService.error(this, "Gauge reached max value", null);
 		}
 		//update
 		new Thread(){

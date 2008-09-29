@@ -85,7 +85,7 @@ public class PlayerPianoJ2ME {
     public static byte [] PlayerPiano(String score) throws IOException
 {
     int instrument = 0;
-    byte tempo = (byte) 60;//60
+    byte tempo =  60;
 
     char[  ] notes = score.toCharArray( );
     ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -99,11 +99,9 @@ public class PlayerPianoJ2ME {
     int t = 0; // time in ticks for the composition
 
     // These values persist and apply to all notes 'till changed
-//    int notelength = 16; // default to quarter notes
-//    int velocity = 64;   // default to middle volume
+    int notelength = 16; // default to quarter notes
+    int velocity = 64;   // default to middle volume
     
-    int notelength = 8; // default to quarter notes
-    int velocity = 50;   // default to middle volume
     
     int basekey = ToneControl.C4;    // 60 is middle C. Adjusted up and down by octave
     boolean sustain = false;   // is the sustain pedal depressed?
@@ -150,7 +148,7 @@ public class PlayerPianoJ2ME {
                 }
             }
 
-            addNote(notelength, key, velocity, out);
+            addNote(t, notelength, key, velocity, out);
             numnotes++;
         }
         else if (c == ' ') {
@@ -286,11 +284,21 @@ static final int[  ] offsets = {  // add these amounts to the base value
 //        }
 //    }
 //}
+private static int ticksSoFar = 0;
 
-	//A convenience method to add a note to the track on channel 0
-	public static void addNote(int tickLength, int key, int velocity, ByteArrayOutputStream out) throws IOException
-	{
+//A convenience method to add a note to the track on channel 0
+public static void addNote(int startTick, int tickLength, int key, int velocity, ByteArrayOutputStream out) throws IOException
+{
+	//	System.out.println(startTick + " : "+ tickLength + " : " + key + " : "+ velocity);
+	//	System.out.println("Ticks so far: "+ticksSoFar);
+	if(ticksSoFar < startTick){
+		out.write(new byte []{ToneControl.SILENCE,  (byte)(startTick-ticksSoFar)});
 		//System.out.println(velocity);
-		out.write(new byte []{ToneControl.SET_VOLUME,  (byte) velocity, (byte)key,  (byte) tickLength});
+		//		System.out.println("added silence");
 	}
+	out.write(new byte []{ToneControl.SET_VOLUME,  (byte) velocity, (byte)key,  (byte) tickLength});
+	ticksSoFar = (startTick + tickLength);
+	//	System.out.println("tickLength: "+ tickLength);
+	//	System.out.println("ticksSoFar: "+ticksSoFar);
+}
 }

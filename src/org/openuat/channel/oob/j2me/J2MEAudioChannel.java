@@ -19,6 +19,7 @@ import javax.microedition.media.control.VolumeControl;
 
 import org.apache.log4j.Logger;
 import org.codec.audio.j2me.AudioUtils;
+import org.openbandy.service.LogService;
 import org.openuat.apps.j2me.OpenUATmidlet;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
@@ -81,7 +82,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 			decodeAudio(recorded);
 		}
 		else if(com.getCommandType() == Command.BACK){
-			display.setCurrent(mainProgram.getMain_list());
+			display.setCurrent(mainProgram.getHomeScreen());
 		}
 
 	}
@@ -115,7 +116,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 		captureAudioPlayer.close();
 	}
 	private Form decodeScreen;
-	public byte [] decodeAudio(byte [] audiodata) {
+	public void  decodeAudio(byte [] audiodata) {
 
 		
 //		decodeScreen = new Form("decoding...\n");
@@ -127,24 +128,14 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 		
 //		new DecoderThread(decodeScreen, display, this, audiodata).start();
 		ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
-		long start = System.currentTimeMillis();
-		try {
-			AudioUtils.decodeWavFile(audiodata, dataStream);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		long end = System.currentTimeMillis();
-		byte retrieved [] = dataStream.toByteArray();
-		logger.info("decoded data size: "+ retrieved.length+". \n");
-
-		logger.info("decoded data: " + new String(retrieved)+"\n");
-		logger.info("decoding took: " + (end - start) + " ms.\n");
+		
+		new DecoderThread(audiodata, dataStream, this).start();
+		
 //		for (int i = 0; i < retrieved.length; i++) {
 //		decodeScreen.append( retrieved [i] + ", ");
 //		}
 
-		return retrieved;
+//		return retrieved;
 //		handleAudioDecodedText(retrieved);
 }
 	
@@ -250,7 +241,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 			VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
 			   if(vc != null) {
 				   logger.info("volume level: "+vc.getLevel());
-			      vc.setLevel(40);
+			      vc.setLevel(mainProgram.volume);
 			   }
 			player.prefetch(); 
 			player.realize(); 
@@ -276,31 +267,30 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 
 }
 
-//class DecoderThread extends Thread{
-//	Form decodeScreen;
-//	Display display;
-//	byte data[];
-//	AudioChannel audioVerifier;
-//	Logger logger = Logger.getLogger("");
-//	
-//	public DecoderThread(Form decodeScreen, Display display, AudioChannel audioVerifier, byte data[]) {
-//		this.decodeScreen = decodeScreen;
-//		this.display = display;
-//		this.data = data;
-//		this.audioVerifier = audioVerifier;
-//	}
-//
-//	public void run(){
-//		try {
-//			
-//
-//			//} catch (IOException e) {
-//		} catch (Exception e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//			decodeScreen.append(e.getClass().toString() + ": " + e.getMessage());
-////			Alert alert = new Alert("error", e.getClass().toString() + ": " + e.getMessage(), null, AlertType.ERROR);
-////			Display.getDisplay(this).setCurrent(alert);
-//		} 
-//	}
-//}
+class DecoderThread extends Thread{
+	byte[] audiodata;
+	ByteArrayOutputStream dataStream;
+	J2MEAudioChannel channel;
+	public DecoderThread(byte[] audiodata, ByteArrayOutputStream dataStream, J2MEAudioChannel channel) {
+		this.audiodata = audiodata;
+		this.dataStream = dataStream;
+		this.channel = channel;	
+	}
+
+	public void run(){
+		try {
+			long start = System.currentTimeMillis();
+			AudioUtils.decodeWavFile(audiodata, dataStream);
+			
+			long end = System.currentTimeMillis();
+			byte retrieved [] = dataStream.toByteArray();
+			LogService.info(this, "decoded data size: "+ retrieved.length+". \n");
+
+			LogService.info(this, "decoded data: " + new String(retrieved)+"\n");
+			LogService.info(this, "decoding took: " + (end - start) + " ms.\n");
+			channel.handleAudioDecodedText(retrieved);
+		} catch (IOException e) {
+			LogService.error(this, "Decoding error", e); 
+		}
+	}
+}

@@ -56,10 +56,10 @@ public class WavCodec {
 	static int	subChunk1Size;
 	static short 	format = 1;
 	static short 	channels = 1;
-	static int   	sampleRate = 44100;
+	public static int   	sampleRate = 44100;
 	static int   	byteRate = 44100;
 	static short 	blockAlign = 1;
-	static byte 	bitsPerSample = 8;
+	public static byte 	bitsPerSample = 8;
 	static int	myDataSize;
 		
 	
@@ -155,6 +155,7 @@ public class WavCodec {
 		System.arraycopy(data, 0, wav, index, datasize);
 		index += datasize;
 		
+				
 		return wav;
 		
 

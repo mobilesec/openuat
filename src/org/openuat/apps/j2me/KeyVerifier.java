@@ -6,8 +6,6 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
-import javax.microedition.lcdui.Alert;
-import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
@@ -18,16 +16,16 @@ import javax.microedition.lcdui.ImageItem;
 import javax.microedition.lcdui.Item;
 import javax.microedition.lcdui.ItemCommandListener;
 import javax.microedition.lcdui.List;
+import javax.microedition.lcdui.StringItem;
 import javax.microedition.media.Manager;
-import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.ToneControl;
 import javax.microedition.media.control.VolumeControl;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
 import org.codec.audio.j2me.AudioUtils;
 import org.codec.audio.j2me.PlayerPianoJ2ME;
+import org.codec.audio.j2me.WavCodec;
 import org.codec.mad.MadLib;
 import org.openbandy.service.LogService;
 import org.openuat.authentication.OOBChannel;
@@ -74,6 +72,9 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 	/** informs that verification was NOT successful */
 	public static final String FAILURE = "FAILURE";
 	
+	/** Replay the slow codec tune */
+	public static final String REPLAY = "REPLAY";
+	
 //	Logger logger = Logger.getLogger("");
 	byte [] authKey;
 	OpenUATmidlet mainProgram;
@@ -81,10 +82,10 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 	OutputStream out ;
 	InputStream in ;
 	
-	Command successCmd;
-	Image yes;
-	Image no;
-	Command failure;
+//	Command successCmd;
+//	Image yes;
+//	Image no;
+//	Command failure;
 	
 	public KeyVerifier(byte [] authKey, RemoteConnection connectionToRemote, OpenUATmidlet mainProgram ) {
 		this.authKey = authKey;
@@ -98,15 +99,15 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 		}
 		mainProgram.do_alert("Key exchanges successfully. Starting verification process.", 1000);
 		
-		successCmd = new Command("Success", Command.SCREEN, 1);
-		failure = new Command("Failure", Command.SCREEN, 1);
-		
-		try {
-			yes = Image.createImage("/button_ok.png");
-		} catch (IOException e) {}
-		try {
-			no = Image.createImage("/button_cancel.png");
-		} catch (IOException e) {}
+//		successCmd = new Command("Success", Command.SCREEN, 1);
+//		failure = new Command("Failure", Command.SCREEN, 1);
+//		
+//		try {
+//			yes = Image.createImage("/button_ok_sm.png");
+//		} catch (IOException e) {}
+//		try {
+//			no = Image.createImage("/button_cancel_sm.png");
+//		} catch (IOException e) {}
 		
 	}
 	
@@ -151,7 +152,28 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 		return false;
 
 	}
-	
+	private String readLine(int timeout) {
+		String line = null;
+			try {
+
+				line = LineReaderWriter.readLine(in, timeout);
+				LogService.info(this, "read: " + line);
+			} 
+			catch (InterruptedIOException e) {
+				LogService.debug(this, "InterruptedIOException while reading: " + e);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}catch (IOException e) {
+				LogService.debug(this, "Unable to open stream to remote: " + e);
+				LogService.debug(this, "" + e.getMessage());
+		}
+		return line;
+
+	}
 	private String readLine() {
 		String line = null;
 //		int trials = 0;
@@ -225,11 +247,11 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 	
 	public void commandAction(Command com, Displayable arg1) {
 
-		if (com == successCmd){
+		if (com == mainProgram.successCmd){
 			send(SUCCESS);
 			mainProgram.informSuccess(true);
 			return;
-		}else if (com == failure){
+		}else if (com == mainProgram.failureCmd){
 			send(FAILURE);
 			mainProgram.informSuccess(false);
 			return;
@@ -241,9 +263,14 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 			mainProgram.commandAction(com, arg1);
 			return;
 		}
-		List option = (List) arg1;
+		else if (com.getCommandType() == Command.BACK ){
+			mainProgram.commandAction(com, arg1);
+			return;
+		}
+		
 //		mainProgram.do_alert("Invoked command"+com, 1000);
-		if (com == List.SELECT_COMMAND) {
+		else if (com == List.SELECT_COMMAND) {
+			List option = (List) arg1;
 			if (option.getSelectedIndex() == 0){
 				verifyVisual();
 			}else if (option.getSelectedIndex() == 1){
@@ -253,6 +280,8 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 			}else if (option.getSelectedIndex() == 3){
 				verifyMadLib();
 			}
+		}else {
+			mainProgram.commandAction(com, arg1);
 		}
 	}
 
@@ -292,51 +321,57 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 			
 //			byte recorded [] = verifier.finishCapturing();
 			send (START);
-			String done = readLine();
+			String done = readLine(7000);
 			if(done.equals(DONE)){
 				
 				LogService.info(this, "finishing audio capture");
 //				mainProgram.do_alert("finishing capture", Alert.FOREVER);
 				byte recorded [] = verifier.finishCapturing();
+				
 				progress.append("Done.\n");
-				progress.append("decoding "+recorded.length+ " bytes...\n");
+				progress.deleteAll();
+//				progress.append("Decoding ... "+recorded.length+ " bytes...\n");
+				progress.append("Decoding ... \n");
 				LogService.info(this, "captured "+recorded.length+ " ...\n");
 				
-				ByteArrayInputStream recordedStream = new ByteArrayInputStream(recorded);
-				Player player;
-				try {
-					player = Manager.createPlayer(recordedStream, "audio/x-wav");
-
-					player.prefetch(); 
-					player.realize();
-					
-					
-					VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
-					   if(vc != null) {
-						   LogService.info(this, "volume level: "+vc.getLevel());
-					      vc.setLevel(45);
-					   }
-					   player.start(); 
-//					recordScreen.deleteAll();
-//					recordScreen.setTitle("Playing recording ");
-//					recordScreen.append("This is the recorded sequence.");
-//					recordScreen.removeCommand(playRec);
-
-				} catch (Exception e) {
-					LogService.error(this, "could not play recording", e);
-				}
-				try {
-					Thread.sleep(5000);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				long begin = System.currentTimeMillis();
-				byte decoded [] = verifier.decodeAudio(recorded);
-				long end = System.currentTimeMillis();
-				LogService.info(this, "decoding took "+(end-begin) + "ms");
-				progress.append("Done. \n");
-				handleOOBMessage(J2MEAudioChannel.AUDIO_CHANNEL, decoded);
+//				ByteArrayInputStream recordedStream = new ByteArrayInputStream(recorded);
+//				Player player;
+//				try {
+//					player = Manager.createPlayer(recordedStream, "audio/x-wav");
+//
+//					player.prefetch(); 
+//					player.realize();
+//					
+//					
+//					VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
+//					   if(vc != null) {
+//						   LogService.info(this, "volume level: "+vc.getLevel());
+//					      vc.setLevel(45);
+//					   }
+//					   player.start(); 
+////					recordScreen.deleteAll();
+////					recordScreen.setTitle("Playing recording ");
+////					recordScreen.append("This is the recorded sequence.");
+////					recordScreen.removeCommand(playRec);
+//
+//				} catch (Exception e) {
+//					LogService.error(this, "could not play recording", e);
+//				}
+//				try {
+//					Thread.sleep(5000);
+//				} catch (InterruptedException e1) {
+//					// TODO Auto-generated catch block
+//					e1.printStackTrace();
+//				}
+//				long begin = System.currentTimeMillis();
+				verifier.decodeAudio(recorded);
+//				long end = System.currentTimeMillis();
+//				LogService.info(this, "decoding took "+(end-begin) + "ms");
+//				progress.append("Done. \n");
+//				handleOOBMessage(J2MEAudioChannel.AUDIO_CHANNEL, decoded);
+			}else {
+				verifier.finishCapturing();
+				LogService.warn(this, "Forced finish recording");
 			}
 		}
 	}
@@ -441,23 +476,26 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 
 		/** not as initiator */
 		public boolean verify(){
-			Form verification = new Form ("OpenUAT");
-			verification.append("Verifying the key transfer");
-			Image img = null;
-			try {
-				img = Image.createImage("/running.png");
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			verification.append(img);
-			verification.addCommand(mainProgram.exit);
-			verification.addCommand(mainProgram.log);
-			verification.setCommandListener(mainProgram);
-			Display.getDisplay(mainProgram).setCurrent(verification);
-			
+
 			String verify = readLine();
 			if (verify.equals(VERIFY)){
+				
+				
+				Form verification = new Form ("OpenUAT");
+				verification.append("Verifying the key transfer");
+				Image img = null;
+				try {
+					img = Image.createImage("/running.png");
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				verification.append(img);
+				verification.addCommand(mainProgram.exit);
+				verification.addCommand(mainProgram.log);
+				verification.setCommandListener(mainProgram);
+				Display.getDisplay(mainProgram).setCurrent(verification);
+				
 				String method = readLine();
 				LogService.info(this, method);
 				byte[] hash = null;
@@ -518,14 +556,19 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 							VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
 							   if(vc != null) {
 								   LogService.info(this, "volume level: "+vc.getLevel());
-							      vc.setLevel(45);
+							      vc.setLevel(mainProgram.volume);
 							   }
 
 							String start = readLine();
 							if(start.equals(START)){
-								verification.append("Sending data...\n");
+								verification.append("\nSending data...\n");
 								player.start();
+//								int duration = (int) (10000 * (sound.length/(double)(WavCodec.bitsPerSample*WavCodec.sampleRate)));
+//								
+//								LogService.info(this, "sound duration: "+duration);
+								
 								Thread.sleep(3200);
+								
 								send(DONE);
 								verification.append("Finished sending.\n");
 								String outcome = readLine();
@@ -550,14 +593,7 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 						String text = madLib.GenerateMadLib(Hash.doubleSHA256(authKey, false), 0, 5);
 						Form outcome = new Form("OpenUAT");
 						outcome.append("Verify the following sentence:\n");
-						Image img_madlib = null;
-						try {
-							img_madlib = Image.createImage("/madlib_sm.png");
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						outcome.append(img_madlib);
+						outcome.append(mainProgram.madlib);
 						outcome.append(text);
 						LogService.info(this, ": "+text);
 						outcome.addCommand(mainProgram.log);
@@ -588,11 +624,7 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 				}else if (method.equals(SLOWCODEC)){
 					send (ACK);
 					Form outcome = new Form("OpenUAT");
-					try {
-						Image slowcodec = Image.createImage("/slowcodec_sm.png");
-						outcome.append(slowcodec);
-					} catch (IOException e2) {
-					}
+					outcome.append(mainProgram.slowcodec);
 					outcome.append("Listen to the tune and compare\n");
 					outcome.addCommand(mainProgram.log);
 					outcome.addCommand(mainProgram.exit);
@@ -607,12 +639,20 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 					}
 					String result = readLine();
 
+					while (result != null){
 					LogService.info(this, result);
-					if(result.equals(SUCCESS)){
-						LogService.info(this, "returning true");
-						return true;
-					}else{
-						return false;
+						if(result.equals(SUCCESS)){
+							LogService.info(this, "returning true");
+							return true;
+						}else if (result.equals(REPLAY)){
+							slowCodec(authKey);
+							result = readLine();
+						}
+						else if (result.equals(FAILURE)){
+							return false;
+						}else {
+							break;
+						}
 					}
 				}
 			}
@@ -639,7 +679,7 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 			VolumeControl  vc = (VolumeControl) p.getControl("VolumeControl");
 			   if(vc != null) {
 				   LogService.info(this, "volume level: "+vc.getLevel());
-			      vc.setLevel(45);
+			      vc.setLevel(mainProgram.volume);
 			   }
 			p.start(); 
 		} catch (Exception e) { 
@@ -732,29 +772,30 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 				String text = madLib.GenerateMadLib(Hash.doubleSHA256(authKey, false), 0, 5);
 				Form outcome = new Form("OpenUAT");
 				outcome.append("Verify the following sentence:\n");
-				Image img_madlib = null;
-				try {
-					img_madlib = Image.createImage("/madlib_sm.png");
-				} catch (IOException e) {}
-				
-				outcome.append(img_madlib);
+				outcome.append(mainProgram.madlib);
 				outcome.append(text);
 				
-				ImageItem yes_btn = new ImageItem("YES", yes,ImageItem.LAYOUT_CENTER, "");
-				outcome.append(yes_btn);
+				ImageItem yes_btn = new ImageItem("YES", mainProgram.buttonok,ImageItem.LAYOUT_CENTER, "");
+//				StringItem yes_btn = new StringItem(" YES ", null, Item.BUTTON);
 				
-				ImageItem no_btn = new ImageItem("NO", no, ImageItem.LAYOUT_CENTER, "");
-				outcome.append(no_btn);
-				no_btn.addCommand(failure);
-				yes_btn.addCommand(successCmd);
+				
+				ImageItem no_btn = new ImageItem("NO", mainProgram.buttoncancel, ImageItem.LAYOUT_CENTER, "");
+//				StringItem no_btn = new StringItem("  NO ", null, Item.BUTTON);
+				no_btn.addCommand(mainProgram.failureCmd);
+				yes_btn.addCommand(mainProgram.successCmd);
 				no_btn.setItemCommandListener(this);
 				yes_btn.setItemCommandListener(this);
+				
+
+				
+				outcome.append(no_btn);
+				outcome.append(yes_btn);
 				
 				LogService.info(this, ": "+text);
 				outcome.addCommand(mainProgram.log);
 				outcome.addCommand(mainProgram.exit);
-				outcome.addCommand(successCmd);
-				outcome.addCommand(failure);
+//				outcome.addCommand(successCmd);
+//				outcome.addCommand(failure);
 
 				outcome.setCommandListener(this);
 				LogService.info(this, "set comands "+text);
@@ -776,31 +817,33 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 		//System.out.println("response "+response);
 		if (response.equals(ACK)){
 
-			
-			
 			LogService.info(this, "slowcodec for key");
 			
+			outcome.append(mainProgram.slowcodec);
+			outcome.append("\nListen to the tune and compare.\nIs it the same?\n");
+			ImageItem yes_btn = new ImageItem("YES", mainProgram.buttonok,ImageItem.LAYOUT_CENTER, "");
+//			StringItem yes_btn = new StringItem("YES", null, Item.BUTTON);
 			
-			try {
-				Image slowcodec = Image.createImage("/slowcodec_sm.png");
-				outcome.append(slowcodec);
-			} catch (IOException e2) {
-			}
-			outcome.append("Listen to the tune and compare\n");
-			ImageItem yes_btn = new ImageItem("YES", yes,ImageItem.LAYOUT_CENTER, "");
-			outcome.append(yes_btn);
 			
-			ImageItem no_btn = new ImageItem("NO", no, ImageItem.LAYOUT_CENTER, "");
-			outcome.append(no_btn);
-			no_btn.addCommand(failure);
-			yes_btn.addCommand(successCmd);
+			ImageItem no_btn = new ImageItem("NO", mainProgram.buttoncancel, ImageItem.LAYOUT_CENTER, "");
+//			StringItem no_btn = new StringItem("NO", null, Item.BUTTON);
+			no_btn.addCommand(mainProgram.failureCmd);
+			yes_btn.addCommand(mainProgram.successCmd);
 			no_btn.setItemCommandListener(this);
 			yes_btn.setItemCommandListener(this);
+
+			outcome.append(yes_btn);
+			outcome.append(no_btn);
+			
+//			StringItem replay = new StringItem("Replay", null, Item.BUTTON);
+//			replay.addCommand(new Command("Replay", Command.ITEM, 1));
+//			replay.setItemCommandListener(this);
+//			outcome.append(replay);
 			
 			outcome.addCommand(mainProgram.log);
 			outcome.addCommand(mainProgram.exit);
-			outcome.addCommand(successCmd);
-			outcome.addCommand(failure);
+			outcome.addCommand(mainProgram.successCmd);
+			outcome.addCommand(mainProgram.failureCmd);
 
 			outcome.setCommandListener(this);
 			mainProgram.display.setCurrent(outcome);
@@ -820,14 +863,16 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 
 
 	public void commandAction(Command com, Item arg1) {
-		if (com == successCmd){
+		if (com == mainProgram.successCmd){
 			send(SUCCESS);
 			mainProgram.informSuccess(true);
 			return;
-		}else if (com == failure){
+		}else if (com == mainProgram.failureCmd){
 			send(FAILURE);
 			mainProgram.informSuccess(false);
 			return;
+		}else if (com.getLabel().equals("Replay")){
+			
 		}
 		
 	}

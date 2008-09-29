@@ -156,8 +156,10 @@ public static void addTrack(Sequence s, int instrument, int tempo,
     // These values persist and apply to all notes 'till changed
     int notelength = 16; // default to quarter notes
     int velocity = 64;   // default to middle volume
+    
     int basekey = 60;    // 60 is middle C. Adjusted up and down by octave
     boolean sustain = false;   // is the sustain pedal depressed?
+    
     int numnotes = 0;    // How many notes in current chord?
 
     while(n < notes.length) {
@@ -181,12 +183,12 @@ public static void addTrack(Sequence s, int instrument, int tempo,
             }
         }
         else if (c == 's') {
-            sustain = !sustain;
-            // Change the sustain setting for channel 0
-            ShortMessage m = new ShortMessage( );
-            m.setMessage(ShortMessage.CONTROL_CHANGE, 0,
-                         DAMPER_PEDAL, sustain?DAMPER_ON:DAMPER_OFF);
-            track.add(new MidiEvent(m, t));
+//            sustain = !sustain;
+//            // Change the sustain setting for channel 0
+//            ShortMessage m = new ShortMessage( );
+//            m.setMessage(ShortMessage.CONTROL_CHANGE, 0,
+//                         DAMPER_PEDAL, sustain?DAMPER_ON:DAMPER_OFF);
+//            track.add(new MidiEvent(m, t));
         }
         else if (c >= 'A' && c <= 'G') {
             int key = basekey + offsets[c - 'A'];
@@ -230,11 +232,27 @@ public static void addNote(Track track, int startTick,
                            int tickLength, int key, int velocity)
     throws InvalidMidiDataException
 {
+//	System.out.println(startTick + " : "+ tickLength + " : " + key + " : "+ velocity);
     ShortMessage on = new ShortMessage( );
     on.setMessage(ShortMessage.NOTE_ON,  0, key, velocity);
     ShortMessage off = new ShortMessage( );
     off.setMessage(ShortMessage.NOTE_OFF, 0, key, velocity);
     track.add(new MidiEvent(on, startTick));
     track.add(new MidiEvent(off, startTick + tickLength));
+}
+public static void main(String[] args) {
+	try {
+//		PlayerPiano(" /2 + B - Fb - Ab + Ab + D - E + Fb - . + E B");
+		PlayerPiano(" /2 + B - Fb - Ab + Ab + D - E + Fb - . + E B");
+	} catch (MidiUnavailableException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	} catch (InvalidMidiDataException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	} catch (IOException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
 }
 }

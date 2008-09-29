@@ -255,7 +255,8 @@
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
 			<exclude name="${java5-files}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files}" />
+			<exclude name="${midp-only-files}" /> 
+			
 		</javac>
 		
 		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
@@ -344,7 +345,7 @@
 			<fileset dir="${bin-BC-x509}" />
 			<fileset dir="${bin-BC-openssl}" />
 			<fileset dir="${bin-apache-bzip2}" />
-			<fileset dir="resources" includes="printer.png"/>
+			<fileset dir="resources" includes="*.png"/>
 			<fileset dir="${src}" includes="*.properties" />
 			<!-- Merge library jars into final jar file -->
 			<zipgroupfileset refid="lib.bundleinclude-jars" />
@@ -466,10 +467,6 @@
 
 				<midlet class="org.openuat.apps.j2me.ManualAuthentication" name="Manual authentication demo"/>-->
 				
-				<midlet class="org.openuat.apps.j2me.VisualOpenUATmidlet" name="Visual midlet"/>
-				<midlet class="org.openuat.apps.j2me.AudioOpenUATmidlet" name="Audio midlet"/>
-				<midlet class="org.openuat.apps.j2me.SlowCodecOpenUATmidlet" name="SlowCodecOpenUATmidlet"/>
-				<midlet class="org.openuat.apps.j2me.MadLibOpenUATmidlet" name="MADlib midlet"/>
 				<midlet class="org.openuat.apps.j2me.OpenUATmidlet" name="OpenUAT Toolkit"/>
 	
 				<variables includeAntProperties="true">

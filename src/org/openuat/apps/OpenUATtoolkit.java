@@ -9,12 +9,15 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 
 import javax.bluetooth.UUID;
+import javax.microedition.lcdui.Alert;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
+import javax.swing.border.Border;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
@@ -32,7 +35,6 @@ import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
-import sun.reflect.ReflectionFactory.GetReflectionFactoryAction;
 
 public class OpenUATtoolkit {
 	/** verification methods */
@@ -63,6 +65,8 @@ public class OpenUATtoolkit {
 	/** informs that verification was successful */
 	public static final String SUCCESS = "SUCCESS";
 
+
+	
 	private static Logger logger = Logger.getLogger("org.openuat.apps.OpenUATtoolkit");
 
 	//#if cfg.includeTestCode 
@@ -71,16 +75,21 @@ public class OpenUATtoolkit {
 	org.openuat.authentication.AuthenticationProgressHandler,
 	org.openuat.authentication.KeyManager.VerificationHandler {
 		
+		//last authenticated key
+		private byte[] authKey;
+		
 		JLabel status ;
 		JPanel progress ;
-		
+		//so we know what to refresh
+		JFrame frame;
 		private boolean performMirrorAttack, requestSensorStream;
 
-		TempHandler(boolean attack, boolean requestStream, JLabel status, JPanel pane) {
+		TempHandler(boolean attack, boolean requestStream, JLabel status, JPanel pane, JFrame frame) {
 			this.performMirrorAttack = attack;
 			this.requestSensorStream = requestStream;
 			this.status = status;
 			this.progress = pane;
+			this.frame = frame;
 		}
 
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
@@ -90,12 +99,15 @@ public class OpenUATtoolkit {
 
 		public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 			System.out.println("DH with " + remote + " progress: " + cur + "/" + max + ": " + msg);
-			status.setText("DH with " + remote + " progress: " + cur + "/" + max + ": " + msg);
+			status.setText("Key exchange progress: " + cur + "/" + max + ": " + msg);
 		}
 
 		public boolean AuthenticationStarted(Object sender, Object remote) {
 			System.out.println("DH with " + remote + " started");
-			status.setText("DH with " + remote + " started") ; 
+			status.setText("Starting key exchange...") ; 
+			progress.removeAll();
+			frame.repaint();
+			
 			return true;
 		}
 		private boolean send(String message,  RemoteConnection connectionToRemote) {
@@ -123,12 +135,13 @@ public class OpenUATtoolkit {
 		}
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 			System.out.println("DH with " + remote + " SUCCESS");
-			status.setText("DH with " + remote + " SUCCESS");
+			status.setText("Starting key verification");
+			
 			Object[] res = (Object[]) result;
 			// remember the secret key shared with the other device
 			byte[] sharedKey = (byte[]) res[0];
 			// and extract the shared authentication key for phase 2
-			byte[] authKey = (byte[]) res[1];
+			authKey = (byte[]) res[1];
 			System.out.println("Shared session key is now '" + new String(Hex.encodeHex(sharedKey)) + 
 					"' with length " + sharedKey.length + 
 					", shared authentication key is now '" + new String(Hex.encodeHex(authKey)) + 
@@ -155,8 +168,7 @@ public class OpenUATtoolkit {
 					
 					String start = readLine(connectionToRemote);
 					if(start.equals(START)){
-						status.setText("Take a picture of the code");
-
+						status.setText("Take a picture of the code!");
 
 //						System.out.println("Please choose the desired verification method: \n\t[1] visual \n\t[2] audio \n\t[3] slowcodec  \n\t[4] madlib");
 //						Scanner sc = new Scanner(System.in);
@@ -170,7 +182,7 @@ public class OpenUATtoolkit {
 						VisualChannel channel = new VisualChannel();
 						channel.setPane(progress);
 						channel.transmit(toSend.getBytes());
-
+						frame.repaint();
 						String success = readLine(connectionToRemote);
 
 						readSuccess(success);
@@ -190,10 +202,10 @@ public class OpenUATtoolkit {
 						System.arraycopy(toSend, 0, padded, 0, toSend.length);
 					System.out.println("hash: -------" + toSend);
 					
-					java.net.URL imageURL = getClass().getResource("/musicstore.png");
+					java.net.URL imageURL = getClass().getResource("/audio_bg.png");
 					ImageIcon icon = new ImageIcon(imageURL);
 					progress.add(new JLabel("", icon, JLabel.CENTER));
-					
+					frame.repaint();
 					byte [] sound = AudioUtils.encodeFileToWav(new ByteArrayInputStream(padded));
 					String start = readLine(connectionToRemote);
 					if(start.equals(START)){
@@ -206,19 +218,21 @@ public class OpenUATtoolkit {
 					}
 					
 					} catch (Exception ioex) {
-					ioex.printStackTrace();
+						ioex.printStackTrace();
 					}
 
 				}else if (method.equals(MADLIB)){
 					send (ACK, connectionToRemote);
-					status.setText("Compare the sentences");
+					progress.removeAll();
 					MadLib madLib = new MadLib();
 					try {
 					String text = madLib.GenerateMadLib(hash, 0, 5);
 					System.out.println(text);
-					java.net.URL imageURL = getClass().getResource("/madlib_sm.png");
+					java.net.URL imageURL = getClass().getResource("/madlib_bg.png");
 					ImageIcon icon = new ImageIcon(imageURL);
-					progress.add(new JLabel(text, icon, JLabel.CENTER));
+//					progress.add(new JLabel(text, icon, JLabel.CENTER));
+					status.setText("Sentence: \n"+text);
+					frame.repaint();
 					} catch (UnsupportedEncodingException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -228,13 +242,14 @@ public class OpenUATtoolkit {
 					
 					readSuccess(done);
 				}else if (method.equals(SLOWCODEC)){
+					status.setText("Listen to the tune.");
 					send (ACK, connectionToRemote);
 					String done = readLine(connectionToRemote);
-					
-					java.net.URL imageURL = getClass().getResource("/slowcodec.png");
+					progress.removeAll();
+					java.net.URL imageURL = getClass().getResource("/slowcodec_bg.png");
 					ImageIcon icon = new ImageIcon(imageURL);
-					progress.add(new JLabel("", icon, JLabel.CENTER));
-					
+//					progress.add(new JLabel("", icon, JLabel.CENTER));
+					frame.repaint();
 					if(done.equals(DONE))
 					try{
 						String score = PlayerPiano.MakeInput(hash);
@@ -252,22 +267,28 @@ public class OpenUATtoolkit {
 		}
 
 		private void readSuccess(String success) {
+			status.setText("");
+			progress.removeAll();
+			frame.repaint();
+			
 			if(success.equals(SUCCESS)){
-				progress.removeAll();
 				
-				java.net.URL imageURL = getClass().getResource("/secure.png");
-				ImageIcon icon = new ImageIcon(imageURL);
-				progress.add(new JLabel("Authentication was successful.", icon, JLabel.CENTER));
-				
+//				java.net.URL imageURL = getClass().getResource("/secure_sm.png");
+//				ImageIcon icon = new ImageIcon(imageURL);
+//				progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
+				status.setText("Congratulations! Authentication was successful.");
 				System.out.println("success!!");
 			}else {
 				System.out.println("failure!!");
-				progress.removeAll();
-				java.net.URL imageURL = getClass().getResource("/error.png");
-				ImageIcon icon = new ImageIcon(imageURL);
-				progress.add(new JLabel("Authentication failed.", icon, JLabel.CENTER));
 				
+//				java.net.URL imageURL = getClass().getResource("/error_bg.png");
+//				ImageIcon icon = new ImageIcon(imageURL);
+//				progress.add(new JLabel("Authentication failed.", icon, JLabel.CENTER));
+				status.setText("Error! Authentication failed.");
 			}
+			progress.repaint();
+			frame.repaint();
+			
 		}
 
 //		byte[] hash;
@@ -367,11 +388,26 @@ public class OpenUATtoolkit {
 				System.exit(0);
 		}
 	}
-public OpenUATtoolkit() {
-	initBluetoothServer();
+	JLabel status = new JLabel("");
+	JPanel progress = new JPanel();
+	
+	JFrame frame;
 
-	initUI();
-}
+	public OpenUATtoolkit() {
+		initUI();
+		initBluetoothServer();
+	
+
+//		System.out.println("Please choose the desired verification method: \n\t[1] visual \n\t[2] audio \n\t[3] slowcodec  \n\t[4] madlib");
+//		Scanner sc = new Scanner(System.in);
+//		int option = sc.nextInt();
+//		if(option == 1){
+//		VisualChannel channel = new VisualChannel();
+//		channel.setPane(progress);
+//		channel.transmit("hello".getBytes());
+
+//		channel.close();
+	}
 	
 
 
@@ -391,7 +427,7 @@ public OpenUATtoolkit() {
 		try {
 			BluetoothRFCOMMServer rfcommServer = new BluetoothRFCOMMServer(null, new UUID(0x0001), "OpenUAT- Print document", 
 					-1, true, false);
-			rfcommServer.addAuthenticationProgressHandler(new TempHandler(false, false, status, progress));
+			rfcommServer.addAuthenticationProgressHandler(new TempHandler(false, false, status, progress, frame));
 			rfcommServer.start();
 			System.out.println("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
@@ -400,27 +436,22 @@ public OpenUATtoolkit() {
 		}
 	}
 
-
-	JLabel status = new JLabel("");
-	JPanel progress = new JPanel();
-	
-	JFrame frame;
-
 	private  void initUI() {
 		 frame = new JFrame("OpenUAT Toolkit");
-		frame.setSize(400, 400);
+		frame.setSize(600, 600);
 //		
 		JPanel pane = new JPanel();
 		pane.setLayout(new BoxLayout(pane, BoxLayout.Y_AXIS));
 
 		
 		
-		java.net.URL imageURL = getClass().getResource("/printer.png");
+		java.net.URL imageURL = getClass().getResource("/printer_bg.png");
 
 		ImageIcon icon = new ImageIcon(imageURL);
 		pane.add(new JLabel("Print service started", icon, JLabel.CENTER));
 		pane.add(status);
 		pane.add(progress);
+		pane.setBorder(BorderFactory.createRaisedBevelBorder());
 		frame.setContentPane(pane);
 		frame.setVisible(true);
 	}

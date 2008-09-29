@@ -18,6 +18,7 @@ package org.openuat.channel.oob;
 
 import javax.microedition.midlet.MIDlet;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
@@ -28,43 +29,43 @@ import com.swetake.util.QRCanvas;
 import com.swetake.util.QRcodeGen;
 
 /**
- * <p>The actual reader application {@link MIDlet}.</p>
- *
+ * <p>
+ * The actual reader application {@link MIDlet}.
+ * </p>
+ * 
  * @author Sean Owen (srowen@google.com)
  */
-public class VisualChannel implements OOBChannel{
+public class VisualChannel implements OOBChannel {
 
-	
 	private static JFrame frame;
-	
+
 	Logger logger = Logger.getLogger("");
 	OOBMessageHandler handler;
-
 
 	public VisualChannel() {
 
 	}
 
-	
-
 	public void close() {
-		frame.setVisible(false);
-		frame.dispose();
+//		frame.setVisible(false);
+//		frame.dispose();
+		pane.removeAll();
+		pane.repaint();
 	}
 
-
-//
-//	public void handleDecodedText(Result theResult) {
-////		destroyApp(true);
-//		stop();
-//		handler.handleOOBMessage(OOBChannel.VIDEO_CHANNEL, theResult.getText().getBytes());
-//		
-//		
-//		
-//	}
+	//
+	// public void handleDecodedText(Result theResult) {
+	// // destroyApp(true);
+	// stop();
+	// handler.handleOOBMessage(OOBChannel.VIDEO_CHANNEL,
+	// theResult.getText().getBytes());
+	//		
+	//		
+	//		
+	// }
 
 	public void capture() {
-		//not yet implemented
+		// not yet implemented
 
 	}
 
@@ -72,50 +73,53 @@ public class VisualChannel implements OOBChannel{
 		this.handler = handler;
 
 	}
-	//put this in a visual channel class
-	private static void generateAndShowQRCode(byte [] content, JPanel panel) {
-		
+
+	// put this in a visual channel class
+	private static QRCanvas generateAndShowQRCode(byte[] content, JPanel panel) {
+		QRCanvas canvas = null;
 		int version = 0;
-		
-		if (content.length <15){
+
+		if (content.length < 15) {
 			version = 1;
-		}else if (content.length <27){
+		} else if (content.length < 27) {
 			version = 2;
-		}else if (content.length <43){
+		} else if (content.length < 43) {
 			version = 3;
-		}else{
+		} else {
 			System.out.println("message length is too big - qr code generator");
 		}
 
-		QRcodeGen x=new QRcodeGen();
+		QRcodeGen x = new QRcodeGen();
 		x.setQrcodeErrorCorrect('M');
 		x.setQrcodeEncodeMode('B');
 		x.setQrcodeVersion(version);
 
-		System.out.println("hash length: "+content.length);
+		System.out.println("hash length: " + content.length);
 
-		if (content.length>0 && content.length <120){
+		if (content.length > 0 && content.length < 120) {
 			boolean[][] s = x.calQrcode(content);
-
-			QRCanvas canvas =  new QRCanvas(s);
-//			canvas.setSize(1000, 1000);
+//			System.out.println("calculated qr code");
+			canvas = new QRCanvas(s);
+			canvas.setSize(300, 300);
 			canvas.setBackground(java.awt.Color.white);
-
-			panel.add(canvas);
 			canvas.repaint();
+			panel.add(canvas);
+
+			
 		}
 		panel.repaint();
+		return canvas;
 	}
-	
+
 	JPanel pane;
+
 	public void transmit(byte[] message) {
 		generateAndShowQRCode(message, pane);
-		
+
 	}
-	
+
 	public void setPane(JPanel pane) {
 		this.pane = pane;
 	}
-	
 
 }
