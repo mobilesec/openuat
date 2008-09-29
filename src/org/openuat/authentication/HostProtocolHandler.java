@@ -1034,9 +1034,16 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 				logger.info("Closing channel that has been used for key agreement");
             	shutdownConnectionCleanly();
             }
+
+            /* This seems necessary for J2ME - maybe finally{} handling is not 
+             * implemented correctly? This issue sucks big time, because it
+             * cost us many nights to track down.
+             */
+            if (timer != null)
+            	timer.stop();
             
-            	logger.warn("Key transfers took " + totalTransferTime + 
-            			"ms, crypto took " + totalCryptoTime + "ms");
+           	logger.warn("Key transfers took " + totalTransferTime + 
+           			"ms, crypto took " + totalCryptoTime + "ms");
         }
         catch (InternalApplicationException e)
         {

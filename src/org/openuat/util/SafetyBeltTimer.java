@@ -75,12 +75,14 @@ public class SafetyBeltTimer implements Runnable {
 				logger.debug("Safety belt timer reset to " + msCountdown + "ms");
 			}
 		}
-		if (timeout) {
+		/* Need to check gracefulStop too - it seems that J2ME implementations
+		 * don't necessarily support thread interruption and thus timeout might
+		 * be set to true even if stop() was called!. */
+		if (timeout && !gracefulStop) {
 			if (logger.isDebugEnabled())
 				logger.debug("Safety belt timer triggered");
 			if (abortStream != null) {
-				if (logger.isDebugEnabled())
-					logger.debug("Forcefully closing input stream to abort reads: " + abortStream);
+				logger.warn("Forcefully closing input stream to abort reads: " + abortStream);
 				try {
 					abortStream.close();
 				} catch (IOException e) {

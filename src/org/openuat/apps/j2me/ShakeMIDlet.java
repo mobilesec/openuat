@@ -52,7 +52,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	private final static String IMAGE_GOOD = "/button_ok.png";
 	private final static String IMAGE_BAD = "/button_cancel.png";
 	private final static String IMAGE_RETRY = "/cache.png";
-	
+
 	/** Code for the Ubicomp 2007 Demo. Will be ignored if the preprocessor defines are not set. */
 	private static boolean FIXED_DEMO_MODE = false;
 	private final static String FIXED_DEMO_UUID = "b76a37e5e5404bf09c2a1ae3159a02d8";
@@ -79,15 +79,14 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
-	public final static float CoherenceThresholdSucceed = 0.45f;
+	public final static float CoherenceThresholdSucceed = 0.50f;
 	public final static float CoherenceThresholdFailHard = 0.15f;
 	
 	Form mainForm;
 	
 	Image good, bad, retry;
 	ImageItem goodOrBad; 
-	StringItem status, lastValue;
-	String previousStatus = "";
+	StringItem status, /*moving,*/ lastValue;
 	
 	Gauge lastMatch;
 	
@@ -125,16 +124,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
         }
 		logger.configure(GlobalProperties.getInstance());*/
 
-//		if (!FIXED_DEMO_MODE) {
+		if (!FIXED_DEMO_MODE) {
 			net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
 			logForm = new LogForm();
 			logForm.setDisplay(display);
 			FormAppender appender = new FormAppender(logForm);
 			logBackend.addAppender(appender);
 			//logBackend.addAppender(new RecordStoreAppender());
-			logBackend.setLogLevel(Level.WARN);
+			logBackend.setLogLevel(Level.INFO);
 			logger.info("Microlog initialized");
-//		}
+		}
 		
 		// need to get the player and volumeControl objects
 		try {
@@ -155,15 +154,20 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		mainForm = new Form("Shake Me");
 		exit = new Command("Exit", Command.EXIT, 1);
 		mainForm.addCommand(exit);
-//		if (!FIXED_DEMO_MODE) {
+		if (!FIXED_DEMO_MODE) {
 			log = new Command("Log", Command.ITEM, 2);
 			mainForm.addCommand(log);
-//		}
+		}
 		mainForm.setCommandListener(this);
 
 		status = new StringItem("Status:", "initializing");
 		status.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_TOP);
 		mainForm.append(status);
+
+/*		moving = new StringItem("moving:", "initializing");
+		moving.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_TOP);
+		mainForm.append(moving);*/
+		
 		try {
 			good = Image.createImage(IMAGE_GOOD);
 			bad = Image.createImage(IMAGE_BAD);
@@ -173,7 +177,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 		goodOrBad = new ImageItem(null, bad, Item.LAYOUT_DEFAULT, null);
 		mainForm.append(goodOrBad);
-		
+
 		lastMatch = new Gauge("Last match", false, 99, 0);
 		lastMatch.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_AFTER);
 		mainForm.append(lastMatch);
@@ -251,14 +255,23 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				bt.addProtocolCommandHandler(Command_Debug_Streaming, 
 						new TestBTStreamingCommandHandler());
 				protocol.startListening();
-				logger.warn("Opened Bluetooth RFCOMM service at " + bt.getRegisteredServiceURL());
+				logger.info("Opened Bluetooth RFCOMM service at " + bt.getRegisteredServiceURL());
 			}
 			else {
 				// hard-code a simple RFCOMM server that stays connected
 				// ATTENTION! setting the channel number will make startListening() crash
 				rfcommServer = new BluetoothRFCOMMServer(null, /*new Integer(FIXED_DEMO_CHANNELNUM),*/ 
-						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service", 
-						ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout, true, false);
+						new UUID(FIXED_DEMO_UUID, false), "Shake Test Service",
+						// DAMNIT! this was the problem all along why demo mode no longer worked well
+						// TODO: find out why!
+						// the changes to HostProtocolHandler (calling timer.stop() before finally) and
+						// to SafetyBeltTimer somehow improved things, but it's still not stable
+						// works better without a timer at all - why, oh why???
+						-1, /*ShakeWellBeforeUseProtocol1.KeyAgreementProtocolTimeout,*/ 
+						true, false);
+				// this is an additional command handler for streaming the acceleration values
+				rfcommServer.addProtocolCommandHandler(Command_Debug_Streaming, 
+						new TestBTStreamingCommandHandler());
 				protocol = new ShakeAuthenticator(rfcommServer, this);
 				protocol.startListening();
 				logger.info("Finished starting SDP service for demo mode at " + rfcommServer.getRegisteredServiceURL());
@@ -290,7 +303,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		 * [-1;1] but [-1024;1024]. The variance threshold is computed over
 		 * THIS DEPENDS HEAVILY ON THE WINDOW SIZE SET ABOVE IN THE CONSTRUCTOR
 		 */
-		aggregator.setActiveVarianceThreshold(5000*4
+		aggregator.setActiveVarianceThreshold(7500*4
 				/*(ShakeWellBeforeUseParameters.activityVarianceThreshold*
 				ShakeWellBeforeUseParameters.activityVarianceThreshold) *
 				(SymbianTCPAccelerometerReader.VALUE_RANGE*SymbianTCPAccelerometerReader.VALUE_RANGE)*/);
@@ -362,7 +375,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					FIXED_DEMO_MODE, // but if we are in demo mode, not even close on shaking-auth-error for quicker retries
 					true, // we support multiple authentications 
 					CoherenceThresholdSucceed,
-					CoherenceThresholdFailHard,
+					CoherenceThresholdFailHard, 
 					32,
 					false); // no JSSE
 			this.outer = outer;
@@ -380,7 +393,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			
 			goodOrBad.setImage(failHard ? bad : retry);
 			status.setText(statusText);
-			previousStatus = statusText;
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
 			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + 
 					Float.toString(CoherenceThresholdSucceed*100) + "/" + 
@@ -391,7 +403,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId, String optionalParameterFromRemote, byte[] sharedSessionKey) {
 			goodOrBad.setImage(good);
 			status.setText("SUCCESS");
-			previousStatus = "SUCCESS";
 			lastMatch.setValue((int) (getLastCoherenceMean() * 100));
 			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + 
 					Float.toString(CoherenceThresholdSucceed*100) + "/" + 
@@ -417,8 +428,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		 * verification thread.
 		 */
 		protected void startVerificationAsync(byte[] sharedAuthenticationKey, String optionalParam, RemoteConnection remote) {
-			if (logger.isDebugEnabled())
-				logger.debug("Successful key agreement with " + remote.getRemoteName() + 
+			logger.info("Successful key agreement with " + remote.getRemoteName() + 
 					", auth key is " + new String(Hex.encodeHex(sharedAuthenticationKey)));
 			status.setText("key agreed");
 			// finished DH and connected to the remote
@@ -478,8 +488,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public void addSegment(int[] segment, int startIndex) {
 			// announce shaking complete
 			status.setText("verifying");
-			// and be sure to overwrite the status when we don't reach a conclusion
-			previousStatus = "UNKNOWN - RETRY";
 			try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
@@ -501,13 +509,18 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					logger.error("Could not push segment to debug stream");
 				}
 			}
+			
+			logger.info("received local segment, now starting verification");
 
 			// and fire off the normal protocol
 			super.addSegment(segment, startIndex);
-			// and try to verify with all hosts in that state
-			RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
-			// let the channels be opened in the background threads instead of doing it here
-			startConcurrentVerifications(hostsWaitingForVerification, true);
+			
+			if (!FIXED_DEMO_MODE) {
+				// and try to verify with all hosts in that state
+				RemoteConnection[] hostsWaitingForVerification = keyManager.getHostsInState(KeyManager.STATE_VERIFICATION);
+				// let the channels be opened in the background threads instead of doing it here
+				startConcurrentVerifications(hostsWaitingForVerification, true);
+			}
 		}
 
 		//@Override
@@ -601,7 +614,8 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					conn = new BluetoothRFCOMMChannel(serviceURL);
 					conn.open();
 					// ok, connected - get the host into verification mode
-					LineReaderWriter.println(conn.getOutputStream(), ShakeWellBeforeUseProtocol1.MotionVerificationCommand);
+					LineReaderWriter.println(conn.getOutputStream(), 
+							ShakeWellBeforeUseProtocol1.MotionVerificationCommand);
 					// and consume its first line
 					LineReaderWriter.readLine(conn.getInputStream());
 					// and start verifying
@@ -660,7 +674,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());
-				logger.info("Opened output stream for debugging");
+				logger.warn("Opened output stream for debugging");
 				status.setText("DEBUG streaming");
 				// just wait in this incoming handler thread
 				while (toRemote != null) {
@@ -713,7 +727,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		public void segmentEnd(int index) {
 			// announce quiescent
-			status.setText(previousStatus);
+			//moving.setText("quiescent");
 			try {
 				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
@@ -723,8 +737,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 
 		public void segmentStart(int index) {
 			// announce active
-			previousStatus = status.getText();
-			status.setText("moving");
+			//moving.setText("moving");
 			try {
 				Manager.playTone(72, 100, 30);
 			} catch (MediaException e) {

@@ -52,7 +52,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	public static final int TcpPort = 54322;
 	
 	/** Allow the (incoming) key agreement to take at maximum this amount of ms. */
-	public static final int KeyAgreementProtocolTimeout = 15000;
+	public static final int KeyAgreementProtocolTimeout = 20000;
 	
 	/** The maximum time that the interlock exchange of active segments
 	 * with the remote host is allowed to take in ms.
@@ -422,7 +422,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 * local and remote segments via interlock* and uses coherence to check their
 	 * similarity. It will call all the necessary hooks, but expects localSegment
 	 * to be set.
-	 * @return true if continous checking should continue, false on a fatal error.
+	 * @return true if continuous checking should continue, false on a fatal error.
 	 *         <b>Note</b>: This is <b>not</b> the decision! If authentication
 	 *         failed or succeeded will be communicated with events.
 	 * @throws InternalApplicationException 
@@ -440,6 +440,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				verificationsRunning.put(remote, new Object());
 			}
 		}
+		
+		if (logger.isDebugEnabled())
+			logger.debug("Starting keyVerification with remote " + remote.toString());
 
 		try {
 			byte[] localPlainText = null;
@@ -474,7 +477,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					remote.getInputStream(), remote.getOutputStream(),
 					// TODO: enable mirror attack prevention after testing
 					sharedAuthenticationKey, rounds, false, 
-					false, RemoteInterlockExchangeTimeout, useJSSE,
+					// TODO: activate timeout again!
+					false, -1 /*RemoteInterlockExchangeTimeout*/, useJSSE,
 					interlockGroup, groupSize, instanceNum);
 
 			totalInterlockTime += System.currentTimeMillis()-timestamp;
@@ -499,7 +503,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				timestamp = System.currentTimeMillis();
 				decision = checkCoherence(remoteSegment);
 				totalComparisonTime += System.currentTimeMillis()-timestamp;
-				logger.info("COHERENCE MATCH: " + decision + "(computed " + 
+				if (logger.isInfoEnabled())
+					logger.info("COHERENCE MATCH: " + decision + "(computed " + 
 						lastCoherenceMean + " and threshold is " + coherenceThresholdSucceed + ")");
 			}
 			else
@@ -562,10 +567,20 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			this.groupSize = groupSize;
 			this.instanceNum = instanceNum;
 			this.openChannel = openChannel;
+			
+			if (logger.isDebugEnabled())
+				logger.debug("Creating AsyncInterlockHelper for " + 
+					remote.toString() + " with auth key " + authKey +
+					", instance " + instanceNum + " out of " + groupSize +
+					(openChannel ? ", about to open channel" : ", re-using already opened channel"));
 		}
 		
 		public void run() {
 			boolean cleanup = false;
+			
+			if (logger.isDebugEnabled())
+				logger.debug("AsyncInterlockHelper thread " + instanceNum + 
+					"/" + groupSize + " starting for remote " + remote.toString());
 			
 			try {
 				outer: do {
@@ -581,7 +596,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 							}
 						}
 					}
-					logger.debug("Local segment sampled, starting interlock protocol");
+					logger.info("Local segment sampled, starting interlock protocol");
 
 					// need to prevent concurrent verification runs with the same host (e.g. incoming and outgoing)
 					boolean alreadyVerifying = false;
@@ -657,6 +672,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					 * Thus need to clean up when exiting. */
 					cleanup = true;
 					
+					logger.info("now really starting key verification in AsyncInterlockHelper thread");
+					
 					if (!keyVerification(remote, sharedAuthenticationKey,
 							groupSize, instanceNum) && !continuousChecking) {
 						/* If keyVerification returns false, then it will already
@@ -668,8 +685,6 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				} while (continuousChecking);
 			} catch (IOException e) {
-				// THIS HAPPENS ON ONE OF THE DEVICES IMMEDIATELY AFTER BEING SHAKING WITH ERROR "is closed"
-				// TODO: FIND OUT WHY
 				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
@@ -759,11 +774,16 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						logger.warn("Using static authentication key for continuous checking mode");
 						authKey = staticAuthenticationKey;
 					}
-					else
+					else {
 						authKey = keyManager.getAuthenticationKey(remote);
+					}
 					// this is rather hackish, but stay connected and verifying...
 					AsyncInterlockHelper h = new AsyncInterlockHelper(remote, false, 
 							authKey, 0, 0);
+					interlockRunners.addElement(h);
+					/* can call the run method directly in here, because 
+					 * protocol handlers are started in a separate thread anywys
+					 */
 					h.run();
 				}
 				

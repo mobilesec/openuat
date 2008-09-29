@@ -547,7 +547,8 @@
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 					<variable name="cfg.shakingDemoMode" value="true" />
-					<variable name="demo.peer1" value="00180FA4C997" /> <!-- N95 --> <!-- 5500 Shakeme 1 -->
+					<variable name="demo.peer1" value="001C9A1F9B11" /> <!-- N95 -->
+					<!--<variable name="demo.peer1" value="00180FA4C997" />--> <!-- 5500 Shakeme 1 -->
 					<variable name="demo.peer2" value="00180FA3A1D4" /> <!-- 5500 Shakeme 2 -->
 				</variables>
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
@@ -637,8 +638,8 @@
        		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
-			<!--<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>-->
-			<arg line="-p ${dist}/Nokia-N95-auth.jar"/>
+			<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>
+			<!--<arg line="-p ${dist}/Nokia-N95-auth.jar"/>-->
 		</exec>
 		<exec executable="obexftp"> <!-- 5500 Shakeme 1 -->
 			<arg line="-b 00:18:0F:A4:C9:97"/>
@@ -845,7 +846,7 @@
 	<target name="dist-source" description="Create source distribution">
 		<zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 			<fileset dir="." 
-		    	     includes="build.xml Changelog .classpath .project 
+		    	     includes="build.xml Changelog README FAQ METHODS TODO .classpath .project 
 						src/**/* lib/**/* doc/**/* dist/*.jnlp 
 						tests/**/*
 						thirdparty/bouncycastle-*-deps/**/* 
