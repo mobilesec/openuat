@@ -65,30 +65,25 @@ public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolT
 					ShakeWellBeforeUseParameters.coherenceThreshold, 0.0, ShakeWellBeforeUseParameters.coherenceWindowSize, false);
 		}
 		
-		@SuppressWarnings("unused")
+		//@SuppressWarnings("unused")
 		@Override
 		protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 				String optionalParameterFromRemote,	byte[] sharedSessionKey) {
 			numSucceeded++;
 		}		
 
-		@SuppressWarnings("unused")
+		//@SuppressWarnings("unused")
 		@Override
 		protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 				Exception e, String message) {
 			numFailed++;
 		}
 		
-		@SuppressWarnings("unused")
+		//@SuppressWarnings("unused")
 		@Override
 		protected void protocolProgressHook(RemoteConnection remote,  
 				int cur, int max, String message) {
 			numProgress++;
 		}		
-
-		/*@SuppressWarnings("unused")
-		@Override
-		protected void protocolStartedHook(RemoteConnection remote) {
-		}*/
 	}
 }
