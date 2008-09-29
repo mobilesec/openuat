@@ -29,5 +29,58 @@ environment and use it:
      [echo]     WTK with MIDP2.0 and CLDC1.1: true 
      
 
+Example Applications
+--------------------
+
+* 1. Shake-well-before-use MIDlet* 
+
+There are two variants of the Shake-well-before-use MIDlet that can be 
+installed as demonstration applications on J2ME MIDP2 mobile phones with
+built-in accelerometers. For dependencies concerning sensor data access, 
+refer to pythonsrc/nokiaaccelserver.py, thirdparty/symbian-requirements/README
+and windowsmobile-requirements/README.
+
+The first variant is optimised for giving demos on the shaking part itself and
+will create and keep open a Bluetooth connection between two phones with 
+pre-configured MAC addresses. These Bluetooth MAC addresses must be specified 
+on build time in build.xml (see variables "demo.peer1" and "demo.peer2"). After
+building, the dist/*-DEMOSET1.jar files should be copied to the respective 
+mobile phones. When running this demo MIDlet, one of the phones will connect
+to the other and keep this connection open for quick feedback on success or
+failure of shaking authentication.
+
+The second variant is close to a real-world deployment and thus not use any
+pre-configured addresses. It will opportunistically (see the 
+BluetoothOpportunisticConnector class) connect to other devices in range that
+understand the Bluetooth OpenUAT authentication profile. As soon as they are
+discovered, Diffie-Hellman keys will be agreed. Only when devices are shaken,
+however, these keys will be verified using the recorded accelerometer time 
+series. This is a compromise for quickest possible feedback with the 
+limitations of Bluetooth.
+
+Any computer with a supported Bluetooth chipset can act as the counterpart for
+the second variant by executing
+
+    java -cp dist/openuat-distbundle \
+    	org.openuat.util.BluetoothOpportunisticConnector [mirror]
+    	
+Because most computers won't have accelerometers or will not be too easy to
+shake together with the phone, a real test will not be possible. However, by
+passing the optional parameter "mirror", this side will simply mirror the time
+series it received from the phone and should thus lead to a 100% match on the
+mobile phone side. This "attack" will only be successful if the interlock
+exchange is _not_ run with mirror attack prevention turned on (refer to the
+call to InterlockProtocol.interlockExchange in ShakeWellBeforeUseProtocol1,
+method keyVerification).
+
+Both variants additionally support a debug mode to stream the recorded 
+accelerometer data verbatim. This mode can be entered by executing
+
+    java -cp dist/openuat-distbundle \
+    	org.openuat.util.BluetoothRFCommChannel <MAC addr.> 2 stream
+    	
+    	
+* 2. Unified authentication methods demo applet * 
+
 Extending the toolkit
 ---------------------
