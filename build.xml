@@ -638,7 +638,7 @@
        		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
-			<arg line="-p ${dist}/Generic-multi-shakeme-DEMOSET1.jar"/>
+			<arg line="-p ${dist}/Nokia-N95-shakeme-DEMOSET1.jar"/>
 			<!--<arg line="-p ${dist}/Nokia-N95-auth.jar"/>-->
 		</exec>
 		<exec executable="obexftp"> <!-- 5500 Shakeme 1 -->
