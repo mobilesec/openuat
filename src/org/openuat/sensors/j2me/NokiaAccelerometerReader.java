@@ -104,7 +104,8 @@ public class NokiaAccelerometerReader extends SamplesSource {
 			MULTIPLICATOR = 3;
 			DIVISOR = 2;
 			// this is only roughly true on average, it seems to differ between 25 and 40 Hz, which is _very_ bad for frequency analysis...
-			SAMPLERATE = 35;
+			// NOTE: need to set the same as above!
+			SAMPLERATE = 30;
 		} else {
 			logger.warn("Detected unknown phone '" + model + "' version '" + 
 					version + "', using defaults. This may now work!");

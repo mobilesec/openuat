@@ -8,8 +8,6 @@
  */
 package org.openuat.util;
 
-import javax.bluetooth.LocalDevice;
-
 import org.apache.log4j.Logger;
 
 /** This class bundles code to initialize and setup different Bluetooth stacks.

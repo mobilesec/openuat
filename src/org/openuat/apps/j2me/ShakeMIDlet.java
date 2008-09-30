@@ -80,7 +80,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	
 	public final static String Command_Debug_Streaming = "DEBG_Stream";
 	
-	public final static float CoherenceThresholdSucceed = 0.50f;
+	public final static float CoherenceThresholdSucceed = 0.45f;
 	public final static float CoherenceThresholdFailHard = 0.15f;
 	
 	Form mainForm;
@@ -146,6 +146,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			//player.prefetch();
 			//player.start();
 			volumeControl = (VolumeControl) player.getControl("VolumeControl");
+			volumeControl.setLevel(45);
 		} catch (IOException e) {
 			logger.error("Unable to get volume control: " + e);
 		} catch (MediaException e) {
@@ -195,7 +196,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		
 		// announce that we are up and about
 		try {
-			Manager.playTone(72, 500, 30);
+			Manager.playTone(72, 300, 30);
 		} catch (MediaException e) {
 			logger.error("Unable to play tone");
 		}
@@ -408,7 +409,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			lastValue.setText(Float.toString((float) getLastCoherenceMean() * 100) + " / " + 
 					Float.toString(CoherenceThresholdSucceed*100) + "/" + 
 					Float.toString(CoherenceThresholdFailHard*100));
-			try {
+			/*try {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(62, 100, 30);
 				Manager.playTone(64, 100, 30);
@@ -417,7 +418,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				Manager.playTone(64, 100, 30);
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
-			}
+			}*/
 		}
 
 		/** In "normal" opportunistic mode, this only remembers the remote 
@@ -434,12 +435,12 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			status.setText("key agreed");
 			// finished DH and connected to the remote
 			Display.getDisplay(outer).vibrate(800); // for 800ms
-			try {
+/*			try {
 				Manager.playTone(62, 100, 30);
 				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
 				logger.error("Unable to play tone");
-			}
+			}*/
 			
 			// remember the remote channel number
 			if (optionalParam != null && 
@@ -489,13 +490,16 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public void addSegment(int[] segment, int startIndex) {
 			// announce shaking complete
 			status.setText("verifying");
-			try {
-				Manager.playTone(60, 100, 30);
-				Manager.playTone(62, 100, 30);
-				Manager.playTone(64, 100, 30);
-			} catch (MediaException e) {
-				logger.error("Unable to play tone");
-			}
+			new Thread(new Runnable() { public void run() {
+				try {
+					/*Manager.playTone(60, 100, 30);
+					Manager.playTone(62, 100, 30);
+					Manager.playTone(64, 100, 30);*/
+					Manager.playTone(76, 200, 30);
+				} catch (MediaException e) {
+					logger.error("Unable to play tone");
+				}
+			}}).start();
 
 			// if debugging is active, also push that segment
 			if (toRemote != null) {
