@@ -343,6 +343,7 @@ public class BluetoothPeerManager {
 		 *     - 0x0004: ProtocolDescriptorList
 		 *     - 0x0100: service name
 		 */
+		// attribute list {0x100,0x0003} will fetch the name of the services
 		int[] attributes = new int[] {0x0000, 0x0001, 0x0002, 0x0003, 0x004, 0x0100};
 		UUID[] uuids;
 		if (specificService == null) {
@@ -351,9 +352,11 @@ public class BluetoothPeerManager {
 			// another option would be to search for service UUID 0x0003 (RFCOMM)
 		}
 		else {
-			uuids = new UUID[2];
-			uuids[0] = new UUID(0x0100);
-			uuids[1] = specificService;
+			uuids = new UUID[1];
+			// TODO: check if it has any advantage to include this! maybe it doesn't
+			//uuids[0] = new UUID(0x0100);
+			// TODO: if we include the first, increase index to 1
+			uuids[0] = specificService;
 		}
 		RemoteDeviceDetail dev = getDeviceDetail(device);
 		// no need to report the error here, the helper method does that
@@ -379,6 +382,10 @@ public class BluetoothPeerManager {
 							device.getBluetoothAddress() +
 							" but returned transaction id <0 (" +
 							dev.serviceSearchTransId + "). This should not happen!");
+				// serviceSearchTransId changed, notify
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
+				}
 				return true;
 			} catch (BluetoothStateException e) {
 				logger.warn("Could not initiate service search for remote device " +
@@ -558,6 +565,8 @@ public class BluetoothPeerManager {
 		// this should only be false _while a service search is actively running_
 		boolean serviceSearchFinished = false;
 		int serviceSearchTransId = -1; // -1 when not in progress 
+		
+		Object notifier = new Object(); // only used for notifying a thread that's waiting for any change in the object
 	}
 	
 	/** This is an internal helper class for reacting to Bluetooth events. */
@@ -637,6 +646,9 @@ public class BluetoothPeerManager {
 								}
 								else
 									entry.numNoServiceScans++;
+							}
+							synchronized (entry.notifier) {
+								entry.notifier.notifyAll();
 							}
 						}
 					}
@@ -735,6 +747,10 @@ public class BluetoothPeerManager {
 				if (logger.isDebugEnabled())
 					logger.debug("Total number of services discovered for " + 
 						currentRemoteDevice + " is now " + services.size());
+				// something in dev changed, notify
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
+				}
 			}
 		}
 
@@ -743,17 +759,22 @@ public class BluetoothPeerManager {
 				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
 			}
+
+			if (logger.isInfoEnabled())
+				logger.info("Service search completed for " + currentRemoteDevice.getBluetoothAddress() + 
+					" with transID " + transID + " and respCode " + respCode);
+			
 			RemoteDeviceDetail dev = getDeviceDetail(currentRemoteDevice);
 			// no need to report the error here, the helper method does that
 			if (dev == null) return;
+			
 			synchronized (dev) {
 				// sanity check
 				if (dev.serviceSearchFinished) {
-					logger.warn("Service search for remote device " + currentRemoteDevice +
+					logger.warn("Service search for remote device " + currentRemoteDevice.getBluetoothAddress() +
 							" has already finished, can not finish twice, ignoring");
 					return;
 				}
-
 				// and another sanity check
 				if (dev.serviceSearchTransId != transID) {
 					logger.warn("Finished service discovery with transaction id " + 
@@ -761,10 +782,9 @@ public class BluetoothPeerManager {
 							dev.serviceSearchTransId + ", ignoring");
 					return;
 				}
-				// the transaction is now complete
 				dev.serviceSearchTransId = -1;
 			}
-			
+
 			switch (respCode) {
 			case DiscoveryListener.SERVICE_SEARCH_COMPLETED:
 				Vector services;
@@ -773,6 +793,10 @@ public class BluetoothPeerManager {
 					services = dev.services;
 					// finished with that service, wake up when we are waiting for it
 					dev.notifyAll();
+				}
+				// changed
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
 				}
 
 				synchronized (services) { 
@@ -801,6 +825,10 @@ public class BluetoothPeerManager {
 					dev.numNoServiceScans = 0;
 					dev.notifyAll();
 				}
+				// changed
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
+				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
 				logger.info("Service search error reported by Bluetooth stack for current device " +
@@ -812,6 +840,9 @@ public class BluetoothPeerManager {
 					dev.numNoServiceScans = 0;
 					dev.notifyAll();
 				}
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
+				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
 				logger.info("No matching records returned for service search on current device " +
@@ -820,6 +851,9 @@ public class BluetoothPeerManager {
 					// in this case, service search was actually finished correctly (even if we didn't get any records)
 					dev.serviceSearchFinished = true;
 					dev.notifyAll();
+				}
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
 				}
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
@@ -830,6 +864,9 @@ public class BluetoothPeerManager {
 					dev.serviceSearchFinished = true;
 					dev.numNoServiceScans = 0;
 					dev.notifyAll();
+				}
+				synchronized (dev.notifier) {
+					dev.notifier.notifyAll();
 				}
 				break;
 			}
@@ -895,11 +932,12 @@ public class BluetoothPeerManager {
 	private boolean waitForServiceSearch(RemoteDevice device,
 			int timeoutMs, long startWait) throws InterruptedException {
 		RemoteDeviceDetail dev = getDeviceDetail(device);
-		synchronized (dev) {
+		synchronized (dev.notifier) {
 			while (!dev.serviceSearchFinished && 
 					System.currentTimeMillis()-startWait <= timeoutMs) {
-				logger.trace("Waiting for service search to finish...");
-				dev.wait(200);
+				if (logger.isTraceEnabled())
+					logger.trace("Waiting for service search to finish...");
+				dev.notifier.wait(500);
 			}
 			if (!dev.serviceSearchFinished) {
 				logger.info("Timeout while waiting for service search for " +
@@ -936,6 +974,88 @@ public class BluetoothPeerManager {
 		if (name.length() == 0)
 			name = device.getBluetoothAddress();
 		return name;
+	}
+	
+	/** This is a helper function to return a remote service given a UUID and 
+	 * Bluetooth MAC address. It blocks during inquiry and service search and 
+	 * can thus take easily up to 30 seconds to return!
+	 * 
+	 * @param remoteAddress The Bluetooth MAC address of the remote device.
+	 * @param serviceUuid The UUID of the service to search for.
+	 * @param authenticateEncryptMode See ServiceRecord, use e.g. 
+	 * 			ServiceRecord.NOAUTHENTICATE_NOENCRYPT
+	 * @param timeoutMs The maximum amount of time to wait in milliseconds.
+	 * @return The complete URL to the service if it was found (that is, a 
+	 *          service with the specified UUID at the specified device) or
+	 *          null otherwise.
+	 * @throws IOException
+	 */
+	public static String getRemoteServiceURL(String remoteAddress, 
+			UUID serviceUuid, int authenticateEncryptMode, int timeoutMs) throws IOException {
+		BluetoothPeerManager serviceSearch = new BluetoothPeerManager();
+		
+		// for that, need to do an inquiry to get the RemoteDevice objects - JSR82 really isn't that nice
+		/*serviceSearch.startInquiry(false);
+		try {
+			serviceSearch.waitForBackgroundSearchToFinish(15000);
+		} catch (InterruptedException e) {
+			// don't care - if we haven't found the device yet, simply return null
+		}
+		serviceSearch.stopInquiry(true);
+		try {
+			serviceSearch.waitForBackgroundSearchToFinish(10000);
+		} catch (InterruptedException e) {
+			// don't care - if we haven't found the device yet, simply return null
+		}
+		
+		RemoteDevice[] devs = serviceSearch.getPeers();
+		RemoteDevice dev = null;
+		for (int i=0; i<devs.length && devs == null; i++) {
+			if (devs[i].getBluetoothAddress().equals(remoteAddress)) {
+				logger.info("Found remote device " + remoteAddress + 
+						" during inquiry, now browsing for RFCOMM channel");
+				dev = devs[i];
+			}
+		}
+		if (dev == null) {
+			logger.warn("Didn't find device " + remoteAddress + 
+					" during inquiry, can not browse for services");
+			return null;
+		}*/
+		
+		/* UPDATE: use a small hack to directly construct a RemoteDevice 
+		 * object from a known Bluetooth MAC address - this is far quicker
+		 * then doing a inquiry beforehand!
+		 */
+		RemoteDevice dev = new BluetoothRFCOMMChannel.RDevice(remoteAddress);
+		// but need to add it to list of found device so that service search can deal with it
+		serviceSearch.foundDevices.put(dev, serviceSearch.new RemoteDeviceDetail());
+		
+		serviceSearch.startServiceSearch(dev, serviceUuid);
+		try {
+			// blocks return of the servicesearch!!
+			//serviceSearch.waitForBackgroundSearchToFinish(timeoutMs);
+			serviceSearch.waitForServiceSearch(dev, timeoutMs, System.currentTimeMillis());
+		} catch (InterruptedException e) {
+			// don't care - if we haven't found the service yet, simply return null
+		}
+		ServiceRecord[] services = serviceSearch.getServices(dev);
+		logger.info("Got " + services.length + " services for remote " + remoteAddress);
+		if (services.length > 1) {
+			logger.error("Unexpected number (" + services.length + 
+					") of remote services with the specific UUID (expected only 1 - it should be unique!)");
+			return null;
+		}
+		else if (services.length == 1) {
+			// found
+			return services[0].getConnectionURL(authenticateEncryptMode, false);
+		} 
+		else {
+			// no matching service found
+			logger.warn("No matching service found on " + remoteAddress + 
+				" with UUID " + serviceUuid.toString());
+			return null;
+		}
 	}
 	
 	/*

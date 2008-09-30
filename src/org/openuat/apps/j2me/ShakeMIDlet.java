@@ -18,6 +18,7 @@ import java.io.OutputStreamWriter;
 
 import javax.bluetooth.BluetoothStateException;
 import javax.bluetooth.LocalDevice;
+import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
@@ -40,6 +41,7 @@ import org.openuat.sensors.SamplesSource;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.NokiaAccelerometerReader;
 import org.openuat.util.BluetoothOpportunisticConnector;
+import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
@@ -56,7 +58,6 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	/** Code for the Ubicomp 2007 Demo. Will be ignored if the preprocessor defines are not set. */
 	private static boolean FIXED_DEMO_MODE = false;
 	private final static String FIXED_DEMO_UUID = "b76a37e5e5404bf09c2a1ae3159a02d8";
-	private final static int FIXED_DEMO_CHANNELNUM = 2;
 	private final static byte[] FIXED_DEMO_SHAREDKEY = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -131,7 +132,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			FormAppender appender = new FormAppender(logForm);
 			logBackend.addAppender(appender);
 			//logBackend.addAppender(new RecordStoreAppender());
-			logBackend.setLogLevel(Level.INFO);
+			logBackend.setLogLevel(Level.WARN);
 			logger.info("Microlog initialized");
 		}
 		
@@ -601,47 +602,50 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 						// ignore
 					}
 				
-				logger.info("Trying to connect to " + remoteAddr + 
-						" channel " + FIXED_DEMO_CHANNELNUM);
+				logger.info("Trying to connect to " + remoteAddr);
 				try {
-					/* construct our own serviceURL, because "master=true"
-					 * seems to generate a "feature not supported" exception
-					 * from Symbian
-					 */
 					status.setText("connecting");
-					String serviceURL = "btspp://" + remoteAddr + ":" + 
-						FIXED_DEMO_CHANNELNUM + ";authenticate=false;encrypt=false";
-					conn = new BluetoothRFCOMMChannel(serviceURL);
-					conn.open();
-					// ok, connected - get the host into verification mode
-					LineReaderWriter.println(conn.getOutputStream(), 
-							ShakeWellBeforeUseProtocol1.MotionVerificationCommand);
-					// and consume its first line
-					LineReaderWriter.readLine(conn.getInputStream());
-					// and start verifying
-					protocol.startVerificationAsync(FIXED_DEMO_SHAREDKEY, 
-							null, conn);
-					connected = true;
-					status.setText("connected");
-					logger.info("Successfully opened channel to " + remoteAddr +
-							", demo mode connector thread now waiting for connection to terminate");
 					
-					while (connector != null && connected && conn.isOpen()) {
-						try {
-							Thread.sleep(500);
-						} catch (InterruptedException e) {
-							// ignore
+					// first need to find the (dynamic) channel number
+					// this can unfortunately take some (limited) time...
+					String serviceURL = BluetoothPeerManager.getRemoteServiceURL(
+							remoteAddr, new UUID(FIXED_DEMO_UUID, false), 
+							ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 20000);
+					
+					if (serviceURL != null) {
+						logger.info("Found matching service on remote device: " + serviceURL);
+						conn = new BluetoothRFCOMMChannel(serviceURL);
+						conn.open();
+						// ok, connected - get the host into verification mode
+						LineReaderWriter.println(conn.getOutputStream(), 
+								ShakeWellBeforeUseProtocol1.MotionVerificationCommand);
+						// and consume its first line
+						LineReaderWriter.readLine(conn.getInputStream());
+						// and start verifying
+						protocol.startVerificationAsync(FIXED_DEMO_SHAREDKEY, 
+								null, conn);
+						connected = true;
+						status.setText("connected");
+						logger.info("Successfully opened channel to " + remoteAddr +
+								", demo mode connector thread now waiting for connection to terminate");
+				
+						while (connector != null && connected && conn.isOpen()) {
+							try {
+								Thread.sleep(500);
+							} catch (InterruptedException e) {
+								// ignore
+							}
 						}
+						logger.warn("Connection to " + remoteAddr + " has been closed, will re-establish");
+						connected = false;
 					}
-					logger.warn("Connection to " + remoteAddr + " has been closed, will re-establish");
-					connected = false;
 				} catch (IOException e) {
 					logger.error("Unable to connect to " + remoteAddr + 
 							" and start verification (will retry): " + e);
 					conn = null;
 				}
 				try {
-					Thread.sleep(5000);
+					Thread.sleep(1000);
 				} catch (InterruptedException e) {
 					// don't care
 				}

@@ -29,6 +29,16 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public class BluetoothRFCOMMChannel implements RemoteConnection {
+	/** The RemoteDevice constructor taking a Bluetooth MAC address is, for
+	 * some weird reason, protected. Therefore, we need a small wrapper class
+	 * just to be able to construct RemoteDevice objects from address strings.
+	 */
+	public static class RDevice extends RemoteDevice {
+		public RDevice(String remoteAddress) {
+			super(remoteAddress);
+		}
+	}
+	
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMChannel" /*BluetoothRFCOMMChannel.class*/);
 	
@@ -88,7 +98,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		if (openChannels.size() > 0)
 			logger.error("Unable to close all Bluetooth RFCOMM channels, some are left open. This should not happen!");
 	}
-
+	
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
 	 * This does not yet open the channel, @see open needs to be called for that.
 	 * @param connectionURL The complete Bluetooth service URL, as returned e.g.
@@ -303,7 +313,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			fromRemote.available();
 		}
 		catch (IOException e) {
-			logger.debug(this + " is not open because fromRemote.available throw an exception: " + e);
+			logger.debug(this + " is not open because fromRemote.available threw an exception: " + e);
 			return false;
 		}
 		
@@ -311,10 +321,30 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			toRemote.flush();
 		}
 		catch (IOException e) {
-			logger.debug(this + " is not open because toRemote.flush throw an exception: " + e);
+			logger.debug(this + " is not open because toRemote.flush threw an exception: " + e);
 			return false;
 		}
-		return true;
+		
+		/* and another test that seems to do the trick at least on J2ME on 
+		 * Symbian: this returns address "000000000000" when the remote 
+		 * side has closed the channel.
+		 */
+		try {
+			String reportedAddr = RemoteDevice.getRemoteDevice(connection).getBluetoothAddress();
+			if (reportedAddr.equals("000000000000")) {
+				logger.error(this + " is not open because getBluetoothAddress() from connection returns the 0-address");
+				return false;
+			}
+			if (!reportedAddr.equals(remoteDeviceAddress)) {
+				logger.error("The reported getBluetoothAddress() from connection (" + 
+						reportedAddr + ") differs from the one this BluetoothRFCOMMChannel was constructed with (" +
+						remoteDeviceAddress + "). This is not fatal but should not happen in any case. Please investigate.");
+			}
+			return true;
+		} catch (IOException e) {
+			logger.debug(this + " is not open because getRemoteDevice(connection) threw an exception: " + e);
+			return false;
+		}
 	}
 	
 	/** Returns the InputStream object for reading from the remote Bluetooth device.
@@ -361,11 +391,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 *         protected in the JSR81 API. Go complain to its authors.
 	 */
 	public Object getRemoteAddress() /*throws IOException*/ {
-		/* On J2ME phones, this returns address "000000000000" when the remote 
-		 * side has closed the channel (but isOpen still returns true!). 
-		 * Therefore, never even try to use getBluetoothAddress on phones when
-		 * we can avoid it.
-		 * Actually, why would we ever want to use it? Every constructor sets
+		/* Actually, why would we ever want to use it? Every constructor sets
 		 * remoteDeviceAddress anyway. Scratch that here, just return it!
 		 */
 		/*if (isOpen() && System.getProperty( "microedition.platform") == null)

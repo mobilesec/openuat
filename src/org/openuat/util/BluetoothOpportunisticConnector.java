@@ -146,7 +146,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		manager.setAdaptiveSleepTime(true);
 		manager.setAutomaticServiceDiscoveryUUID(serviceUUID);
 		manager.addListener(new BluetoothPeerEventsHandler());
-		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, maximumKeyAgreementRuntime, keepConnected, useJSSE);
+		// TODO: activate timeout again when it is stable on J2ME!
+		service = new BluetoothRFCOMMServer(null, serviceUUID, serviceName, -1, /*maximumKeyAgreementRuntime,*/ keepConnected, useJSSE);
 		service.addAuthenticationProgressHandler(new AuthenticationEventsHandler(true));
 	}
 	
@@ -487,8 +488,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 				DataElement ser_de = sr.getAttributeValue(0x100);
 				String name = (String) ser_de.getValue();
 				if (! name.equals(serviceName)) {
-					// TODO: info
-					logger.warn("Ignoring discovered service with name '" + name +
+					logger.info("Ignoring discovered service with name '" + name +
 							"', expected '" + serviceName + "'");
 				}
 				else {

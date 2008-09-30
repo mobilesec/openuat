@@ -11,6 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 
 import javax.bluetooth.BluetoothStateException;
+import javax.bluetooth.DataElement;
 import javax.bluetooth.DiscoveryAgent;
 import javax.bluetooth.LocalDevice;
 import javax.bluetooth.ServiceRecord;
@@ -92,10 +93,20 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				logger.error("Unable to register SDP service with URL '" + serviceURL + "', aborting startListening: " + e);
 				throw e;
 			}
-			// we can query and modify our local service description
 			try {
+				// make sure we are discoverable
+				LocalDevice local = LocalDevice.getLocalDevice();
+	            if (!local.setDiscoverable(DiscoveryAgent.GIAC)) {
+	            	logger.warn("Failed to change to discoverable mode");
+	            }
+				
+				// we can query and modify our local service description
 				ServiceRecord service;
-				service = LocalDevice.getLocalDevice().getRecord(listener);
+				service = local.getRecord(listener);
+				DataElement e = new DataElement(DataElement.DATSEQ);
+				e.addElement(new DataElement(DataElement.UUID,new UUID(0x1002)));// PublicBrowseRoot value (0x1002)
+				service.setAttributeValue(0x0005,e);// BrowseGroupList (attribute ID 0x1005) 
+				local.updateRecord(service);
 				registeredURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
 				logger.info("Registered local service with URL " + registeredURL);
 			} catch (BluetoothStateException e) {
