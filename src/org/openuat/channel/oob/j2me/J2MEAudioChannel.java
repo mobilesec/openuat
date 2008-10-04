@@ -129,8 +129,17 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 //		new DecoderThread(decodeScreen, display, this, audiodata).start();
 		ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
 		
-		new DecoderThread(audiodata, dataStream, this).start();
-		
+		DecoderThread decoder = new DecoderThread(audiodata, dataStream, this);
+		decoder.start();
+//		while(!decoder.done){
+//			try {
+//				Thread.sleep(200);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
+//		handleAudioDecodedText(decoder.retrieved);
 //		for (int i = 0; i < retrieved.length; i++) {
 //		decodeScreen.append( retrieved [i] + ", ");
 //		}
@@ -275,20 +284,24 @@ class DecoderThread extends Thread{
 		this.audiodata = audiodata;
 		this.dataStream = dataStream;
 		this.channel = channel;	
+		
+		
 	}
-
+	public byte retrieved [];
+	boolean done = false;
 	public void run(){
 		try {
 			long start = System.currentTimeMillis();
 			AudioUtils.decodeWavFile(audiodata, dataStream);
 			
 			long end = System.currentTimeMillis();
-			byte retrieved [] = dataStream.toByteArray();
+			 retrieved  = dataStream.toByteArray();
 			LogService.info(this, "decoded data size: "+ retrieved.length+". \n");
 
 			LogService.info(this, "decoded data: " + new String(retrieved)+"\n");
 			LogService.info(this, "decoding took: " + (end - start) + " ms.\n");
 			channel.handleAudioDecodedText(retrieved);
+			done = true;
 		} catch (IOException e) {
 			LogService.error(this, "Decoding error", e); 
 		}

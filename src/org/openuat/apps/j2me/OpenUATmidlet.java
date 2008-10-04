@@ -26,7 +26,6 @@ import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.Gauge;
 import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.List;
-import javax.microedition.lcdui.Ticker;
 import javax.microedition.midlet.MIDlet;
 
 import org.openbandy.service.LogService;
@@ -55,20 +54,23 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	/** The key resulting from the message exchange during the authentication process */
 	protected byte [] authKey;
 	
-	protected static Image search = null;
-	protected static Image vCard = null;
-	protected static Image print = null;
+	protected Image search = null;
+	protected Image vCard = null;
+	protected Image print = null;
 	
 	//authentication options
-	protected static Image visual = null;
-	protected static Image audio = null;
-	protected static Image slowcodec = null;
-	protected static Image madlib = null;
+	protected Image visual = null;
+	protected Image audio = null;
+	protected Image slowcodec = null;
+	protected Image madlib = null;
 	
-	protected static Image buttonok = null;
-	protected static Image buttoncancel = null;	
-	protected static Image secure = null;
-	protected static Image error = null;	
+	protected Image running = null;
+	
+	protected Image buttonok = null;
+	protected Image buttoncancel = null;	
+	protected Image replay = null;	
+	protected Image secure = null;
+	protected Image error = null;	
 	
 	/** Initial screen with options */
 	protected List home_screen;
@@ -103,7 +105,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	protected Vector services;
 	
 	//how loud to sing
-	public int volume = 50;
+	public int volume = 45;
 
 	
 	protected Gauge bluetoothProgressGauge;
@@ -120,30 +122,89 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	/** Client connection to the bluetooth server */
 	private BluetoothRFCOMMChannel c; 
 	
+	/** starting of verification time */
+	public long startTime;
+	
+//	public int numTriesVisual;
+//	public long startDecodeTimeAudio;
+//	public int numListensSlowCodec = 1;
+	public long startTimeMadLib;
+	
 	private void loadImages(){
 		try {
 			search = Image.createImage("/search_sm.png");
-			vCard = Image.createImage("/vcard_sm.png");
-			print = Image.createImage("/print_sm.png");
-			
-			visual = Image.createImage("/visual_sm.png");
-			audio = Image.createImage("/audio_sm.png");
-			slowcodec = Image.createImage("/slowcodec_sm.png");
-			madlib = Image.createImage("/madlib_sm.png");
-			
-			buttonok = Image.createImage("/button_ok_sm.png");
-			buttoncancel = Image.createImage("/button_cancel_sm.png");
-			secure = Image.createImage("/secure_sm.png");
-			error = Image.createImage("/error.png");
 		} catch (IOException e) {
-			LogService.info(this, "could not load image");
+			LogService.warn(this, "could not load image search_sm.png");
+		}
+		try {
+			vCard = Image.createImage("/vcard_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image vCard_sm.png");
+		}
+		try {
+			print = Image.createImage("/print_sm.png");
+
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image print_sm.png");
+		}
+		try {
+			visual = Image.createImage("/visual_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			audio = Image.createImage("/audio_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			slowcodec = Image.createImage("/slowcodec_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			madlib = Image.createImage("/madlib_sm.png");
+
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image /madlib_sm.png");
+		}
+		try {
+			running = Image.createImage("/running_sm.png");
+
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			buttonok = Image.createImage("/button_ok_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			buttoncancel = Image.createImage("/button_cancel_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			replay = Image.createImage("/replay_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			secure = Image.createImage("/secure_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
+		}
+		try {
+			error = Image.createImage("/error_sm.png");
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image");
 		}
 	}
 	// our logger
 //	Logger logger = Logger.getLogger("");
 
 	public OpenUATmidlet() {
-
+		LogService.info(this, "--------");
 		if (! BluetoothSupport.init()) {
 			do_alert("Could not initialize Bluetooth API", Alert.FOREVER);
 			return;
@@ -155,7 +216,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
-			LogService.info(this, "Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
+//			LogService.debug(this, "Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
 			LogService.error(this, "Error initializing BlutoothRFCOMMServer: ", e);
 		}
@@ -211,7 +272,6 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 
 		logScreen = LogService.getLog();
-//		logScreen = new Form("LOG");
 		logScreen.addCommand(back);
 		
 		
@@ -235,7 +295,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		failure_form.append("Error. Authentication failed.\n");
 //		failure_form.append("Retry?");
 //		failure_form.append(error);
-		failure_form.append("Please try again.\n");
+//		failure_form.append("Please try again.\n");
 
 		success_form.addCommand(exit);
 		success_form.addCommand(log);
@@ -305,7 +365,6 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			}
 			if (dis == dev_list) { //select triggered from the device list
 				if (dev_list.getSelectedIndex() >= 0) { //find services
-					LogService.info(this, "selected index: "+dev_list.getSelectedIndex());
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
@@ -337,6 +396,10 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			}
 		}
 		else if (com == back) {
+			
+			if(currentScreen.equals(success_form))
+				previousScreen = home_screen;
+
 			display.setCurrent(previousScreen);
 			previousScreen = home_screen;
 			//at most two steps for back
@@ -363,14 +426,16 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	 * @param btAdd
 	 */
 	protected void connectTo(String btAdd, int channel) {
-		//close the connection, reopen, for demo purposes, so we do not close and restart the app.
-		if (c != null && c.isOpen()){
-			c.close();
-		}
+	
 		boolean keepConnected = true;
-		String optionalParam = null;  
-		LogService.info(this, "starting authentication ");
+		String optionalParam = null; 
+		
+//		LogService.debug(this, "starting authentication ");
 		try {
+			LogService.info(this, "trying to reconnect");
+			LogService.info(this, "c: "+c);
+
+			if (c!=null) LogService.info(this, "c.isopen: "+c.isOpen());
 			initiator = true;
 			c = new BluetoothRFCOMMChannel(btAdd, channel);
 			c.open();
@@ -378,7 +443,8 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 		} catch (IOException e) {
 			LogService.error(this, "Could not conenct to "+btAdd, e);
-			do_alert("error", Alert.FOREVER);
+			LogService.info(this, "msg:"+e.getMessage());
+			do_alert("Try again", Alert.FOREVER);
 		}
 	}
 
@@ -390,7 +456,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	protected void connectTo(String connectionURL) {
 		boolean keepConnected = true;
 		String optionalParam = null;  
-		LogService.info(this, "starting authentication ");
+//		LogService.debug(this, "starting authentication ");
 		try {
 			initiator = true;
 			BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(connectionURL);
@@ -481,8 +547,6 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	}
 	public boolean AuthenticationStarted(Object sender, Object remote) {
 		
-		LogService.info(this, "Authentication started");
-		
 		Alert alert = new Alert("Incoming connection", "Pairing with" + remote.toString(), null, AlertType.CONFIRMATION);
 		alert.setTimeout(Alert.FOREVER);
 		display.setCurrent(home_screen);
@@ -492,7 +556,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-		LogService.info(this, "Successful authentication");
+//		LogService.debug(this, "Successful authentication");
 		Object[] res = (Object[]) result;
 		// remember the secret key shared with the other device
 		byte[] sharedKey = (byte[]) res[0];
@@ -500,11 +564,12 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		authKey = (byte[]) res[1];
 		// then extract the optional parameter
 		String param = (String) res[2];
-		LogService.info(this, "Extracted session key of length " + sharedKey.length +
-				", authentication key of length " + authKey.length + 
-				" and optional parameter '" + param + "'");
+//		LogService.debug(this, "Extracted session key of length " + sharedKey.length +
+//				", authentication key of length " + authKey.length + 
+//				" and optional parameter '" + param + "'");
+		
 		RemoteConnection connectionToRemote = (RemoteConnection) res[3];
-
+		LogService.info(this, "Start con with: "+connectionToRemote.getRemoteName());
 		if(initiator){
 			verify_method.setCommandListener(new KeyVerifier(authKey, connectionToRemote, this));
 			previousScreen = currentScreen;
@@ -540,15 +605,20 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 	 */
 	public void informSuccess(boolean success) {
 		previousScreen = currentScreen;
+		long endTime = System.currentTimeMillis();
+		LogService.info(this, "completion time: "+(endTime-startTime));
 		if(success){
 			display.setCurrent(success_form);
 			currentScreen = success_form;
+			LogService.info(this, "SUCCESS");
+			
 		}
 		else{
 			display.setCurrent(failure_form);
 			currentScreen = failure_form;
+			LogService.info(this, "FAILURE");
 		}
-		
+		c.close();
 	}
 
 	public List getHomeScreen() {

@@ -489,7 +489,7 @@
 				<resources>
 					<!-- doesn't really do anything right now... -->
 					<fileset dir="${src}" includes="microlog.properties" />
-					<fileset dir="${resources}" includes="button**.png" />
+					<!-- <fileset dir="${resources}" includes="button**.png" /> -->
 					<fileset dir="${resources}" includes="**_sm.png" />
 					<fileset dir="${resources}/qrcode_data" includes="qrv1_0.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="qrvfr1.dat" />

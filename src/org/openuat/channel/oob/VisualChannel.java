@@ -100,7 +100,7 @@ public class VisualChannel implements OOBChannel {
 			boolean[][] s = x.calQrcode(content);
 //			System.out.println("calculated qr code");
 			canvas = new QRCanvas(s);
-			canvas.setSize(300, 300);
+			canvas.setSize(500, 500);
 			canvas.setBackground(java.awt.Color.white);
 			canvas.repaint();
 			panel.add(canvas);
