@@ -547,8 +547,8 @@
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 					<variable name="cfg.shakingDemoMode" value="true" />
-					<variable name="demo.peer1" value="001C9A1F9B11" /> <!-- N95 -->
-					<!--<variable name="demo.peer1" value="00180FA4C997" />--> <!-- 5500 Shakeme 1 -->
+					<!--<variable name="demo.peer1" value="001C9A1F9B11" />--> <!-- N95 -->
+					<variable name="demo.peer1" value="00180FA4C997" /> <!-- 5500 Shakeme 1 -->
 					<variable name="demo.peer2" value="00180FA3A1D4" /> <!-- 5500 Shakeme 2 -->
 				</variables>
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
