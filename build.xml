@@ -155,6 +155,7 @@
 		<pathelement location="${bin-bandy}"/>
 		<pathelement location="${bin-BC-core}"/>
 		<pathelement location="${bin-google-zxing}"/>
+		<pathelement location="${lib}/junit.jar"/>
 	</path>
 	
 	<path id="cobertura.classpath">
@@ -228,6 +229,7 @@
 		<echo message="    Java6: ${haveJava6.echo}" level="info"/>
 		<echo message="    WTK with MIDP2.0 and CLDC1.1: ${haveWTK.echo}" level="info"/>
 	
+		<echo message="    * Compiling thirdparty crypto core"/>
 		<!-- Compile the BC core dependencies -->
 		<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
 		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
@@ -240,6 +242,7 @@
 		<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
 		       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.2" source="1.2" />
 
+		<echo message="    * Compiling other thirdparty helper code"/>
 		<!-- Compile the Apache BZIP2 stream dependencies -->
 		<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
 		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
@@ -250,9 +253,35 @@
 			<exclude name="${midp-only-files}" />
 		</javac>		       
 
+		<echo message="    * Compiling OpenUAT core: sensor data and utility"/>
 		<!-- Compile our own classes... -->
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
-		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2">
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       includes="org/openuat/util/ org/openuat/sensors/ org/openuat/features/">
+			<exclude name="${java5-files}" />
+			<exclude name="${java6-files}" />
+			<exclude name="${midp-only-files}" />
+		</javac>		
+		<echo message="    * Compiling OpenUAT core: authentication protocols"/>
+		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       includes="org/openuat/authentication/">
+			<exclude name="${java5-files}" />
+			<exclude name="${java6-files}" />
+			<exclude name="${midp-only-files}" />
+		</javac>		
+		<echo message="    * Compiling OpenUAT core: secure communication channels"/>
+		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       includes="org/openuat/channel/ org/openuat/roles/">
+			<exclude name="${java5-files}" />
+			<exclude name="${java6-files}" />
+			<exclude name="${midp-only-files}" />
+		</javac>		
+		<echo message="    * Compiling OpenUAT example applications"/>
+		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       includes="org/openuat/apps/">
 			<exclude name="${java5-files}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
@@ -265,6 +294,7 @@
 	</target>
 	
 	<target name="compile-java5" description="Compile code that needs Java5" if="haveJava5">
+		<echo message="    * Compiling OpenUAT additional code: JUnit tests"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
 			<include name="${java5-files}" />
@@ -272,8 +302,9 @@
 	</target>
 
 	<target name="compile-java6" description="Compile code that needs Java6" if="haveJava6">
-    	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
-	       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
+		<echo message="    * Compiling OpenUAT additional code: desktop integration"/>
+	    	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
 			<include name="${java6-files}" />
      	</javac>
 	</target>
@@ -286,6 +317,7 @@
 		<mkdir dir="${bin-bandy}"/>
 		<mkdir dir="${bin-avetanaNoop}"/>
 
+		<echo message="    * Compiling OpenUAT J2ME thirdparty code: logging"/>
 		<!-- Compile the MicroLog dependencies -->
 		<javac srcdir="${thirdparty-microlog}" destdir="${bin-microlog}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
@@ -298,14 +330,18 @@
 		<javac srcdir="${thirdparty-bandy}" destdir="${bin-bandy}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
 		
+		<echo message="    * Compiling OpenUAT J2ME thirdparty code: JSR82 dummy wrappers"/>
 		<!-- This is just a no-op avenata class when we can't use the JAR -->
 		<javac srcdir="${thirdparty-avetanaNoop}" destdir="${bin-avetanaNoop}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
 
+		<echo message="    * Compiling OpenUAT J2ME core and example MIDlets"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 		       includeJavaRuntime="no">
 			<include name="${midp-only-files}" />
+			<include name="com/swetake/util/test/" />
+			<include name="org/codec/audio/test/" />
 		</javac>
 	</target>
     
@@ -345,6 +381,7 @@
 			<fileset dir="${bin-BC-x509}" />
 			<fileset dir="${bin-BC-openssl}" />
 			<fileset dir="${bin-apache-bzip2}" />
+			<fileset dir="${bin-google-zxing}" />
 			<fileset dir="resources" includes="printer.png"/>
 			<fileset dir="${src}" includes="*.properties" />
 			<!-- Merge library jars into final jar file -->
@@ -662,12 +699,14 @@
 			<jvmarg value="-Xmx512m" />
 			<jvmarg value="-Xms512m" />
 			<classpath>
+				<pathelement location="${lib}/bluecove-emu-2.0.3.jar"/>
 				<fileset refid="lib.alljars"/>
 				<pathelement location="${jarfile.core}"/>
 				<pathelement location="${jarfile.channels}"/>
 				<pathelement location="${jarfile.apps}"/>
 				<!-- to also use the log4.properties file -->
 				<pathelement location="${src}"/>
+				<!-- for Bluetooth loopback (emulator) tests -->
 			</classpath>
 			<formatter type="plain" usefile="true"/>
 			<batchtest todir="${reports.tests}">
@@ -706,6 +745,8 @@
 				<fileset refid="lib.alljars"/>
 				<!-- to also use the log4.properties file -->
 				<pathelement location="${src}"/>
+				<!-- for Bluetooth loopback (emulator) tests -->
+				<pathelement location="${lib}/bluecove-emu-2.0.3.jar"/>
 			</classpath>
 			<formatter type="plain" usefile="true"/>
 			<batchtest todir="${reports.tests}">

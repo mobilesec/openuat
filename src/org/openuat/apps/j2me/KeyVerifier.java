@@ -218,7 +218,8 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 		//System.out.println("response "+response);
 		if (response.equals(ACK)){
 			mainProgram.display.setCurrent(progress);
-			verifier = new J2MEAudioChannel(mainProgram);
+			verifier = new J2MEAudioChannel(Display.getDisplay(mainProgram),
+					mainProgram.getHomeScreen(), mainProgram.volume);
 			verifier.setOOBMessageHandler(this);
 			tryAudioMaster();
 		}
@@ -660,7 +661,9 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 	//	}
 
 	private void getInputViaVisualChannel() {
-		J2MEVisualChannel verifier = new J2MEVisualChannel(mainProgram);
+		J2MEVisualChannel verifier = new J2MEVisualChannel(
+				Display.getDisplay(mainProgram), mainProgram.getClass(), mainProgram,
+				mainProgram.getBack(), mainProgram.getSuccessCmd(), mainProgram.getFailure());
 		verifier.setOOBMessageHandler(this);
 		verifier.capture();
 	}
@@ -679,7 +682,9 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 		System.arraycopy(hash, 0, trimmedHash, 0, 7);
 		String toSend = new String(Hex.encodeHex(trimmedHash));
 //		LogService.debug(this, "creating visual channel");
-		J2MEVisualChannel verifier = new J2MEVisualChannel(mainProgram);
+		J2MEVisualChannel verifier = new J2MEVisualChannel(
+			Display.getDisplay(mainProgram), mainProgram.getClass(), mainProgram,
+			mainProgram.getBack(), mainProgram.getSuccessCmd(), mainProgram.getFailure());
 
 		verifier.transmit(toSend.getBytes());
 

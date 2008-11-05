@@ -22,6 +22,7 @@ import javax.microedition.lcdui.Alert;
 import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Command;
+import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.media.Manager;
@@ -31,7 +32,6 @@ import javax.microedition.media.control.VideoControl;
 import javax.microedition.midlet.MIDlet;
 
 import org.apache.log4j.Logger;
-import org.openuat.apps.j2me.OpenUATmidlet;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
@@ -51,10 +51,13 @@ public class J2MEVisualChannel implements OOBChannel{
 	protected Canvas canvas;
 	protected Player player;
 	protected VideoControl videoControl;
-	Logger logger = Logger.getLogger("");
-	OOBMessageHandler handler;
+	private Logger logger = Logger.getLogger("");
+	private OOBMessageHandler handler;
+	private Display display;
+	private Class appClass;
+	private CommandListener appListener;
+	private Command appBack, appSuccess, appFailure;
 
-	private OpenUATmidlet mainProgram;
 	Displayable getCanvas() {
 		return canvas;
 	}
@@ -67,11 +70,15 @@ public class J2MEVisualChannel implements OOBChannel{
 		return videoControl;
 	}
 
-	public J2MEVisualChannel(OpenUATmidlet mainProgram) {
-		this.mainProgram = mainProgram;
-
-
-
+	public J2MEVisualChannel(Display display, Class appClass,
+			CommandListener listener,
+			Command back, Command success, Command failure) {
+		this.display = display;
+		this.appClass = appClass;
+		this.appListener = listener;
+		this.appBack = back;
+		this.appSuccess = success;
+		this.appFailure = failure;
 	}
 
 	protected static Player createPlayer() throws IOException, MediaException {
@@ -122,11 +129,11 @@ public class J2MEVisualChannel implements OOBChannel{
 
 
 
-	private void showAlert(String title, String text) {
+	/*private void showAlert(String title, String text) {
 		Alert alert = new Alert(title, text, null, AlertType.INFO);
 		alert.setTimeout(Alert.FOREVER);
 		showAlert(alert);
-	}
+	}*/
 
 	public void showError(Throwable t) {
 		String message = t.getMessage();
@@ -142,7 +149,6 @@ public class J2MEVisualChannel implements OOBChannel{
 	}
 
 	private void showAlert(Alert alert) {
-		Display display = Display.getDisplay(mainProgram);
 		display.setCurrent(alert, canvas);
 	}
 
@@ -169,7 +175,7 @@ public class J2MEVisualChannel implements OOBChannel{
 			videoControl.setDisplaySize(canvas.getWidth(), canvas.getHeight());
 			videoControl.setVisible(true);
 			player.start();
-			Display.getDisplay(mainProgram).setCurrent(canvas);
+			display.setCurrent(canvas);
 		}catch(MediaException e){
 			logger.error(e);
 		} catch (IOException e) {
@@ -201,7 +207,7 @@ public class J2MEVisualChannel implements OOBChannel{
 		
 		
 		logger.info("transmitting");
-		QRcodeGen x = new QRcodeGen(mainProgram);
+		QRcodeGen x = new QRcodeGen(display, appClass);
 		logger.info("made qr code class");
 		x.setQrcodeErrorCorrect('M');
 		x.setQrcodeEncodeMode('B');
@@ -220,11 +226,11 @@ public class J2MEVisualChannel implements OOBChannel{
 		QRCanvas qrcanvas = new QRCanvas(s);
 		logger.info("showing visual code");
 		qrcanvas.repaint();
-		qrcanvas.addCommand(mainProgram.getBack());
-		qrcanvas.addCommand(mainProgram.getSuccessCmd());
-		qrcanvas.addCommand(mainProgram.getFailure());
-		qrcanvas.setCommandListener(mainProgram);
-		Display.getDisplay (mainProgram).setCurrent ( qrcanvas );
+		qrcanvas.addCommand(appBack);
+		qrcanvas.addCommand(appSuccess);
+		qrcanvas.addCommand(appFailure);
+		qrcanvas.setCommandListener(appListener);
+		display.setCurrent ( qrcanvas );
 		}catch(Exception e){
 			logger.error(e);
 		}

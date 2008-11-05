@@ -16,9 +16,6 @@
 
 package org.openuat.channel.oob;
 
-import javax.microedition.midlet.MIDlet;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
@@ -36,8 +33,6 @@ import com.swetake.util.QRcodeGen;
  * @author Sean Owen (srowen@google.com)
  */
 public class VisualChannel implements OOBChannel {
-
-	private static JFrame frame;
 
 	Logger logger = Logger.getLogger("");
 	OOBMessageHandler handler;

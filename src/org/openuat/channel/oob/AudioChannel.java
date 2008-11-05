@@ -4,34 +4,17 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import javax.microedition.lcdui.Alert;
-import javax.microedition.lcdui.AlertType;
-import javax.microedition.lcdui.Command;
-import javax.microedition.lcdui.CommandListener;
-import javax.microedition.lcdui.Display;
-import javax.microedition.lcdui.Displayable;
-import javax.microedition.lcdui.Form;
-import javax.microedition.media.Manager;
-import javax.microedition.media.MediaException;
-import javax.microedition.media.Player;
-import javax.microedition.media.control.RecordControl;
-import javax.microedition.media.control.VolumeControl;
-
 import org.apache.log4j.Logger;
 import org.codec.audio.j2me.AudioUtils;
-import org.openuat.apps.j2me.OpenUATmidlet;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
-public class AudioChannel implements OOBChannel, CommandListener {
+public class AudioChannel implements OOBChannel {
+	private OOBMessageHandler messageHandler;
+	private Logger logger = Logger.getLogger("");
 	
-	//UI --> not sure how much of this we need, just the display should be fine
-	OpenUATmidlet mainProgram;
-	
-	OOBMessageHandler messageHandler;
-	Logger logger = Logger.getLogger("");
-	
-	Display display;
+/*	private Display display;
+	private Displayable appHomescreen;
 	private Form recordScreen;
 	
 	private Command stopRec;
@@ -40,16 +23,15 @@ public class AudioChannel implements OOBChannel, CommandListener {
 	 
 		private Player captureAudioPlayer;
 		private RecordControl rc;
-		private ByteArrayOutputStream output;
+*/		private ByteArrayOutputStream output;
 
 		/** The last recorded sequence */
 		 byte [] recorded = null ;
 		 
 		 //put only the display
-	public AudioChannel(OpenUATmidlet mainProgram) {
-		this.mainProgram = mainProgram;
-		display = Display.getDisplay(mainProgram);
-		
+/*	public AudioChannel(Display display, Displayable appHomescreen) {
+		this.display = display;
+		this.appHomescreen = appHomescreen;
 	}
 	
 	public void commandAction(Command com, Displayable dis) {
@@ -81,7 +63,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 			decodeAudio(recorded);
 		}
 		else if(com.getCommandType() == Command.BACK){
-			display.setCurrent(mainProgram.getHomeScreen());
+			display.setCurrent(appHomescreen);
 		}
 
 	}
@@ -114,7 +96,6 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		}
 		captureAudioPlayer.close();
 	}
-	private Form decodeScreen;
 	public byte [] decodeAudio(byte [] audiodata) {
 		
 		
@@ -182,12 +163,12 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		}
 		return recorded;
 	}
-	
+*/	
 	
 	/**
 	 * Starts recording the audio sequence. Then the MIDlet waits for the user to press the STOP button.
 	 */
-	private void recordAudio() {
+/*	private void recordAudio() {
 		try {
 			//change the screen to let the user know it's recording
 //			recordScreen = new Form("Recording");
@@ -222,7 +203,8 @@ public class AudioChannel implements OOBChannel, CommandListener {
 			display.setCurrent(alert);
 		} 
 	}
-
+*/
+		 
 	public void handleAudioDecodedText(byte[] retrieved) {
 		messageHandler.handleOOBMessage(AUDIO_CHANNEL, retrieved);
 		
@@ -241,7 +223,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		try {
 			byte[]encodedtoSend = AudioUtils.encodeFileToWav(new ByteArrayInputStream(message));
 			
-			Alert play = new Alert ("Encoded", "Play?", null, AlertType.CONFIRMATION);
+/*			Alert play = new Alert ("Encoded", "Play?", null, AlertType.CONFIRMATION);
 			play.setTimeout(Alert.FOREVER);
 			display.setCurrent(play);
 			//press play when to start singing ?? 
@@ -255,13 +237,13 @@ public class AudioChannel implements OOBChannel, CommandListener {
 			player.prefetch(); 
 			player.realize(); 
 			player.start();
-		} catch (IOException e) {
+*/		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (MediaException e) {
+/*		} catch (MediaException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+*/		}
 
 	}
 
@@ -270,7 +252,7 @@ public class AudioChannel implements OOBChannel, CommandListener {
 		//start the recording process
 		
 		//when it's done, we'll call the handler and pass on the message
-		recordAudio();
+//		recordAudio();
 		
 	}
 

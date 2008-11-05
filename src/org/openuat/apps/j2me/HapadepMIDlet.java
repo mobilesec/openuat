@@ -24,7 +24,6 @@ import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.RecordControl;
 import javax.microedition.media.control.ToneControl;
-import javax.microedition.media.control.VolumeControl;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
 
@@ -455,7 +454,7 @@ public class HapadepMIDlet extends MIDlet implements CommandListener, ItemComman
 	private void generateQRCode(byte d []){
 		
 		
-		QRcodeGen x=new QRcodeGen(this);
+		QRcodeGen x=new QRcodeGen(Display.getDisplay(this), this.getClass());
 		x.setQrcodeErrorCorrect('M');
 		x.setQrcodeEncodeMode('B');
 		x.setQrcodeVersion(1);

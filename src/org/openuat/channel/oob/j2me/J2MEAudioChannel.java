@@ -10,7 +10,6 @@ import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
-import javax.microedition.lcdui.Form;
 import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
@@ -20,20 +19,17 @@ import javax.microedition.media.control.VolumeControl;
 import org.apache.log4j.Logger;
 import org.codec.audio.j2me.AudioUtils;
 import org.openbandy.service.LogService;
-import org.openuat.apps.j2me.OpenUATmidlet;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
 public class J2MEAudioChannel implements OOBChannel, CommandListener {
 	
-	//UI --> not sure how much of this we need, just the display should be fine
-	OpenUATmidlet mainProgram;
+	private OOBMessageHandler messageHandler;
+	private Logger logger = Logger.getLogger("");
 	
-	OOBMessageHandler messageHandler;
-	Logger logger = Logger.getLogger("");
-	
-	Display display;
-	private Form recordScreen;
+	private Display display;
+	private Displayable homeScreen;
+	private int volume;
 	
 	private Command stopRec;
 	private Command playRec = new Command("Play", Command.SCREEN, 1);
@@ -47,10 +43,10 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 		 byte [] recorded = null ;
 		 
 		 //put only the display
-	public J2MEAudioChannel(OpenUATmidlet mainProgram) {
-		this.mainProgram = mainProgram;
-		display = Display.getDisplay(mainProgram);
-		
+	public J2MEAudioChannel(Display display, Displayable homeScreen, int volume) {
+		this.display = display;
+		this.homeScreen = homeScreen;
+		this.volume = volume;
 	}
 	
 	public void commandAction(Command com, Displayable dis) {
@@ -82,7 +78,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 			decodeAudio(recorded);
 		}
 		else if(com.getCommandType() == Command.BACK){
-			display.setCurrent(mainProgram.getHomeScreen());
+			display.setCurrent(homeScreen);
 		}
 
 	}
@@ -115,7 +111,6 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 		}
 		captureAudioPlayer.close();
 	}
-	private Form decodeScreen;
 	public void  decodeAudio(byte [] audiodata) {
 
 		
@@ -250,7 +245,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 			VolumeControl  vc = (VolumeControl) player.getControl("VolumeControl");
 			   if(vc != null) {
 				   logger.info("volume level: "+vc.getLevel());
-			      vc.setLevel(mainProgram.volume);
+			      vc.setLevel(volume);
 			   }
 			player.prefetch(); 
 			player.realize(); 

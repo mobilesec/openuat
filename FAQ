@@ -6,3 +6,7 @@
 - because some classes have been modified to work with J2ME
 - but you can use the normal BC distribution instead of the included classes
 
+3. Build or test failures
+
+3.a The InterlockProtocolTest fails
+- please install the unlimited strength JCE policy file
