@@ -55,7 +55,8 @@ public abstract class TimeSeriesBundle {
 			// also forward this event to the sample listeners
 //#if cfg.haveFloatSupport
 			if (samplesSinks != null) {
-				logger.debug("Forwarding segment start event to " + samplesSinks.size() + " registered sinks");
+				logger.debug("Forwarding segment start event of line " + 
+						lineIndex + " to " + samplesSinks.size() + " registered integer sinks");
 				for (int i=0; i<samplesSinks.size(); i++) {
 					SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
 					s.segmentStart(numSample);
@@ -63,6 +64,8 @@ public abstract class TimeSeriesBundle {
 			}
 //#endif			
 			if (samplesSinks_Int != null) {
+				logger.debug("Forwarding segment start event of line " + 
+						lineIndex + " to " + samplesSinks_Int.size() + " registered sinks");
 				for (int i=0; i<samplesSinks_Int.size(); i++) {
 					SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
 					s.segmentStart(numSample);
@@ -95,7 +98,8 @@ public abstract class TimeSeriesBundle {
 			if (lineIndex != -1) {
 //#if cfg.haveFloatSupport
 				if (samplesSinks != null) {
-					logger.debug("Forwarding segment end event to " + samplesSinks.size() + " registered sinks");
+					logger.debug("Forwarding segment end event of line " +
+							lineIndex + " to " + samplesSinks.size() + " registered sinks");
 					for (int i=0; i<samplesSinks.size(); i++) {
 						SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
 						s.segmentEnd(numSample);
@@ -103,7 +107,8 @@ public abstract class TimeSeriesBundle {
 				}
 //#endif			
 				if (samplesSinks_Int != null) {
-					logger.debug("Forwarding segment end event to " + samplesSinks_Int.size() + " registered sinks");
+					logger.debug("Forwarding segment end event of line " +
+							lineIndex + " to " + samplesSinks_Int.size() + " registered integer sinks");
 					for (int i=0; i<samplesSinks_Int.size(); i++) {
 						SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
 						s.segmentEnd(numSample);
@@ -478,6 +483,17 @@ public abstract class TimeSeriesBundle {
 //#endif
 	public boolean removeNextStageSamplesSink(SamplesSink_Int sink) {
 		return samplesSinks_Int.removeElement(sink);
+	}
+	
+	/** This method forces the embedded time series to quiescent and thus
+	 * the accumulated segment to be sent out. It should only be called 
+	 * when ending a simulation to make sure that the active segment gets
+	 * forwarded when the accelerometer data didn't become "quiet" before
+	 * ending the recording.
+	 */
+	public void forceToQuiescent() {
+		for (int i=0; i<firstStageSeries.length; i++)
+			firstStageHandlers.toQuiescent(i, curSampleIndex);
 	}
 
 	

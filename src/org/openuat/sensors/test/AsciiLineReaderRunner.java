@@ -39,6 +39,7 @@ import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.TimeSeriesBundle;
 import org.openuat.sensors.VectorSamplesSink;
 import org.openuat.sensors.WiTiltRawReader;
+import org.openuat.sensors.XsensLogReader;
 
 public class AsciiLineReaderRunner {
 	/** Our log4j logger. */
@@ -198,6 +199,10 @@ public class AsciiLineReaderRunner {
 			FileInputStream is = new FileInputStream(filename);
 			r = new ParallelPortPWMReader(new GZIPInputStream(is), 100);
 		}
+		else if (runClassName.equals("XsensLogReader")) {
+			FileInputStream is = new FileInputStream(filename);
+			r = new XsensLogReader(new GZIPInputStream(is));
+		}
 		else if (runClassName.equals("WiTiltRawReader")) {
 			r = new WiTiltRawReader();
 			((WiTiltRawReader) r).openSerial(filename, false);
@@ -339,22 +344,37 @@ public class AsciiLineReaderRunner {
 						varthreshold = ShakeWellBeforeUseParameters.activityVarianceThreshold;
 					}
 					
-					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
-							", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
 					AsciiLineReaderBase r2 = null;
+					int sensor1ind[], sensor2ind[];
 					if (runClassName.equals("ParallelPortPWMReader")) {
 						FileInputStream is = new FileInputStream(filename);
 						r2 = new ParallelPortPWMReader(new GZIPInputStream(is), samplerate);
+						sensor1ind = new int[] {0, 1, 2};
+						sensor2ind = new int[] {4, 5, 6};
+					}
+					else if (runClassName.equals("XsensLogReader")) {
+						FileInputStream is = new FileInputStream(filename);
+						r2 = new XsensLogReader(new GZIPInputStream(is));
+						samplerate = XsensLogReader.SAMPLE_RATE;
+						sensor1ind = new int[] {0, 1, 2};
+						sensor2ind = new int[] {3, 4, 5};
+
+						minsegmentsize = samplerate*2;
+						windowsize = samplerate/2;
+						varthreshold = 0.007;
 					}
 					else {
 						System.err.println("Unknown derived class name or not supported for WiTilt right now!");
+						sensor1ind = sensor2ind = null;
 						System.exit(200);
 					}
+					System.out.println("Searching for first significant segments with windowsize=" + windowsize + 
+							", minsegmentsize=" + minsegmentsize + ", varthreshold=" + varthreshold);
 
 					TimeSeriesAggregator aggr_a = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
 					TimeSeriesAggregator aggr_b = new TimeSeriesAggregator(3, windowsize, minsegmentsize, -1);
-					r2.addSink(new int[] {0, 1, 2}, aggr_a.getInitialSinks());
-					r2.addSink(new int[] {4, 5, 6}, aggr_b.getInitialSinks());
+					r2.addSink(sensor1ind, aggr_a.getInitialSinks());
+					r2.addSink(sensor2ind, aggr_b.getInitialSinks());
 					aggr_a.addNextStageSegmentsSink(new SegmentSink(0));
 					aggr_b.addNextStageSegmentsSink(new SegmentSink(1));
 					aggr_a.setParameters(r2.getParameters());
@@ -362,6 +382,8 @@ public class AsciiLineReaderRunner {
 					aggr_a.setActiveVarianceThreshold(varthreshold);
 					aggr_b.setActiveVarianceThreshold(varthreshold);
 					r2.simulateSampling();
+					aggr_a.forceToQuiescent();
+					aggr_b.forceToQuiescent();
 
 					if (SegmentSink.segs[0] != null && SegmentSink.segs[1] != null) {
 						if (graph) {
