@@ -492,8 +492,17 @@ public abstract class TimeSeriesBundle {
 	 * ending the recording.
 	 */
 	public void forceToQuiescent() {
-		for (int i=0; i<firstStageSeries.length; i++)
-			firstStageHandlers.toQuiescent(i, curSampleIndex);
+//#if cfg.haveFloatSupport
+		if (firstStageSeries != null) {
+			for (int i=0; i<firstStageSeries.length; i++)
+				firstStageHandlers.toQuiescent(i, curSampleIndex);
+		}
+		else
+//#endif
+		if (firstStageSeries_Int != null) {
+			for (int i=0; i<firstStageSeries_Int.length; i++)
+				firstStageHandlers.toQuiescent(i, curSampleIndex);
+		}
 	}
 
 	
