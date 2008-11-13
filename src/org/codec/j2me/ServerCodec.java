@@ -1,3 +1,4 @@
+
 package org.codec.j2me;
 
 import java.io.ByteArrayOutputStream;
