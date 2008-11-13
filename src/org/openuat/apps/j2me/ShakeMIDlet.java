@@ -105,7 +105,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 	LogForm logForm;
 
 	// our logger
-	Logger logger = Logger.getLogger("");
+	Logger logger = Logger.getLogger("org.openuat.apps.j2me.ShakeMIDlet");
 
 	SamplesSource reader;
 	TimeSeriesAggregator aggregator;

@@ -1,3 +1,11 @@
+/* Copyright Iulia Ion
+ * File created 2008-08-01
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.apps;
 
 import java.awt.Font;
@@ -158,10 +166,9 @@ public class OpenUATtoolkit {
 			RemoteConnection connectionToRemote = (RemoteConnection) res[3];
 			
 			String verify = readLine(connectionToRemote);
-			System.out.println(verify);
 			if (verify.equals(VERIFY)){
 				String method = readLine(connectionToRemote);
-				System.out.println("method: " + method);
+				if (logger.isDebugEnabled()) logger.debug("method: " + method);
 				byte[] hash = null;
 				try {
 					hash = Hash.doubleSHA256(authKey, false);
@@ -176,15 +183,10 @@ public class OpenUATtoolkit {
 					if(start.equals(START)){
 						status.setText("Take a picture of the code!");
 
-//						System.out.println("Please choose the desired verification method: \n\t[1] visual \n\t[2] audio \n\t[3] slowcodec  \n\t[4] madlib");
-//						Scanner sc = new Scanner(System.in);
-//						int option = sc.nextInt();
-//						if(option == 1){
-
 						byte [] trimmedHash = new byte[7];
 						System.arraycopy(hash, 0, trimmedHash, 0, 7);
 						String toSend = new String(Hex.encodeHex(trimmedHash));
-						System.out.println("hash: -------" + toSend);
+						if (logger.isDebugEnabled()) logger.debug("hash: "+toSend);
 						VisualChannel channel = new VisualChannel();
 						channel.setPane(progress);
 						channel.transmit(toSend.getBytes());
@@ -206,7 +208,7 @@ public class OpenUATtoolkit {
 						//we add some padding after the hash
 						byte [] padded = new byte[toSend.length + AUDIO_PADDING];
 						System.arraycopy(toSend, 0, padded, 0, toSend.length);
-					System.out.println("hash: -------" + toSend);
+						if (logger.isDebugEnabled()) logger.debug("hash: "+toSend);
 					
 					java.net.URL imageURL = getClass().getResource("/audio_bg.png");
 					ImageIcon icon = new ImageIcon(imageURL);
@@ -225,7 +227,7 @@ public class OpenUATtoolkit {
 					MadLib madLib = new MadLib();
 					try {
 					String text = madLib.GenerateMadLib(hash, 0, 5);
-					System.out.println(text);
+					if (logger.isDebugEnabled()) logger.debug("MADLIB: "+text);
 //					java.net.URL imageURL = getClass().getResource("/madlib_bg.png");
 //					ImageIcon icon = new ImageIcon(imageURL);
 //					progress.add(new JLabel(text, icon, JLabel.CENTER));
@@ -249,7 +251,6 @@ public class OpenUATtoolkit {
 //					progress.add(new JLabel("", icon, JLabel.CENTER));
 					frame.repaint();
 						String score = PlayerPiano.MakeInput(hash);
-					
 						playSlowCodec(connectionToRemote, score);
 				}
 			}
@@ -276,18 +277,10 @@ public class OpenUATtoolkit {
 			frame.repaint();
 			
 			if(success.equals(SUCCESS)){
-				
-//							java.net.URL imageURL = getClass().getResource("/secure_sm.png");
-//							ImageIcon icon = new ImageIcon(imageURL);
-//							progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 				status.setText("Congratulations! Authentication was successful.");
-				System.out.println("success!!");
+				if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
 			}else if (success.equals(FAILURE)){
-				System.out.println("failure!!");
-				
-//							java.net.URL imageURL = getClass().getResource("/error_bg.png");
-//							ImageIcon icon = new ImageIcon(imageURL);
-//							progress.add(new JLabel("Authentication failed.", icon, JLabel.CENTER));
+				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
 				status.setText("Error! Authentication failed.");
 			
 			}else if (success.equals(REPLAY)){
@@ -300,27 +293,27 @@ public class OpenUATtoolkit {
 		private void tryAudio(RemoteConnection connectionToRemote, byte[] sound) {
 			String start = readLine(connectionToRemote);
 			if(start.equals(START)){
-				System.out.println("Playing");
+				if (logger.isDebugEnabled()) logger.debug("Playing...");
 				WavPlayer.PlayWav(new ByteArrayInputStream(sound));
-				System.out.println("done");
+				if (logger.isDebugEnabled()) logger.debug("Done.");
 				send(DONE, connectionToRemote);
 				String outcome = readLine(connectionToRemote);
 				status.setText("");
 				progress.removeAll();
 				frame.repaint();
-				System.out.println("outcome: "+outcome);
-				
 				if(outcome.equals(SUCCESS)){
 
 					//					java.net.URL imageURL = getClass().getResource("/secure_sm.png");
 					//					ImageIcon icon = new ImageIcon(imageURL);
 					//					progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 					status.setText("Congratulations! Authentication was successful.");
-					System.out.println("success!!");
+					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+					
+					
 					//for demo purposes
 					connectionToRemote.close();
 				}else if (outcome.equals(FAILURE)){
-					System.out.println("failure!!");
+					if(logger.isInfoEnabled()) logger.info("Authentication failed.");
 
 					//					java.net.URL imageURL = getClass().getResource("/error_bg.png");
 					//					ImageIcon icon = new ImageIcon(imageURL);
@@ -348,9 +341,10 @@ public class OpenUATtoolkit {
 //				ImageIcon icon = new ImageIcon(imageURL);
 //				progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 				status.setText("Congratulations! Authentication was successful.");
-				System.out.println("success!!");
+					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+				
 			}else if (success.equals(FAILURE)){
-				System.out.println("failure!!");
+				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
 				
 //				java.net.URL imageURL = getClass().getResource("/error_bg.png");
 //				ImageIcon icon = new ImageIcon(imageURL);
@@ -419,7 +413,7 @@ public class OpenUATtoolkit {
 
 	private  void initBluetoothServer() {
 		if (! BluetoothSupport.init()) {
-			System.out.println("Could not initialize Bluetooth API");
+			logger.error("Could not initialize Bluetooth API");
 			return;
 		}
 
@@ -428,9 +422,9 @@ public class OpenUATtoolkit {
 					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(new TempHandler(false, false, status, progress, frame));
 			rfcommServer.start();
-			System.out.println("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
+			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			System.out.println("Error initializing BlutoothRFCOMMServer: " + e);
+			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 			e.printStackTrace();
 		}
 	}

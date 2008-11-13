@@ -63,7 +63,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 	LogForm logForm;
 
 	// our logger
-	Logger logger = Logger.getLogger("");
+	Logger logger = Logger.getLogger("org.openuat.apps.j2me.ManualAuthentication");
 	
 	public ManualAuthentication() {
 		display = Display.getDisplay(this);

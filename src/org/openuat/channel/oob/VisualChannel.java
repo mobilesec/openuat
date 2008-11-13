@@ -1,19 +1,11 @@
-/*
- * Copyright 2007 Google Inc.
+/* Copyright Iulia Ion
+ * File created 2008-08-01
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  */
-
 package org.openuat.channel.oob;
 
 import javax.swing.JPanel;
@@ -26,15 +18,12 @@ import com.swetake.util.QRCanvas;
 import com.swetake.util.QRcodeGen;
 
 /**
- * <p>
- * The actual reader application {@link MIDlet}.
- * </p>
  * 
- * @author Sean Owen (srowen@google.com)
+ * @author Iulia Ion 
  */
 public class VisualChannel implements OOBChannel {
 
-	Logger logger = Logger.getLogger("");
+	Logger logger = Logger.getLogger(VisualChannel.class);
 	OOBMessageHandler handler;
 
 	public VisualChannel() {
@@ -89,7 +78,6 @@ public class VisualChannel implements OOBChannel {
 		x.setQrcodeEncodeMode('B');
 		x.setQrcodeVersion(version);
 
-		System.out.println("hash length: " + content.length);
 
 		if (content.length > 0 && content.length < 120) {
 			boolean[][] s = x.calQrcode(content);

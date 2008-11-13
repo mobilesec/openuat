@@ -1,3 +1,11 @@
+/* Copyright Iulia Ion
+ * File created 2008-08-01
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.channel.oob;
 
 import java.io.ByteArrayInputStream;
@@ -5,13 +13,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.apache.log4j.Logger;
-import org.codec.audio.j2me.AudioUtils;
+import org.codec.audio.AudioUtils;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
 public class AudioChannel implements OOBChannel {
 	private OOBMessageHandler messageHandler;
-	private Logger logger = Logger.getLogger("");
+	private Logger logger = Logger.getLogger(AudioChannel.class);
 	
 /*	private Display display;
 	private Displayable appHomescreen;

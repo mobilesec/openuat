@@ -52,7 +52,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	LogForm logForm;
 
 	// our logger
-	Logger logger = Logger.getLogger("");
+	Logger logger = Logger.getLogger("org.openuat.apps.j2me.BluetoothDemo");
 	
 	public BluetoothDemo() {
 		display = Display.getDisplay(this);
