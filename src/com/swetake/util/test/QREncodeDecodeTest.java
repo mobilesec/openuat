@@ -1,6 +1,12 @@
-/** 
- * 
+/* Copyright Iulia Ion
+ * File created 2008-08-01
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  */
+
 package com.swetake.util.test;
 
 import java.awt.Color;
@@ -36,14 +42,6 @@ public class QREncodeDecodeTest extends TestCase{
 			Assert.assertEquals(message[i], result);
 		}
 		
-//		JFrame frame = new JFrame("image");
-//		frame.setSize(new Dimension(400, 400));
-//		frame.getContentPane().setBackground(Color.white);
-//		frame.getContentPane().add(new JLabel(new ImageIcon(code1)));
-//		frame.setVisible(true);
-		
-		//System.out.println(result1);
-
 	}
 	
 	public static BufferedImage encodeQrcode(String qrcodeData){
@@ -79,12 +77,4 @@ public class QREncodeDecodeTest extends TestCase{
 	    return result.getText();
 	}
 	
-	public static void main(String[] args) {
-		try {
-			new QREncodeDecodeTest().testEncodeDecode();
-		} catch (ReaderException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
 }
