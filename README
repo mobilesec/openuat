@@ -84,3 +84,10 @@ accelerometer data verbatim. This mode can be entered by executing
 
 Extending the toolkit
 ---------------------
+
+Setting the MIDlet permission:
+-------------------------------
+On Nokia phones (N95, N82, etc), open the Application Manager (App. Mgr.) in the Applications 
+folder, scroll to "Authentication" and select Open, go to the individual settings, for example 
+Multimedia, and select "Ask first time". The phone will now ask the user for permission to 
+take photo/record audio only once per each session.  
