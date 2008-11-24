@@ -474,7 +474,7 @@
 				<requirement name="Identifier" value="Nokia/N95" />
 				<requirement name="JavaPackage" value="btapi" />
 				<requirement name="JavaPackage" value="mmapi" />
-				<!--<requirement name="JavaPackage" value="advancedmultimedia" />-->
+				<requirement name="JavaPackage" value="advancedmultimedia" />
 				<requirement name="JavaPlatform" value="MIDP/2.0+" />
 			</deviceRequirements>
 			
@@ -513,6 +513,12 @@
 				<!--<compiler source="1.5" target="1.5"/>
 				<postcompiler name="java5" />-->
 				<!-- obfuscator settings: do not obfuscate when the test-property is true  -->
+				<!-- ATTENTION: Do not deactivate the obfuscator! Otherwise, the JAR file will not
+				     install on real phones, because Bouncycastle ships a few classes in the
+				     java.util, java.math, and java.security packages that are missing in MIDP but
+				     required by the code. The mobile phone preverifier will not allow additions to
+				     these subpackages, and hence install will fail. By obfuscating, the internal 
+				     class names change in the JAR can be installed. -->
 				<obfuscator name="ProGuard" useDefaultPackage="true" unless="test or debug2">
 					<!-- with optimize=true the code no longer pre-verifies -->
 					<parameter name="optimize" value="false" />
