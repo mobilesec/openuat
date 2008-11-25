@@ -27,8 +27,9 @@ public interface OOBChannel {
 	
 	//should also include some properties of the channels
 	
-	public final int VIDEO_CHANNEL = 1;
-	public final int AUDIO_CHANNEL = 2;
+	public static final int VIDEO_CHANNEL	= 1;
+	public static final int AUDIO_CHANNEL	= 2;
+	public static final int BUTTON_CHANNEL	= 3;
 	
 	public void transmit( byte[] message);
 	
