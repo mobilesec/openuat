@@ -75,6 +75,18 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	protected int inputMode;
 	
 	/**
+	 * Used for {@link #intervalsToBytes}.<br/>
+	 * <code>true</code>: round down<br/>
+	 * <code>false</code>: round nearest
+	 */
+	protected boolean doRoundDown;
+	
+	/**
+	 * Used for {@link #intervalsToBytes}.
+	 */
+	protected boolean useCarry;
+	
+	/**
 	 * oob message handler
 	 * @see #setOOBMessageHandler
 	 */
@@ -89,20 +101,20 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 */
 	protected String captureDisplayText;
 	
-	/**
+	/*
 	 * How many button events (presses/releases) are still to process?
 	 */
-	protected int buttonEventsLeft;
+	private int buttonEventsLeft;
 	
-	/**
+	/*
 	 * The transmitted and captured oob message as a list of intervals.
 	 */
-	protected IntervalList oobInput;
+	private IntervalList oobInput;
 	
-	/**
+	/*
 	 * Helps to keep track of currently captured input.
 	 */
-	protected long timestamp;
+	private long timestamp;
 
 	/**
 	 * Receives out of band inputs. Listens to key
@@ -145,11 +157,10 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 			buttonEventsLeft--;
 			if (buttonEventsLeft <= 0) {
 				// massage has been transmitted, pass it on
-				// TODO: correct call to messageHandler. where does channel type come from?
-				//messageHandler.handleOOBMessage(channelType, oobInput.toBytes());
+				byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarry);
+				messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
 			}
 		}
-		
 	}
 
 	@Override
@@ -159,13 +170,27 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		}
 	}
 	
-	/*
-	 * 'bitsPerInterval' should not exceed 31, it is truncated to 31 if it's larger.
-	 * The result is at most 64bit = 8byte long.
-	 * If intervals.size() * max(bitsPerInterval, 31) exceeds 64 bit, only
+	
+	/**
+	 * Converts an <code>IntervalList</code> to a <code>byte[]</code>.
+	 * <br/>
+	 * <code>bitsPerInterval</code> should not exceed 31, it is truncated to 31 if it's larger.
+	 * The result is at most 64 bit = 8 byte long.
+	 * If <code>intervals.size() * max(bitsPerInterval, 31)</code> exceeds 64 bit, only
 	 * the first 64 bits will be returned.
 	 * If the returned number of bits is not a multiple of 8, the remaining
 	 * bits in the last byte are set to zero.
+	 * 
+	 * @param intervals The list of intervals to be converted.
+	 * @param minInterval Smallest considered interval or time unit in ms.
+	 * @param bitsPerInterval How many bits per interval should be extracted?
+	 * @param roundFloor Rounding mode: If <code>true</code>, each interval will be
+	 * rounded down to the next multiple of <code>minInterval</code>. If <code>false</code>,
+	 * each interval will be rounded to the nearest multiple of <code>minInterval</code>.
+	 * @param useCarry Should rounding losses be added to the next interval?
+	 * @return Returns the message converted to a <code>byte[]</code>.
+	 * 
+	 * @see IntervalList
 	 */
 	protected byte[] intervalsToBytes(IntervalList intervals, int minInterval, int bitsPerInterval, boolean roundFloor, boolean useCarry) {
 		bitsPerInterval = Math.max(bitsPerInterval, 31);
@@ -215,10 +240,24 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		return result;
 	}
 
-	/*
-	 * The length of 'bytes' should not exceed 8 bytes, only the first 8 bytes
+	/**
+	 * Converts a <code>byte[]</code> to an <code>IntervalList</code>, which is 
+	 * suitable to transmit data over a button channel.
+	 * <br/>
+	 * The length of <code>bytes</code> should not exceed 8 bytes, only the first 8 bytes
 	 * will be considered.
-	 * 'bitsPerInterval' should not exceed 31, it is truncated to 31 if it's larger.
+	 * <code>bitsPerInterval</code> should not exceed 31, it is truncated to 31 if it's larger.
+	 * 
+	 * @param bytes The input to be converted to an <code>IntervalList</code>.
+	 * @param minInterval Minimum length of a generated interval.
+	 * @param bitsPerInterval How many bits are encoded in a generated interval?
+	 * @param intervalCount How many intervals will be generated? This parameter must
+	 * be consistent with the length of <code>bytes</code> and <code>bitsPerInterval</code>.
+	 * It is useful, if the message doesn't align with 1 byte, this is, if there are
+	 * 'unused' bits in the last byte.
+	 * @return Returns the message converted to an <code>IntervalList</code>.
+	 * 
+	 * @see IntervalList
 	 */
 	protected IntervalList bytesToIntervals(byte[] bytes, int minInterval, int bitsPerInterval, int intervalCount) {
 		IntervalList result = new IntervalList();
