@@ -25,6 +25,28 @@ import org.openuat.util.IntervalList;
 public abstract class ButtonChannelImpl {
 	
 	/**
+	 * Transmission mode: plain (simply display text).
+	 */
+	public static final int TRANSMIT_PLAIN	= 1;
+	
+	/**
+	 * Transmission mode: signal.
+	 */
+	public static final int TRANSMIT_SIGNAL = 2;
+	
+	/**
+	 * Transmission mode: progress bar.
+	 */
+	public static final int TRANSMIT_BAR	= 3;
+	
+	/**
+	 * <code>transmissionMode</code> is one of:<br/>
+	 * <code>TRANSMIT_PLAIN</code>, <code>TRANSMIT_SIGNAL</code>,
+	 * <code>TRANSMIT_BAR</code>
+	 */
+	protected int transmissionMode;
+	
+	/**
 	 * Should the signal currently be displayed?
 	 */
 	protected boolean showSignal;
