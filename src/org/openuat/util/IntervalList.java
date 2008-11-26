@@ -28,21 +28,33 @@ public class IntervalList {
 		totalIntervalLength = 0;
 	}
 	
-	// the internal list is just a vector
+	/* The internal representation of the list is just a vector */
 	private Vector internalList;
 	
-	// sum of all intervals in this list
+	/* Sum of all intervals in this list */
 	private int totalIntervalLength;
 	
 	
 	/**
-	 * Adds a new interval to this list.
+	 * Appends a new interval to the end of the list. The inserted
+	 * interval becomes the last interval in the list.
 	 * 
-	 * @param interval A new interval which is added to the list.
+	 * @param interval A new interval which is appended to the list.
 	 */
 	public void add(int interval) {
 		totalIntervalLength += interval;
 		internalList.add(new Integer(interval));
+	}
+	
+	/**
+	 * Prepends a new interval to the beginning of the list. The inserted
+	 * interval becomes the first interval in the list.
+	 * 
+	 * @param interval A new interval which is prepended to the list.
+	 */
+	public void addFirst(int interval) {
+		totalIntervalLength += interval;
+		internalList.insertElementAt(new Integer(interval), 0);
 	}
 	
 	/**
