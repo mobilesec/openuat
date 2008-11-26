@@ -13,10 +13,12 @@ import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
+import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 
 import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonInputHandler;
+import org.openuat.util.RgbColor;
 
 /**
  * This is a J2ME specific implementation of
@@ -29,11 +31,16 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 
 	/**
 	 * Creates a new instance.
-	 * 
 	 * @param display main applications <code>Display</code>
 	 */
 	public J2MEButtonChannelImpl(Display display) {
-		this.display = display;
+		transmissionMode	= 0;
+		progress			= 0;
+		showSignal			= false;
+		intervalList		= null;
+		currentScreen		= null;
+		this.display		= display;
+		abortCommand		= new Command("Abort", Command.STOP, 1);
 	}
 	
 	/**
@@ -61,7 +68,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		}
 		else {
 			// TODO: log warning
-			// logger.warn("Call to repaint(), but currentScreen is null.");
+			// logger.warn("Method repaint(): currentScreen is null.");
 		}
 	}
 
@@ -70,7 +77,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	 */
 	@Override
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
-		abortCommand = new Command("Abort", Command.STOP, 1);
 		currentScreen = new CaptureGui(text, inputHandler);
 		currentScreen.addCommand(abortCommand);
 		currentScreen.setCommandListener(this);
@@ -85,7 +91,12 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	@Override
 	public void showTransmitGui(String text, int type) {
 		transmissionMode = type;
-		// TODO: show gui
+		currentScreen = new TransmitGui(text);
+		currentScreen.addCommand(abortCommand);
+		currentScreen.setCommandListener(this);
+		
+		// make currentScreen the active Displayable
+		display.setCurrent(currentScreen);
 	}
 
 	/* (non-Javadoc)
@@ -121,10 +132,12 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		 * Constructor for this class.
 		 */
 		public CaptureGui(String displayText, ButtonInputHandler handler) {
-			this.displayText = displayText;
-			this.inputHandler = handler;
+			super();
+			this.displayText	= displayText;
+			this.inputHandler	= handler;
 			marginLeft	= 10;
 			marginTop	= 10;
+			defaultFont = Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 		}
 		
 		/* Text to display on gui */
@@ -133,15 +146,22 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* Delegate key events to the input handler */
 		private ButtonInputHandler inputHandler;
 		
-		/* Margin values when drawing on the screen */
+		/* Margin values when drawing text on the screen */
 		private int marginLeft;
 		private int marginTop;
+		
+		/* Default font when drawing text on the screen */
+		private Font defaultFont;
 		
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(Graphics)
 		 */
 		@Override
 		protected void paint(Graphics g) {
+			g.setColor(RgbColor.WHITE);
+			g.fillRect(0, 0, this.getWidth(), this.getHeight());
+			g.setColor(RgbColor.BLACK);
+			g.setFont(defaultFont);
 			g.drawString(displayText, marginLeft, marginTop, Graphics.TOP|Graphics.LEFT);
 		}
 
@@ -150,7 +170,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		 */
 		@Override
 		protected void keyPressed(int keyCode) {
-			if (getGameAction(keyCode) == Canvas.FIRE) {
+			if (this.getGameAction(keyCode) == Canvas.FIRE) {
 				inputHandler.buttonPressed();
 			}
 		}
@@ -160,52 +180,105 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		 */
 		@Override
 		protected void keyReleased(int keyCode) {
-			if (getGameAction(keyCode) == Canvas.FIRE) {
+			if (this.getGameAction(keyCode) == Canvas.FIRE) {
 				inputHandler.buttonReleased();
 			}
 		}
 	}
 	
 	
+	/*
+	 * Private helper/wrapper class to launch the transmit gui.
+	 */
 	private class TransmitGui extends Canvas {
 		
 		/*
 		 * Constructor for this class.
 		 */
-		public TransmitGui(String displayText, int transmissionMode) {
+		public TransmitGui(String displayText) {
+			super();
 			this.displayText = displayText;
-			this.transmissionMode = transmissionMode;
-			marginLeft	= 10;
-			marginTop	= 10;
+			textMarginLeft	= 10;
+			textMarginTop	= 10;
+			signalMargin	= 10;
+			barMargin		= 10;
+			barHeight		= 10;
+			defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 		}
 		
 		/* Text to display before transmission starts */
 		private String displayText;
 		
-		/* current transmission mode
-		 * @see ButtonChannelImpl#transmissionMode
-		 */
-		private int transmissionMode;
+		/* Margin values when drawing text on the screen */
+		private int textMarginLeft;
+		private int textMarginTop;
 		
-		/* Margin values when drawing on the screen */
-		private int marginLeft;
-		private int marginTop;
-
+		/* Default font when drawing text on the screen */
+		private Font defaultFont;
+		
+		/* Margin value when drawing the signal */
+		private int signalMargin;
+		
+		/* Margin (left and right) when drawing the progress bar. Bar height. */
+		private int barMargin;
+		private int barHeight;
+		
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(javax.microedition.lcdui.Graphics)
 		 */
 		@Override
 		protected void paint(Graphics g) {
+			// clear the screen first
+			g.setColor(RgbColor.WHITE);
+			g.fillRect(0, 0, this.getWidth(), this.getHeight());
+			
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
-				g.drawString(displayText, marginLeft, marginTop, Graphics.LEFT|Graphics.TOP);
+				g.setColor(RgbColor.BLACK);
+				g.setFont(defaultFont);
+				g.drawString(displayText, textMarginLeft, textMarginTop, Graphics.LEFT|Graphics.TOP);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
-				// TODO: something...
+				if (showSignal) {
+					// the signal is just a simple rectangle, painted black
+					g.setColor(RgbColor.BLACK);
+					int rectWidth = this.getWidth() - 2 * signalMargin;
+					int rectHeight = this.getHeight() - 2 * signalMargin;
+					g.fillRect(signalMargin, signalMargin, rectWidth, rectHeight);
+				}
 			}
-			
+			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {
+				if (intervalList != null) {
+					int marginTop = (this.getWidth() - barHeight) / 2;
+					int marginLeft = barMargin;
+					int barWidth = this.getWidth() - 2 * barMargin;
+					for (int i = 0; i < intervalList.size(); i++) {
+						int intervalWidth = (int)((double)intervalList.item(i) / (double)intervalList.getTotalIntervalLength() * barWidth);
+						if (i == 0) {
+							g.setColor(RgbColor.LIGHT_GRAY);
+						}
+						else if (i % 2 == 0) {
+							g.setColor(RgbColor.DARK_RED);
+						}
+						else {
+							g.setColor(RgbColor.LIGHT_RED);
+						}
+						g.fillRect(marginLeft, marginTop, intervalWidth, barHeight);
+						marginLeft += intervalWidth;
+					}
+					g.setColor(RgbColor.BLACK);
+					int progressWidth = (int)((double)intervalList.getTotalIntervalLength() / 100.0d * progress);
+					g.fillRect(barMargin, marginTop, progressWidth, barHeight);
+				}
+				else {
+					// TODO: log warning
+					// logger.warn("Method paint(): 'intervalList' is null");
+				}
+			}
+			else {
+				// TODO: log warning
+				// logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
+			}
 		}
-		
-		
 	}
 	
 }
