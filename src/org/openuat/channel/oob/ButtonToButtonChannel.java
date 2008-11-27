@@ -22,6 +22,12 @@ package org.openuat.channel.oob;
  */
 public class ButtonToButtonChannel extends ButtonChannel {
 	
+	/**
+	 * Creates a new instance of this channel.
+	 * 
+	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
+	 * to handle platform dependent method calls.
+	 */
 	public ButtonToButtonChannel(ButtonChannelImpl impl) {
 		this.impl		= impl;
 		minTimeUnit		= 300;
