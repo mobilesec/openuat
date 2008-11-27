@@ -40,7 +40,8 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		intervalList		= null;
 		currentScreen		= null;
 		this.display		= display;
-		abortCommand		= new Command("Abort", Command.STOP, 1);
+		abortCommand	= new Command("Abort", Command.STOP, 1);
+		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 	}
 	
 	/**
@@ -57,6 +58,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	 * Allows the user to cancel the currently displayed screen.
 	 */
 	protected Command abortCommand;
+	
+	/**
+	 *  Default font when drawing text on the screen.
+	 */
+	protected Font defaultFont;
 
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
@@ -137,7 +143,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			this.inputHandler	= handler;
 			marginLeft	= 10;
 			marginTop	= 10;
-			defaultFont = Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 		}
 		
 		/* Text to display on gui */
@@ -149,10 +154,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* Margin values when drawing text on the screen */
 		private int marginLeft;
 		private int marginTop;
-		
-		/* Default font when drawing text on the screen */
-		private Font defaultFont;
-		
+
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(Graphics)
 		 */
@@ -203,7 +205,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			signalMargin	= 10;
 			barMargin		= 10;
 			barHeight		= 10;
-			defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 		}
 		
 		/* Text to display before transmission starts */
@@ -212,9 +213,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* Margin values when drawing text on the screen */
 		private int textMarginLeft;
 		private int textMarginTop;
-		
-		/* Default font when drawing text on the screen */
-		private Font defaultFont;
 		
 		/* Margin value when drawing the signal */
 		private int signalMargin;
