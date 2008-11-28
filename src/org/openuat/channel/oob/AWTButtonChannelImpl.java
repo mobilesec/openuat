@@ -79,7 +79,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
 	 */
-	@Override
+	// @Override
 	public void repaint() {
 		if (paintableComponent != null) {
 			paintableComponent.repaint();
@@ -93,7 +93,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#showCaptureGui(java.lang.String, org.openuat.channel.oob.ButtonInputHandler)
 	 */
-	@Override
+	// @Override
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
 		buttonInputHandler = inputHandler;
 		JTextPane captureGui = new JTextPane();
@@ -103,7 +103,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			/* (non-Javadoc)
 			 * @see java.awt.event.KeyAdapter#keyPressed(java.awt.event.KeyEvent)
 			 */
-			@Override
+			// @Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					buttonInputHandler.buttonPressed();
@@ -113,7 +113,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			/* (non-Javadoc)
 			 * @see java.awt.event.KeyAdapter#keyReleased(java.awt.event.KeyEvent)
 			 */
-			@Override
+			// @Override
 			public void keyReleased(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					buttonInputHandler.buttonReleased();
@@ -136,7 +136,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#showTransmitGui(java.lang.String, int)
 	 */
-	@Override
+	// @Override
 	public void showTransmitGui(String text, int type) {
 		transmissionMode = type;
 		Canvas transmitGui = new TransmitGui(text);
@@ -151,7 +151,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#vibrate(int)
 	 */
-	@Override
+	// @Override
 	public void vibrate(int milliseconds) {
 		// can't be implemented on this platform
 		// TODO Logger.warn("Method vibrate(int): Not implemented on J2SE (AWT)");
@@ -161,7 +161,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	/* (non-Javadoc)
 	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
 	 */
-	@Override
+	// @Override
 	public void actionPerformed(ActionEvent e) {
 		if (e.getID() == ActionEvent.ACTION_PERFORMED
 				&& e.getActionCommand().equals("Abort")) {
@@ -206,7 +206,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		/* (non-Javadoc)
 		 * @see java.awt.Canvas#paint(java.awt.Graphics)
 		 */
-		@Override
+		// @Override
 		public void paint(Graphics g) {
 			// clear painting area
 			super.paint(g);
