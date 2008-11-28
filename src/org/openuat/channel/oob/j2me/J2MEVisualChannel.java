@@ -30,6 +30,8 @@ import org.openuat.authentication.OOBMessageHandler;
 
 import com.google.zxing.Result;
 import com.google.zxing.client.j2me.AdvancedMultimediaManager;
+import com.google.zxing.client.j2me.DefaultMultimediaManager;
+import com.google.zxing.client.j2me.MultimediaManager;
 import com.google.zxing.client.j2me.VideoCanvas;
 import com.swetake.util.j2me.QRCanvas;
 import com.swetake.util.j2me.QRcodeGen;
@@ -154,8 +156,9 @@ public class J2MEVisualChannel implements OOBChannel{
 		try{
 			player = createPlayer();
 			player.realize();
-			AdvancedMultimediaManager.setZoom(player);
-			AdvancedMultimediaManager.setExposure(player);
+		      MultimediaManager multimediaManager = new DefaultMultimediaManager();
+		      multimediaManager.setZoom(player);
+		      multimediaManager.setExposure(player);
 			videoControl = (VideoControl) player.getControl("VideoControl");
 			canvas = new VideoCanvas(this);
 			canvas.setFullScreenMode(true);

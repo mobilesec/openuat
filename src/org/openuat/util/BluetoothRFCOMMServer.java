@@ -202,6 +202,9 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 //				}catch(Exception e){
 //					logger.error(e);
 //				}
+				//runBEDA input
+				
+				
 				startProtocol(channel);
     			
     			/* It turns out that we need to add a sleep before starting the 

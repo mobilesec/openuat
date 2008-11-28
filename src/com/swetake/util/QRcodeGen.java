@@ -14,9 +14,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-
 /**
  *
  * QRcode class library 0.50beta10<BR>
@@ -32,6 +29,7 @@ import javax.swing.JPanel;
 public class QRcodeGen{
 
 	static final String QRCODE_DATA_PATH="resources/qrcode_data/";
+	
 	char qrcodeErrorCorrect;
 	char qrcodeEncodeMode;
 	int qrcodeVersion;
@@ -41,6 +39,9 @@ public class QRcodeGen{
 	int qrcodeStructureappendParity;
 	String qrcodeStructureappendOriginaldata;
 
+	/**
+	 * We set the default values for error corection and encode mode.
+	 */
 	public QRcodeGen(){
 		qrcodeErrorCorrect='M';
 		qrcodeEncodeMode='B';
@@ -115,7 +116,11 @@ public class QRcodeGen{
 
 
 
-
+/**
+ * Generates a QR code for the given data.
+ * @param qrcodeData the data to be sent
+ * @return a data matrix representing the QR code, as encoded by the class. A black square corresponds to a true boolean value in the returned matrix.
+ */
 	public boolean[][] calQrcode(byte[] qrcodeData){
 		int dataLength;
 		int dataCounter=0;
@@ -498,14 +503,6 @@ public class QRcodeGen{
 	}
 
 
-
-
-
-
-
-
-
-
 	private static byte[] divideDataBy8Bits(int[] data ,byte[] bits,int maxDataCodewords){
 		/* divide Data By 8bit and add padding char */
 		int l1=bits.length;
@@ -792,38 +789,36 @@ public class QRcodeGen{
 		return res;
 	}
 
-
-
-	public static void main(String[] args) {
-
-		JFrame frame = new JFrame("test");
-		JPanel panel = new JPanel();
-
-		QRcodeGen x=new QRcodeGen();
-		x.setQrcodeErrorCorrect('M');
-		x.setQrcodeEncodeMode('B');
-		x.setQrcodeVersion(3);
-
-
-		byte[] d ="my message is the besthellohello".getBytes();
-		System.out.println(d.length);
-		if (d.length>0 && d.length <120){
-			boolean[][] s = x.calQrcode(d);
-
-			QRCanvas canvas =  new QRCanvas(s);
-			canvas.setSize(300, 300);
-			canvas.setBackground(java.awt.Color.white);
-			//canvas.paint(null);
-			panel.add(canvas);
-			frame.setContentPane(panel);
-			canvas.repaint();
-		}
-		panel.repaint();
-		frame.setSize(300, 300);
-		frame.setVisible(true);
-
-
-	}
+//	public static void main(String[] args) {
+//
+//		JFrame frame = new JFrame("test");
+//		JPanel panel = new JPanel();
+//
+//		QRcodeGen x=new QRcodeGen();
+//		x.setQrcodeErrorCorrect('M');
+//		x.setQrcodeEncodeMode('B');
+//		x.setQrcodeVersion(3);
+//
+//
+//		byte[] d ="my message is the besthellohello".getBytes();
+//		System.out.println(d.length);
+//		if (d.length>0 && d.length <120){
+//			boolean[][] s = x.calQrcode(d);
+//
+//			QRCanvas canvas =  new QRCanvas(s);
+//			canvas.setSize(300, 300);
+//			canvas.setBackground(java.awt.Color.white);
+//			//canvas.paint(null);
+//			panel.add(canvas);
+//			frame.setContentPane(panel);
+//			canvas.repaint();
+//		}
+//		panel.repaint();
+//		frame.setSize(300, 300);
+//		frame.setVisible(true);
+//
+//
+//	}
 
 
 

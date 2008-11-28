@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Google Inc.
+ * Copyright 2007 ZXing authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,17 +30,22 @@ public final class LCDUIImageMonochromeBitmapSource extends BaseMonochromeBitmap
   private final Image image;
   private final int height;
   private final int width;
-  private final int[] rgbRow;
+  // For why this isn't final, see below
+  private int[] rgbRow;
+  private int[] rgbColumn;
   private final int[] pixelHolder;
   private int cachedRow;
+  private int cachedColumn;
 
   public LCDUIImageMonochromeBitmapSource(Image image) {
     this.image = image;
     height = image.getHeight();
     width = image.getWidth();
     rgbRow = new int[width];
+    rgbColumn = new int[height];
     pixelHolder = new int[1];
     cachedRow = -1;
+    cachedColumn = -1;
   }
 
   public int getHeight() {
@@ -52,9 +57,16 @@ public final class LCDUIImageMonochromeBitmapSource extends BaseMonochromeBitmap
   }
 
   public int getLuminance(int x, int y) {
+
+    // Below, why the check for rgbRow being the right size? it should never change size
+    // or need to be reallocated. But bizarrely we have seen a but on Sun's WTK, and on
+    // some phones, where the array becomes zero-sized somehow. So we keep making sure the
+    // array is OK.
     int pixel;
-    if (cachedRow == y) {
+    if (cachedRow == y && rgbRow.length == width) {
       pixel = rgbRow[x];
+    } else if (cachedColumn == x && rgbColumn.length == height) {
+      pixel = rgbColumn[y];
     } else {
       image.getRGB(pixelHolder, 0, width, x, y, 1, 1);
       pixel = pixelHolder[0];
@@ -79,8 +91,22 @@ public final class LCDUIImageMonochromeBitmapSource extends BaseMonochromeBitmap
 
   public void cacheRowForLuminance(int y) {
     if (y != cachedRow) {
+      // See explanation above
+      if (rgbRow.length != width) {
+        rgbRow = new int[width];
+      }
       image.getRGB(rgbRow, 0, width, 0, y, width, 1);
       cachedRow = y;
+    }
+  }
+
+  public void cacheColumnForLuminance(int x) {
+    if (x != cachedColumn) {
+      if (rgbColumn.length != height) {
+        rgbColumn = new int[height];
+      }
+      image.getRGB(rgbColumn, 0, 1, x, 0, 1, height);
+      cachedColumn = x;
     }
   }
 

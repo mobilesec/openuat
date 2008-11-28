@@ -31,11 +31,12 @@ import javax.microedition.media.Controllable;
  * @author Sean Owen (srowen@google.com)
  * @author Paul Hackenberger
  */
-class DefaultMultimediaManager implements MultimediaManager {
+public class DefaultMultimediaManager implements MultimediaManager {
 
   private MultimediaManager advancedMultimediaManager;
 
-  DefaultMultimediaManager() {
+  public DefaultMultimediaManager() {
+    // Having issues with non-JSR-234 phones not accepting the build? then try commenting out from here:
     try {
       advancedMultimediaManager = (MultimediaManager)
           Class.forName("com.google.zxing.client.j2me.AdvancedMultimediaManager").newInstance();
@@ -45,7 +46,13 @@ class DefaultMultimediaManager implements MultimediaManager {
       // continue
     } catch (InstantiationException ie) {
       // continue
+    } catch (NoClassDefFoundError ncdfe) {
+      // continue
     }
+    // to here. Then add this line:
+    // advancedMultimediaManager = null;
+    // You may also need to delete the class AdvancedMultimediaManager in this package to be completely free
+    // of JSR-234 references.
   }
 
   public void setFocus(Controllable player) {

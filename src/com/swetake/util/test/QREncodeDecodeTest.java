@@ -23,7 +23,7 @@ import com.google.zxing.Result;
 import com.google.zxing.client.j2se.BufferedImageMonochromeBitmapSource;
 import com.swetake.util.QRcodeGen;
 /**
- * JUnit tests for encoding and decoding QR codes
+ * JUnit tests for encoding and decoding QR codes.
  * @author Iulia Ion
  *
  */

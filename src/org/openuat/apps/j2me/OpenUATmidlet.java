@@ -355,11 +355,13 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 					String btAdd = "001DFD71C3C3";
 					connectTo(btAdd, 5);
 				}else if(getHomeScreen().getSelectedIndex() == 2) { //demo computer
-					//String btAdd = "001F5B7B16F7";
-//					connectTo(btAdd, 2);
+					//mycomp
+					String btAdd = "001F5B7B16F7";
+					connectTo(btAdd, 2);
 					
-					String btAdd = "001EC28E3024";
-					connectTo(btAdd, 1);
+					//my laptop
+					//String btAdd = "001EC28E3024";
+//					connectTo(btAdd, 1);
 
 				}
 			}
@@ -575,6 +577,8 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 			previousScreen = currentScreen;
 			currentScreen = verify_method;
 			display.setCurrent(verify_method);
+			//reset the initial value
+			initiator = false;
 		}else{
 			boolean success = new KeyVerifier(authKey, connectionToRemote, this).verify();
 			informSuccess(success);

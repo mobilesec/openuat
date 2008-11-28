@@ -13,7 +13,7 @@ import java.awt.Canvas;
 import java.awt.Graphics;
 
 /**
- * Simple canvas to quickly display the QR Code result on J2SE
+ * Simple canvas to quickly display the QR Code result on J2SE.
  * 
  * @author Iulia Ion
  * 

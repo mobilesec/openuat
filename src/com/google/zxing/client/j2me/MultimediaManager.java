@@ -26,7 +26,7 @@ import javax.microedition.media.Controllable;
  * @author Sean Owen (srowen@google.com)
  * @author Paul Hackenberger
  */
-interface MultimediaManager {
+public interface MultimediaManager {
 
   void setFocus(Controllable player);
 
