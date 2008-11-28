@@ -122,7 +122,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * message from the captured time intervals.
 	 * 
 	 */
-	@Override
+	// @Override
 	public void capture() {
 		buttonEventsLeft = (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
 		timestamp = 0L;
@@ -137,13 +137,13 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * by the <code>capture</code> method.
 	 * @param handler oob message handler
 	 */
-	@Override
+	// @Override
 	public void setOOBMessageHandler(OOBMessageHandler handler) {
 		this.messageHandler = handler;
 	}
 
 
-	@Override
+	// @Override
 	public void buttonPressed() {
 		if (buttonEventsLeft > 0) {
 			if (timestamp == 0) { // first event: set timestamp
@@ -163,7 +163,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		}
 	}
 
-	@Override
+	// @Override
 	public void buttonReleased() {
 		if (inputMode == MODE_PRESS_RELEASE) {
 			this.buttonPressed();
