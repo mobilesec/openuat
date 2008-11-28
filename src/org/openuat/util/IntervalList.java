@@ -43,7 +43,7 @@ public class IntervalList {
 	 */
 	public void add(int interval) {
 		totalIntervalLength += interval;
-		internalList.add(new Integer(interval));
+		internalList.addElement(new Integer(interval));
 	}
 	
 	/**
@@ -64,7 +64,7 @@ public class IntervalList {
 	 * @return interval at index <code>i</code>
 	 */
 	public int item(int i) {
-		return ((Integer)internalList.get(i)).intValue();
+		return ((Integer)internalList.elementAt(i)).intValue();
 	}
 
 	/**
@@ -74,7 +74,7 @@ public class IntervalList {
 	 */
 	public void remove(int i) {
 		totalIntervalLength -= this.item(i);
-		internalList.remove(i);
+		internalList.removeElementAt(i);
 	}
 	
 	/**
