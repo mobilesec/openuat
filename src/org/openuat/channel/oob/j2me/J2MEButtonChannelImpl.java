@@ -67,7 +67,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
 	 */
-	@Override
+	// @Override
 	public void repaint() {
 		if (currentScreen != null) {
 			currentScreen.repaint();
@@ -81,7 +81,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#showCaptureGui
 	 */
-	@Override
+	// @Override
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
 		currentScreen = new CaptureGui(text, inputHandler);
 		currentScreen.addCommand(abortCommand);
@@ -94,7 +94,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#showTransmitGui
 	 */
-	@Override
+	// @Override
 	public void showTransmitGui(String text, int type) {
 		transmissionMode = type;
 		currentScreen = new TransmitGui(text);
@@ -108,7 +108,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#vibrate
 	 */
-	@Override
+	// @Override
 	public void vibrate(int milliseconds) {
 		display.vibrate(milliseconds);
 	}
@@ -116,7 +116,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	/* (non-Javadoc)
 	 * @see javax.microedition.lcdui.CommandListener#commandAction(javax.microedition.lcdui.Command, javax.microedition.lcdui.Displayable)
 	 */
-	@Override
+	// @Override
 	public void commandAction(Command command, Displayable displayable) {
 		if (command.getCommandType() == Command.STOP) {
 			// TODO: abort current processing...
@@ -158,7 +158,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(Graphics)
 		 */
-		@Override
+		// @Override
 		protected void paint(Graphics g) {
 			g.setColor(RgbColor.WHITE);
 			g.fillRect(0, 0, this.getWidth(), this.getHeight());
@@ -170,7 +170,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#keyPressed(int)
 		 */
-		@Override
+		// @Override
 		protected void keyPressed(int keyCode) {
 			if (this.getGameAction(keyCode) == Canvas.FIRE) {
 				inputHandler.buttonPressed();
@@ -180,7 +180,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#keyReleased(int)
 		 */
-		@Override
+		// @Override
 		protected void keyReleased(int keyCode) {
 			if (this.getGameAction(keyCode) == Canvas.FIRE) {
 				inputHandler.buttonReleased();
@@ -224,7 +224,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(javax.microedition.lcdui.Graphics)
 		 */
-		@Override
+		// @Override
 		protected void paint(Graphics g) {
 			// clear the screen first
 			g.setColor(RgbColor.WHITE);
