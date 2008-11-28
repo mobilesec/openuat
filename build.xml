@@ -83,7 +83,7 @@
 	<!-- containing the J2ME Polish installation.                 -->
 	
 	<!--<property name="polish.home" location="C:\Program Files\J2ME-Polish" />-->
-	<property name="polish.home" location="/opt/J2MEPolish" /> 
+	<property name="polish.home" location="/opt/J2MEPolish" />
 	<!-- import global properties                                 -->
 	<property file="${polish.home}/global.properties" />
 	<!-- the device for the test mode - you can define it on the command-line
@@ -420,7 +420,9 @@
 				org/openuat/authentication/OOBMessageHandler.java
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java
 				org/openuat/util/SafetyBeltTimer.java
-				net/mypapit/java/StringTokenizer.java" />
+				net/mypapit/java/StringTokenizer.java
+				org/openuat/util/IntervalList.java org/openuat/util/RgbColor.java
+				org/openuat/channel/oob/Button*.java" />
 			<fileset dir="${thirdparty-google-zxing}" includes="com/google/zxing/common/**/*.java com/google/zxing/*.java
 				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
 				com/google/zxing/qrcode/**/*.java com/google/zxing/**/j2me/**/*.java" />
