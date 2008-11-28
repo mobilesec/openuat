@@ -45,7 +45,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 	/* (non-Javadoc)
 	 * @see org.openuat.authentication.OOBChannel#transmit(byte[])
 	 */
-	@Override
+	// @Override
 	public void transmit(byte[] message) {
 		// This method is not implemented!
 		// TODO: log warning
