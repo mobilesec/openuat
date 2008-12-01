@@ -13,16 +13,50 @@ import java.io.InputStream;
 
 import org.apache.log4j.Logger;
 
-/** This is a currently safety belt against the dongle being stuck in authentication 
- * mode or the other dongle never entering authentication mode. I.e., it is a safeguard 
- * against that specific loop ending up being an endless loop (which is not good in terms 
- * of fault tolerance). This helper class implements a "grenade timer" that will let the main
- * event loop bail out with a timeout when it is stuck for too long at the same round 
- * number. It is also useful for other purposes, even if it has been created specifically
- * for DongleProtocolHandler#handleDongleCommunication for safeguarding its main loop. 
- * 
- * There is no need to explicitly stop the thread, it will just time out and stop.
- * 
+/** This class implements a "grenade timer" that will let any loop bail out 
+ * with a timeout when it is stuck for too long waiting for something. To use
+ * it, simply construct a SafetyBeltTimer object with the number of 
+ * milliseconds the next operation should take at maximum. The timer is 
+ * automatically started on construction and runs in a separate thread. If 
+ * there are multiple steps or rounds in some operation that are expected to
+ * take this time each, then reset() can be used to set the timer back to zero
+ * while still leaving it running. isTriggered() can be used to query if the
+ * timer has already expired and e.g. an outer loop should exit gracefully.
+ * <br>
+ * There is no need to explicitly stop the thread, it will just time out and 
+ * stop. Sample code for this simple use case:
+ * <br>
+ * <pre>
+ * {
+ * 		SafetyBeltTimer timer = new SafetyBeltTimer(timeoutMs, null);
+ * 		while (something && ! timer.isTriggered()) {
+ * 			// ... whatever might take long
+ * 			if (made some progress) timer.reset();
+ * 			// ... maybe some more blocking code
+ * 		}
+ * }
+ * </pre>
+ * Additionally, an InputStream can be passed to the timer on construction. 
+ * When set to a valid object, its close() method will be called when the 
+ * timer expires. This allows to exit even from a blocking read() that may be
+ * active while the timeout occurs. Sample code to use it that way: 
+ * <br>
+ * <pre>
+ * {
+ * 		SafetyBeltTimer timer = new SafetyBeltTimer(timeoutMs, channelFromRemote);
+ * 		try {
+ * 			// ... whatever might take long, reading from channelFromRemote
+ * 			// in this case explicitly stop the timer at the end so that it won't close channelFromRemote
+ * 			timer.stop();
+ * 		}
+ * 		catch (IOException e) {
+ * 			// there might have been a timeout
+ * 		}
+ * 		finally {
+ * 			timer.stop();
+ * 		}
+ * }
+ * </pre>
  * @author Rene Mayrhofer
  * @version 1.0
  */
@@ -103,7 +137,7 @@ public class SafetyBeltTimer implements Runnable {
 		return timeout;
 	}
 	
-	/** Allows to send a hearbeat signal to the timer by resetting it. 
+	/** Allows to send a "heartbeat" signal to the timer by resetting it. 
 	 * This allows to implement heartbeat like functionality where the timer 
 	 * can get reset whenever some progress is being made.
 	 */
