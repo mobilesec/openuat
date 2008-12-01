@@ -44,7 +44,7 @@
 	<property name="bin-bandy" location="${build}/bin-bandy"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
 	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
-	<property name="findbugs.home" value="${thirdparty}/findbugs-1.2.1" />
+	<property name="findbugs.home" value="${thirdparty}/findbugs-1.3.6" />
 	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
 	<property name="build.midp.work" location="${build}/midp-work"/>
 	<property name="build.midp.temp" location="${build}/midp-tmp"/>
@@ -345,7 +345,7 @@
 		</javac>
 	</target>
     
-	<target name="jar" depends="compile" description="Build jar">
+	<target name="jar-standard" depends="compile" description="Build jar files for J2SE only (omit J2ME code)">
 		<mkdir dir="${dist}"/>
 		<jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
@@ -388,7 +388,9 @@
 			<zipgroupfileset refid="lib.bundleinclude-jars" />
 			<fileset dir="${lib}" includes="*-copyright" />
 		</jar>
-
+	</target>
+	
+	<target name="jar" depends="jar-standard" description="Build all jar files include J2ME code">
 		<!-- And call the targets for creating MIDP JARs -->
 		<antcall target="jar-midp"/>
 	</target>
@@ -453,13 +455,14 @@
 		    <!-- general settings, these settings basically form the JAD-attributes. -->
 		    <!-- Have a look at the <jad>-section for setting specialised attributes.
 		         You can also define localized attributes in the resources/messages.txt files -->
+			<!--		jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-auth.jar"--> 
 			<info
 				name="Authentication"
 				version="1.0.0"
 				description="Some demonstration MIDlets for the Bluetooth, UACAP infrastructure, and out-of-band channels for authentication"
 				vendorName="Rene Mayrhofer"
 				infoUrl="http://www.openuat.org"
-				jarName="${ nospace(polish.vendor) }-${ nospace(polish.name) }-auth.jar" 
+				jarName="OpenUAT-MIDlets.jar" 
 				jarUrl="${deploy-url}${polish.jarName}"
 				copyright="Copyright 2006, 2007 Rene Mayrhofer. All rights reserved."
 			/>
@@ -473,6 +476,11 @@
 				<!--<requirement name="Identifier" value="Generic/jtwi,Generic/midp1,Generic/Midp2Cldc11,Nokia/Series40E3,Nokia/Series60E2,Nokia/Series60E3,Sony-Ericsson/JavaPlatform6" />-->
 				<!--<requirement name="Identifier" value="Generic/Midp2Cldc11" />-->
 				<!--<requirement name="Identifier" value="Generic/multi" />-->
+				<!-- ATTENTION: Need to specify the N95 here, because that seems to be the only phone that
+				     includes the advancedmultimedia API and is listed in the J2ME Polish device database.
+				     However, it shouldn't matter, because the compiled JAR file installs on other phones
+				     as well without a problem.
+				     Don't install the JAD file, only use the JAR, though! -->
 				<requirement name="Identifier" value="Nokia/N95" />
 				<requirement name="JavaPackage" value="btapi" />
 				<requirement name="JavaPackage" value="mmapi" />
@@ -697,7 +705,7 @@
 	</target>
 
 	<!-- ATTENTION: when changing this task, need to copy to the copy in the coverage report below! -->
-	<target name="junit" depends="jar" description="Run unit tests">
+	<target name="junit" depends="jar-standard" description="Run unit tests">
 		<mkdir dir="${reports.tests}"/>
 		<!-- for the jvmarg to work, need to set fork=true -->
 		<junit printsummary="on" haltonfailure="true"
@@ -730,7 +738,7 @@
 	</target>
 	
 	<!-- This target generates coverage reports of the JUnit tests -->
-	<target name="coverage-report" depends="jar" description="Create unit test coverage reports">
+	<target name="coverage-report" depends="jar-standard" description="Create unit test coverage reports">
 		<mkdir dir="${build}/instrumented-classes"/>
 		<mkdir dir="${reports.coverage}"/>
 		
@@ -780,17 +788,21 @@
 		</checkstyle>
 	</target>
 	
-	<target name="findbugs" depends="jar">
+	<target name="findbugs" depends="jar-standard">
 		<findbugs home="${findbugs.home}"
 			output="xml"
 			outputFile="${reports}/findbugs.xml" >
 			<auxClasspath path="${jarfile.distbundle}" />
 			<sourcePath path="${src}" />
-			<class location="${jarfile.core}:${jarfile.channels}:${jarfile.apps}" />
+			<class location="${jarfile.core}" />
+			<class location="${jarfile.channels}" />
+			<class location="${jarfile.apps}" />
 		</findbugs>
 	</target>
-	
-	<target name="run" depends="jar" description="Run jar file">
+
+	<target name="checkall" depends="junit,findbugs,coverage-report,check"/>
+
+	<target name="run" depends="jar-standard" description="Run jar file">
 		<!-- executing the jar obviously does not work with an additional classpath, but only with a single
 	     merged jar file, so just specify the class -->
 		<!--<java jar="${jarfile}" fork="yes" failonerror="true" >-->
@@ -811,7 +823,7 @@
 		</nsis>
 	</target>
 	
-	<target name="dist-webstart" depends="jar" description="Create distribution for Java webstart">
+	<target name="dist-webstart" depends="jar-standard" description="Create distribution for Java webstart">
 		<mkdir dir="${dist.webstart}"/>
 	    <!-- Linux native libraries -->
 <!--	    <copy file="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar" 
