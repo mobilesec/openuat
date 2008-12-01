@@ -728,12 +728,8 @@
 			<batchtest todir="${reports.tests}">
 				<fileset dir="${src}">
 					<include name="**/*Test*.java"/>
-					<exclude name="**/MotionAuthenticationProtocol1Test.java"/>
-					<exclude name="**/MotionAuthenticationProtocol2Test.java"/>
 				</fileset>
 			</batchtest>
-		    <!--<test name="org.openuat.authentication.test.MotionAuthenticationProtocol1Test" todir="${reports.tests}"/>-->
-		    <!--<test name="org.openuat.authentication.test.MotionAuthenticationProtocol2Test" todir="${reports.tests}"/>-->
 		</junit>
 	</target>
 	
@@ -768,8 +764,6 @@
 			<batchtest todir="${reports.tests}">
 				<fileset dir="${src}">
 					<include name="**/*Test*.java"/>
-					<exclude name="**/MotionAuthenticationProtocol1Test.java"/>
-					<exclude name="**/MotionAuthenticationProtocol2Test.java"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -800,7 +794,7 @@
 		</findbugs>
 	</target>
 
-	<target name="checkall" depends="junit,findbugs,coverage-report,check"/>
+	<target name="checkall" depends="jar,junit,findbugs,coverage-report,check"/>
 
 	<target name="run" depends="jar-standard" description="Run jar file">
 		<!-- executing the jar obviously does not work with an additional classpath, but only with a single

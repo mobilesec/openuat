@@ -27,7 +27,11 @@ installed and set, the ant build script should detect the J2ME build
 environment and use it:
 
      [echo]     WTK with MIDP2.0 and CLDC1.1: true 
-     
+
+J2ME on Windows Mobile based mobile phones
+------------------------------------------
+
+
 
 Example Applications
 --------------------
