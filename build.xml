@@ -790,8 +790,8 @@
 	
 	<target name="findbugs" depends="jar-standard">
 		<findbugs home="${findbugs.home}"
-			output="xml"
-			outputFile="${reports}/findbugs.xml" >
+			output="html"
+			outputFile="${reports}/findbugs.html" >
 			<auxClasspath path="${jarfile.distbundle}" />
 			<sourcePath path="${src}" />
 			<class location="${jarfile.core}" />
