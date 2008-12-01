@@ -82,8 +82,8 @@
 	<!-- The polish.home property needs to point to the directory -->
 	<!-- containing the J2ME Polish installation.                 -->
 	
-	<!--<property name="polish.home" location="C:\Program Files\J2ME-Polish" />-->
-	<property name="polish.home" location="/opt/J2MEPolish" />
+	<property file="build.properties" />
+	
 	<!-- import global properties                                 -->
 	<property file="${polish.home}/global.properties" />
 	<!-- the device for the test mode - you can define it on the command-line
@@ -497,7 +497,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-bandy}:${bin-BC-core}"
+				binaryLibraries="${bin-avetanaNoop}${separator}${bin-microlog}${separator}${bin-bandy}${separator}${bin-BC-core}"
 				>
 				<!--change for win -->
 				<!-- midlets definition -->
@@ -595,7 +595,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}:${bin-microlog}:${bin-bandy}:${bin-BC-core}">
+				binaryLibraries="${bin-avetanaNoop}${separator}${bin-microlog}${separator}${bin-bandy}${separator}${bin-BC-core}">
 				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
