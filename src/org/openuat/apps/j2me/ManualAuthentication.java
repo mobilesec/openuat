@@ -224,17 +224,35 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 		}
 	}
 
-	public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
-		for (int x = 0; x < services.size(); x++)
-			try {
-				DataElement ser_de = ((ServiceRecord) services.elementAt(x))
-						.getAttributeValue(0x100);
-				String service_name = (String) ser_de.getValue();
-				serv_list.append(service_name, null);
-				display.setCurrent(serv_list);
-			} catch (Exception e) {
-				do_alert("Error in adding services ", 1000);
+	public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
+		if (errorReason == BluetoothPeerManager.PeerEventsListener.SEARCH_COMPLETE) {
+			for (int x = 0; x < services.size(); x++) {
+				try {
+					DataElement ser_de = ((ServiceRecord) services.elementAt(x))
+							.getAttributeValue(0x100);
+					String service_name = (String) ser_de.getValue();
+					serv_list.append(service_name, null);
+				} catch (Exception e) {
+					do_alert("Error in adding services ", 1000);
+				}
 			}
+			display.setCurrent(serv_list);
+		}
+		else {
+			String errorMsg = "unknown error code!";
+			switch (errorReason) {
+				case BluetoothPeerManager.PeerEventsListener.DEVICE_NOT_REACHABLE:
+					errorMsg = "Device " + remoteDevice + " not reachable";
+					break;
+				case BluetoothPeerManager.PeerEventsListener.SEARCH_FAILED:
+					errorMsg = "Service search on device " + remoteDevice + " failed";
+					break;
+				case BluetoothPeerManager.PeerEventsListener.SEARCH_ABORTED:
+					errorMsg = "Service search on device " + remoteDevice + " was aborted";
+					break;
+			}
+			do_alert(errorMsg, Alert.FOREVER);
+		}
 	}
 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {

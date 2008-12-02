@@ -29,6 +29,13 @@ import org.openuat.util.BluetoothSupport;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
+/** This MIDlet demonstrates Bluetooth functionality of OpenUAT by using mainly 
+ * BluetoothPeerManager to inquire for devices and search for services.
+ * Additionally, it starts a BluetoothRFCOMMServer so that other clients can
+ * connect and run the first authentication stages (Diffie-Hellman).
+ * 
+ * @author Rene Mayrhofer
+ */
 public class BluetoothDemo extends MIDlet implements CommandListener,
 		BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler {
 	List main_list;
@@ -48,6 +55,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	BluetoothPeerManager peerManager;
 	
 	BluetoothRFCOMMServer rfcommServer;
+	
+	private Vector services;
 	
 	LogForm logForm;
 
@@ -157,14 +166,9 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			}
 			if (dis == serv_list) { //select triggered from the device list
 				if (serv_list.getSelectedIndex() >= 0) { //find services
-					RemoteDevice[] devices = peerManager.getPeers();
-					
-					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x1002); // publicly browsable services
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
-						this.do_alert("Error in initiating search", 4000);
-					}
-					do_alert("Inquiring device for services...", Alert.FOREVER);
+					ServiceRecord service = (ServiceRecord) services.elementAt(serv_list.getSelectedIndex());
+					String connectionURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
+					do_alert(connectionURL, 5000);
 				}
 			}
 			
@@ -214,17 +218,36 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 		}
 	}
 
-	public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
-		for (int x = 0; x < services.size(); x++)
-			try {
-				DataElement ser_de = ((ServiceRecord) services.elementAt(x))
-						.getAttributeValue(0x100);
-				String service_name = (String) ser_de.getValue();
-				serv_list.append(service_name, null);
-				display.setCurrent(serv_list);
-			} catch (Exception e) {
-				do_alert("Error in adding services ", 1000);
+	public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector serv, int errorReason) {
+		this.services = serv;
+		if (errorReason == BluetoothPeerManager.PeerEventsListener.SEARCH_COMPLETE) {
+			for (int x = 0; x < services.size(); x++) {
+				try {
+					DataElement ser_de = ((ServiceRecord) services.elementAt(x))
+							.getAttributeValue(0x100);
+					String service_name = (String) ser_de.getValue();
+					serv_list.append(service_name, null);
+				} catch (Exception e) {
+					do_alert("Error in adding services ", 1000);
+				}
 			}
+			display.setCurrent(serv_list);
+		}
+		else {
+			String errorMsg = "unknown error code!";
+			switch (errorReason) {
+				case BluetoothPeerManager.PeerEventsListener.DEVICE_NOT_REACHABLE:
+					errorMsg = "Device " + remoteDevice + " not reachable";
+					break;
+				case BluetoothPeerManager.PeerEventsListener.SEARCH_FAILED:
+					errorMsg = "Service search on device " + remoteDevice + " failed";
+					break;
+				case BluetoothPeerManager.PeerEventsListener.SEARCH_ABORTED:
+					errorMsg = "Service search on device " + remoteDevice + " was aborted";
+					break;
+			}
+			do_alert(errorMsg, Alert.FOREVER);
+		}
 	}
 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {

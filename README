@@ -30,13 +30,29 @@ environment and use it:
 
 J2ME on Windows Mobile based mobile phones
 ------------------------------------------
-
+Since most Windows Mobile phones lack JSR82 support in their included Java
+stacks, we use the Bluecove implementation along with the (also free) Mysaifu 
+JVM (tested with version 0.4.1 from jvm.0.4.1-bin.zip).
 
 
 Example Applications
 --------------------
 
-* 1. Shake-well-before-use MIDlet* 
+* 1. Bluetooth device and service search *
+The BluetoothPeerManager includes a simple main routine that will start (on a
+desktop/laptop type OS) periodic Bluetooth inquiry and service search. It can
+be used to verify that this system is supported using the built-in Bluecove
+JSR-82 implementation. Executing
+
+    java -cp dist/openuat-distbundle.jar org.openuat.util.BluetoothPeerManager
+
+should start a main loop and print all discovered devices as well as the
+Bluetooth services they offer. Pressing Enter will terminate this loop.
+
+* 2. Bluetooth demonstration MIDlet *
+
+
+* 3. Shake-well-before-use MIDlet *
 
 There are two variants of the Shake-well-before-use MIDlet that can be 
 installed as demonstration applications on J2ME MIDP2 mobile phones with
@@ -67,7 +83,7 @@ the second variant by executing
 
     java -cp dist/openuat-distbundle \
     	org.openuat.util.BluetoothOpportunisticConnector [mirror]
-    	
+
 Because most computers won't have accelerometers or will not be too easy to
 shake together with the phone, a real test will not be possible. However, by
 passing the optional parameter "mirror", this side will simply mirror the time
@@ -84,7 +100,7 @@ accelerometer data verbatim. This mode can be entered by executing
     	org.openuat.util.BluetoothRFCommChannel <MAC addr.> 2 stream
     	
     	
-* 2. Unified authentication methods demo applet * 
+* 3. Unified authentication methods demo applet * 
 
 Extending the toolkit
 ---------------------

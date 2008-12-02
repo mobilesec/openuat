@@ -477,6 +477,11 @@ public class BluetoothPeerManager {
 	 * @see BluetoothPeerManager#addListener
 	 */
 	public interface PeerEventsListener {
+		public final static int SEARCH_COMPLETE = 0;
+		public final static int DEVICE_NOT_REACHABLE = 1;
+		public final static int SEARCH_FAILED = 2;
+		public final static int SEARCH_ABORTED = 3;
+		
 		/** This method is called when the inquiry has been completed (either
 		 * started as a one-shot process or periodically by the background
 		 * inquiry. Implementations may then e.g. use 
@@ -493,11 +498,25 @@ public class BluetoothPeerManager {
 		/** This method is called when the search for the services of a
 		 * specific remote device has completed.
 		 * @param remoteDevice The remote device for which new services have
-		 *                     been found.
+		 *                     been searched for.
 		 * @param services The list of services of the remote device. Elements
-		 *                 of the vector are of type ServiceRecord.
+		 *                 of the vector are of type ServiceRecord. If no 
+		 *                 services were found, then this vector is empty and
+		 *                 the parameter errorReason is set. However, note that
+		 *                 this vector may also be empty when no error occurred
+		 *                 but when the other device simply offers no services
+		 *                 that were searched for.
+		 * @param errorReason 0 indicates successful completion of service 
+		 * 					  search (either returning a list of matching 
+		 * 					  services or an empty list if there are none),
+		 * 					  1 indicates the remote device was not reachable,
+		 *                    2 that the service search ended with an error 
+		 *                    from the Bluetooth stack, and
+		 *                    3 that the search was canceled prematurely by
+		 *                    another thread.
 		 */
-		public void serviceListFound(RemoteDevice remoteDevice, Vector services);
+		public void serviceSearchCompleted(RemoteDevice remoteDevice, 
+				Vector services, int errorReason);
 	}
 	
 	private class InquiryThread implements Runnable {
@@ -811,7 +830,8 @@ public class BluetoothPeerManager {
 						}
 					}
 					for (int i=0; i<listeners.size(); i++)
-						((PeerEventsListener) listeners.elementAt(i)).serviceListFound(currentRemoteDevice, services);
+						((PeerEventsListener) listeners.elementAt(i)).serviceSearchCompleted(
+								currentRemoteDevice, services, PeerEventsListener.SEARCH_COMPLETE);
 				}
 				
 				break;
@@ -829,6 +849,9 @@ public class BluetoothPeerManager {
 				synchronized (dev.notifier) {
 					dev.notifier.notifyAll();
 				}
+				for (int i=0; i<listeners.size(); i++)
+					((PeerEventsListener) listeners.elementAt(i)).serviceSearchCompleted(
+							currentRemoteDevice, null, PeerEventsListener.DEVICE_NOT_REACHABLE);
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_ERROR:
 				logger.info("Service search error reported by Bluetooth stack for current device " +
@@ -843,6 +866,9 @@ public class BluetoothPeerManager {
 				synchronized (dev.notifier) {
 					dev.notifier.notifyAll();
 				}
+				for (int i=0; i<listeners.size(); i++)
+					((PeerEventsListener) listeners.elementAt(i)).serviceSearchCompleted(
+							currentRemoteDevice, null, PeerEventsListener.SEARCH_FAILED);
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_NO_RECORDS:
 				logger.info("No matching records returned for service search on current device " +
@@ -855,6 +881,9 @@ public class BluetoothPeerManager {
 				synchronized (dev.notifier) {
 					dev.notifier.notifyAll();
 				}
+				for (int i=0; i<listeners.size(); i++)
+					((PeerEventsListener) listeners.elementAt(i)).serviceSearchCompleted(
+							currentRemoteDevice, null, PeerEventsListener.SEARCH_COMPLETE);
 				break;
 			case DiscoveryListener.SERVICE_SEARCH_TERMINATED:
 				logger.info("Service search cancelled by stack on current device " +
@@ -868,6 +897,9 @@ public class BluetoothPeerManager {
 				synchronized (dev.notifier) {
 					dev.notifier.notifyAll();
 				}
+				for (int i=0; i<listeners.size(); i++)
+					((PeerEventsListener) listeners.elementAt(i)).serviceSearchCompleted(
+							currentRemoteDevice, null, PeerEventsListener.SEARCH_ABORTED);
 				break;
 			}
 			if (!dev.serviceSearchFinished)
@@ -1083,18 +1115,32 @@ public class BluetoothPeerManager {
 			for (int i=0; i<newDevices.size(); i++)
 				System.out.println("    " + resolveName((RemoteDevice) newDevices.elementAt(i)));
 			
-			System.out.println("List of all devices discovered so far: ");
+			System.out.println("- List of all devices discovered so far: ");
 			RemoteDevice[] allDevices = man.getPeers();
 			for (int i=0; i<allDevices.length; i++) {
 				System.out.println("    " + resolveName(allDevices[i]));
 			}
 		}
 
-		public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
-			for (int x = 0; x < services.size(); x++) {
-				DataElement ser_de = ((ServiceRecord) services.elementAt(x)).getAttributeValue(0x100);
-				String name = (String) ser_de.getValue();
-				System.out.println("Found service for device " + resolveName(remoteDevice) + ": " + name);
+		public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
+			if (errorReason == PeerEventsListener.SEARCH_COMPLETE) {
+				System.out.println("Service search completed successfully for device " + resolveName(remoteDevice));
+				for (int x = 0; x < services.size(); x++) {
+					ServiceRecord service = (ServiceRecord) services.elementAt(x);
+					DataElement ser_de = service.getAttributeValue(0x100);
+					String name, url;
+					if (ser_de != null)
+						name = (String) ser_de.getValue();
+					else
+						name = "<unable to resolve name>";
+					url = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
+					System.out.println("* Found service for device " + 
+							resolveName(remoteDevice) + ": " + name + "; " + url);
+				}
+			}
+			else {
+				System.out.println("Did not find any services for device + " + resolveName(remoteDevice)
+						+ " with reason " + errorReason);
 			}
 		}
 	}

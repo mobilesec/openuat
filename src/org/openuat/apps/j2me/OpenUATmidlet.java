@@ -276,7 +276,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 		
 		
 		Image[]	images = new Image[]{visual, audio, slowcodec, madlib};
-		verify_method = new List("Method", List.IMPLICIT, new String[]{"Visual channel","Audio channel","Compare tunes","Compare text"}, images);
+		verify_method = new List("Method", Choice.IMPLICIT, new String[]{"Visual channel","Audio channel","Compare tunes","Compare text"}, images);
 		verify_method.addCommand(back);
 		verify_method.addCommand(log);
 		verify_method.addCommand(exit);
@@ -461,7 +461,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 //		LogService.debug(this, "starting authentication ");
 		try {
 			initiator = true;
-			BluetoothRFCOMMChannel c = new BluetoothRFCOMMChannel(connectionURL);
+			c = new BluetoothRFCOMMChannel(connectionURL);
 			c.open();
 			HostProtocolHandler.startAuthenticationWith(c, this, 200000, keepConnected, optionalParam, true);
 
@@ -561,11 +561,11 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 //		LogService.debug(this, "Successful authentication");
 		Object[] res = (Object[]) result;
 		// remember the secret key shared with the other device
-		byte[] sharedKey = (byte[]) res[0];
+		//byte[] sharedKey = (byte[]) res[0];
 		// and extract the shared authentication key for phase 2
 		authKey = (byte[]) res[1];
 		// then extract the optional parameter
-		String param = (String) res[2];
+		//String param = (String) res[2];
 //		LogService.debug(this, "Extracted session key of length " + sharedKey.length +
 //				", authentication key of length " + authKey.length + 
 //				" and optional parameter '" + param + "'");
@@ -587,20 +587,38 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	}
 
-	public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
-		this.services = services;
-		for (int x = 0; x < services.size(); x++)
-			try {
-				DataElement ser_de = ((ServiceRecord) services.elementAt(x))
-						.getAttributeValue(0x100);
-				String service_name = (String) ser_de.getValue();
-				serv_list.append(service_name, null);
-				display.setCurrent(serv_list);
-				currentScreen = serv_list;
-				previousScreen = dev_list;
-			} catch (Exception e) {
-				do_alert("Error in adding services ", 1000);
+	public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector serv, int errorReason) {
+		this.services = serv;
+		if (errorReason == BluetoothPeerManager.PeerEventsListener.SEARCH_COMPLETE) {
+			for (int x = 0; x < services.size(); x++) {
+				try {
+					DataElement ser_de = ((ServiceRecord) services.elementAt(x))
+							.getAttributeValue(0x100);
+					String service_name = (String) ser_de.getValue();
+					serv_list.append(service_name, null);
+				} catch (Exception e) {
+					do_alert("Error in adding services ", 1000);
+				}
 			}
+			display.setCurrent(serv_list);
+			currentScreen = serv_list;
+			previousScreen = dev_list;
+		}
+		else {
+			String errorMsg = "unknown error code!";
+			switch (errorReason) {
+				case BluetoothPeerManager.PeerEventsListener.DEVICE_NOT_REACHABLE:
+					errorMsg = "Device " + remoteDevice + " not reachable";
+					break;
+				case BluetoothPeerManager.PeerEventsListener.SEARCH_FAILED:
+					errorMsg = "Service search on device " + remoteDevice + " failed";
+					break;
+				case BluetoothPeerManager.PeerEventsListener.SEARCH_ABORTED:
+					errorMsg = "Service search on device " + remoteDevice + " was aborted";
+					break;
+			}
+			do_alert(errorMsg, Alert.FOREVER);
+		}
 	}
 
 	/**

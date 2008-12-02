@@ -475,29 +475,32 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			// we are not interested in devices, only in services - just ignore this event
 		}
 
-		public void serviceListFound(RemoteDevice remoteDevice, Vector services) {
+		public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
 			if (logger.isInfoEnabled())
 				// TODO: debug
 				logger.warn("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
 					"/'" + BluetoothPeerManager.resolveName(remoteDevice) + "' with " +
 					services.size() + " matching authentication services");
 			
-			for (int i=0; i<services.size(); i++) {
-				ServiceRecord sr = (ServiceRecord) services.elementAt(i); 
-				// this is a sanity check
-				DataElement ser_de = sr.getAttributeValue(0x100);
-				String name = (String) ser_de.getValue();
-				if (! name.equals(serviceName)) {
-					logger.info("Ignoring discovered service with name '" + name +
-							"', expected '" + serviceName + "'");
-				}
-				else {
-					// ok, service known, schedule for connection
-					synchronized (connectionsQueue) {
-						connectionsQueue.put(sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false), 
-								new Integer(0)); // with 0 failed attempts so far
+			// only act on success
+			if (errorReason == 0) {
+				for (int i=0; i<services.size(); i++) {
+					ServiceRecord sr = (ServiceRecord) services.elementAt(i); 
+					// this is a sanity check
+					DataElement ser_de = sr.getAttributeValue(0x100);
+					String name = (String) ser_de.getValue();
+					if (! name.equals(serviceName)) {
+						logger.info("Ignoring discovered service with name '" + name +
+								"', expected '" + serviceName + "'");
 					}
-					startTimer(true);
+					else {
+						// ok, service known, schedule for connection
+						synchronized (connectionsQueue) {
+							connectionsQueue.put(sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false), 
+									new Integer(0)); // with 0 failed attempts so far
+						}
+						startTimer(true);
+					}
 				}
 			}
 		}
