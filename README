@@ -28,12 +28,19 @@ environment and use it:
 
      [echo]     WTK with MIDP2.0 and CLDC1.1: true 
 
-J2ME on Windows Mobile based mobile phones
+J2ME on Windows Mobile for Pocket PC based mobile phones
 ------------------------------------------
 Since most Windows Mobile phones lack JSR82 support in their included Java
 stacks, we use the Bluecove implementation along with the (also free) Mysaifu 
-JVM (tested with version 0.4.1 from jvm.0.4.1-bin.zip).
-
+JVM (tested with version 0.4.1 from jvm.0.4.1-bin.zip). Unfortunately, the last
+release of Bluecove at the time of this writing (2.0.3) doesn't work on Windows
+Mobile devices. Instead, a newer 2.1.0 snapshot needs to be used.(tested with
+bluecove-2.1.0-20081117.151123-14.jar (thirdparty/pocketpc-requirements/ in the
+source tree). This JAR file needs to be placed into 
+\Programme\Mysaifu JVM\jre\lib so that the JVM will find it as a JSR82 
+implementation.
+CORRECTION - putting it into lib doesn't work so far! Need to find a nice way
+of running our own MIDlets.
 
 Example Applications
 --------------------
