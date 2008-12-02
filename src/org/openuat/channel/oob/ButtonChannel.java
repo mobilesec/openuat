@@ -16,7 +16,11 @@ import org.openuat.util.IntervalList;
  * This class is a common ancestor for all button related
  * oob channels. It provides much of the functionality which
  * is needed in the <code>capture</code> and <code>transmit</code>
- * methods but does not depend on a specific underlying platform.
+ * methods but does not depend on a specific underlying platform.<br/>
+ * All platform dependent calls are delegated to an appropriate instance
+ * of a subclass of <code>ButtonChannelImpl</code>.
+ *
+ * @see ButtonChannelImpl
  * 
  * @author Lukas Huser
  * @version 1.0
@@ -97,9 +101,16 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * Some text that is displayed while waiting for user input
 	 * (button events). The field should be initialized by
 	 * subclasses of this class, such that the text instructs or
-	 * informs the user according to the respective channel.
+	 * informs the user, according to the respective channel.
 	 */
 	protected String captureDisplayText;
+	
+	/**
+	 * Some text that is displayed before (and, if the channels
+	 * doesn't use the display itself to transmit, while) transmitting
+	 * data. The text should be instructive 
+	 */
+	protected String transmitDisplayText;
 	
 	/*
 	 * How many button events (presses/releases) are still to process?
@@ -157,8 +168,14 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 			buttonEventsLeft--;
 			if (buttonEventsLeft <= 0) {
 				// massage has been transmitted, pass it on
-				byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarry);
-				messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
+				if (messageHandler != null) {
+					byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarry);
+					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
+				}
+				else {
+					// TODO: log warning
+					// logger.warn("Method buttonPressed(): Message received, but 'messageHandler' is null");
+				}
 			}
 		}
 	}
@@ -192,7 +209,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * 
 	 * @see IntervalList
 	 */
-	protected byte[] intervalsToBytes(IntervalList intervals, int minInterval, int bitsPerInterval, boolean roundFloor, boolean useCarry) {
+	protected byte[] intervalsToBytes(IntervalList intervals, int minInterval, int bitsPerInterval, boolean roundDown, boolean useCarry) {
 		bitsPerInterval = Math.max(bitsPerInterval, 31);
 		int bytes = Math.max(((intervals.size() * bitsPerInterval) + 7) / 8, 8);
 		byte[] result = new byte[bytes];
@@ -212,7 +229,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 			}
 			
 			// rounding mode
-			if (!roundFloor) {
+			if (!roundDown) {
 				interval = interval +  minInterval / 2;
 			}
 			// round down to next multiple of minInterval
