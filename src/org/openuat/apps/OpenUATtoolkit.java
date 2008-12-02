@@ -418,7 +418,7 @@ public class OpenUATtoolkit {
 		}
 
 		try {
-			BluetoothRFCOMMServer rfcommServer = new BluetoothRFCOMMServer(null, new UUID(0x0001), "OpenUAT- Print document", 
+			BluetoothRFCOMMServer rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "OpenUAT- Print document", 
 					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(new TempHandler(false, false, status, progress, frame));
 			rfcommServer.start();
