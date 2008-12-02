@@ -35,6 +35,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		doRoundDown		= false;
 		useCarry		= true;
 		messageHandler	= null;
+		transmitDisplayText = "";
 		
 		int eventCount = (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
 		captureDisplayText	= "Please press the button simultanously on both devices "
@@ -42,8 +43,10 @@ public class ButtonToButtonChannel extends ButtonChannel {
 							+ "This device is ready.";
 	}
 
-	/* (non-Javadoc)
-	 * @see org.openuat.authentication.OOBChannel#transmit(byte[])
+	/**
+	 * <b>Note:</b> This method is not implemented for this channel. Don't call it
+	 * from an application.
+	 * @param message The data to be sent over this channel.
 	 */
 	// @Override
 	public void transmit(byte[] message) {
