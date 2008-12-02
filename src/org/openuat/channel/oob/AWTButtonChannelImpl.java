@@ -42,7 +42,6 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		transmissionMode	= 0;
 		progress			= 0;
 		showSignal			= false;
-		buttonInputHandler	= null;
 		intervalList		= null;
 		paintableComponent	= null;
 		parent				= parentComponent;
@@ -72,9 +71,6 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 * Default font when displaying text.
 	 */
 	protected Font defaultFont;
-	
-	/* Keep the inputHandler as a private member, so an anonymous class can access it */
-	private ButtonInputHandler buttonInputHandler;
 
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
@@ -95,7 +91,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 */
 	// @Override
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
-		buttonInputHandler = inputHandler;
+		final ButtonInputHandler buttonInputHandler = inputHandler;
 		JTextPane captureGui = new JTextPane();
 		
 		KeyListener keyListener = new KeyAdapter() {
