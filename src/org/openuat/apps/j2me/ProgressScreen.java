@@ -61,10 +61,10 @@ public class ProgressScreen extends Form {
 	 * 
 	 * @param logo
 	 *            Image shown on the startup screen
-	 * @param numberOfStepsToBeCompletedDuringStartup
-	 *            The number of steps that will be executed during startup
+	 * @param message
+	 *            The message to be shown
 	 */
-	public ProgressScreen(String imgname, int numberOfStepsToBeCompletedDuringStartup) {
+	public ProgressScreen(String imgname,  int numberOfStepsToBeCompletedDuringStartup) {
 		super("Startup");
 
 		
@@ -77,10 +77,10 @@ public class ProgressScreen extends Form {
 		}
 		
 		/* initialize the gauge and the startup text */
-		startupProgressGauge = new Gauge(null, false, numberOfStepsToBeCompletedDuringStartup, 0);
+		startupProgressGauge = new Gauge(null, false,  Gauge.INDEFINITE, Gauge.CONTINUOUS_RUNNING);
 		startupProgressGauge.setLayout(Gauge.LAYOUT_CENTER | Gauge.LAYOUT_DEFAULT);
 
-		startupProgressText = new StringItem("", "");
+		startupProgressText = new StringItem( "", "");
 		startupProgressText.setLayout(StringItem.LAYOUT_CENTER | StringItem.LAYOUT_DEFAULT);
 
 		/* create the logo image */
