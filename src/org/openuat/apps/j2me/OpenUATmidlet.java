@@ -49,7 +49,8 @@ import org.openuat.util.RemoteConnection;
  *
  */
 public class OpenUATmidlet extends MIDlet implements CommandListener,
-BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
+		BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
+	public final static UUID serviceUUID = new UUID("e8341b89f78d4a45a8c8313a7a8f3d9a", false);
 
 	/** The key resulting from the message exchange during the authentication process */
 	protected byte [] authKey;
@@ -212,7 +213,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 		try {
 
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID(0x0001), "OpenUAT- Exchange vCard", 
+			rfcommServer = new BluetoothRFCOMMServer(null, serviceUUID, "OpenUAT- Exchange vCard", 
 					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
@@ -370,8 +371,7 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x0001); // publicly browsable services
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
+					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], null /*serviceUUID*/)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					
@@ -461,9 +461,9 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 //		LogService.debug(this, "starting authentication ");
 		try {
 			initiator = true;
-			c = new BluetoothRFCOMMChannel(connectionURL);
-			c.open();
-			HostProtocolHandler.startAuthenticationWith(c, this, 200000, keepConnected, optionalParam, true);
+			BluetoothRFCOMMChannel chan = new BluetoothRFCOMMChannel(connectionURL);
+			chan.open();
+			HostProtocolHandler.startAuthenticationWith(chan, this, 200000, keepConnected, optionalParam, true);
 
 		} catch (IOException e) {
 			LogService.error(this, "could not connect to "+connectionURL, e);
@@ -589,20 +589,25 @@ BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler{
 
 	public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector serv, int errorReason) {
 		this.services = serv;
+		do_alert("Service search on " + remoteDevice + " finished with " + services.size() + " entries", 3000);
 		if (errorReason == BluetoothPeerManager.PeerEventsListener.SEARCH_COMPLETE) {
-			for (int x = 0; x < services.size(); x++) {
-				try {
-					DataElement ser_de = ((ServiceRecord) services.elementAt(x))
+			if (services.size() > 0) {
+				for (int x = 0; x < services.size(); x++) {
+					try {
+						DataElement ser_de = ((ServiceRecord) services.elementAt(x))
 							.getAttributeValue(0x100);
-					String service_name = (String) ser_de.getValue();
-					serv_list.append(service_name, null);
-				} catch (Exception e) {
-					do_alert("Error in adding services ", 1000);
+						String service_name = (String) ser_de.getValue();
+						serv_list.append(service_name, null);
+					} catch (Exception e) {
+						do_alert("Error in adding services ", 1000);
+					}
 				}
+				display.setCurrent(serv_list);
+				currentScreen = serv_list;
+				previousScreen = dev_list;
 			}
-			display.setCurrent(serv_list);
-			currentScreen = serv_list;
-			previousScreen = dev_list;
+			else
+				do_alert("No OpenUAT service found on this device", 5000);
 		}
 		else {
 			String errorMsg = "unknown error code!";

@@ -157,7 +157,8 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x1002); // publicly browsable services
+					// NOTE: using this UUID would only get us services offered by Nokia phones, but not e.g. by Windows Mobile or Linux devices
+					UUID uuid = null; //new UUID(0x1002); // publicly browsable services
 					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
@@ -219,6 +220,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 	}
 
 	public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector serv, int errorReason) {
+		do_alert("Service search completed for device " + remoteDevice, 500);
 		this.services = serv;
 		if (errorReason == BluetoothPeerManager.PeerEventsListener.SEARCH_COMPLETE) {
 			for (int x = 0; x < services.size(); x++) {
