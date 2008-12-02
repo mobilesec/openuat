@@ -371,30 +371,27 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], null /*serviceUUID*/)) {
+					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], serviceUUID)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					
-					progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 15);
-					progressScreen.showActionAtStartupGauge("Inquiring device for services...");
-					display.setCurrent(progressScreen);
-					currentScreen = progressScreen;
-					previousScreen = dev_list;
+//					progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 15);
+//					progressScreen.showActionAtStartupGauge("Inquiring device for services...");
+//					display.setCurrent(progressScreen);
+//					currentScreen = progressScreen;
+//					previousScreen = dev_list;
 				}
 			}
 			if (dis == serv_list){
-				int selectedIndex = dev_list.getSelectedIndex();
-				ServiceRecord service = (ServiceRecord) services.elementAt(selectedIndex);
-				progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 15);
-				previousScreen = serv_list;
-				currentScreen = progressScreen;
-				display.setCurrent(progressScreen);
-				verify_method.addCommand(back);
-//				String btAdd = service.getHostDevice().getBluetoothAddress();
-				String connectionURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
-				progressScreen.showActionAtStartupGauge("Connecting to service: "+connectionURL);
-				connectTo(connectionURL);
-				
+				if (serv_list.getSelectedIndex() >= 0) { //find services
+					ServiceRecord service = (ServiceRecord) services.elementAt(serv_list.getSelectedIndex());
+					DataElement ser_de = service.getAttributeValue(0x100);
+					String service_name = (String) ser_de.getValue();
+					String connectionURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
+					
+					do_alert(service_name+":"+connectionURL, 5000);
+					connectTo(connectionURL);
+				}
 			}
 		}
 		else if (com == back) {
@@ -594,12 +591,16 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			if (services.size() > 0) {
 				for (int x = 0; x < services.size(); x++) {
 					try {
-						DataElement ser_de = ((ServiceRecord) services.elementAt(x))
-							.getAttributeValue(0x100);
+						ServiceRecord rec = (ServiceRecord) services.elementAt(x);
+						
+						DataElement ser_de = rec.getAttributeValue(0x100);
 						String service_name = (String) ser_de.getValue();
+						if(service_name==null) service_name="[empty]";
 						serv_list.append(service_name, null);
+						 
 					} catch (Exception e) {
 						do_alert("Error in adding services ", 1000);
+						serv_list.append("--", null);
 					}
 				}
 				display.setCurrent(serv_list);
