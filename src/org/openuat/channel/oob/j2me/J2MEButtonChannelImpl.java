@@ -96,13 +96,17 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	 */
 	// @Override
 	public void showTransmitGui(String text, int type) {
-		transmissionMode = type;
+		transmissionMode = ButtonChannelImpl.TRANSMIT_PLAIN;
 		currentScreen = new TransmitGui(text);
 		currentScreen.addCommand(abortCommand);
 		currentScreen.setCommandListener(this);
 		
 		// make currentScreen the active Displayable
 		display.setCurrent(currentScreen);
+		
+		// set the real transmission mode after the first repaint
+		// such that the display text can be shown
+		transmissionMode = type;
 	}
 
 	/* (non-Javadoc)
