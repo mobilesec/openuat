@@ -38,8 +38,9 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		transmitDisplayText = "";
 		
 		int eventCount = (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
+		String endl = System.getProperty("line.separator");
 		captureDisplayText	= "Please press the button simultanously on both devices "
-							+ "for a total of " + Integer.toString(eventCount) + " times.\n"
+							+ "for a total of " + Integer.toString(eventCount) + " times." + endl
 							+ "This device is ready.";
 	}
 
