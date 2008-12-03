@@ -41,8 +41,9 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		textDelay		= 5000;
 		signalDuration	= 500;
 		
+		String endl = System.getProperty("line.separator");
 		captureDisplayText	= "Please press the button whenever the other device "
-							+ "gives a visual signal.\n"
+							+ "gives a visual signal." + endl
 							+ "This device is ready.";
 		
 		transmitDisplayText	= "This device will send visual signals. Please press"
