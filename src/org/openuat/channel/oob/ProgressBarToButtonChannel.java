@@ -83,7 +83,6 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		}
 		
 		// transmit the data (given from 'intervals')
-		// note: 
 		int progress = 0;
 		long start = System.currentTimeMillis();
 		long duration = 0;
