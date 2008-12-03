@@ -134,7 +134,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 */
 	// @Override
 	public void showTransmitGui(String text, int type) {
-		transmissionMode = type;
+		transmissionMode = ButtonChannelImpl.TRANSMIT_PLAIN;
 		Canvas transmitGui = new TransmitGui(text);
 		
 		// display the transmit gui
@@ -142,6 +142,10 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		parent.add(transmitGui);
 		parent.add(abortButton);
 		parent.repaint();
+		
+		// set the real transmission mode after the first repaint
+		// such that the display text can be shown
+		transmissionMode = type;
 	}
 
 	/* (non-Javadoc)
