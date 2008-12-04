@@ -210,8 +210,8 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * @see IntervalList
 	 */
 	protected byte[] intervalsToBytes(IntervalList intervals, int minInterval, int bitsPerInterval, boolean roundDown, boolean useCarry) {
-		bitsPerInterval = Math.max(bitsPerInterval, 31);
-		int bytes = Math.max(((intervals.size() * bitsPerInterval) + 7) / 8, 8);
+		bitsPerInterval = Math.min(bitsPerInterval, 31);
+		int bytes = Math.min(((intervals.size() * bitsPerInterval) + 7) / 8, 8);
 		byte[] result = new byte[bytes];
 		int range = 1 << bitsPerInterval; // computes range = pow(2, bitsPerInterval)
 		long tempResult = 0L;
@@ -224,19 +224,20 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		long mask = 0L;
 		for (int i = 0; i < intervals.size(); i++) {
 			interval = intervals.item(i);
+			// add carry
 			if (useCarry) {
 				interval = interval + carry;
 			}
-			
 			// rounding mode
 			if (!roundDown) {
 				interval = interval +  minInterval / 2;
 			}
 			// round down to next multiple of minInterval
 			interval = interval - interval % minInterval;
-			
 			// compute new carry
-			carry = intervals.item(i) - interval;
+			if (useCarry) {
+				carry = intervals.item(i) + carry - interval;
+			}
 			
 			// extract value from interval
 			interval = interval / minInterval;
@@ -278,16 +279,16 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 */
 	protected IntervalList bytesToIntervals(byte[] bytes, int minInterval, int bitsPerInterval, int intervalCount) {
 		IntervalList result = new IntervalList();
-		bitsPerInterval = Math.max(bitsPerInterval, 31);
+		bitsPerInterval = Math.min(bitsPerInterval, 31);
 		int range = 1 << bitsPerInterval; // compute range = pow(2, bitsPerInterval)
-		int byteCount = Math.max(bytes.length, 8);
+		int byteCount = Math.min(bytes.length, 8);
 		long bits = 0L;
 		
 		// put 'bytes' into a long value
 		long temp = 0L;
 		int shiftIndex = 0;
 		for (int i = 0; i < byteCount; i++) {
-			temp = (long)bytes[i];
+			temp = (long)bytes[i] & 0xffL;
 			temp = temp << shiftIndex;
 			bits = bits | temp;
 			shiftIndex += 8;
