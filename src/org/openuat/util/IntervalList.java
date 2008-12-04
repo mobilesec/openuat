@@ -94,4 +94,30 @@ public class IntervalList {
 	public int getTotalIntervalLength() {
 		return totalIntervalLength;
 	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	// @Override
+	public boolean equals(Object obj) {
+		boolean result = true;
+		IntervalList other = null;
+		try {
+			other = (IntervalList)obj;
+			result = (this.size() == other.size());
+			if (result) {
+				for (int i = 0; i < this.size(); i++) {
+					if (this.item(i) != other.item(i)) {
+						result = false;
+						break;
+					}
+				}
+			}
+		} catch (ClassCastException e) {
+			result = false;
+		}
+		
+		return result;
+	}
+	
 }
