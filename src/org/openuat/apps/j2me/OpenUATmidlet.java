@@ -55,6 +55,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 	/** The key resulting from the message exchange during the authentication process */
 	protected byte [] authKey;
 	
+	//preloaded images
 	protected Image search = null;
 	protected Image vCard = null;
 	protected Image print = null;
@@ -103,9 +104,11 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 
 	protected BluetoothRFCOMMServer rfcommServer;
 	protected BluetoothPeerManager peerManager;
+
+	/** Discovered Bluetooth services */
 	protected Vector services;
 	
-	//how loud to sing
+	/** Play volume, how loud the phone should play the tunes */
 	public int volume = 45;
 
 	
@@ -126,9 +129,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 	/** starting of verification time */
 	public long startTime;
 	
-//	public int numTriesVisual;
-//	public long startDecodeTimeAudio;
-//	public int numListensSlowCodec = 1;
+
 	public long startTimeMadLib;
 	
 	private void loadImages(){
@@ -183,22 +184,22 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		try {
 			buttoncancel = Image.createImage("/button_cancel_sm.png");
 		} catch (IOException e) {
-			LogService.warn(this, "could not load image");
+			LogService.warn(this, "could not load image button_cancel_sm.png");
 		}
 		try {
 			replay = Image.createImage("/replay_sm.png");
 		} catch (IOException e) {
-			LogService.warn(this, "could not load image");
+			LogService.warn(this, "could not load image replay_sm.png");
 		}
 		try {
 			secure = Image.createImage("/secure_sm.png");
 		} catch (IOException e) {
-			LogService.warn(this, "could not load image");
+			LogService.warn(this, "could not load image secure_sm.png");
 		}
 		try {
 			error = Image.createImage("/error_sm.png");
 		} catch (IOException e) {
-			LogService.warn(this, "could not load image");
+			LogService.warn(this, "could not load image error_sm.png");
 		}
 	}
 	// our logger
@@ -270,11 +271,8 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		dev_list.addCommand(log);
 		serv_list.addCommand(back);
 		
-
-
 		logScreen = LogService.getLog();
 		logScreen.addCommand(back);
-		
 		
 		Image[]	images = new Image[]{visual, audio, slowcodec, madlib};
 		verify_method = new List("Method", Choice.IMPLICIT, new String[]{"Visual channel","Audio channel","Compare tunes","Compare text"}, images);
@@ -286,7 +284,6 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		
 		success_form =  new Form ("OpenUAT");
 		failure_form =  new Form ("OpenUAT");
-		
 		
 		success_form.append(buttonok);
 		success_form.append("Congratulations! Authentication successful!\n");
@@ -360,9 +357,6 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 					String btAdd = "001F5B7B16F7";
 					connectTo(btAdd, 2);
 					
-					//my laptop
-					//String btAdd = "001EC28E3024";
-//					connectTo(btAdd, 1);
 
 				}
 			}
@@ -422,7 +416,8 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 
 	/**
 	 * Starts the connection and authentication process to the given Bluetooth address.
-	 * @param btAdd
+	 * @param btAdd The MAC address to which to connect via Bluetooth
+	 * @param channel The channel number to which to connect to (and on which the OpenUAT service is running on the remote device)
 	 */
 	protected void connectTo(String btAdd, int channel) {
 	
@@ -458,9 +453,9 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 //		LogService.debug(this, "starting authentication ");
 		try {
 			initiator = true;
-			BluetoothRFCOMMChannel chan = new BluetoothRFCOMMChannel(connectionURL);
-			chan.open();
-			HostProtocolHandler.startAuthenticationWith(chan, this, 200000, keepConnected, optionalParam, true);
+			BluetoothRFCOMMChannel chanel = new BluetoothRFCOMMChannel(connectionURL);
+			chanel.open();
+			HostProtocolHandler.startAuthenticationWith(chanel, this, 200000, keepConnected, optionalParam, true);
 
 		} catch (IOException e) {
 			LogService.error(this, "could not connect to "+connectionURL, e);
@@ -468,6 +463,11 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		}
 	}
 
+	/** 
+	 * Display an alert to inform the user.
+	 * @param msg
+	 * @param time_out
+	 */
 	public void do_alert(String msg, int time_out) {
 		if (display.getCurrent() instanceof Alert) {
 			((Alert) display.getCurrent()).setString(msg);
@@ -480,6 +480,13 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		}
 	}
 
+	/**
+	 * Display an alert which uses a progress bar.
+	 * @param title The title of the alert.
+	 * @param msg The message to be displayed
+	 * @param img Image to be shown on the gauge
+	 * @param max_time The maximum steps time on the gauge.
+	 */
 	public void do_alert_gauge(String title, String msg, String img, int max_time) {
 		Image icon = null;
 		try {
@@ -494,21 +501,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		alert.setImage(icon);
 		alert.setTimeout(Alert.FOREVER);
 		alert.setIndicator(gauge);
-//		new Thread(){
-//			public void run(){
-//				int i = 0;
-//				while (i < gauge.getMaxValue()){
-//					gauge.setValue(i++);
-//					try {
-//						Thread.sleep(1000);
-//					} catch (InterruptedException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					}	
-//				}
-//			}
-//		}.start();
-//		alert.setTicker(new Ticker("----"));
+
 		display.setCurrent(alert);
 	}
 
@@ -525,6 +518,10 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		BluetoothRFCOMMChannel.shutdownAllChannels();
 	}
 
+	/**
+	 * Called when the Bluetooth device inquire has finished. 
+	 * It displays the list of devices so the user can select which to connect to.
+	 */
 	public void inquiryCompleted(Vector newDevices) {
 		for (int i=0; i<newDevices.size(); i++) {
 			String device_name = BluetoothPeerManager.resolveName((RemoteDevice) newDevices.elementAt(i));
@@ -544,8 +541,8 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 		// just ignore for this demo application 
 	}
+	
 	public boolean AuthenticationStarted(Object sender, Object remote) {
-		
 		Alert alert = new Alert("Incoming connection", "Pairing with" + remote.toString(), null, AlertType.CONFIRMATION);
 		alert.setTimeout(Alert.FOREVER);
 		display.setCurrent(home_screen);
@@ -584,6 +581,9 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 
 	}
 
+	/**
+	 * Called when the Bluetooth service search for the selected device has completed. The user can then select the OpenUAT service and start the authentication process.
+	 */
 	public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector serv, int errorReason) {
 		this.services = serv;
 		do_alert("Service search on " + remoteDevice + " finished with " + services.size() + " entries", 3000);

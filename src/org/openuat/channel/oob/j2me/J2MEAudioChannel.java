@@ -30,27 +30,36 @@ import org.openbandy.service.LogService;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
+/**
+ * Implements the audio out of band channel for mobile devices.
+ * @author Iulia Ion
+ *
+ */
 public class J2MEAudioChannel implements OOBChannel, CommandListener {
 	
 	private OOBMessageHandler messageHandler;
 	private Logger logger = Logger.getLogger("org.openuat.channel.oob.j2me.J2MEAudioChannel");
-	
+
+	//UI components
 	private Display display;
 	private Displayable homeScreen;
-	private int volume;
 	
+	/** how loud to play a tune */
+	private int volume;
+
 	private Command stopRec;
 	private Command playRec = new Command("Play", Command.SCREEN, 1);
-	 Command decodeCmd = new Command("Decode", Command.SCREEN, 1);
-	 
-		private Player captureAudioPlayer;
-		private RecordControl rc;
-		private ByteArrayOutputStream output;
+	private Command decodeCmd = new Command("Decode", Command.SCREEN, 1);
 
-		/** The last recorded sequence */
-		 byte [] recorded = null ;
-		 
-		 //put only the display
+	//recording 
+	private Player captureAudioPlayer;
+	private RecordControl rc;
+	private ByteArrayOutputStream output;
+
+	/** The last recorded sequence */
+	private byte [] recorded = null ;
+
+	//put only the display
 	public J2MEAudioChannel(Display display, Displayable homeScreen, int volume) {
 		this.display = display;
 		this.homeScreen = homeScreen;
@@ -58,26 +67,7 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 	}
 	
 	public void commandAction(Command com, Displayable dis) {
-//		if (com == exit) { //exit triggered from the main form
-//			if (rfcommServer != null)
-//				try {
-//					rfcommServer.stop();
-//				} catch (InternalApplicationException e) {
-//					do_alert("Could not de-register SDP service: " + e, Alert.FOREVER);
-//				}
-//				destroyApp(false);
-//				notifyDestroyed();
-//		}
-//		else 
-//			if (com == back) {
-//			if (dis == serv_list) { //back button is pressed in devices list
-//				display.setCurrent(dev_list);
-//			}
-//		}
-//		else if (com == log) {
-//			display.setCurrent(logForm);
-//		}else 
-			if(com.equals(stopRec)){
+		if(com.equals(stopRec)){
 			finishCapturing();
 		}
 		else if(com.equals(playRec)){
@@ -91,67 +81,42 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 
 	}
 	
+	/** 
+	 * Used to repay the recorded sound. Only used for debugging purposes.
+	 */
 	private void playRecording() {
 		ByteArrayInputStream recordedStream = new ByteArrayInputStream(recorded);
 		Player player;
 		try {
 			player = Manager.createPlayer(recordedStream, "audio/x-wav");
-
 			player.prefetch(); 
 			player.realize();
 			player.start(); 
-
-//			recordScreen.deleteAll();
-//			recordScreen.setTitle("Playing recording ");
-//			recordScreen.append("This is the recorded sequence.");
-//			recordScreen.removeCommand(playRec);
-
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			Alert alert = new Alert("error", e.getClass().toString() + ": " + e.getMessage(), null, AlertType.ERROR);
 			display.setCurrent(alert);
 		} catch (MediaException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			Alert alert = new Alert("error", e.getClass().toString() + ": " + e.getMessage(), null, AlertType.ERROR);
 			display.setCurrent(alert);
 		}
 		captureAudioPlayer.close();
 	}
+	
+	/**
+	 * Starts the thread that decodes the recorded hapadep sound. 
+	 * @param audiodata
+	 */
 	public void  decodeAudio(byte [] audiodata) {
-
-		
-//		decodeScreen = new Form("decoding...\n");
-//		decodeScreen.setCommandListener(this);
-//		decodeScreen.append("initial: "+ audiodata.length + "bytes\n");
-//		decodeScreen.addCommand(mainProgram.exit);
-//		decodeScreen.addCommand(new Command("Back", Command.BACK, 1));
-//		display.setCurrent(decodeScreen);
-		
-//		new DecoderThread(decodeScreen, display, this, audiodata).start();
 		ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
 		
 		DecoderThread decoder = new DecoderThread(audiodata, dataStream, this);
 		decoder.start();
-//		while(!decoder.done){
-//			try {
-//				Thread.sleep(200);
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//		}
-//		handleAudioDecodedText(decoder.retrieved);
-//		for (int i = 0; i < retrieved.length; i++) {
-//		decodeScreen.append( retrieved [i] + ", ");
-//		}
-
-//		return retrieved;
-//		handleAudioDecodedText(retrieved);
 }
 	
-	
+	/**
+	 * Stop the microphone and the recording.
+	 * @return the audio sound recorded.
+	 */
 	public byte [] finishCapturing() {
 		try {
 			//stop recording
@@ -162,17 +127,6 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 
 			recorded = output.toByteArray();
 			output.close();
-
-			//update screen
-//			recordScreen.deleteAll();
-//			recordScreen.setTitle("Recording stoped");
-//			recordScreen.append(recorded.length	+ " bytes captured. Play them?");
-//			recordScreen.removeCommand(stopRec);
-//
-//
-//			recordScreen.addCommand(playRec);
-//			recordScreen.addCommand(decodeCmd);
-			
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -192,20 +146,6 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 	 */
 	private void recordAudio() {
 		try {
-			//change the screen to let the user know it's recording
-//			recordScreen = new Form("Recording");
-//			recordScreen.append("Recording. When done press stop");
-//
-//			stopRec = new Command("stop", Command.STOP, 1);
-//
-//			recordScreen.addCommand(stopRec);
-//			recordScreen.addCommand(new Command("Back", Command.BACK, 1));
-//			recordScreen.setCommandListener(this);
-//			display.setCurrent(recordScreen);
-
-			// Create a Player that captures live audio.
-			//captureAudioPlayer = Manager.createPlayer("capture://audio?encoding=pcm&rate=44100&bits=8&channels=1&endian=little&signed=true");
-			//cannot use channel 1
 			captureAudioPlayer = Manager.createPlayer("capture://audio?encoding=pcm&rate=44100");
 			captureAudioPlayer.realize();
 			// Get the RecordControl, set the record stream,
@@ -226,6 +166,10 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 		} 
 	}
 
+	/**
+	 * Called by the DecoderThread when decoding of the recorded sound finished. 
+	 * @param retrieved The decoded content.
+	 */
 	public void handleAudioDecodedText(byte[] retrieved) {
 		messageHandler.handleOOBMessage(AUDIO_CHANNEL, retrieved);
 		
@@ -259,19 +203,18 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 			player.realize(); 
 			player.start();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Alert alert = new Alert("error", e.getClass().toString() + ": "	+ e.getMessage(), null, AlertType.ERROR);
+			display.setCurrent(alert);
 		} catch (MediaException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Alert alert = new Alert("error", e.getClass().toString() + ": "	+ e.getMessage(), null, AlertType.ERROR);
+			display.setCurrent(alert);
 		}
 
 	}
 
 //	@Override
 	public void capture() {
-		//start the recording process
-		
+		//start the recording process		
 		//when it's done, we'll call the handler and pass on the message
 		recordAudio();
 		
@@ -279,10 +222,20 @@ public class J2MEAudioChannel implements OOBChannel, CommandListener {
 
 }
 
+/**
+ * Decodes a recorded audio sound in a separate thread, not to block the application.
+ * @author Iulia Ion
+ *
+ */
 class DecoderThread extends Thread{
-	byte[] audiodata;
-	ByteArrayOutputStream dataStream;
-	J2MEAudioChannel channel;
+	/** the bytes to be decoded */
+	private byte[] audiodata;
+	private ByteArrayOutputStream dataStream;
+	private J2MEAudioChannel channel;
+	
+	/** The decoded bytes */
+	public byte retrieved [];
+	
 	public DecoderThread(byte[] audiodata, ByteArrayOutputStream dataStream, J2MEAudioChannel channel) {
 		this.audiodata = audiodata;
 		this.dataStream = dataStream;
@@ -290,8 +243,7 @@ class DecoderThread extends Thread{
 		
 		
 	}
-	public byte retrieved [];
-	boolean done = false;
+	
 	public void run(){
 		try {
 			long start = System.currentTimeMillis();
@@ -304,7 +256,6 @@ class DecoderThread extends Thread{
 			LogService.info(this, "decoded data: " + new String(retrieved)+"\n");
 			LogService.info(this, "decoding took: " + (end - start) + " ms.\n");
 			channel.handleAudioDecodedText(retrieved);
-			done = true;
 		} catch (IOException e) {
 			LogService.error(this, "Decoding error", e); 
 		}

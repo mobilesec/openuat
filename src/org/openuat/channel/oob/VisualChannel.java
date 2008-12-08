@@ -18,35 +18,26 @@ import com.swetake.util.QRCanvas;
 import com.swetake.util.QRcodeGen;
 
 /**
- * 
+ * Displays the verification message as a QR barcode on the specified JPanel. Capturing functionality is not implemented.
  * @author Iulia Ion 
  */
 public class VisualChannel implements OOBChannel {
 
-	Logger logger = Logger.getLogger(VisualChannel.class);
-	OOBMessageHandler handler;
-
+	private Logger logger = Logger.getLogger(VisualChannel.class);
+	
+	private OOBMessageHandler handler;
+	private JPanel pane;
+	
+	
 	public VisualChannel() {
 
 	}
 
 	public void close() {
-//		frame.setVisible(false);
-//		frame.dispose();
 		pane.removeAll();
 		pane.repaint();
 	}
 
-	//
-	// public void handleDecodedText(Result theResult) {
-	// // destroyApp(true);
-	// stop();
-	// handler.handleOOBMessage(OOBChannel.VIDEO_CHANNEL,
-	// theResult.getText().getBytes());
-	//		
-	//		
-	//		
-	// }
 
 	public void capture() {
 		// not yet implemented
@@ -58,7 +49,12 @@ public class VisualChannel implements OOBChannel {
 
 	}
 
-	// put this in a visual channel class
+/**
+ * Generates the QR code and displays it to the user.
+ * @param content The content of the QR code.
+ * @param panel The panel on which to display it.
+ * @return The QR canvas displayed on the panel.
+ */
 	private static QRCanvas generateAndShowQRCode(byte[] content, JPanel panel) {
 		QRCanvas canvas = null;
 		int version = 0;
@@ -94,7 +90,7 @@ public class VisualChannel implements OOBChannel {
 		return canvas;
 	}
 
-	JPanel pane;
+	
 
 	public void transmit(byte[] message) {
 		generateAndShowQRCode(message, pane);

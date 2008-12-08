@@ -17,6 +17,11 @@ import org.codec.audio.AudioUtils;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
+/**
+ * Implements the audio channel for the Java Standard Edition. 
+ * @author Iulia Ion
+ *
+ */
 public class AudioChannel implements OOBChannel {
 	private OOBMessageHandler messageHandler;
 	private Logger logger = Logger.getLogger(AudioChannel.class);
@@ -266,31 +271,4 @@ public class AudioChannel implements OOBChannel {
 
 }
 
-//class DecoderThread extends Thread{
-//	Form decodeScreen;
-//	Display display;
-//	byte data[];
-//	AudioChannel audioVerifier;
-//	Logger logger = Logger.getLogger("");
-//	
-//	public DecoderThread(Form decodeScreen, Display display, AudioChannel audioVerifier, byte data[]) {
-//		this.decodeScreen = decodeScreen;
-//		this.display = display;
-//		this.data = data;
-//		this.audioVerifier = audioVerifier;
-//	}
-//
-//	public void run(){
-//		try {
-//			
-//
-//			//} catch (IOException e) {
-//		} catch (Exception e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//			decodeScreen.append(e.getClass().toString() + ": " + e.getMessage());
-////			Alert alert = new Alert("error", e.getClass().toString() + ": " + e.getMessage(), null, AlertType.ERROR);
-////			Display.getDisplay(this).setCurrent(alert);
-//		} 
-//	}
-//}
+

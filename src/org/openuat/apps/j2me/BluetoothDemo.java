@@ -168,8 +168,10 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			if (dis == serv_list) { //select triggered from the device list
 				if (serv_list.getSelectedIndex() >= 0) { //find services
 					ServiceRecord service = (ServiceRecord) services.elementAt(serv_list.getSelectedIndex());
+					DataElement ser_de = service.getAttributeValue(0x100);
+			String service_name = (String) ser_de.getValue();
 					String connectionURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
-					do_alert(connectionURL, 5000);
+					do_alert(service_name+":"+connectionURL, 5000);
 				}
 			}
 			

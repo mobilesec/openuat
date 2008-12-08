@@ -22,21 +22,25 @@ import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.VideoControl;
-import javax.microedition.midlet.MIDlet;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
 import com.google.zxing.Result;
-import com.google.zxing.client.j2me.AdvancedMultimediaManager;
 import com.google.zxing.client.j2me.DefaultMultimediaManager;
 import com.google.zxing.client.j2me.MultimediaManager;
 import com.google.zxing.client.j2me.VideoCanvas;
 import com.swetake.util.j2me.QRCanvas;
 import com.swetake.util.j2me.QRcodeGen;
 
-
+/**
+ * Implements the visual out of band channel for mobile devices.
+ * To transmit, it encodes and displays a message as a QR code.
+ * To receive, it takes a picture and decodes the QR code displayed by the other device.
+ * @author Iulia Ion
+ *
+ */
 public class J2MEVisualChannel implements OOBChannel{
 
 	protected Canvas canvas;
@@ -44,6 +48,7 @@ public class J2MEVisualChannel implements OOBChannel{
 	protected VideoControl videoControl;
 	private Logger logger = Logger.getLogger("org.openuat.channel.oob.j2me.J2MEVisualChannel");
 	private OOBMessageHandler handler;
+	
 	private Display display;
 	private Class appClass;
 	private CommandListener appListener;
@@ -119,13 +124,6 @@ public class J2MEVisualChannel implements OOBChannel{
 	}
 
 
-
-	/*private void showAlert(String title, String text) {
-		Alert alert = new Alert(title, text, null, AlertType.INFO);
-		alert.setTimeout(Alert.FOREVER);
-		showAlert(alert);
-	}*/
-
 	public void showError(Throwable t) {
 		String message = t.getMessage();
 		if (message != null && message.length() > 0) {
@@ -144,8 +142,9 @@ public class J2MEVisualChannel implements OOBChannel{
 	}
 
 	public void handleDecodedText(Result theResult) {
-//		destroyApp(true);
+//		remove the QR from the display if necesary
 		stop();
+		// inform the handler
 		handler.handleOOBMessage(OOBChannel.VIDEO_CHANNEL, theResult.getText().getBytes());
 		
 		
@@ -181,6 +180,10 @@ public class J2MEVisualChannel implements OOBChannel{
 
 	}
 
+	/**
+	 * Displays a QR code enconding the message.
+	 * @param message The message to be displayed as QR.
+	 */
 	public void transmit(byte[] message) {
 		
 		int version = 0;
