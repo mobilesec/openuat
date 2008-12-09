@@ -1,4 +1,4 @@
-/* Copyright Rene Mayrhofer
+/* Copyright Rene Mayrhofer and Iulia Ion
  * File created 2008-06-25
  * 
  * This program is free software; you can redistribute it and/or modify

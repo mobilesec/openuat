@@ -35,11 +35,11 @@ import org.openuat.util.RemoteConnection;
  * 
  * @author Rene Mayrhofer
  * @version 1.0
- *
  */
 public class ManualAuthentication extends MIDlet implements CommandListener,
 		BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler {
-
+	public final static UUID SERVICE_UUID = new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false);
+	
 	List main_list;
 
 	List dev_list;
@@ -90,7 +90,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 		}
 
 		try {
-			rfcommServer = new BluetoothRFCOMMServer(null, new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false), "J2ME Test Service", 
+			rfcommServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, "J2ME Test Service", 
 					10000, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
@@ -148,11 +148,14 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 		}
 		else if (com == List.SELECT_COMMAND) {
 			if (dis == main_list) { //select triggered from the main from
-				if (main_list.getSelectedIndex() >= 0) { //find devices
+				if (main_list.getSelectedIndex() == 0) { //find devices
 					if (!peerManager.startInquiry(false)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					do_alert("Searching for devices...", Alert.FOREVER);
+				}
+				else {
+					// TODO: automatically use the first device we find
 				}
 			}
 			if (dis == dev_list) { //select triggered from the device list
@@ -160,8 +163,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 					RemoteDevice[] devices = peerManager.getPeers();
 					
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					UUID uuid = new UUID(0x1002); // publicly browsable services
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], uuid)) {
+					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], null)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					do_alert("Inquiring device for services...", Alert.FOREVER);
@@ -256,7 +258,8 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 	}
 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
-		// just ignore for this demo application 
+		// TODO: display proper error message
+		do_alert("Authentication with " + remote + " failed: " + msg, Alert.FOREVER);
 	}
 
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
@@ -286,5 +289,6 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 		} catch (IOException e) {
 			logger.debug("Unable to open stream to remote: " + e);
 		}
+		do_alert("Authentication with " + remote + " successful", Alert.FOREVER);
 	}
 }
