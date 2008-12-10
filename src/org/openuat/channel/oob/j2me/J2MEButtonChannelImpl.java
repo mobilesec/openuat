@@ -8,6 +8,8 @@
  */
 package org.openuat.channel.oob.j2me;
 
+import java.util.Vector;
+
 import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
@@ -84,6 +86,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	// @Override
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
 		currentScreen = new CaptureGui(text, inputHandler);
+		currentScreen.setFullScreenMode(false);
 		currentScreen.addCommand(abortCommand);
 		currentScreen.setCommandListener(this);
 		
@@ -98,6 +101,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	public void showTransmitGui(String text, int type) {
 		transmissionMode = ButtonChannelImpl.TRANSMIT_PLAIN;
 		currentScreen = new TransmitGui(text);
+		currentScreen.setFullScreenMode(false);
 		currentScreen.addCommand(abortCommand);
 		currentScreen.setCommandListener(this);
 		
@@ -130,8 +134,48 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			// logger.warn("Command not handled: "+command.getLabel());
 		}
 	}
-
-
+	
+	/* Helper method to split a string to fit on the canvas.
+	 * Returns a Vector<String>.
+	 */
+	private Vector splitStringByFont(String in, Font font, int maxSize) {
+		Vector result = new Vector();
+		// first split on newline characters '\n'
+		Vector lines = new Vector();
+		int lower = 0;
+		int upper = 0;
+		int index = in.indexOf('\n');
+		while (index != -1) {
+			upper = index - 1;
+			lines.addElement(in.substring(lower, upper));
+			lower = index + 1;
+			index = in.indexOf('\n', index + 1);
+		}
+		// now split the lines on space (' ')
+		for (int i = 0; i < lines.size(); i++) {
+			String line = (String)lines.elementAt(i);
+			String current = "";
+			String sub = "";
+			lower = 0;
+			upper = 0;
+			index = line.indexOf(' ');
+			while (index != -1) {
+				upper = index -1;
+				sub = line.substring(lower, upper);
+				if (font.stringWidth(current + " " + sub) > maxSize) {
+					result.addElement(current);
+					current = sub;
+				}
+				else {
+					current = current + " " + sub;
+				}
+				lower = index + 1;
+				index = line.indexOf(' ', index + 1);
+			}
+		}
+		return result;
+	}
+	
 
 	/*
 	 * Private helper/wrapper class to launch the capture gui.
@@ -168,6 +212,16 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			g.fillRect(0, 0, this.getWidth(), this.getHeight());
 			g.setColor(RgbColor.BLACK);
 			g.setFont(defaultFont);
+			/* 
+			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*marginLeft);
+			lines.insertElementAt(Integer.toString(lines.size()), 0);
+			int mTop = marginTop;
+			for (int i = 0; i < lines.size(); i++) {
+				String line = (String)lines.elementAt(i);
+				g.drawString(line, marginLeft, mTop, Graphics.TOP|Graphics.LEFT);
+				mTop += defaultFont.getHeight();
+			}
+			*/
 			g.drawString(displayText, marginLeft, marginTop, Graphics.TOP|Graphics.LEFT);
 		}
 
@@ -237,7 +291,16 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
 				g.setColor(RgbColor.BLACK);
 				g.setFont(defaultFont);
-				g.drawString(displayText, textMarginLeft, textMarginTop, Graphics.LEFT|Graphics.TOP);
+				/*
+				Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
+				int mTop = textMarginTop;
+				for (int i = 0; i < lines.size(); i++) {
+					String line = (String)lines.elementAt(i);
+					g.drawString(line, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
+					mTop += defaultFont.getHeight();
+				}
+				*/
+				g.drawString(displayText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
 				if (showSignal) {
