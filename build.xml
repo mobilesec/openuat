@@ -509,6 +509,8 @@
 				
 				<midlet class="org.openuat.apps.j2me.OpenUATmidlet" name="OpenUAT Toolkit"/>
 				
+				<midlet class="org.openuat.apps.j2me.BedaMIDlet" name="Beda demo"/>
+				
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 					<variable name="cfg.shakingDemoMode" value="false" />
