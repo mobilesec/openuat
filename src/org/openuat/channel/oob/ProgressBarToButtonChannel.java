@@ -43,6 +43,9 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		deltaT			= 20;
 		
 		String endl = System.getProperty("line.separator");
+		if (endl == null) {
+			endl = "\n";
+		}
 		captureDisplayText	= "Please press and hold the button during the ligth "
 							+ "intervals, release it on dark intervals." + endl
 							+ "This device is ready.";
