@@ -16,6 +16,7 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
+import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.Graphics;
 
 import org.openuat.channel.oob.ButtonChannelImpl;
@@ -104,13 +105,14 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		currentScreen.setFullScreenMode(false);
 		currentScreen.addCommand(abortCommand);
 		currentScreen.setCommandListener(this);
-		
+
 		// make currentScreen the active Displayable
 		display.setCurrent(currentScreen);
-		
+
 		// set the real transmission mode after the first repaint
 		// such that the display text can be shown
 		transmissionMode = type;
+		
 	}
 
 	/* (non-Javadoc)
@@ -140,38 +142,42 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	 */
 	private Vector splitStringByFont(String in, Font font, int maxSize) {
 		Vector result = new Vector();
-		// first split on newline characters '\n'
+		// first split on newline characters
+		// always take '\n', since system property line.separator doesn't exist
 		Vector lines = new Vector();
 		int lower = 0;
-		int upper = 0;
-		int index = in.indexOf('\n');
-		while (index != -1) {
-			upper = index - 1;
-			lines.addElement(in.substring(lower, upper));
+		int index = 0;
+		while (lower < in.length()) {
+			index = in.indexOf('\n', lower);
+			if (index == -1) {
+				index = in.length();
+			}
+			lines.addElement(in.substring(lower, index));
 			lower = index + 1;
-			index = in.indexOf('\n', index + 1);
 		}
-		// now split the lines on space (' ')
+		// now split the lines on space characters (' ')
 		for (int i = 0; i < lines.size(); i++) {
 			String line = (String)lines.elementAt(i);
 			String current = "";
 			String sub = "";
 			lower = 0;
-			upper = 0;
-			index = line.indexOf(' ');
-			while (index != -1) {
-				upper = index -1;
-				sub = line.substring(lower, upper);
+			index = 0;
+			while (lower < line.length()) {
+				index = line.indexOf(' ', lower);
+				if (index == -1) {
+					index = line.length();
+				}
+				sub = line.substring(lower, index);
 				if (font.stringWidth(current + " " + sub) > maxSize) {
-					result.addElement(current);
+					result.addElement(current.trim());
 					current = sub;
 				}
 				else {
 					current = current + " " + sub;
 				}
 				lower = index + 1;
-				index = line.indexOf(' ', index + 1);
 			}
+			result.addElement(current.trim());
 		}
 		return result;
 	}
@@ -212,17 +218,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			g.fillRect(0, 0, this.getWidth(), this.getHeight());
 			g.setColor(RgbColor.BLACK);
 			g.setFont(defaultFont);
-			/* 
 			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*marginLeft);
-			lines.insertElementAt(Integer.toString(lines.size()), 0);
 			int mTop = marginTop;
 			for (int i = 0; i < lines.size(); i++) {
 				String line = (String)lines.elementAt(i);
 				g.drawString(line, marginLeft, mTop, Graphics.TOP|Graphics.LEFT);
 				mTop += defaultFont.getHeight();
 			}
-			*/
-			g.drawString(displayText, marginLeft, marginTop, Graphics.TOP|Graphics.LEFT);
 		}
 
 		/* (non-Javadoc)
@@ -291,7 +293,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
 				g.setColor(RgbColor.BLACK);
 				g.setFont(defaultFont);
-				/*
 				Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
 				int mTop = textMarginTop;
 				for (int i = 0; i < lines.size(); i++) {
@@ -299,8 +300,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 					g.drawString(line, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
 					mTop += defaultFont.getHeight();
 				}
-				*/
-				g.drawString(displayText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
 				if (showSignal) {
