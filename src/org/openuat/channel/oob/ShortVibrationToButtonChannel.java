@@ -40,11 +40,14 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		signalDuration	= 500;
 		
 		String endl = System.getProperty("line.separator");
+		if (endl == null) {
+			endl = "\n";
+		}
 		captureDisplayText	= "Please press the button whenever the other device "
 							+ "gives a vibration signal." + endl
 							+ "This device is ready.";
 		
-		transmitDisplayText	= "This device will send vibration signals. Please press"
+		transmitDisplayText	= "This device will send vibration signals. Please press "
 							+ "the button on the other device.";
 	}
 	
