@@ -40,6 +40,9 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		endInterval		= 600;
 		
 		String endl = System.getProperty("line.separator");
+		if (endl == null) {
+			endl = "\n";
+		}
 		captureDisplayText	= "Please press and hold the button while the other device "
 							+ "vibrates, release it, when it doesn't." + endl
 							+ "This device is ready.";
