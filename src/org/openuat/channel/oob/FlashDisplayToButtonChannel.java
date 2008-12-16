@@ -8,6 +8,10 @@
  */
 package org.openuat.channel.oob;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
+import org.openuat.authentication.OOBChannel;
 import org.openuat.util.IntervalList;
 
 /**
@@ -42,11 +46,14 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		signalDuration	= 500;
 		
 		String endl = System.getProperty("line.separator");
+		if (endl == null) {
+			endl = "\n";
+		}
 		captureDisplayText	= "Please press the button whenever the other device "
 							+ "gives a visual signal." + endl
 							+ "This device is ready.";
 		
-		transmitDisplayText	= "This device will send visual signals. Please press"
+		transmitDisplayText	= "This device will send visual signals. Please press "
 							+ "the button on the other device.";
 	}
 	
@@ -59,10 +66,11 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 	/* How long will the signal be displayed (in ms)? */
 	private int signalDuration;
 	
+	
 	/**
 	 * Transmits provided data over this channel.<br/>
-	 * Note: this method blocks the caller and will return when
-	 * the transmission process has finished.
+	 * Note: this method does not block the caller and returns
+	 * immediately.
 	 * 
 	 * @param message The Data to be sent over this channel.
 	 */
@@ -72,39 +80,47 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
 		intervals.addFirst(initInterval);
 		
-		// start transmission
-		impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_SIGNAL);
-		try {
-			Thread.sleep(textDelay);
-		} catch (InterruptedException e) {
-			// TODO: log warning
-			// logger.warn("Method transmit(byte[])", e);
-		}
-		
-		// transmit the data (given from 'intervals')
-		// note: a given interval is split into two parts:
-		// * 'signalDuration' ms to show the signal
-		// * 'interval' - 'signalDuration' to show a blank screen
-		impl.setSignal(false);
-		for (int i = 0; i < intervals.size(); i++) {
-			int interval = intervals.item(i) - signalDuration;
-			try {
-				Thread.sleep(interval);
-			} catch (InterruptedException e) {
-				// TODO: log warning
-				// logger.warn("Method transmit(byte[]) in transmission thread", e);
+		// now run the transmission in a separate thread
+		Thread t = new Thread(new Runnable() {
+			public void run() {
+				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
+				try {
+					Thread.sleep(textDelay);
+				} catch (InterruptedException e) {
+					// TODO: log warning
+					// logger.warn("Method transmit(byte[]) in transmission thread", e);
+				}
+				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_SIGNAL);
+				// transmit the data (given from 'intervals')
+				// note: a given interval is split into two parts:
+				// * 'signalDuration' ms to show the signal
+				// * 'interval' - 'signalDuration' to show a blank screen
+				impl.setSignal(false);
+				for (int i = 0; i < intervals.size(); i++) {
+					int interval = intervals.item(i) - signalDuration;
+					try {
+						Thread.sleep(interval);
+					} catch (InterruptedException e) {
+						// TODO: log warning
+						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+					}
+					impl.setSignal(true);
+					impl.repaint();
+					try {
+						Thread.sleep(signalDuration);
+					} catch (InterruptedException e) {
+						// TODO: log warning
+						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+					}
+					impl.setSignal(false);
+					impl.repaint();
+				}
+				if (messageHandler != null) {
+					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});
+				}
 			}
-			impl.setSignal(true);
-			impl.repaint();
-			try {
-				Thread.sleep(signalDuration);
-			} catch (InterruptedException e) {
-				// TODO: log warning
-				// logger.warn("Method transmit(byte[]) in transmission thread", e);
-			}
-			impl.setSignal(false);
-			impl.repaint();
-		}
+		});
+		t.start();
 	}
 
 }
