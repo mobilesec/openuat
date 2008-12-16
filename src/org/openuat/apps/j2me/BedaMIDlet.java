@@ -318,13 +318,23 @@ public class BedaMIDlet extends MIDlet {
 	/* Test the transmit functionality (offline) */
 	private void testTransmit(OOBChannel channel) {
 		int r = random.nextInt();
-		byte[] randomMessage = {(byte)r, (byte)(r >>> 8), (byte)(r >>> 16)};
+		final byte[] randomMessage = {(byte)r, (byte)(r >>> 8), (byte)(r >>> 16)};
+		final String hexString = getHexString(randomMessage);
+		
+		OOBMessageHandler handler = new OOBMessageHandler() {
+			public void handleOOBMessage(int channelType, byte[] data) {
+				if (data != null && data[0] == (byte)1) {
+					Alert alert = new Alert("Transmission ok", 
+							"The following message has been transmitted: " + hexString,
+							null, AlertType.INFO);
+					alert.setTimeout(Alert.FOREVER);
+					display.setCurrent(alert, welcomeScreen);
+				}
+			}
+		};
+		
+		channel.setOOBMessageHandler(handler);
 		channel.transmit(randomMessage);
-		Alert alert = new Alert("Transmission ok", 
-				"The following message has been transmitted: " + getHexString(randomMessage),
-				null, AlertType.INFO);
-		alert.setTimeout(Alert.FOREVER);
-		display.setCurrent(alert, welcomeScreen);
 	}
 	
 	/* Test the capture functionality (offline) */
