@@ -8,6 +8,7 @@
  */
 package org.openuat.channel.oob;
 
+import org.openuat.authentication.OOBChannel;
 import org.openuat.util.IntervalList;
 
 /**
@@ -50,7 +51,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 							+ "intervals, release it on dark intervals." + endl
 							+ "This device is ready.";
 		
-		transmitDisplayText	= "This device will display the progress bar. Please press"
+		transmitDisplayText	= "This device will display the progress bar. Please press "
 							+ "the button on the other device.";
 	}
 	
@@ -65,8 +66,8 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
-	 * Note: this method blocks the caller and will return when
-	 * the transmission process has finished.
+	 * Note: this method does not block the caller and returns
+	 * immediately.
 	 * 
 	 * @param message The Data to be sent over this channel.
 	 */
@@ -76,31 +77,41 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
 		intervals.addFirst(initInterval);
 		
-		// start transmission
-		impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_BAR);
-		try {
-			Thread.sleep(textDelay);
-		} catch (InterruptedException e) {
-			// TODO: log warning
-			// logger.warn("Method transmit(byte[])", e);
-		}
-		
-		// transmit the data (given from 'intervals')
-		int progress = 0;
-		long start = System.currentTimeMillis();
-		long duration = 0;
-		while (progress <= 100) {
-			duration = System.currentTimeMillis() - start;
-			progress = (int)(((double)duration / (double)intervals.getTotalIntervalLength()) * 100);
-			impl.setProgress(progress);
-			impl.repaint();
-			try {
-				Thread.sleep(deltaT);
-			} catch (InterruptedException e) {
-				// TODO: log warning
-				// logger.warn("Method transmit(byte[])", e);
+		// now run the transmission in a separate thread
+		Thread t = new Thread(new Runnable() {
+			public void run() {
+				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
+				try {
+					Thread.sleep(textDelay);
+				} catch (InterruptedException e) {
+					// TODO: log warning
+					// logger.warn("Method transmit(byte[])", e);
+				}
+
+				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_BAR);
+				impl.setInterval(intervals);
+				// transmit the data (given from 'intervals')
+				int progress = 0;
+				long start = System.currentTimeMillis();
+				long duration = 0;
+				while (progress <= 100) {
+					duration = System.currentTimeMillis() - start;
+					progress = (int)(((double)duration / (double)intervals.getTotalIntervalLength()) * 100.0);
+					impl.setProgress(progress);
+					impl.repaint();
+					try {
+						Thread.sleep(deltaT);
+					} catch (InterruptedException e) {
+						// TODO: log warning
+						// logger.warn("Method transmit(byte[])", e);
+					}
+				}
+				if (messageHandler != null) {
+					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});
+				}
 			}
-		}
+		});
+		t.start();
 	}
 
 }
