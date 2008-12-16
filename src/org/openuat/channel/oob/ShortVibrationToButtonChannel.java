@@ -8,6 +8,7 @@
  */
 package org.openuat.channel.oob;
 
+import org.openuat.authentication.OOBChannel;
 import org.openuat.util.IntervalList;
 
 /**
@@ -59,8 +60,8 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
-	 * Note: this method blocks the caller and will return when
-	 * the transmission process has finished.
+	 * Note: this method does not block the caller and returns
+	 * immediately.
 	 * 
 	 * @param message The Data to be sent over this channel.
 	 */
@@ -70,30 +71,37 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
 		intervals.addFirst(initInterval);
 		
-		// start transmission
-		impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
-		
-		// transmit the data (given from 'intervals')
-		// note: a given interval is split into two parts:
-		// * vibrate for 'signalDuration' ms
-		// * wait for 'interval' - 'signalDuration' ms
-		for (int i = 0; i < intervals.size(); i++) {
-			int interval = intervals.item(i) - signalDuration;
-			try {
-				Thread.sleep(interval);
-			} catch (InterruptedException e) {
-				// TODO: log warning
-				// logger.warn("Method transmit(byte[]) in transmission thread", e);
-			}
-			impl.vibrate(signalDuration);
-			try {
-				Thread.sleep(signalDuration);
-			} catch (InterruptedException e) {
-				// TODO: log warning
-				// logger.warn("Method transmit(byte[]) in transmission thread", e);
-			}
-		}
+		Thread t = new Thread(new Runnable() {
+			public void run() {
+				// start transmission
+				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
 
+				// transmit the data (given from 'intervals')
+				// note: a given interval is split into two parts:
+				// * vibrate for 'signalDuration' ms
+				// * wait for 'interval' - 'signalDuration' ms
+				for (int i = 0; i < intervals.size(); i++) {
+					int interval = intervals.item(i) - signalDuration;
+					try {
+						Thread.sleep(interval);
+					} catch (InterruptedException e) {
+						// TODO: log warning
+						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+					}
+					impl.vibrate(signalDuration);
+					try {
+						Thread.sleep(signalDuration);
+					} catch (InterruptedException e) {
+						// TODO: log warning
+						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+					}
+				}
+				if (messageHandler != null) {
+					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});
+				}
+			}
+		});
+		t.start();
 	}
 
 }
