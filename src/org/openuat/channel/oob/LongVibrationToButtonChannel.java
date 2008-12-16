@@ -8,6 +8,7 @@
  */
 package org.openuat.channel.oob;
 
+import org.openuat.authentication.OOBChannel;
 import org.openuat.util.IntervalList;
 
 /**
@@ -47,7 +48,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 							+ "vibrates, release it, when it doesn't." + endl
 							+ "This device is ready.";
 		
-		transmitDisplayText	= "This device will send vibration signals. Please press"
+		transmitDisplayText	= "This device will send vibration signals. Please press "
 							+ "the button on the other device.";
 	}
 	
@@ -63,8 +64,8 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
-	 * Note: this method blocks the caller and will return when
-	 * the transmission process has finished.
+	 * Note: this method does not block the caller and returns
+	 * immediately.
 	 * 
 	 * @param message The Data to be sent over this channel.
 	 */
@@ -77,25 +78,33 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 			intervals.add(endInterval);
 		}
 		
-		// start transmission
-		impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
-		
-		// transmit the data (given from 'intervals')
-		// note: the first interval is always an empty (non-vibrating)
-		// interval ('initInterval') to give the user some time to prepare.
-		// It follows that all vibrating intervals have odd indices in the interval list.
-		for (int i = 0; i < intervals.size(); i++) {
-			int interval = intervals.item(i);
-			if (i % 2 == 0) {
-				impl.vibrate(interval);
+		// now run the transmission in a separate thread
+		Thread t = new Thread(new Runnable() {
+			public void run() {
+				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
+
+				// transmit the data (given from 'intervals')
+				// note: the first interval is always an empty (non-vibrating)
+				// interval ('initInterval') to give the user some time to prepare.
+				// It follows that all vibrating intervals have odd indices in the interval list.
+				for (int i = 0; i < intervals.size(); i++) {
+					int interval = intervals.item(i);
+					if (i % 2 == 0) {
+						impl.vibrate(interval);
+					}
+					try {
+						Thread.sleep(interval);
+					} catch (InterruptedException e) {
+						// TODO: log warning
+						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+					}
+				}
+				if (messageHandler != null) {
+					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});
+				}
 			}
-			try {
-				Thread.sleep(interval);
-			} catch (InterruptedException e) {
-				// TODO: log warning
-				// logger.warn("Method transmit(byte[]) in transmission thread", e);
-			}
-		}		
+		});
+		t.start();
 	}
 
 }
