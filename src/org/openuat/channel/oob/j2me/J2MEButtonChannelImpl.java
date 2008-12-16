@@ -16,7 +16,6 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
-import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.Graphics;
 
 import org.openuat.channel.oob.ButtonChannelImpl;
@@ -100,7 +99,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	 */
 	// @Override
 	public void showTransmitGui(String text, int type) {
-		transmissionMode = ButtonChannelImpl.TRANSMIT_PLAIN;
+		transmissionMode = type;
 		currentScreen = new TransmitGui(text);
 		currentScreen.setFullScreenMode(false);
 		currentScreen.addCommand(abortCommand);
@@ -108,11 +107,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 
 		// make currentScreen the active Displayable
 		display.setCurrent(currentScreen);
-
-		// set the real transmission mode after the first repaint
-		// such that the display text can be shown
-		transmissionMode = type;
-		
 	}
 
 	/* (non-Javadoc)
@@ -262,9 +256,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			this.displayText = displayText;
 			textMarginLeft	= 10;
 			textMarginTop	= 10;
-			signalMargin	= 10;
+			signalMargin	= 30;
 			barMargin		= 10;
-			barHeight		= 10;
+			barHeight		= 40;
 		}
 		
 		/* Text to display before transmission starts */
@@ -330,7 +324,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 						marginLeft += intervalWidth;
 					}
 					g.setColor(RgbColor.BLACK);
-					int progressWidth = (int)((double)intervalList.getTotalIntervalLength() / 100.0d * progress);
+					int progressWidth = (int)((this.getWidth() - 2*barMargin) / 100.0d * progress);
 					g.fillRect(barMargin, marginTop, progressWidth, barHeight);
 				}
 				else {
