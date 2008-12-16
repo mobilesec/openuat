@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.security.SecureRandom;
 import java.util.BitSet;
 
 import org.apache.commons.codec.DecoderException;
@@ -20,6 +19,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.SafetyBeltTimer;
+import org.openuat.util.SimpleBlockCipher;
 
 /** This class implements the interlock protocol as first defined in
  * Ronald L. Rivest and Adi Shamir: "How to Expose an Eavesdropper", 1984.
@@ -51,12 +51,6 @@ public class InterlockProtocol {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.InterlockProtocol" /*InterlockProtocol.class*/);
 
-	/** The current length in byte of the key. */
-	private static final int KeyByteLength = 32;
-	
-	/** The current block size of the used cipher in bytes. */
-	private static final int BlockByteLength = 16;
-	
 	/** This is the start of the line sent during initializing the interlock
 	 * exchange.
 	 * @see #interlockExchange
@@ -68,9 +62,6 @@ public class InterlockProtocol {
 	 */
 	private static final String ProtocolLine_Round = "ILCKRND";
 	
-	/** If set to true, the JSSE will be used, if set to false, the Bouncycastle Lightweight API. */
-	private boolean useJSSE;
-
 	/** This may be set to distinguish multiple instances running on the same machine. */
 	private String instanceId = null;
 	
@@ -82,6 +73,8 @@ public class InterlockProtocol {
 	
 	/** This size of the plain text message in Bits. */
 	private int numMessageBits;
+	
+	private SimpleBlockCipher cipher;
 
 	/** The number of blocks the cipher text will take.
 	 * This is computed by the constructor.
@@ -123,9 +116,6 @@ public class InterlockProtocol {
 	 * @param rounds The number of rounds to use for the protocol. Must be at least 2 and at most 
 	 *               equal to the number of bits in the plain text message.
 	 * @param numMessageBits The size of the plain text message that should be transmitted, measured in Bits.
-	 * @param useJSSE If set to true, the JSSE API with the default JCE provider of the JVM will be used
-	 *                for cryptographic operations. If set to false, an internal copy of the Bouncycastle
-	 *                Lightweight API classes will be used.
 	 * @param instanceId This parameter may be used to distinguish differenc instances of
 	 *                   this class running on the same machine. It will be used in logging
 	 *                   and error messages. May be set to null.
@@ -141,11 +131,11 @@ public class InterlockProtocol {
 		if (sharedKey == null)
 			logger.warn("Initializing interlock protocol without shared key - encrypt and decrypt will not work" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
-		if (sharedKey != null && sharedKey.length != KeyByteLength)
-			throw new IllegalArgumentException("Expecting shared key with a length of " + KeyByteLength + 
+		if (sharedKey != null && sharedKey.length != SimpleBlockCipher.KeyByteLength)
+			throw new IllegalArgumentException("Expecting shared key with a length of " + SimpleBlockCipher.KeyByteLength + 
 					" bytes, but got " + sharedKey.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
-		if (sharedKey != null && numMessageBits < BlockByteLength*8)
+		if (sharedKey != null && numMessageBits < SimpleBlockCipher.BlockByteLength*8)
 			throw new IllegalArgumentException("Can not use with a message size less than the cipher block size " +
 					"(got message size of " + numMessageBits + " bits)" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
@@ -153,30 +143,31 @@ public class InterlockProtocol {
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
 		this.numMessageBits = numMessageBits;
-		this.useJSSE = useJSSE;
 		this.instanceId = instanceId;
+		this.cipher = new SimpleBlockCipher(useJSSE);
+		cipher.instanceId = instanceId;
 
 		// compute a few helper variables
-		if (sharedKey == null || numMessageBits == BlockByteLength*8) {
+		if (sharedKey == null || numMessageBits == SimpleBlockCipher.BlockByteLength*8) {
 			// simple - one block
 			if (logger.isDebugEnabled())
-				logger.debug("Case 1: cipher is one block long: " + BlockByteLength + " bytes" + 
+				logger.debug("Case 1: cipher is one block long: " + SimpleBlockCipher.BlockByteLength + " bytes" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			numCipherTextBlocks = 1;
 		}
 		else {
 			// more complicated: number of blocks plus IV block
-			numCipherTextBlocks = (numMessageBits%(BlockByteLength*8) == 0 ? 
-					numMessageBits/(BlockByteLength*8) : 
-					numMessageBits/(BlockByteLength*8) + 1) + 1;
+			numCipherTextBlocks = (numMessageBits%(SimpleBlockCipher.BlockByteLength*8) == 0 ? 
+					numMessageBits/(SimpleBlockCipher.BlockByteLength*8) : 
+					numMessageBits/(SimpleBlockCipher.BlockByteLength*8) + 1) + 1;
 			if (logger.isDebugEnabled())
 				logger.debug("Case 2: cipher takes " + numCipherTextBlocks + " blocks: " + 
-						(numCipherTextBlocks*BlockByteLength) + " bytes" + 
+						(numCipherTextBlocks*SimpleBlockCipher.BlockByteLength) + " bytes" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 		}
 		
-		cipherBitsPerRoundPerBlock = BlockByteLength*8 / rounds;
-		if (BlockByteLength*8 > cipherBitsPerRoundPerBlock * rounds)
+		cipherBitsPerRoundPerBlock = SimpleBlockCipher.BlockByteLength*8 / rounds;
+		if (SimpleBlockCipher.BlockByteLength*8 > cipherBitsPerRoundPerBlock * rounds)
 			cipherBitsPerRoundPerBlock++;
 		logger.info("Transmitting " + cipherBitsPerRoundPerBlock + " bits of message per block each round, " +
 				"total of " + cipherBitsPerRoundPerBlock*numCipherTextBlocks + " bits per message each round" + 
@@ -189,7 +180,7 @@ public class InterlockProtocol {
 	 * is encrypted in CBC mode with a random IV prepended.
 	 * @param plainText The message to encrypt. It must contain exactly as many bits
 	 *                  as specified in the numMessageBits parameter in the constructor.
-	 * @return The ciper text, which is either one block long or the number of blocks
+	 * @return The cipher text, which is either one block long or the number of blocks
 	 *         necessary to encrypt numMessageBits plus one block for the IV.
 	 * @throws InternalApplicationException
 	 */
@@ -198,69 +189,8 @@ public class InterlockProtocol {
 				plainText.length*8 < numMessageBits)
 			throw new IllegalArgumentException("Message length does not match numMessageBits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
-		if (plainText.length < BlockByteLength)
-			throw new IllegalArgumentException("Message can currently not be shorter than the block size "
-					+ "(" + BlockByteLength + "), because padding is not used" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
-		if (sharedKey == null)
-			throw new InternalApplicationException("Can not encrypt without shared key" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
-		
-		byte[] cipherText;
-		Object cipher; 
-//#if cfg.includeJSSESupport
-		if (useJSSE) 
-			cipher = initCipher_JSSE(true);
-		else
-//#endif
-			cipher = initCipher_BCAPI(true);
-		
-		// now distinguish between the single-block and the multiple-block cases
-		if (plainText.length == BlockByteLength) {
-			// ok, the simple case - just one block in ECB mode
-//#if cfg.includeJSSESupport
-			if (useJSSE) 
-				cipherText = processBlock_JSSE(cipher, plainText);
-			else
-//#endif
-				cipherText = processBlock_BCAPI(cipher, plainText);
-		}
-		else {
-			// more difficult: multiple block in CBC mode with prepended IV
-	        SecureRandom r = new SecureRandom();
-			byte[] iv = new byte[BlockByteLength];
-			r.nextBytes(iv);
-			// the ciphertext will need to keep the whole message and the IV
-			cipherText = new byte[numCipherTextBlocks * BlockByteLength];
-			// first block is the IV
-			System.arraycopy(iv, 0, cipherText, 0, BlockByteLength);
-			// and then as many rounds of CBC as we need
-			for (int i=0; i<numCipherTextBlocks-1; i++) {
-				byte[] plainBlock = new byte[BlockByteLength];
-				// the number of bytes left for this block - may be less for the last
-				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
-						BlockByteLength : plainText.length - i*BlockByteLength;
-				if (logger.isDebugEnabled())
-					logger.debug("Encrypting block " + i + ": " + bytesInBlock + " bytes" + 
-							(instanceId != null ? " [instance " + instanceId : ""));
-				System.arraycopy(plainText, i*BlockByteLength, plainBlock, 0, bytesInBlock);
-				// if not filled, the rest is padded with zeros (initialized by the JVM)
-				// then XOR with the last cipher text block
-				for (int j=0; j<BlockByteLength; j++)
-					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
-				byte[] cipherBlock; 
-//#if cfg.includeJSSESupport
-				if (useJSSE)
-					cipherBlock = processBlock_JSSE(cipher, plainBlock);
-				else
-//#endif
-					cipherBlock = processBlock_BCAPI(cipher, plainBlock);
-				// and finally add to the output
-				System.arraycopy(cipherBlock, 0, cipherText, (i+1)*BlockByteLength, BlockByteLength);
-			}
-		}
 
-		return cipherText;
+		return cipher.encrypt(plainText, numMessageBits, sharedKey);
 	}
 	
 	/** Decrypt the cipher text message with the shared key set in the constructor.
@@ -270,74 +200,17 @@ public class InterlockProtocol {
 	 * @param cipherText The cipher text to decrypt. It must be either one block long 
 	 *         or the number of blocks necessary to encrypt numMessageBits plus one block 
 	 *         for the IV. 
-	 * @return The ciper text, which contains exactly as many bits as specified in the 
+	 * @return The plain text, which contains exactly as many bits as specified in the 
 	 *         numMessageBits parameter in the constructor.
 	 * @throws InternalApplicationException
 	 */
 	public byte[] decrypt(byte[] cipherText) throws InternalApplicationException {
-		// sanity check
-		if (cipherText.length % BlockByteLength != 0)
-			throw new IllegalArgumentException("Can only decrypt multiples of the block cipher length" + 
-					(instanceId != null ? " [instance " + instanceId : ""));
-		if (cipherText.length != numCipherTextBlocks * BlockByteLength)
+		if (cipherText.length != numCipherTextBlocks * SimpleBlockCipher.BlockByteLength)
 			throw new IllegalArgumentException("Cipher text length differs from expected length: wanted " +
-					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length + 
-					(instanceId != null ? " [instance " + instanceId : ""));
-		if (sharedKey == null)
-			throw new InternalApplicationException("Can not encrypt without shared key" + 
+					numCipherTextBlocks * SimpleBlockCipher.BlockByteLength + " bytes but got " + cipherText.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 
-		byte[] plainText;
-		Object cipher; 
-//#if cfg.includeJSSESupport
-		if (useJSSE)
-			cipher = initCipher_JSSE(false);
-		else
-//#endif
-			cipher = initCipher_BCAPI(false);
-		// now distinguish between the single-block and the multiple-block cases
-		if (cipherText.length == BlockByteLength) {
-			// ok, the simple case - just one block in ECB mode
-//#if cfg.includeJSSESupport
-			if (useJSSE) 
-				plainText = processBlock_JSSE(cipher, cipherText);
-			else
-//#endif
-				plainText = processBlock_BCAPI(cipher, cipherText);
-		}
-		else {
-			// more difficult: multiple block in CBC mode with prepended IV
-			// the plain text will only need to have enough bytes to extract the message
-			plainText = new byte[numMessageBits%8 == 0 ? numMessageBits/8 : numMessageBits/8+1];
-			// first block is the IV
-			byte[] iv = new byte[BlockByteLength];
-			System.arraycopy(cipherText, 0, iv, 0, BlockByteLength);
-			// and then as many rounds of CBC as we need
-			for (int i=0; i<numCipherTextBlocks-1; i++) {
-				byte[] cipherBlock = new byte[BlockByteLength];
-				System.arraycopy(cipherText, (i+1)*BlockByteLength, cipherBlock, 0, BlockByteLength);
-				byte[] plainBlock; 
-//#if cfg.includeJSSESupport
-				if (useJSSE) 
-					plainBlock = processBlock_JSSE(cipher, cipherBlock);
-				else
-//#endif
-					plainBlock = processBlock_BCAPI(cipher, cipherBlock);
-				// then XOR with the last cipher text block
-				for (int j=0; j<BlockByteLength; j++)
-					plainBlock[j] ^= cipherText[i*BlockByteLength + j];
-				// the number of bytes left for this block - may be less for the last
-				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
-						BlockByteLength : plainText.length - i*BlockByteLength; 
-				if (logger.isDebugEnabled())
-					logger.debug("Decrypting block " + i + ": " + bytesInBlock + " bytes" + 
-							(instanceId != null ? " [instance " + instanceId : ""));
-				// and finally add to the output
-				System.arraycopy(plainBlock, 0, plainText, i*BlockByteLength, bytesInBlock);
-			}
-		}
-
-		return plainText;
+		return cipher.decrypt(cipherText, numMessageBits, sharedKey);
 	}
 	
 	/** This method splits the cipher text into multiple parts for transmission
@@ -365,27 +238,27 @@ public class InterlockProtocol {
 	 */
 	public byte[][] split(byte[] cipherText) throws InternalApplicationException {
 		// sanity check
-		if (cipherText.length % BlockByteLength != 0)
+		if (cipherText.length % SimpleBlockCipher.BlockByteLength != 0)
 			throw new IllegalArgumentException("Can only split multiples of the block cipher length" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		// second option is necessary for when we are called recursively
-		if (cipherText.length != numCipherTextBlocks * BlockByteLength && cipherText.length != BlockByteLength)
+		if (cipherText.length != numCipherTextBlocks * SimpleBlockCipher.BlockByteLength && cipherText.length != SimpleBlockCipher.BlockByteLength)
 			throw new IllegalArgumentException("Cipher text length differs from expected length: wanted " +
-					numCipherTextBlocks * BlockByteLength + " bytes but got " + cipherText.length + 
+					numCipherTextBlocks * SimpleBlockCipher.BlockByteLength + " bytes but got " + cipherText.length + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 
 		// in any case, the number of parts is equal to the number of rounds
 		byte[][] parts = new byte[rounds][];
 		// need to explicitly check for the size length because of recursive calling
-		if (cipherText.length == BlockByteLength) {
+		if (cipherText.length == SimpleBlockCipher.BlockByteLength) {
 			if (logger.isDebugEnabled())
 				logger.debug("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + 
 						rounds + " parts" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			// simple case: the parts are just taken one after each other
 			for (int round=0; round<rounds; round++) {
-				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
-						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= SimpleBlockCipher.BlockByteLength*8 ? 
+						cipherBitsPerRoundPerBlock : (SimpleBlockCipher.BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 				if (curBits > 0) {
 					parts[round] = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
 					/*logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes" + 
@@ -408,8 +281,8 @@ public class InterlockProtocol {
 						+ numCipherTextBlocks + " blocks into " + rounds + " parts" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			for (int block=0; block<numCipherTextBlocks; block++) {
-				byte[] cipherBlock = new byte[BlockByteLength];
-				System.arraycopy(cipherText, block*BlockByteLength, cipherBlock, 0, BlockByteLength);
+				byte[] cipherBlock = new byte[SimpleBlockCipher.BlockByteLength];
+				System.arraycopy(cipherText, block*SimpleBlockCipher.BlockByteLength, cipherBlock, 0, SimpleBlockCipher.BlockByteLength);
 				byte[][] blockParts = split(cipherBlock);
 				if (blockParts.length != parts.length) {
 					throw new InternalApplicationException("Split of a single block did not return as many parts as we wanted. This is wrong.");
@@ -417,8 +290,8 @@ public class InterlockProtocol {
 				// and immediately merge into the output
 				for (int round=0; round<rounds; round++) {
 					// these are now the bits for each of the blocks that should belong to this round
-					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
-							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= SimpleBlockCipher.BlockByteLength*8 ? 
+							cipherBitsPerRoundPerBlock : (SimpleBlockCipher.BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 					if (curBits > 0) {
 						// if this is the first block, then we need to create the array first
 						if (block==0) {
@@ -462,7 +335,7 @@ public class InterlockProtocol {
 					(instanceId != null ? " [instance " + instanceId : ""));
 		
 		// in any case, the reassembled cipher text will have the same length
-		byte[] cipherText = new byte[numCipherTextBlocks * BlockByteLength];
+		byte[] cipherText = new byte[numCipherTextBlocks * SimpleBlockCipher.BlockByteLength];
 		if (numCipherTextBlocks == 1) {
 			// simple case
 			if (logger.isDebugEnabled())
@@ -470,8 +343,8 @@ public class InterlockProtocol {
 						cipherText.length + " bytes" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			for (int round=0; round<rounds; round++) {
-				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
-						cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+				int curBits = cipherBitsPerRoundPerBlock*(round+1) <= SimpleBlockCipher.BlockByteLength*8 ? 
+						cipherBitsPerRoundPerBlock : (SimpleBlockCipher.BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 				if (curBits > 0)
 					addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
 				else  {
@@ -490,8 +363,8 @@ public class InterlockProtocol {
 						(instanceId != null ? " [instance " + instanceId : ""));
 			for (int block=0; block<numCipherTextBlocks; block++) {
 				for (int round=0; round<rounds; round++) {
-					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
-							cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
+					int curBits = cipherBitsPerRoundPerBlock*(round+1) <= SimpleBlockCipher.BlockByteLength*8 ? 
+							cipherBitsPerRoundPerBlock : (SimpleBlockCipher.BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 					if (curBits > 0) {
 						distributeBlockSlicesHelper(cipherText, messages[round], round, block, curBits);
 					}
@@ -520,7 +393,7 @@ public class InterlockProtocol {
 			logger.debug("Extracting " + numBits + " bits of block " + block + " from part " + round + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		addPart(cipherText, partInBlock, 
-				block*BlockByteLength*8+round*cipherBitsPerRoundPerBlock, numBits);
+				block*SimpleBlockCipher.BlockByteLength*8+round*cipherBitsPerRoundPerBlock, numBits);
 	}
 	
 	/** This method only checks that all rounds have actually been received
@@ -574,7 +447,7 @@ public class InterlockProtocol {
 			if (logger.isDebugEnabled())
 				logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
-			assembledCipherText = new byte[numCipherTextBlocks * BlockByteLength];
+			assembledCipherText = new byte[numCipherTextBlocks * SimpleBlockCipher.BlockByteLength];
 			receivedRounds = new BitSet(rounds);
 		}
 		if (logger.isDebugEnabled())
@@ -665,7 +538,7 @@ public class InterlockProtocol {
 	 *                  was exactly equal to the local message. The upper layers that
 	 *                  call this method may not be able to detect this case. Note that
 	 *                  this protection can currently only be enabled when message.length
-	 *                  is greater than BlockByteLength.
+	 *                  is greater than SimpleBlockCipher.BlockByteLength.
 	 *                  <b>It is strongly recommended to set this to true<b>, unless the
 	 *                  upper protocol layers protect against this attack.
 	 * @param retransmit Is set to true, lost messages are allowed and rounds will be
@@ -728,7 +601,7 @@ public class InterlockProtocol {
 			throw new IllegalArgumentException("message can not be null");
 		if (sharedKey == null)
 			throw new IllegalArgumentException("sharedKey can not be null");
-		if (protectAgainstMirrorAttack && message.length <= BlockByteLength)
+		if (protectAgainstMirrorAttack && message.length <= SimpleBlockCipher.BlockByteLength)
 			throw new IllegalArgumentException("Can not protect against mirror attacks with messages of only one cipher block length");
 		if (retransmit)
 			throw new IllegalArgumentException("Retransmit is currently not implemented");
@@ -862,7 +735,7 @@ public class InterlockProtocol {
 			if (protectAgainstMirrorAttack) {
 				boolean equals=true;
 				// the first block of both cipher texts _must_ be different, as it is a random IV
-				for (int i=0; i<BlockByteLength && equals; i++)
+				for (int i=0; i<SimpleBlockCipher.BlockByteLength && equals; i++)
 					if (localCiphertext[i] != remoteCiphertext[i]) equals=false;
 				if (equals) {
 					logger.error("Mirror attack detected! Aborting interlock protocol!");
@@ -907,8 +780,8 @@ public class InterlockProtocol {
 					(instanceId != null ? " [instance " + instanceId : ""));
 
     	// if nearly all (or all) bits have already been transmitted, it might have less bits
-		int curBits = cipherBitsPerRoundPerBlock*(round+1) <= BlockByteLength*8 ? 
-				cipherBitsPerRoundPerBlock : (BlockByteLength*8 - cipherBitsPerRoundPerBlock * round);
+		int curBits = cipherBitsPerRoundPerBlock*(round+1) <= SimpleBlockCipher.BlockByteLength*8 ? 
+				cipherBitsPerRoundPerBlock : (SimpleBlockCipher.BlockByteLength*8 - cipherBitsPerRoundPerBlock * round);
 		if (curBits > 0) {
 			return addMessage(message, round*cipherBitsPerRoundPerBlock, curBits, round);
 		}
@@ -992,64 +865,6 @@ public class InterlockProtocol {
 		}
 	}
 
-//#if cfg.includeJSSESupport
-	/** Encrypt the nonce using the shared key. This implementation utilizes the Sun JSSE API. */
-	private Object initCipher_JSSE(boolean encrypt) throws InternalApplicationException {
-    	// encrypt already checks for correct length of plainText
-        // need to specifically request no padding or padding would enlarge the one 128 bits block to two
-        try {
-			javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/NoPadding");
-			cipher.init(encrypt ? javax.crypto.Cipher.ENCRYPT_MODE : javax.crypto.Cipher.DECRYPT_MODE,
-					new javax.crypto.spec.SecretKeySpec(sharedKey, "AES"));
-			return cipher;
-		} catch (java.security.NoSuchAlgorithmException e) {
-			throw new InternalApplicationException(
-					"Unable to get cipher object from crypto provider.", e);
-		} catch (javax.crypto.NoSuchPaddingException e) {
-			throw new InternalApplicationException(
-					"Unable to get requested padding from crypto provider.", e);
-		} catch (java.security.InvalidKeyException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept its key.", e);
-		}
-	}
-//#endif
-	
-	/** Initializes the block cipher for encryption or decryption. This implementation utilizes the 
-	 * Bouncycastle Lightweight API. */
-	private Object initCipher_BCAPI(boolean encrypt) {
-    	// encrypt already checks for correct length of plainText
-   		org.bouncycastle.crypto.BlockCipher cipher = new org.bouncycastle.crypto.engines.AESLightEngine();
-    	cipher.init(encrypt, new org.bouncycastle.crypto.params.KeyParameter(sharedKey));
-    	return cipher;
-	}
-
-//#if cfg.includeJSSESupport
-	/** Process a block with the previously initialized block cipher (just in ECB mode). */
-	private byte[] processBlock_JSSE(Object cipher, byte[] input) throws InternalApplicationException {
-		try {
-			return ((javax.crypto.Cipher) cipher).doFinal(input);
-		} catch (javax.crypto.IllegalBlockSizeException e) {
-			throw new InternalApplicationException(
-					"Cipher does not accept requested block size.", e);
-		} catch (javax.crypto.BadPaddingException e) {
-			throw new InternalApplicationException(
-				"Cipher does not accept requested padding.", e);
-		}
-	}
-//#endif
-	
-	/** Process a block with the previously initialized block cipher (just in ECB mode). */
-	private byte[] processBlock_BCAPI(Object cipher, byte[] input) {
-    	byte[] output = new byte[BlockByteLength];
-		int processedBytes = ((org.bouncycastle.crypto.BlockCipher) cipher).processBlock(input, 0, output, 0);
-		if (processedBytes != BlockByteLength) {
-   			logger.error("Block processing went wrong: unexpexted number of bytes returned");
-			return new byte[processedBytes];
-		}
-		return output;
-	}
-	
 	/** Returns the number of cipher text blocks necessary to encode the message. */ 
 	public int getCipherTextBlocks() {
 		return numCipherTextBlocks;
