@@ -35,6 +35,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		doRoundDown		= false;
 		useCarry		= true;
 		messageHandler	= null;
+		shortDescription	= "Input";
 		transmitDisplayText = "";
 		
 		int eventCount = (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
