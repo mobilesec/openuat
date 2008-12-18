@@ -112,6 +112,14 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 */
 	protected String transmitDisplayText;
 	
+	/**
+	 * A short description (one to two words) of the channel,
+	 * suitable to print on a gui element
+	 * e.g. to list several channels to choose from.<br/>
+	 * The <code>toString</code> method is overridden and will output this value.
+	 */
+	protected String shortDescription;
+	
 	/*
 	 * How many button events (presses/releases) are still to process?
 	 */
@@ -185,6 +193,11 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		if (inputMode == MODE_PRESS_RELEASE) {
 			this.buttonPressed();
 		}
+	}
+	
+	// @Override
+	public String toString() {
+		return shortDescription;
 	}
 	
 	
