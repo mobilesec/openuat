@@ -8,9 +8,6 @@
  */
 package org.openuat.channel.oob;
 
-import java.util.Timer;
-import java.util.TimerTask;
-
 import org.openuat.authentication.OOBChannel;
 import org.openuat.util.IntervalList;
 
@@ -40,6 +37,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		doRoundDown		= true;
 		useCarry		= true;
 		messageHandler	= null;
+		shortDescription = "Flash Display";
 		
 		initInterval	= 2500;
 		textDelay		= 5000;
