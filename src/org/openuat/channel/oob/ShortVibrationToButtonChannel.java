@@ -36,6 +36,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		doRoundDown		= true;
 		useCarry		= true;
 		messageHandler	= null;
+		shortDescription = "Short Vibration";
 		
 		initInterval	= 6500;
 		signalDuration	= 500;
