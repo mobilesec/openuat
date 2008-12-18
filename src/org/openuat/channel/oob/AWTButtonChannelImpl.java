@@ -11,6 +11,8 @@ package org.openuat.channel.oob;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
@@ -38,7 +40,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 * @param parentComponent The parent gui element which will hold gui elements
 	 * created by this class.
 	 */
-	public AWTButtonChannelImpl(JComponent parentComponent) {
+	public AWTButtonChannelImpl(Container parentComponent) {
 		transmissionMode	= 0;
 		progress			= 0;
 		showSignal			= false;
@@ -54,10 +56,10 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 * The parent gui component. It serves as a container for gui elements
 	 * created by this class.
 	 */
-	protected JComponent parent;
+	protected Container parent;
 	
 	/**
-	 * A gui component that paints to the screen. It it is set, it can be updated
+	 * A gui component that paints to the screen. If it is set, it can be updated
 	 * through the <code>repaint</code> method.
 	 */
 	protected Component paintableComponent;
@@ -93,6 +95,11 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
 		final ButtonInputHandler buttonInputHandler = inputHandler;
 		JTextPane captureGui = new JTextPane();
+		Dimension size = new Dimension(
+			parent.getWidth() - 20,
+			parent.getHeight() - abortButton.getHeight() - 10
+		);
+		captureGui.setPreferredSize(size);
 		
 		KeyListener keyListener = new KeyAdapter() {
 
@@ -126,7 +133,11 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		parent.removeAll();
 		parent.add(captureGui);
 		parent.add(abortButton);
+		parent.validate();
 		parent.repaint();
+		
+		// Request the focus, works only after all changes to the container are done.
+		captureGui.requestFocusInWindow();
 	}
 
 	/* (non-Javadoc)
@@ -134,18 +145,35 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 */
 	// @Override
 	public void showTransmitGui(String text, int type) {
-		transmissionMode = ButtonChannelImpl.TRANSMIT_PLAIN;
-		Canvas transmitGui = new TransmitGui(text);
+		transmissionMode = type;
+		JComponent transmitGui = null;
+		
+		if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
+			JTextPane temp = new JTextPane();
+			temp.setFont(defaultFont);
+			temp.setText(text);
+			temp.setEditable(false);
+			transmitGui = temp;
+		}
+		else {
+			transmitGui = new TransmitGui(text);
+			transmitGui.setBackground(Color.WHITE);
+			transmitGui.setDoubleBuffered(true);
+			paintableComponent = transmitGui;
+		}
+		
+		Dimension size = new Dimension(
+				parent.getWidth() - 20,
+				parent.getHeight() - abortButton.getHeight() - 10
+			);
+		transmitGui.setPreferredSize(size);
 		
 		// display the transmit gui
 		parent.removeAll();
 		parent.add(transmitGui);
 		parent.add(abortButton);
+		parent.validate();
 		parent.repaint();
-		
-		// set the real transmission mode after the first repaint
-		// such that the display text can be shown
-		transmissionMode = type;
 	}
 
 	/* (non-Javadoc)
@@ -173,8 +201,8 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	/*
 	 * Private helper/wrapper class to launch the transmit gui.
 	 */
-	private class TransmitGui extends Canvas {
-		
+	private class TransmitGui extends JComponent {
+		// TODO: remove TRANSFER_PLAIN from this class
 		/*
 		 * Creates a new Instance.
 		 */
@@ -185,7 +213,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			signalLength		= 200;
 			barMaxWidth			= 400;
 			barMinMargin		= 20;
-			barHeight			= 25;
+			barHeight			= 40;
 		}
 		
 		/* Display this text before transmission starts. */
@@ -203,13 +231,11 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		private int barMinMargin;
 		private int barHeight;
 
-		/* (non-Javadoc)
-		 * @see java.awt.Canvas#paint(java.awt.Graphics)
-		 */
 		// @Override
 		public void paint(Graphics g) {
-			// clear painting area
-			super.paint(g);
+			// clear area
+			g.setColor(this.getBackground());
+			g.fillRect(0, 0, this.getWidth(), this.getHeight());
 			
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
 				g.setColor(Color.BLACK);
@@ -247,7 +273,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 						currentMargin += intervalWidth;
 					}
 					g.setColor(Color.BLACK);
-					int progressWidth = (int)((double)intervalList.getTotalIntervalLength() / 100.0d * progress);
+					int progressWidth = (int)(barWidth / 100.0d * progress);
 					g.fillRect(marginLeft, marginTop, progressWidth, barHeight);
 				}
 				else {
