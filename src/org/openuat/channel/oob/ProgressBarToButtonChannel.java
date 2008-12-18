@@ -8,6 +8,9 @@
  */
 package org.openuat.channel.oob;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 import org.openuat.authentication.OOBChannel;
 import org.openuat.util.IntervalList;
 
@@ -18,7 +21,7 @@ import org.openuat.util.IntervalList;
  * press and hold the button on the first colored interval, release it on
  * the next interval etc. thus triggering on each interval border a button
  * event (either press or release).<br/>
- * The smallest considered time unit for this channel is set to 500 ms.
+ * The smallest considered time unit for this channel is set to 600 ms.
  * 
  * @author Lukas Huser
  * @version 1.0
@@ -33,21 +36,24 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 	 */
 	public ProgressBarToButtonChannel(ButtonChannelImpl impl) {
 		this.impl = impl;
-		minTimeUnit		= 500;
+		minTimeUnit		= 600;
 		inputMode		= MODE_PRESS_RELEASE;
 		doRoundDown		= false;
-		useCarry		= true;
+		useCarry		= false;
 		messageHandler	= null;
+		shortDescription = "Progress Bar";
 		
 		initInterval	= 2000;
 		textDelay		= 5000;
-		deltaT			= 20;
+		deltaT			= 40;
+		timer			= null; // Note: For every transmission, a new Timer instance is created.
+		startTime		= 0L;
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {
 			endl = "\n";
 		}
-		captureDisplayText	= "Please press and hold the button during the ligth "
+		captureDisplayText	= "Please press and hold the button during the bright "
 							+ "intervals, release it on dark intervals." + endl
 							+ "This device is ready.";
 		
@@ -61,8 +67,17 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 	/* Wait some time (in ms) to let the user read the 'transmitDisplayText' first. */
 	private int textDelay;
 	
+	/* Repeatedly repaints the gui */
+	private Timer timer;
+	
 	/* The temporal resolution. Update the screen every 'deltaT' milliseconds. */
 	private int deltaT;
+	
+	/* Transmission start timestamp */
+	private long startTime;
+	
+	/* only repaint if progress has actually changed */
+	//private int lastProgress;
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
@@ -76,8 +91,24 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
 		intervals.addFirst(initInterval);
+		impl.setInterval(intervals);
 		
-		// now run the transmission in a separate thread
+		// now run transmission in a separate thread
+		final TimerTask task = new TimerTask() {
+			public void run() {
+				long duration = System.currentTimeMillis() - startTime;
+				float progress = (float)(((double)duration / (double)intervals.getTotalIntervalLength()) * 100.0);
+				impl.setProgress(progress);
+				impl.repaint();
+				if (progress > 100f) {
+					timer.cancel();
+					if (messageHandler != null) {
+						messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});
+					}
+				}
+			}
+		};
+		
 		Thread t = new Thread(new Runnable() {
 			public void run() {
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
@@ -87,28 +118,11 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 					// TODO: log warning
 					// logger.warn("Method transmit(byte[])", e);
 				}
-
 				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_BAR);
-				impl.setInterval(intervals);
 				// transmit the data (given from 'intervals')
-				int progress = 0;
-				long start = System.currentTimeMillis();
-				long duration = 0;
-				while (progress <= 100) {
-					duration = System.currentTimeMillis() - start;
-					progress = (int)(((double)duration / (double)intervals.getTotalIntervalLength()) * 100.0);
-					impl.setProgress(progress);
-					impl.repaint();
-					try {
-						Thread.sleep(deltaT);
-					} catch (InterruptedException e) {
-						// TODO: log warning
-						// logger.warn("Method transmit(byte[])", e);
-					}
-				}
-				if (messageHandler != null) {
-					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});
-				}
+				timer = new Timer();
+				startTime = System.currentTimeMillis();
+				timer.scheduleAtFixedRate(task, 0, deltaT);
 			}
 		});
 		t.start();
