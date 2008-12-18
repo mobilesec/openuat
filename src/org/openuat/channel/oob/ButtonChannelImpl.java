@@ -60,7 +60,7 @@ public abstract class ButtonChannelImpl {
 	/**
 	 * Progress of the progress bar in %.
 	 */
-	protected int progress;
+	protected float progress;
 
 	/**
 	 * Starts the capturing process by launching a gui element that listens
@@ -120,12 +120,12 @@ public abstract class ButtonChannelImpl {
 	 * 
 	 * @param progress Progress of the progress bar in %.
 	 */
-	public void setProgress(int progress) {
-		if (progress < 0){
-			this.progress = 0;
+	public void setProgress(float progress) {
+		if (progress < 0f){
+			this.progress = 0f;
 		}
-		else if (progress > 100) {
-			this.progress = 100;
+		else if (progress > 100f) {
+			this.progress = 100f;
 		}
 		else {
 			this.progress = progress;
