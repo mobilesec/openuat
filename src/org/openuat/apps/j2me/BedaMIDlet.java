@@ -38,7 +38,10 @@ import org.openuat.channel.oob.j2me.J2MEButtonChannelImpl;
 import org.openuat.util.BluetoothPeerManager;
 
 /**
- * 
+ * This MIDlet demonstrates the different button channels within the OpenUAT
+ * toolkit on the J2ME platform. Most of the channels are described in 
+ * 'BEDA: Button-Enabled Device Association' by C. Soriente and G. Tsudik.
+ * However, there are possibly additional channels implemented here.
  * 
  * @author Lukas Huser
  * @version 1.0
@@ -77,6 +80,9 @@ public class BedaMIDlet extends MIDlet {
 	
 	/* Standard OK command */
 	private Command okCommand;
+	
+	/* Display while searching for bluetooth devices */
+	private Alert bluetoothAlert;
 	
 	/*
 	 * Channel related stuff
@@ -123,6 +129,8 @@ public class BedaMIDlet extends MIDlet {
 		welcomeScreen.append("Button Enabled Device Association");
 		backCommand = new Command("Back", Command.BACK, 1);
 		okCommand = new Command("OK", Command.OK, 1);
+		bluetoothAlert = new Alert("Bluetooth", "Searching for devices...", null, AlertType.INFO);
+		bluetoothAlert.setTimeout(Alert.FOREVER);
 		
 		impl = new J2MEButtonChannelImpl(display);
 		devices = new RemoteDevice[0];
@@ -141,10 +149,11 @@ public class BedaMIDlet extends MIDlet {
 		CommandListener listener = new CommandListener() {
 			public void commandAction(Command c, Displayable d) {
 				if (c == searchCommand) {
-					updateDeviceList();
-					display.setCurrent(deviceList);
+					//updateDeviceList();
+					//display.setCurrent(deviceList);
 					if (peerManager != null) {
-						peerManager.startInquiry(true);
+						peerManager.startInquiry(false);
+						display.setCurrent(bluetoothAlert);
 					}
 				}
 				else if (c == testCommand) {
@@ -264,7 +273,8 @@ public class BedaMIDlet extends MIDlet {
 					}
 				}
 				else if (c == refreshCommand) {
-					updateDeviceList();
+					peerManager.startInquiry(false);
+					display.setCurrent(bluetoothAlert);
 				}
 			}
 		};
@@ -274,6 +284,7 @@ public class BedaMIDlet extends MIDlet {
 		deviceList.addCommand(backCommand);
 		deviceList.addCommand(refreshCommand);
 		deviceList.setCommandListener(listener);
+		display.setCurrent(deviceList);
 	}
 	
 	/* Helper method to set-up the bluetooth peer manager */
@@ -305,6 +316,7 @@ public class BedaMIDlet extends MIDlet {
 		deviceList			= null;
 		backCommand 		= null;
 		okCommand			= null;
+		bluetoothAlert		= null;
 		impl 				= null;
 		if (peerManager != null) {
 			peerManager.stopInquiry(true);
