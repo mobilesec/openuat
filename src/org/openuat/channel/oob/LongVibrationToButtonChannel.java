@@ -36,6 +36,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		doRoundDown		= true;
 		useCarry		= true;
 		messageHandler	= null;
+		shortDescription = "Long Vibration";
 		
 		initInterval	= 6500;
 		endInterval		= 600;
@@ -89,7 +90,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 				// It follows that all vibrating intervals have odd indices in the interval list.
 				for (int i = 0; i < intervals.size(); i++) {
 					int interval = intervals.item(i);
-					if (i % 2 == 0) {
+					if (i % 2 == 1) {
 						impl.vibrate(interval);
 					}
 					try {
