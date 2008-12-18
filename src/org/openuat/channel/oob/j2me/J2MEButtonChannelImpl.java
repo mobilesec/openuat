@@ -257,8 +257,10 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			textMarginLeft	= 10;
 			textMarginTop	= 10;
 			signalMargin	= 30;
-			barMargin		= 10;
-			barHeight		= 40;
+			barMargin		= 5;
+			barHeight		= 30;
+			barMarginTop 	= (this.getHeight() - barHeight) / 2;
+			barWidth 		= this.getWidth() - 2 * barMargin;
 		}
 		
 		/* Text to display before transmission starts */
@@ -274,6 +276,12 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		/* Margin (left and right) when drawing the progress bar. Bar height. */
 		private int barMargin;
 		private int barHeight;
+		
+		/* Some width and margin values that can be precomputed
+		 * and don't need to be computed every time in the paint method anew */		
+		private int barMarginTop;
+		private int barWidth;
+
 		
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(javax.microedition.lcdui.Graphics)
@@ -306,9 +314,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {
 				if (intervalList != null) {
-					int marginTop = (this.getWidth() - barHeight) / 2;
 					int marginLeft = barMargin;
-					int barWidth = this.getWidth() - 2 * barMargin;
 					for (int i = 0; i < intervalList.size(); i++) {
 						int intervalWidth = (int)((double)intervalList.item(i) / (double)intervalList.getTotalIntervalLength() * barWidth);
 						if (i == 0) {
@@ -320,12 +326,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 						else {
 							g.setColor(RgbColor.LIGHT_RED);
 						}
-						g.fillRect(marginLeft, marginTop, intervalWidth, barHeight);
+						g.fillRect(marginLeft, barMarginTop, intervalWidth, barHeight);
 						marginLeft += intervalWidth;
 					}
+					
 					g.setColor(RgbColor.BLACK);
-					int progressWidth = (int)((this.getWidth() - 2*barMargin) / 100.0d * progress);
-					g.fillRect(barMargin, marginTop, progressWidth, barHeight);
+					int progressWidth = (int)(barWidth / 100.0d * progress);
+					g.fillRect(barMargin, barMarginTop, progressWidth, barHeight);
 				}
 				else {
 					// TODO: log warning
