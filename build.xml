@@ -422,6 +422,7 @@
 				org/openuat/authentication/OOBMessageHandler.java
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java
 				org/openuat/util/SafetyBeltTimer.java
+				org/openuat/util/SimpleBlockCipher.java
 				net/mypapit/java/StringTokenizer.java
 				org/openuat/util/IntervalList.java org/openuat/util/RgbColor.java
 				org/openuat/channel/oob/Button*.java org/openuat/channel/oob/*ToButtonChannel.java" />
