@@ -95,8 +95,9 @@
 	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
-	<!-- TODO: add "com/bleugris/io/*.java" -->
-	<property name="java5-files" value="org/openuat/**/test/*.java" />
+	<property name="java5-files1" value="org/openuat/**/test/*.java" />
+	<property name="java5-files2" value="org/openuat/apps/BedaApp.java" />
+	<property name="java5-files3" value="com/bleugris/io/*.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
 	
@@ -258,7 +259,9 @@
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
 		       includes="org/openuat/util/ org/openuat/sensors/ org/openuat/features/">
-			<exclude name="${java5-files}" />
+			<exclude name="${java5-files1}" />
+			<exclude name="${java5-files2}" />
+			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 		</javac>		
@@ -266,7 +269,9 @@
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
 		       includes="org/openuat/authentication/">
-			<exclude name="${java5-files}" />
+			<exclude name="${java5-files1}" />
+			<exclude name="${java5-files2}" />
+			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 		</javac>		
@@ -274,7 +279,9 @@
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
 		       includes="org/openuat/channel/ org/openuat/roles/">
-			<exclude name="${java5-files}" />
+			<exclude name="${java5-files1}" />
+			<exclude name="${java5-files2}" />
+			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 		</javac>		
@@ -282,7 +289,9 @@
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
 		       includes="org/openuat/apps/">
-			<exclude name="${java5-files}" />
+			<exclude name="${java5-files1}" />
+			<exclude name="${java5-files2}" />
+			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 		</javac>
@@ -297,7 +306,9 @@
 		<echo message="    * Compiling OpenUAT additional code: JUnit tests"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
-			<include name="${java5-files}" />
+			<include name="${java5-files1}" />
+			<include name="${java5-files2}" />
+			<include name="${java5-files3}" />
 		</javac>
 	</target>
 
