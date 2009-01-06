@@ -8,7 +8,6 @@
  */
 package org.openuat.channel.oob;
 
-import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -28,8 +27,36 @@ import javax.swing.JTextPane;
 
 /**
  * This is an AWT specific implementation of
- * the {@link ButtonChannelImpl} class.
- * 
+ * the {@link ButtonChannelImpl} class.<br/>
+ * Special care must be taken to handle fake key events from  the OS when
+ * a key is held down. Key press (and release) events MAY be fired by the OS
+ * at the systems (variable) keyboard repeat rate.<br/>
+ * <table><tr>
+ *   <td>User:</td>
+ *   <td>Key press</td>
+ * 	 <td>Hold the key</td>
+ *   <td>Key release</td>
+ * </tr><tr>
+ *   <td>Windows:</td>
+ *   <td>Key press event</td>
+ * 	 <td>Key press events at systems keyboard repeat rate</td>
+ * 	 <td>Key release event</td>
+ * </tr><tr>
+ *   <td>Linux:</td>
+ *   <td>Key press event</td>
+ * 	 <td>Key release/key press event pairs (in that order, with identical timestamps)
+ *       at systems keyboard repeat rate</td>
+ * 	 <td>Key release event</td>
+ * </tr><tr>
+ *   <td>Linux (modifier keys):</td>
+ *   <td>Key press event</td>
+ * 	 <td>No events</td>
+ * 	 <td>Key release event</td>
+ * </tr></table>
+ * Presumably, the key repeat functionality is activated on most systems. However, it
+ * could be deactivated by the user as well (which is the same behavior as with the
+ * modifier keys like CTRL, SHIFT, ALT on linux).
+ *
  * @author Lukas Huser
  * @version 1.0
  */
@@ -47,6 +74,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		intervalList		= null;
 		paintableComponent	= null;
 		parent				= parentComponent;
+		isKeyDown			= false;
 		defaultFont = new Font(Font.SANS_SERIF, Font.PLAIN, 16);
 		abortButton = new JButton("Abort");
 		abortButton.addActionListener(this);
@@ -73,6 +101,17 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 * Default font when displaying text.
 	 */
 	protected Font defaultFont;
+	
+	/**
+	 * The keyboard key which is used as <i>the</i> button for user input.
+	 */
+	protected int buttonKey = KeyEvent.VK_SPACE;
+	
+	/* Keep track of button presses: ignore fake key press events */
+	private boolean isKeyDown;
+	
+	/* Keep track of button presses: ignore fake key release events */
+	private long lastKeyDown;
 
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
@@ -100,26 +139,60 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			parent.getHeight() - abortButton.getHeight() - 10
 		);
 		captureGui.setPreferredSize(size);
+		isKeyDown = false;
+		lastKeyDown = 0L;
 		
 		KeyListener keyListener = new KeyAdapter() {
-
-			/* (non-Javadoc)
-			 * @see java.awt.event.KeyAdapter#keyPressed(java.awt.event.KeyEvent)
-			 */
 			// @Override
 			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-					buttonInputHandler.buttonPressed();
+				if (e.getKeyCode() == buttonKey) {
+					lastKeyDown = e.getWhen();
+					if (!isKeyDown) {
+						// TODO: log.debug()
+						System.out.println("Key pressed.  Event time: " + e.getWhen() + 
+										" Captured at: " + System.currentTimeMillis());
+						isKeyDown = true;
+						buttonInputHandler.buttonPressed();
+					}
 				}
 			}
 
-			/* (non-Javadoc)
-			 * @see java.awt.event.KeyAdapter#keyReleased(java.awt.event.KeyEvent)
-			 */
 			// @Override
-			public void keyReleased(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-					buttonInputHandler.buttonReleased();
+			public void keyReleased(final KeyEvent e) {
+				if (e.getKeyCode() == buttonKey) {
+					if (isKeyDown) {
+						/*
+						 * This is nasty and only necessary on linux.
+						 * the key repeat feature of the OS will fire a pair of fake key events:
+						 * key released, followed by key pressed event with identical timestamps.
+						 * The two events will be added to the AWT event queue, but not as an atomic
+						 * operation. To be able to handle (ignore) those two events, do the following:
+						 * When the first event (it's the release event) is dispatched,
+						 * wait for 10 milliseconds (this OFTEN enough but not ALWAYS!) to give the event source
+						 * enough time to put the second event into the queue as well (note: we are in the
+						 * AWT event dispatch thread which is blocked!). Then postpone the handling of the
+						 * release event after all other events (especially the press event, if any) have
+						 * been processed (through EventQueue.invokeLater()). At this later point it is
+						 * possible to decide whether the release event was a real or a faked one and to
+						 * react accordingly.
+						 */
+						try {
+							Thread.sleep(10);
+						} catch(InterruptedException ie) {
+							// TODO: log warning
+						}
+						java.awt.EventQueue.invokeLater(new Runnable(){
+							public void run() {
+								if (lastKeyDown != e.getWhen()) {
+									// TODO: log.debug()
+									System.out.println("Key released. Event time: " + e.getWhen() +
+												" Captured at: " + System.currentTimeMillis());
+									isKeyDown = false;
+									buttonInputHandler.buttonReleased();
+								}
+							}
+						});
+					}
 				}
 			}
 		};
@@ -183,6 +256,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	public void vibrate(int milliseconds) {
 		// can't be implemented on this platform
 		// TODO Logger.warn("Method vibrate(int): Not implemented on J2SE (AWT)");
+		
 		
 	}
 
