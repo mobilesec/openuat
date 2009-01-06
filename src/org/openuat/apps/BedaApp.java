@@ -77,7 +77,7 @@ public class BedaApp {
 		final JMenuItem testEntry = new JMenuItem("Test channels");
 		
 		ActionListener menuListener = new ActionListener() {
-			@Override
+			// @Override
 			public void actionPerformed(ActionEvent event) {
 				JMenuItem menuItem = (JMenuItem)event.getSource();
 				if (menuItem == homeEntry) {
@@ -118,7 +118,7 @@ public class BedaApp {
 		
 		// enable double clicks on the two lists
 		doubleClickListener = new MouseAdapter() {
-			@Override
+			// @Override
 			public void mouseClicked(MouseEvent event) {
 				// react on double clicks
 				if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
@@ -139,7 +139,7 @@ public class BedaApp {
 		// create refresh button
 		refreshButton = new JButton("Refresh list");
 		ActionListener buttonListener = new ActionListener() {
-			@Override
+			// @Override
 			public void actionPerformed(ActionEvent event) {
 				if ((JButton)event.getSource() == refreshButton) {
 					refreshDeviceList();
@@ -223,7 +223,7 @@ public class BedaApp {
 		final JButton transmitButton = new JButton("Transmit");
 		
 		ActionListener listener = new ActionListener() {
-			@Override
+			// @Override
 			public void actionPerformed(ActionEvent event) {
 				JButton source = (JButton)event.getSource();
 				OOBChannel channel = (OOBChannel)channelList.getSelectedValue();
@@ -260,12 +260,15 @@ public class BedaApp {
 	/* Test the capture functionality (offline) */
 	private void testCapture(OOBChannel channel) {
 		OOBMessageHandler handler = new OOBMessageHandler() {
-			@Override
+			// @Override
 			public void handleOOBMessage(int channelType, byte[] data) {
 				showTestScreen();
+				/* needs java 1.5 ...
 				String txt = String.format(
 					"The following message has been captured: %02x%02x%02x",
 					data[0], data[1], data[2]);
+				*/
+				String txt = getHexString(data);
 				JOptionPane.showMessageDialog(mainWindow, txt, "Capture ok", JOptionPane.INFORMATION_MESSAGE);
 			}
 		};
@@ -278,12 +281,15 @@ public class BedaApp {
 		final byte[] randomMessage = new byte[3];
 		random.nextBytes(randomMessage);
 		OOBMessageHandler handler = new OOBMessageHandler() {
-			@Override
+			// @Override
 			public void handleOOBMessage(int channelType, byte[] data) {
 				showTestScreen();
+				/* needs java 1.5 ...
 				String txt = String.format(
 					"The following message has been transmitted: %02x%02x%02x",
 					randomMessage[0], randomMessage[1], randomMessage[2]);
+				*/
+				String txt = getHexString(randomMessage);
 				JOptionPane.showMessageDialog(mainWindow, txt, "Transmission ok", JOptionPane.INFORMATION_MESSAGE);
 			}
 		};
@@ -291,4 +297,13 @@ public class BedaApp {
 		channel.transmit(randomMessage);
 	}
 
+	/* Convenience method to convert a byte[] to a hex string
+	 * (since java 1.2 does not support the String.format() method) */
+	private String getHexString(byte[] b) {
+		String result = "";
+		for (int i = 0; i < b.length; i++) {
+			result += Integer.toString((b[i] & 0xff) + 0x100, 16).substring(1);
+		}
+		return result;
+	}
 }
