@@ -152,7 +152,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 						System.out.println("Key pressed.  Event time: " + e.getWhen() + 
 										" Captured at: " + System.currentTimeMillis());
 						isKeyDown = true;
-						buttonInputHandler.buttonPressed();
+						buttonInputHandler.buttonPressed(e.getWhen());
 					}
 				}
 			}
@@ -163,21 +163,24 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 					if (isKeyDown) {
 						/*
 						 * This is nasty and only necessary on linux.
-						 * the key repeat feature of the OS will fire a pair of fake key events:
+						 * The key repeat feature of the OS will fire a pair of fake key events:
 						 * key released, followed by key pressed event with identical timestamps.
 						 * The two events will be added to the AWT event queue, but not as an atomic
 						 * operation. To be able to handle (ignore) those two events, do the following:
 						 * When the first event (it's the release event) is dispatched,
-						 * wait for 10 milliseconds (this OFTEN enough but not ALWAYS!) to give the event source
+						 * wait for 15 milliseconds to give the event source
 						 * enough time to put the second event into the queue as well (note: we are in the
-						 * AWT event dispatch thread which is blocked!). Then postpone the handling of the
+						 * AWT event dispatch thread, which is blocked!). Then postpone the handling of the
 						 * release event after all other events (especially the press event, if any) have
 						 * been processed (through EventQueue.invokeLater()). At this later point it is
 						 * possible to decide whether the release event was a real or a faked one and to
 						 * react accordingly.
+						 * Note1: The delay of 15 milliseconds does NOT guarantee correctness in all cases!
+						 * Note2: However, we do not lose accuracy of the timestamps since the time is taken
+						 * from the delivered Event itself.
 						 */
 						try {
-							Thread.sleep(10);
+							Thread.sleep(15);
 						} catch(InterruptedException ie) {
 							// TODO: log warning
 						}
@@ -188,7 +191,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 									System.out.println("Key released. Event time: " + e.getWhen() +
 												" Captured at: " + System.currentTimeMillis());
 									isKeyDown = false;
-									buttonInputHandler.buttonReleased();
+									buttonInputHandler.buttonReleased(e.getWhen());
 								}
 							}
 						});
