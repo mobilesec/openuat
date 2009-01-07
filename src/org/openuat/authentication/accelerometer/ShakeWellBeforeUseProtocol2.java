@@ -75,6 +75,9 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	/** Used to keep track of the number of windows that have been collected. */
 	int numWindows = 0;
 
+	/** These are only for keeping statistics on time spent for FFT. */
+    protected int totalFFTTime=0;
+	
 	/** Initializes the object, only setting useJSSE at the moment. This constructor sets
 	 * default values for udpSendPort, udpReceivePort and multicastGroup.
 	 * 
@@ -139,7 +142,9 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
-		
+
+		long timestamp = System.currentTimeMillis();
+
 		curSegment.add(new Double(sample));
 		
 		if (curSegment.size() == fftPoints) {
@@ -150,6 +155,8 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 			Iterator iter = curSegment.iterator();
 			for (int i=0; i<fftPoints; i++)
 				segment[i] = ((Double) iter.next()).doubleValue();
+			totalCodingTime += System.currentTimeMillis()-timestamp;
+			timestamp = System.currentTimeMillis();
 			
 			// only compare until the cutoff frequency
 			int max_ind = TimeSeriesUtil.getMaxInd(fftPoints, sampleRate, cutOffFrequency); 
@@ -157,6 +164,8 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 			// compute the type 4 match: pairwise sums of exponentially quantized FFT-coefficients
 			int[][] cand = QuantizedFFTCoefficients.computeFFTCoefficientsCandidates(segment,
 					0, fftPoints, max_ind, numQuantLevels, numCandidates, true, true);
+			totalFFTTime += System.currentTimeMillis()-timestamp;
+			timestamp = System.currentTimeMillis();
 			
 			// and transform to byte array - we certainly use less than 256 quantization stages, so just byte-cast
 			byte[][] candBytes = new byte[numCandidates][];
@@ -165,6 +174,8 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 				for (int j=0; j<cand[i].length; j++)
 					candBytes[i][j] = (byte) cand[i][j];
 			}
+			totalCodingTime += System.currentTimeMillis()-timestamp;
+
 			// TODO: estimate entropy
 			try {
 				addCandidates(candBytes, 0);
@@ -217,6 +228,11 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 		logger.info("CKP succeeded with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds, shared key is now " + sharedSessionKey.toString() +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
+		statisticsLogger.warn("Data coding took " + totalCodingTime + 
+				"ms, CKP took " + totalCKPTime + 
+				"ms, FFT and quantization took" + totalFFTTime + 
+				"ms with " + totalMessageSize + " bytes in " +
+				totalMessageNum + " messages");
 	}
 
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!

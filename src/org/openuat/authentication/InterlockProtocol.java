@@ -421,7 +421,7 @@ public class InterlockProtocol {
     	return assembledCipherText;
     }
 
-	/** Adds a message to the cipher text assemply. This method should only
+	/** Adds a message to the cipher text assembly. This method should only
 	 * be used if not the whole message is to be transferred and/or the
 	 * application has very specific needs concerning re-assembly. Better use
 	 * the simple addMessage variant unless sure you need this method. 
@@ -623,15 +623,16 @@ public class InterlockProtocol {
 			logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
 				timeoutMs + "ms. My message is " + message.length + " bytes long");
 
-        int totalTransferTime=0, totalCryptoTime=0, totalTransferSize=0;
-        long timestamp=0;
-
-       	timestamp = System.currentTimeMillis();
+        int totalTransferTime=0, totalCryptoTime=0, totalCodingTime=0, 
+        	totalTransferSize=0, totalMessageNum=0;
+       	long timestamp = System.currentTimeMillis();
+       	
 		InterlockProtocol myIp = new InterlockProtocol(sharedKey, rounds, 
 				message.length*8, null, useJSSE);
 		byte[] localCiphertext = myIp.encrypt(message);
 		byte[][] localParts = myIp.split(localCiphertext);
        	totalCryptoTime += System.currentTimeMillis()-timestamp;
+       	timestamp = System.currentTimeMillis();
 
 		OutputStreamWriter writer = new OutputStreamWriter(toRemote);
 		/* do not use a BufferedReader here because that would potentially mess up
@@ -643,10 +644,12 @@ public class InterlockProtocol {
 		if (timeoutMs > 0)
 			timer = new SafetyBeltTimer(timeoutMs, fromRemote);
 		// first exchange length of message
-       	timestamp = System.currentTimeMillis();
 		String remoteLength = swapLine(ProtocolLine_Init, Integer.toString(message.length), 
 				fromRemote, writer);
+       	totalTransferTime += System.currentTimeMillis()-timestamp;
+       	timestamp = System.currentTimeMillis();
 		totalTransferSize += swapSize;
+		totalMessageNum++;
 		if (remoteLength == null) {
 			logger.error("Did not receive remote message length. Can not continue.");
 			return null;
@@ -664,11 +667,16 @@ public class InterlockProtocol {
 			remoteTmp.append(round);
 			remoteTmp.append(' ');
 			remoteTmp.append(Hex.encodeHex(localParts[round]));
+	       	totalCodingTime += System.currentTimeMillis()-timestamp;
+	       	timestamp = System.currentTimeMillis();
 
 			String remotePart = swapLine(ProtocolLine_Round, 
 					remoteTmp.toString(),
 					fromRemote, writer);
+	       	totalTransferTime += System.currentTimeMillis()-timestamp;
+	       	timestamp = System.currentTimeMillis();
 			totalTransferSize += swapSize;
+			totalMessageNum++;
 			if (remotePart == null) {
 				logger.error("Did not receive round " + round + " from remote. Can not continue.");
 				return null;
@@ -678,6 +686,8 @@ public class InterlockProtocol {
 			int remoteRound = Integer.parseInt(remotePart.substring(0, remotePart.indexOf(' ')));
 			if (logger.isDebugEnabled())
 				logger.debug("Received remote round " + remoteRound);
+	       	totalCodingTime += System.currentTimeMillis()-timestamp;
+	       	timestamp = System.currentTimeMillis();
 			if (remoteRound == round) {
 				try { 
 					byte[] part = Hex.decodeHex(remotePart.substring(remotePart.indexOf(' ')+1).toCharArray());
@@ -693,6 +703,7 @@ public class InterlockProtocol {
 					logger.error("Could not decode remote byte array. Can not continue.");
 					return null;
 				}
+		       	totalCodingTime += System.currentTimeMillis()-timestamp;
 
 				/* When the second to last round has just been received and we are part
 				 * of an interlock group, then need to wait for all other members before
@@ -737,13 +748,13 @@ public class InterlockProtocol {
 						timer = new SafetyBeltTimer(timeoutMs, fromRemote);
 					}
 				}
+		       	timestamp = System.currentTimeMillis();
 			}
 			else {
 				logger.error("Round number does not match local round. Can not continue.");
 				return null;
 			}
 		}
-       	totalTransferTime += System.currentTimeMillis()-timestamp;
 
 		if (round == rounds) {
 			if (timer != null)
@@ -769,7 +780,9 @@ public class InterlockProtocol {
 
            	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
            			"ms for total " + totalTransferSize + 
-           			" chars, crypto took " + totalCryptoTime + "ms");
+           			" chars in " + totalMessageNum + 
+           			" messages, coding took " + totalCodingTime + 
+           			"ms, crypto took " + totalCryptoTime + "ms");
 	       	
 	       	return ret;
 		}

@@ -44,7 +44,7 @@ import org.openuat.util.UDPMulticastSocket;
  * 2. Add potentially similar key material by calling addCandidates.
  * 3. When a key could be generated from the matches given the requirements passed
  *    when constructing the object, its hash will be sent to the remote host and,
- *    upon receiving acknowledgement, the protocolSucceededHook will be called.
+ *    upon receiving acknowledgment, the protocolSucceededHook will be called.
  * TODO: Also emit protocol progress events (but what is max??)
  * Generally, events will be emitted by this class to all registered listeners.
  * 
@@ -168,7 +168,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	private Object globalLock = new Object();
 
 	/** These are only for keeping statistics on number and size of messages and time spent for CKP. */
-    protected int totalMessagesNum=0, totalMessageSize=0, totalCKPTime=0;
+    protected int totalMessageNum=0, totalMessageSize=0, totalCKPTime=0, totalCodingTime=0;
 	
 	/** Just a small helper class to keep a list of generated keys for each host. */
 	private class GeneratedKeyCandidates {
@@ -382,6 +382,7 @@ Bogdan Groza, 2007-04-19 */
 		
 		// this is synchronized so that handleMessage will not try to match while we 
 		synchronized (globalLock) {
+           	long timestamp = System.currentTimeMillis();
 			{
 				/* Optimization: Check for duplicates in the key parts - this costs some 
 				 * performance now, but can save significantly later on. This whole block can be
@@ -408,7 +409,11 @@ Bogdan Groza, 2007-04-19 */
 				}
 			}
 			
+			totalCodingTime += System.currentTimeMillis()-timestamp;
+           	timestamp = System.currentTimeMillis();
 			CandidateKeyPartIdentifier[] candidateKeyParts = ckp.generateCandidates(keyParts, entropy);
+			totalCKPTime += System.currentTimeMillis()-timestamp;
+           	timestamp = System.currentTimeMillis();
 			/* send out as many UDP multicast packets as necessary to transmit all the generated 
 			 * candidate key parts
 			 */
@@ -426,6 +431,8 @@ Bogdan Groza, 2007-04-19 */
 							byte[] packet = new byte[outIndex];
 							System.arraycopy(buffer, 0, packet, 0, outIndex);
 							channel.sendMulticast(packet);
+							totalMessageNum++;
+							totalMessageSize+=outIndex;
 						}
 						
 						numMessages++;
@@ -455,18 +462,26 @@ Bogdan Groza, 2007-04-19 */
 					byte[] packet = new byte[outIndex];
 					System.arraycopy(buffer, 0, packet, 0, outIndex);
 					channel.sendMulticast(packet);
+					totalMessageNum++;
+					totalMessageSize+=outIndex;
 				}
 				statisticsLogger.info("sc broadcasting " + numMessages + " packets for " + candidateKeyParts.length + " candidate key parts");
 			}
 		
 			// and also go through the list of archived yet unmatched incoming messages
 			int numOldMessages = 0, numOldCandidates = 0;
-			for (int i=0; i<incomingKeyPartsBuffer.length; i++)
+			for (int i=0; i<incomingKeyPartsBuffer.length; i++) {
 				if (incomingKeyPartsBuffer[i] != null) {
 					numOldMessages++;
 					CandidateKeyPartIdentifier[] incomingKeyParts = incomingKeyPartsBuffer[i].keyParts;
 					numOldCandidates += incomingKeyParts.length;
+
+					totalCodingTime += System.currentTimeMillis()-timestamp;
+		           	timestamp = System.currentTimeMillis();
 					int match = ckp.matchCandidates(incomingKeyPartsBuffer[i].sender.getHostAddress(), incomingKeyParts);
+					totalCKPTime += System.currentTimeMillis()-timestamp;
+		           	timestamp = System.currentTimeMillis();
+		           	
 					if (match > -1) {
 						// yes, we have a match, handle it
 						handleMatchingCandidateKeyPart(incomingKeyParts[match].round, match, incomingKeyPartsBuffer[i].sender);
@@ -475,6 +490,9 @@ Bogdan Groza, 2007-04-19 */
 						// multiple matches, CKP does that already)
 					}
 				}
+			}
+
+			totalCodingTime += System.currentTimeMillis()-timestamp;
 			statisticsLogger.debug("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
@@ -536,8 +554,13 @@ Bogdan Groza, 2007-04-19 */
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 		// optionally flag
 		if (sendMatches) {
+			long timestamp = System.currentTimeMillis();
 			String ackPacket = Protocol_CandidateMatch + round + " " + match;
-			channel.sendTo(ackPacket.getBytes(), remote);
+			byte[] pckt = ackPacket.getBytes();
+			totalCodingTime += System.currentTimeMillis()-timestamp;
+			channel.sendTo(pckt, remote);
+			totalMessageNum++;
+			totalMessageSize+=pckt.length;
 		}
 	
 		/* Make sure that this is not interrupted, or else the following could (and did)
@@ -648,7 +671,10 @@ Bogdan Groza, 2007-04-19 */
 
 		if (checkKeyCriteria(remoteHost)) {
 			try {
+				long timestamp = System.currentTimeMillis();
 				CandidateKey candKey = ckp.generateKey(remoteHostAddress);
+				totalCKPTime += System.currentTimeMillis()-timestamp;
+	           	timestamp = System.currentTimeMillis();
 				// and remember this key for later matching with the acknowledge
 				GeneratedKeyCandidates genList = null;
 				if (generatedKeys.containsKey(remoteHostAddress)) {
@@ -677,7 +703,11 @@ Bogdan Groza, 2007-04-19 */
 						new String(Hex.encodeHex(candKey.hash)) + " " + 
 						CandidateKeyProtocol.CandidateKey.indexTuplesToString(candKey.localIndices) + " " +
 						CandidateKeyProtocol.CandidateKey.indexTuplesToString(candKey.remoteIndices);
-				channel.sendTo(candKeyPacket.getBytes(), remoteHost);
+				byte[] pckt = candKeyPacket.getBytes();
+				totalCodingTime += System.currentTimeMillis()-timestamp;
+				channel.sendTo(pckt, remoteHost);
+				totalMessageNum++;
+				totalMessageSize+=pckt.length;
 			}
 			catch (InternalApplicationException e) {
 				logger.error("Could not generate key: " + e + 
@@ -699,7 +729,10 @@ Bogdan Groza, 2007-04-19 */
 	 */
 	private boolean checkForKeyMatch(InetAddress remoteHost, byte[] candKeyHash,
 			int[][] localIndices, int[][] remoteIndices) throws InternalApplicationException, IOException {
+		long timestamp = System.currentTimeMillis();
 		CandidateKey candKey = ckp.searchKey(remoteHost.getHostAddress(), candKeyHash, localIndices, remoteIndices);
+		totalCKPTime += System.currentTimeMillis()-timestamp;
+       	timestamp = System.currentTimeMillis();
 		
 		if (candKey != null) {
 			// this is just a sanity check
@@ -715,6 +748,7 @@ Bogdan Groza, 2007-04-19 */
 						new String(Hex.encodeHex(candKey.key)) + " that matches candidate key identifier " +  
 						new String(Hex.encodeHex(candKey.hash)) + " received from " + remoteHost.getHostAddress() + " " +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
+				totalCodingTime += System.currentTimeMillis()-timestamp;
 				// this sends a key acknowledge message to the remote host
 				authenticationSucceededStage1(remoteHost, candKey.hash, candKey.key);
 				return true;
@@ -753,7 +787,10 @@ Bogdan Groza, 2007-04-19 */
 			logger.debug("Sending termination message to remote host" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			try {
-				channel.sendTo(termPacket.getBytes(), remoteHost);
+				byte[] pckt = termPacket.getBytes();
+				channel.sendTo(pckt, remoteHost);
+				totalMessageNum++;
+				totalMessageSize+=pckt.length;
 			}
 			catch (IOException f) {
 				logger.error("Could not send protocol termination message to remote host: " + f + 
@@ -786,6 +823,7 @@ Bogdan Groza, 2007-04-19 */
 	private void authenticationSucceededStage1(InetAddress remoteHost,
 			byte[] foundKeyHash, byte[] foundKey) throws IOException {
 		String remoteHostAddress = remoteHost.getHostAddress();
+		long timestamp = System.currentTimeMillis();
 
 		if (! generatedKeys.containsKey(remoteHostAddress)) {
 			logger.debug("Got candidate key message from remote host " + remoteHostAddress + 
@@ -847,7 +885,11 @@ Suggestion by Bogdan Groza, 2007-04-19
 				logger.info("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
 					+ " to remote host " + remoteHostAddress + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
-			channel.sendTo(ackPacket.getBytes(), remoteHost);
+			byte[] pckt = ackPacket.getBytes();
+			totalCodingTime += System.currentTimeMillis()-timestamp;
+			channel.sendTo(pckt, remoteHost);
+			totalMessageNum++;
+			totalMessageSize+=pckt.length;
 		}
 	}
 
@@ -858,6 +900,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 	private void authenticationSucceededStage2(InetAddress remoteHost,
 			byte[] ackedKeyHash) throws InternalApplicationException {
 		String remoteHostAddress = remoteHost.getHostAddress();
+		long timestamp = System.currentTimeMillis();
 
 		if (! generatedKeys.containsKey(remoteHostAddress))
 			throw new InternalApplicationException("Got key acknowledge message from remote host " + 
@@ -947,6 +990,8 @@ Suggestion by Bogdan Groza, 2007-04-19
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			realSharedKey = ackedMatchingKey;
 		}
+		totalCodingTime += System.currentTimeMillis()-timestamp;
+		timestamp = System.currentTimeMillis();
 
 		// before wiping state, remember the fraction of matching rounds
 		float matchingRoundsFraction = ckp.getMatchingRoundsFraction(remoteHostAddress);
@@ -954,6 +999,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 		// now that we finally have the (real) shared key, can wipe the state
 		wipe(remoteHostAddress);
 		ckp.wipe(remoteHostAddress);
+		totalCKPTime += System.currentTimeMillis()-timestamp;
 		
 		// raise the event to notify others
 		raiseAuthenticationSuccessEvent(remoteHostAddress, realSharedKey);
@@ -992,12 +1038,16 @@ Suggestion by Bogdan Groza, 2007-04-19
 	 */
 	private class UDPMessageHandler implements MessageListener {
 		public void handleMessage(byte[] message, int offset, int length, Object sender) {
+			totalMessageNum++;
+			totalMessageSize+=length;
+			
 			/* should be synchronized so that we process packets in their order of arrival
 			 * (and not interrupt or be interrupted by other local methods) 
 			 */
 			synchronized (globalLock) {
 				// only use the IP address part, but not the host (which will be dynamic for sending packets)
 				String remoteHostAddress = ((InetAddress) sender).getHostAddress();
+				long timestamp = System.currentTimeMillis();
 				
 				// this is inefficient, but Java is anyway, so don't care at the moment...
 				byte[] packet = new byte[length];
@@ -1024,7 +1074,12 @@ Suggestion by Bogdan Groza, 2007-04-19
 								// small otpimization: the candidate number is not transmitted explicitly, but just as its position
 								keyParts[i].candidateNumber = (byte) i;
 							}
+							totalCodingTime += System.currentTimeMillis()-timestamp;
+							timestamp = System.currentTimeMillis();
+							
 							int match = ckp.matchCandidates(remoteHostAddress, keyParts);
+							totalCKPTime += System.currentTimeMillis()-timestamp;
+
 							if (match > -1) {
 								// yes, we have a match, handle it
 								statisticsLogger.debug("rc+ match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
@@ -1041,6 +1096,8 @@ Suggestion by Bogdan Groza, 2007-04-19
 								 */
 								checkKeyCriteria((InetAddress) sender);
 							}
+
+							timestamp = System.currentTimeMillis();
 							/* Independent of the match, remember the received key parts in case the (or 
 							 * another) matching local candidates are about to be added - classical race
 							 * condition, should be solved by this buffer. 
@@ -1054,6 +1111,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 								statisticsLogger.debug("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
 								incomingKeyPartsBufferIndex = 0;
 							}
+							totalCodingTime += System.currentTimeMillis()-timestamp;
 								
 							/* If positive criteria are fulfilled, don't care here. When the last
 							 * match was received (or the last candidate key message), no key could
@@ -1072,7 +1130,10 @@ Suggestion by Bogdan Groza, 2007-04-19
 						int match = Integer.parseInt(pack.substring(off+1));
 						logger.debug("Received packet with matching index " + match + " for round " + round + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
+						totalCodingTime += System.currentTimeMillis()-timestamp;
+						timestamp = System.currentTimeMillis();
 						ckp.acknowledgeMatches(remoteHostAddress, round, match);
+						totalCKPTime += System.currentTimeMillis()-timestamp;
 
 						/* Since a new match was now added the the local match list, check 
 						 * if there are enough to create a candidate key.
@@ -1097,6 +1158,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 								", my indices " + 
 								CandidateKeyProtocol.CandidateKey.indexTuplesToString(localIndices) +
 								(instanceId != null ? " [" + instanceId + "]" : ""));
+						totalCodingTime += System.currentTimeMillis()-timestamp;
 
 						if (! checkForKeyMatch((InetAddress) sender, candKeyHash, localIndices, remoteIndices)) {
 							/* No match, but remember the received candidate key in case the match local 
