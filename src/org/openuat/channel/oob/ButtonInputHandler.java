@@ -23,11 +23,15 @@ public interface ButtonInputHandler {
 
 	/**
 	 * Handles button press events.
+	 * @param eventTime Exact time of the event in milliseconds.
+	 * Provided by the underlying platform.
 	 */
-	public void buttonPressed();
+	public void buttonPressed(long eventTime);
 	
 	/**
 	 * Handles button release events.
+	 * @param eventTime Exact time of the event in milliseconds.
+	 * Provided by the underlying platform.
 	 */
-	public void buttonReleased();
+	public void buttonReleased(long eventTime);
 }
