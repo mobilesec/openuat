@@ -17,7 +17,7 @@ import org.apache.log4j.Logger;
 import org.openuat.util.LineReaderWriter;
 
 /** This is a helper class for streaming binary blocks over some (byte-safe) connection.
- * It can e.g. be used to stream a file over a TCP connection that has been opened previsouly.
+ * It can e.g. be used to stream a file over a TCP connection that has been opened previously.
  * The sender side can prefix the binary block with a name so that the receiver side can
  * distinguish different types of binary blocks in a protocol. This name prefix as well as
  * the length of the following binary block in bytes is prefixing the block itself as a

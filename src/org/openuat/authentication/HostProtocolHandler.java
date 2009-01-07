@@ -121,6 +121,10 @@ import org.apache.log4j.Logger;
 public class HostProtocolHandler extends AuthenticationEventSender {
 	/** Our primary logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.HostProtocolHandler" /*HostProtocolHandler.class*/);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.uacap");
 
 	/** The byte length to use for keys, random nonces, and hashes. */ 
 	private static final int NonceByteLength = 16;
@@ -198,6 +202,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     protected OutputStreamWriter toRemote;
     /** The stream to receive messages from the remote end. */
     protected InputStream fromRemote;
+    /** The number of bytes that have been transferred in both directions. 
+     * At the moment, this counts ASCII bytes. */
+    protected int totalTransferSize = 0;
 
     /** If defined, then this protocol drives the overall authentication in 
      * Hollywood style and can automatically select optional protocol steps
@@ -395,12 +402,15 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     
     /** Simple helper function for reading a line from the remote. */
     protected String readLine() throws IOException {
-    	return LineReaderWriter.readLine(fromRemote, timeoutMs);
+    	String ret = LineReaderWriter.readLine(fromRemote, timeoutMs);
+    	totalTransferSize += ret.length();
+    	return ret;
     }
     
     /** Simple helper function for writing a line to the remote. */
     protected void println(String line) throws IOException {
     	LineReaderWriter.println(toRemote, line);
+    	totalTransferSize += line.length();
     }
     
     /** Tries to receive a properly formatted line from the remote host.
@@ -1042,8 +1052,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (timer != null)
             	timer.stop();
             
-           	logger.warn("Key transfers took " + totalTransferTime + 
-           			"ms, crypto took " + totalCryptoTime + "ms");
+           	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
+           			"ms for total " + totalTransferSize + 
+           			" chars, crypto took " + totalCryptoTime + "ms");
         }
         catch (InternalApplicationException e)
         {

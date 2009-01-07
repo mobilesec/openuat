@@ -35,6 +35,10 @@ import org.openuat.sensors.TimeSeriesAggregator;
 public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSink  {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2" /*ShakeWellBeforeUseProtocol2.class*/);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.shake2");
 
 	/** The TCP port we use for this protocol. */
 	public static final int UdpPort = 54322;
@@ -244,11 +248,11 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 		aggr_a.setOffset(0);
 		aggr_a.setMultiplicator(1/128f);
 		aggr_a.setSubtractTotalMean(true);
-		aggr_a.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr_a.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		aggr_b.setOffset(0);
 		aggr_b.setMultiplicator(1/128f);
 		aggr_b.setSubtractTotalMean(true);
-		aggr_b.setActiveVarianceThreshold((double) ShakeWellBeforeUseParameters.activityVarianceThreshold);
+		aggr_b.setActiveVarianceThreshold(ShakeWellBeforeUseParameters.activityVarianceThreshold);
 		
 		ShakeWellBeforeUseProtocol2 ma1 = new ShakeWellBeforeUseProtocol2(ShakeWellBeforeUseParameters.samplerate, ShakeWellBeforeUseParameters.fftMatchesWindowSize,
 				ShakeWellBeforeUseParameters.fftMatchesQuantizationLevels, ShakeWellBeforeUseParameters.fftMatchesCandidatesPerRound,

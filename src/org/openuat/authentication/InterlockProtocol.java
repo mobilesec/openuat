@@ -50,6 +50,10 @@ import org.openuat.util.SimpleBlockCipher;
 public class InterlockProtocol {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.InterlockProtocol" /*InterlockProtocol.class*/);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.interlock");
 
 	/** This is the start of the line sent during initializing the interlock
 	 * exchange.
@@ -478,6 +482,10 @@ public class InterlockProtocol {
 		return true;
 	}
 	
+	/** This is very ugly, but swapLine just records the number of in and out bytes
+	 * in this variable. It is reset on each call.
+	 */
+	private static int swapSize;
 	/** This is a small helper function to exchange a line with the remote host. First,
 	 * the own line is sent, and then it waits for a line to be received.
 	 * @param command The command name that describes this line. It is prepended to the
@@ -492,8 +500,10 @@ public class InterlockProtocol {
 			InputStream fromRemote, OutputStreamWriter toRemote) throws IOException {
 		if (logger.isDebugEnabled())
 			logger.debug("Sending line to remote host: command '" + command + "', value '" + value + "'");
-		toRemote.write(command + " " + value + "\n");
+		String outStr = command + " " + value + "\n";
+		toRemote.write(outStr);
 		toRemote.flush();
+		swapSize = outStr.length();
 
 		StringBuffer remoteLine = new StringBuffer();
 		int ch = fromRemote.read();
@@ -503,6 +513,7 @@ public class InterlockProtocol {
 				remoteLine.append((char) ch);
 			ch = fromRemote.read();
 		}
+		swapSize += remoteLine.length();
 
 		if (remoteLine.length() > command.length()+1 && 
 			remoteLine.toString().substring(0, command.length()+1).equals(command + " ")) {
@@ -611,11 +622,16 @@ public class InterlockProtocol {
 		if (logger.isInfoEnabled())
 			logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
 				timeoutMs + "ms. My message is " + message.length + " bytes long");
-		
+
+        int totalTransferTime=0, totalCryptoTime=0, totalTransferSize=0;
+        long timestamp=0;
+
+       	timestamp = System.currentTimeMillis();
 		InterlockProtocol myIp = new InterlockProtocol(sharedKey, rounds, 
 				message.length*8, null, useJSSE);
 		byte[] localCiphertext = myIp.encrypt(message);
 		byte[][] localParts = myIp.split(localCiphertext);
+       	totalCryptoTime += System.currentTimeMillis()-timestamp;
 
 		OutputStreamWriter writer = new OutputStreamWriter(toRemote);
 		/* do not use a BufferedReader here because that would potentially mess up
@@ -627,8 +643,10 @@ public class InterlockProtocol {
 		if (timeoutMs > 0)
 			timer = new SafetyBeltTimer(timeoutMs, fromRemote);
 		// first exchange length of message
+       	timestamp = System.currentTimeMillis();
 		String remoteLength = swapLine(ProtocolLine_Init, Integer.toString(message.length), 
 				fromRemote, writer);
+		totalTransferSize += swapSize;
 		if (remoteLength == null) {
 			logger.error("Did not receive remote message length. Can not continue.");
 			return null;
@@ -650,6 +668,7 @@ public class InterlockProtocol {
 			String remotePart = swapLine(ProtocolLine_Round, 
 					remoteTmp.toString(),
 					fromRemote, writer);
+			totalTransferSize += swapSize;
 			if (remotePart == null) {
 				logger.error("Did not receive round " + round + " from remote. Can not continue.");
 				return null;
@@ -724,6 +743,7 @@ public class InterlockProtocol {
 				return null;
 			}
 		}
+       	totalTransferTime += System.currentTimeMillis()-timestamp;
 
 		if (round == rounds) {
 			if (timer != null)
@@ -731,6 +751,7 @@ public class InterlockProtocol {
 			if (logger.isDebugEnabled())
 				logger.debug("Interlock protocol completed");
 
+	       	timestamp = System.currentTimeMillis();
 			byte[] remoteCiphertext = remoteIp.reassemble();
 			if (protectAgainstMirrorAttack) {
 				boolean equals=true;
@@ -743,7 +764,14 @@ public class InterlockProtocol {
 				}
 			}
 
-			return remoteIp.decrypt(remoteCiphertext);
+			byte[] ret = remoteIp.decrypt(remoteCiphertext); 
+	       	totalCryptoTime += System.currentTimeMillis()-timestamp;
+
+           	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
+           			"ms for total " + totalTransferSize + 
+           			" chars, crypto took " + totalCryptoTime + "ms");
+	       	
+	       	return ret;
 		}
 		else {
 			logger.error("Interlock protocol did not finish within timeout");

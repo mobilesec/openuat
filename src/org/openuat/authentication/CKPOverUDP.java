@@ -57,7 +57,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.motionauthentication");
+	private static Logger statisticsLogger = Logger.getLogger("statistics.ckp");
 
 	private final static String Protocol_CandidateKeyPart = "CAND ";
 
@@ -100,7 +100,7 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	/** If set to true, generated key candidates will be broadcast (multicast). */
 	private boolean broadcastCandidates;
 	
-	/** If set to true, matching candidate numbers will be signalled to the remote host that
+	/** If set to true, matching candidate numbers will be signaled to the remote host that
 	 * generated the candidate key parts.
 	 */
 	private boolean sendMatches;
@@ -166,6 +166,9 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @see #handleMatchingCandidateKeyPart(int, int, InetAddress)
 	 */  
 	private Object globalLock = new Object();
+
+	/** These are only for keeping statistics on number and size of messages and time spent for CKP. */
+    protected int totalMessagesNum=0, totalMessageSize=0, totalCKPTime=0;
 	
 	/** Just a small helper class to keep a list of generated keys for each host. */
 	private class GeneratedKeyCandidates {
@@ -209,19 +212,19 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 		 *     X as the shared key (authentication success).
 		 * <b>Note:</b> Obviously, the hosts A and B would now be unable to communicate because
 		 * the have different keys X and Y.
-		 * 4a. Host A receives the acknowledgement that host B was able to generate A's 
+		 * 4a. Host A receives the acknowledgment that host B was able to generate A's 
 		 *     originally suggested key X and switches to it as a shared key (authentication 
 		 *     success again).
-		 * 4b. Host B receives the acknowledgement that host A was able to generate B's
+		 * 4b. Host B receives the acknowledgment that host A was able to generate B's
 		 *     originally suggested key Y and switches to it as a shared key (authentication 
 		 *     success again).
 		 * <b>Note:</b> By making an effort to adapt to the shared key as used by the remote
 		 * host, A and B have now effectively swapped their keys and still use different ones.
 		 * 
 		 * To deal with that scenario, the authentication success "process" is split into two
-		 * stages, and only after receiving the key acknowledgement message, a host starts using
+		 * stages, and only after receiving the key acknowledgment message, a host starts using
 		 * a shared key. Phase 1 is basically step 3, while phase 2 is step 4 in the above
-		 * scenario. But the hosts will wait for receiving key acknowledgement messages to decide
+		 * scenario. But the hosts will wait for receiving key acknowledgment messages to decide
 		 * what shared key to use. When the acknowledged hash matches the hash of the key that 
 		 * the host found in stage 1, it will just use this key, and it will be guaranteed that
 		 * both hosts hold the same key (because then both key acknowledge messages must have 
@@ -363,7 +366,8 @@ public abstract class CKPOverUDP extends AuthenticationEventSender {
 	 * @see #broadcastCandidates
 	 */
 	protected void addCandidates(byte[][] keyParts, float entropy) throws InternalApplicationException, IOException {
-/* 2) In step I.2 suppose that there is some weak candidate key part h^i
+/* TODO:
+ * 2) In step I.2 suppose that there is some weak candidate key part h^i
 which Eve can compute by a brute force search (this key part has a weak
 entropy for Eve and we suppose that it will be validated in step I.3). If
 Eve can determine such a weak candidate on the fly then she can simply put
@@ -434,7 +438,7 @@ Bogdan Groza, 2007-04-19 */
 								" for candidate number " + i + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
-					// small otpimization: the candidate number is not transmitted explicitly, but just as its position
+					// small optimization: the candidate number is not transmitted explicitly, but just as its position
 					// but do a sanity check here (optimizations are always dangerous)
 					if (candidateKeyParts[i].candidateNumber != i) 
 						logger.warn("Locally generatared candidate number " + candidateKeyParts[i].candidateNumber +

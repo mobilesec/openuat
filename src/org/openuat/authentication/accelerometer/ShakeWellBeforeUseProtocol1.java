@@ -47,6 +47,10 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		implements SegmentsSink, SegmentsSink_Int {
 	/** Our log4j logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1" /*ShakeWellBeforeUseProtocol1.class*/);
+	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	 * so that it's possible to turn statistics on an off independently.
+	 */
+	private static Logger statisticsLogger = Logger.getLogger("statistics.shake1");
 
 	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
@@ -540,9 +544,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 
-			logger.warn("Segment coding took " + totalCodingTime + 
+			statisticsLogger.warn("Segment coding took " + totalCodingTime + 
 						"ms, interlock took " + totalInterlockTime + 
-						"ms, comparison took" + totalComparisonTime + "ms");
+						"ms, coherence comparison took" + totalComparisonTime + "ms");
 	        return true;
 		}
 		finally {
