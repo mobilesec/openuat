@@ -434,6 +434,12 @@
 				org/openuat/authentication/AuthenticationProgressHandler.java org/openuat/authentication/exceptions/*.java
 				org/openuat/util/SafetyBeltTimer.java
 				org/openuat/util/SimpleBlockCipher.java
+				org/openuat/util/ifPair.java
+				org/openuat/util/ifListener.java
+				org/openuat/util/Pair.java
+				org/openuat/channel/ifComm.java
+				org/openuat/channel/http/*.java
+				org/openuat/apps/groupkey/*
 				net/mypapit/java/StringTokenizer.java
 				org/openuat/util/IntervalList.java org/openuat/util/RgbColor.java
 				org/openuat/channel/oob/Button*.java org/openuat/channel/oob/*ToButtonChannel.java" />
@@ -523,6 +529,7 @@
 				
 				<midlet class="org.openuat.apps.j2me.BedaMIDlet" name="Beda demo"/>
 				
+				<midlet class="org.openuat.apps.groupkey.appStubMidlet" name="Stub"/>
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
 					<variable name="cfg.shakingDemoMode" value="false" />
