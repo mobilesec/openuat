@@ -227,7 +227,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		// @Override
 		protected void keyPressed(int keyCode) {
 			if (this.getGameAction(keyCode) == Canvas.FIRE) {
-				inputHandler.buttonPressed();
+				inputHandler.buttonPressed(System.currentTimeMillis());
 			}
 		}
 
@@ -237,7 +237,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		// @Override
 		protected void keyReleased(int keyCode) {
 			if (this.getGameAction(keyCode) == Canvas.FIRE) {
-				inputHandler.buttonReleased();
+				inputHandler.buttonReleased(System.currentTimeMillis());
 			}
 		}
 	}
