@@ -163,15 +163,14 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 
 
 	// @Override
-	public void buttonPressed() {
+	public void buttonPressed(long eventTime) {
 		if (buttonEventsLeft > 0) {
 			if (timestamp == 0) { // first event: set timestamp
-				timestamp = System.currentTimeMillis();
+				timestamp = eventTime;
 			}
 			else { // following events: compute measured interval
-				long temp = System.currentTimeMillis();
-				oobInput.add((int)(temp - timestamp));
-				timestamp = temp;
+				oobInput.add((int)(eventTime - timestamp));
+				timestamp = eventTime;
 			}
 			buttonEventsLeft--;
 			if (buttonEventsLeft <= 0) {
@@ -189,9 +188,9 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	}
 
 	// @Override
-	public void buttonReleased() {
+	public void buttonReleased(long eventTime) {
 		if (inputMode == MODE_PRESS_RELEASE) {
-			this.buttonPressed();
+			this.buttonPressed(eventTime);
 		}
 	}
 	
@@ -214,7 +213,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * @param intervals The list of intervals to be converted.
 	 * @param minInterval Smallest considered interval or time unit in ms.
 	 * @param bitsPerInterval How many bits per interval should be extracted?
-	 * @param roundFloor Rounding mode: If <code>true</code>, each interval will be
+	 * @param roundDown Rounding mode: If <code>true</code>, each interval will be
 	 * rounded down to the next multiple of <code>minInterval</code>. If <code>false</code>,
 	 * each interval will be rounded to the nearest multiple of <code>minInterval</code>.
 	 * @param useCarry Should rounding losses be added to the next interval?
