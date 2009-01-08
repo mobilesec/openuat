@@ -102,22 +102,42 @@ public class IntervalList {
 	public boolean equals(Object obj) {
 		boolean result = true;
 		IntervalList other = null;
-		try {
-			other = (IntervalList)obj;
-			result = (this.size() == other.size());
-			if (result) {
-				for (int i = 0; i < this.size(); i++) {
-					if (this.item(i) != other.item(i)) {
-						result = false;
-						break;
+		if (obj == null || this.getClass() != obj.getClass()) {
+			result = false;
+		}
+		if (result) {
+			try {
+				other = (IntervalList)obj;
+				result = (this.size() == other.size());
+				if (result) {
+					for (int i = 0; i < this.size(); i++) {
+						if (this.item(i) != other.item(i)) {
+							result = false;
+							break;
+						}
 					}
 				}
+			} catch (ClassCastException e) {
+				result = false;
 			}
-		} catch (ClassCastException e) {
-			result = false;
 		}
 		
 		return result;
 	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	//@Override
+	public int hashCode() {
+		int hash = 7; // arbitrary
+		hash = 31 * hash + this.size();
+		hash = 31 * hash + this.getTotalIntervalLength();
+		for (int i = 0; i < this.size(); i++) {
+			hash = 31 * hash + this.item(i);
+		}
+		return hash;
+	}
+	
 	
 }
