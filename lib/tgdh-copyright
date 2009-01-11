@@ -1,0 +1,27 @@
+Author: Martijn Sack
+Date: 1-11-2009 
+
+During the development of group communication the TGDH protocol-set was found useful.
+
+This protocol-set is implemented by Lijun Liao. After requesting the source code this email was sent to us.
+
+****
+You can find the source code under
+http://nds.hgi.rub.de/liao/works/TGDH-Source.zip. This API implements the original TGDH and was completed 
+five years ago for my student project.
+
+Best regards,
+
+Lijun Liao
+****
+
+After several attempts to contact Mr. Liao to get a clearance for usage of the source, decided was to use
+the public compiled classes that are available at: http://www.ruhr-uni-bochum.de/nds/forschung/gebiete/tgdh/ 
+
+The source is stored in:
+/thirdparty/tgdh/core
+/thirdparty/tgdh/demo
+/thirdparty/tgdh/test
+
+The compiled classes for public usage:
+/thirdparty/tgdh/tgdh_classes
