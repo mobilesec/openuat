@@ -1,16 +1,22 @@
+/* Copyright Lukas Wallentin
+ * File created 2009-01-12
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
 package org.openuat.util;
 
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
-
 import org.apache.commons.codec.binary.Hex;
 import org.openuat.authentication.SimpleKeyAgreement;
-import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.exceptions.KeyAgreementProtocolException;
 import org.openuat.channel.ifComm;
 import org.openuat.channel.http.CommPlain;
-
 import net.mypapit.java.StringTokenizer;
 
 /**
