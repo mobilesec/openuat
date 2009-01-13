@@ -10,6 +10,7 @@ package org.openuat.channel.oob;
 
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
+import org.openuat.log.Log;
 import org.openuat.util.IntervalList;
 
 /**
@@ -120,6 +121,11 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 */
 	protected String shortDescription;
 	
+	/**
+	 *  Logger instance. It will be used by this class and its subclasses as well.
+	 */
+	protected Log logger;
+	
 	/*
 	 * How many button events (presses/releases) are still to process?
 	 */
@@ -134,6 +140,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 * Helps to keep track of currently captured input.
 	 */
 	private long timestamp;
+	
 
 	/**
 	 * Receives out of band inputs. Listens to key
@@ -180,8 +187,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
 				}
 				else {
-					// TODO: log warning
-					// logger.warn("Method buttonPressed(): Message received, but 'messageHandler' is null");
+					logger.warn("Method buttonPressed(): Message received, but 'messageHandler' is null");
 				}
 			}
 		}

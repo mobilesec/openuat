@@ -24,6 +24,9 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JTextPane;
 
+import org.openuat.log.Log;
+import org.openuat.log.LogFactory;
+
 
 /**
  * This is an AWT specific implementation of
@@ -63,24 +66,6 @@ import javax.swing.JTextPane;
 public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionListener {
 
 	/**
-	 * Creates a new instance.
-	 * @param parentComponent The parent gui element which will hold gui elements
-	 * created by this class.
-	 */
-	public AWTButtonChannelImpl(Container parentComponent) {
-		transmissionMode	= 0;
-		progress			= 0;
-		showSignal			= false;
-		intervalList		= null;
-		paintableComponent	= null;
-		parent				= parentComponent;
-		isKeyDown			= false;
-		defaultFont = new Font(Font.SANS_SERIF, Font.PLAIN, 16);
-		abortButton = new JButton("Abort");
-		abortButton.addActionListener(this);
-	}
-	
-	/**
 	 * The parent gui component. It serves as a container for gui elements
 	 * created by this class.
 	 */
@@ -103,15 +88,40 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	protected Font defaultFont;
 	
 	/**
-	 * The keyboard key which is used as <i>the</i> button for user input.
+	 * The keyboard key which is used as <i>the</i> button for user input.<br/>
+	 * It is the space bar on J2SE.
 	 */
-	protected int buttonKey = KeyEvent.VK_SPACE;
+	protected int buttonKey;
 	
 	/* Keep track of button presses: ignore fake key press events */
 	private boolean isKeyDown;
 	
 	/* Keep track of button presses: ignore fake key release events */
 	private long lastKeyDown;
+	
+	/* Logger instance */
+	private Log logger;
+	
+	/**
+	 * Creates a new instance.
+	 * @param parentComponent The parent gui element which will hold gui elements
+	 * created by this class.
+	 */
+	public AWTButtonChannelImpl(Container parentComponent) {
+		transmissionMode	= 0;
+		progress			= 0;
+		showSignal			= false;
+		intervalList		= null;
+		paintableComponent	= null;
+		parent				= parentComponent;
+		buttonKey			= KeyEvent.VK_SPACE;
+		isKeyDown			= false;
+		lastKeyDown			= 0L;
+		defaultFont = new Font(Font.SANS_SERIF, Font.PLAIN, 16);
+		abortButton = new JButton("Abort");
+		abortButton.addActionListener(this);
+		logger = LogFactory.getLogger(AWTButtonChannelImpl.class.getName());
+	}
 
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
@@ -122,8 +132,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			paintableComponent.repaint();
 		}
 		else {
-			// TODO: log warning
-			// logger.warn("Method repaint(): paintableComponent is null");
+			logger.warn("Method repaint(): paintableComponent is null");
 		}
 	}
 
@@ -148,9 +157,10 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 				if (e.getKeyCode() == buttonKey) {
 					lastKeyDown = e.getWhen();
 					if (!isKeyDown) {
-						// TODO: log.debug()
-						System.out.println("Key pressed.  Event time: " + e.getWhen() + 
+						if (logger.isDebugEnabled()) {
+							logger.debug("Key pressed.  Event time: " + e.getWhen() + 
 										" Captured at: " + System.currentTimeMillis());
+						}
 						isKeyDown = true;
 						buttonInputHandler.buttonPressed(e.getWhen());
 					}
@@ -182,14 +192,15 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 						try {
 							Thread.sleep(15);
 						} catch(InterruptedException ie) {
-							// TODO: log warning
+							logger.warn("Thread interrupted.", ie);
 						}
 						java.awt.EventQueue.invokeLater(new Runnable(){
 							public void run() {
 								if (lastKeyDown != e.getWhen()) {
-									// TODO: log.debug()
-									System.out.println("Key released. Event time: " + e.getWhen() +
+									if (logger.isDebugEnabled()) {
+										logger.debug("Key released. Event time: " + e.getWhen() +
 												" Captured at: " + System.currentTimeMillis());
+									}
 									isKeyDown = false;
 									buttonInputHandler.buttonReleased(e.getWhen());
 								}
@@ -258,9 +269,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	// @Override
 	public void vibrate(int milliseconds) {
 		// can't be implemented on this platform
-		// TODO Logger.warn("Method vibrate(int): Not implemented on J2SE (AWT)");
-		
-		
+		logger.warn("Method vibrate(int): Not implemented on J2SE (AWT)");
 	}
 
 	/* (non-Javadoc)
@@ -354,13 +363,11 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 					g.fillRect(marginLeft, marginTop, progressWidth, barHeight);
 				}
 				else {
-					// TODO: log warning
-					// logger.warn("Method paint(): 'intervalList' is null");
+					logger.warn("Method paint(): 'intervalList' is null");
 				}
 			}
 			else {
-				// TODO: log warning
-				// logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
+				logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
 			}
 		}
 	}

@@ -12,6 +12,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.openuat.authentication.OOBChannel;
+import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 
 /**
@@ -42,6 +43,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		useCarry		= false;
 		messageHandler	= null;
 		shortDescription = "Progress Bar";
+		logger = LogFactory.getLogger(this.getClass().getName());
 		
 		initInterval	= 2000;
 		textDelay		= 5000;
@@ -115,8 +117,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 				try {
 					Thread.sleep(textDelay);
 				} catch (InterruptedException e) {
-					// TODO: log warning
-					// logger.warn("Method transmit(byte[])", e);
+					logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
 				}
 				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_BAR);
 				// transmit the data (given from 'intervals')

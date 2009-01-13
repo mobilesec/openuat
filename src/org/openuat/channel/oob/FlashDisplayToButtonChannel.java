@@ -9,6 +9,7 @@
 package org.openuat.channel.oob;
 
 import org.openuat.authentication.OOBChannel;
+import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 
 /**
@@ -38,6 +39,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		useCarry		= true;
 		messageHandler	= null;
 		shortDescription = "Flash Display";
+		logger = LogFactory.getLogger(this.getClass().getName());
 		
 		initInterval	= 2500;
 		textDelay		= 5000;
@@ -85,8 +87,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 				try {
 					Thread.sleep(textDelay);
 				} catch (InterruptedException e) {
-					// TODO: log warning
-					// logger.warn("Method transmit(byte[]) in transmission thread", e);
+					logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
 				}
 				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_SIGNAL);
 				// transmit the data (given from 'intervals')
@@ -98,20 +99,14 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 					int interval = intervals.item(i) - signalDuration;
 					try {
 						Thread.sleep(interval);
-					} catch (InterruptedException e) {
-						// TODO: log warning
-						// logger.warn("Method transmit(byte[]) in transmission thread", e);
-					}
-					impl.setSignal(true);
-					impl.repaint();
-					try {
+						impl.setSignal(true);
+						impl.repaint();
 						Thread.sleep(signalDuration);
+						impl.setSignal(false);
+						impl.repaint();
 					} catch (InterruptedException e) {
-						// TODO: log warning
-						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+						logger.warn("Method transmit(byte[]): transmission thread interrupted", e);
 					}
-					impl.setSignal(false);
-					impl.repaint();
 				}
 				if (messageHandler != null) {
 					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, new byte[]{(byte)1});

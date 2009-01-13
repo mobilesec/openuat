@@ -8,6 +8,7 @@
  */
 package org.openuat.channel.oob;
 
+import org.openuat.log.Log;
 import org.openuat.util.IntervalList;
 
 /**
@@ -61,6 +62,11 @@ public abstract class ButtonChannelImpl {
 	 * Progress of the progress bar in %.
 	 */
 	protected float progress;
+	
+	/**
+	 * Logger instance. It will be used by this class and its subclasses as well.
+	 */
+	protected Log logger;
 
 	/**
 	 * Starts the capturing process by launching a gui element that listens

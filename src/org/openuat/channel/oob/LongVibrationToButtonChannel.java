@@ -9,6 +9,7 @@
 package org.openuat.channel.oob;
 
 import org.openuat.authentication.OOBChannel;
+import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 
 /**
@@ -37,6 +38,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		useCarry		= true;
 		messageHandler	= null;
 		shortDescription = "Long Vibration";
+		logger = LogFactory.getLogger(this.getClass().getName());
 		
 		initInterval	= 6500;
 		endInterval		= 600;
@@ -96,8 +98,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 					try {
 						Thread.sleep(interval);
 					} catch (InterruptedException e) {
-						// TODO: log warning
-						// logger.warn("Method transmit(byte[]) in transmission thread", e);
+						logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
 					}
 				}
 				if (messageHandler != null) {

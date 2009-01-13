@@ -8,6 +8,8 @@
  */
 package org.openuat.channel.oob;
 
+import org.openuat.log.LogFactory;
+
 /**
  * This channel is an <b>input channel</b>, it only implements the
  * <code>capture</code> method and doesn't support the <code>transmit</code>
@@ -37,6 +39,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		messageHandler	= null;
 		shortDescription	= "Input";
 		transmitDisplayText = "";
+		logger = LogFactory.getLogger(this.getClass().getName());
 		
 		int eventCount = (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
 		String endl = System.getProperty("line.separator");
@@ -56,8 +59,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 	// @Override
 	public void transmit(byte[] message) {
 		// This method is not implemented!
-		// TODO: log warning
-		// logger.warn("Method transmit(byte[]): Not implemented for the ButtonToButtonChannel.");
+		logger.warn("Method transmit(byte[]): Not implemented for the ButtonToButtonChannel.");
 	}
 
 }
