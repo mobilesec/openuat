@@ -20,6 +20,7 @@ import javax.microedition.lcdui.Graphics;
 
 import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonInputHandler;
+import org.openuat.log.LogFactory;
 import org.openuat.util.RgbColor;
 
 /**
@@ -42,6 +43,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		intervalList		= null;
 		currentScreen		= null;
 		this.display		= display;
+		logger 			= LogFactory.getLogger(this.getClass().getName());
 		abortCommand	= new Command("Abort", Command.STOP, 1);
 		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 	}
@@ -75,8 +77,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			currentScreen.repaint();
 		}
 		else {
-			// TODO: log warning
-			// logger.warn("Method repaint(): currentScreen is null.");
+			logger.warn("Method repaint(): currentScreen is null.");
 		}
 	}
 
@@ -126,8 +127,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			// TODO: abort current processing...
 		}
 		else {
-			// TODO: log warning
-			// logger.warn("Command not handled: "+command.getLabel());
+			logger.warn("Command not handled: " + command.getLabel());
 		}
 	}
 	
@@ -335,13 +335,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 					g.fillRect(barMargin, barMarginTop, progressWidth, barHeight);
 				}
 				else {
-					// TODO: log warning
-					// logger.warn("Method paint(): 'intervalList' is null");
+					logger.warn("Method paint(): 'intervalList' is null.");
 				}
 			}
 			else {
-				// TODO: log warning
-				// logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
+				logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
 			}
 		}
 	}
