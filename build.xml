@@ -442,7 +442,9 @@
 				org/openuat/apps/groupkey/*
 				net/mypapit/java/StringTokenizer.java
 				org/openuat/util/IntervalList.java org/openuat/util/RgbColor.java
-				org/openuat/channel/oob/Button*.java org/openuat/channel/oob/*ToButtonChannel.java" />
+				org/openuat/channel/oob/Button*.java org/openuat/channel/oob/*ToButtonChannel.java
+				org/openuat/log/Log.java
+				org/openuat/log/LogFactory.java" />
 			<fileset dir="${thirdparty-google-zxing}" includes="com/google/zxing/common/**/*.java com/google/zxing/*.java
 				com/google/zxing/client/result/*.java com/google/zxing/oned/*.java
 				com/google/zxing/qrcode/**/*.java com/google/zxing/**/j2me/**/*.java" />
