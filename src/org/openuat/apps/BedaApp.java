@@ -37,6 +37,9 @@ import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
+import org.openuat.log.Log;
+import org.openuat.log.Log4jFactory;
+import org.openuat.log.LogFactory;
 
 /**
  * This Swing application demonstrates the different button channels within
@@ -48,7 +51,44 @@ import org.openuat.channel.oob.ShortVibrationToButtonChannel;
  * @version 1.0
  */
 public class BedaApp {
-
+	
+	/*
+	 * GUI related constants
+	 */
+	private static final int FRAME_WIDTH	= 500;
+	private static final int FRAME_HIGHT	= 500;
+	private static final int PANEL_WIDTH	= 200;
+	private static final int PANEL_HIGHT	= 400;
+	private static final int LIST_WIDTH		= 200;
+	private static final int LIST_HIGHT		= 300;
+	
+	/* Main window of this application */
+	private JFrame mainWindow;
+	
+	/* Menu bar for the main window */
+	private JMenuBar menuBar;
+	
+	/* A gui component to list all button channels */
+	private JList channelList;
+	
+	/* A gui component to list all found bluetooth devices */
+	private JList deviceList;
+	
+	/* A button to refresh the deviceList */
+	private JButton refreshButton;
+	
+	/* A mouse listener for the two JLists channelList and deviceList
+	 * which reacts to double-clicks on list entries
+	 */
+	private MouseListener doubleClickListener;
+	
+	/* Random number generator */
+	private Random random;
+	
+	/* Logger instance */
+	private Log logger;
+	
+	
 	/**
 	 * Entry point for the main application.<br/>
 	 * It just creates a new instance of this class.
@@ -64,6 +104,10 @@ public class BedaApp {
 	 */
 	public BedaApp() {
 		random = new Random(System.currentTimeMillis());
+		// Initialize the logger. Use a wrapper around the log4j framework.
+		LogFactory.init(new Log4jFactory());
+		logger = LogFactory.getLogger(BedaApp.class.getName());
+		logger.debug("Logger initiated!");
 		
 		mainWindow = new JFrame("Beda App");
 		mainWindow.setSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
@@ -155,39 +199,6 @@ public class BedaApp {
 		mainWindow.pack();
 		mainWindow.setVisible(true);
 	}
-	
-	/*
-	 * GUI related constants
-	 */
-	private static final int FRAME_WIDTH	= 500;
-	private static final int FRAME_HIGHT	= 500;
-	private static final int PANEL_WIDTH	= 200;
-	private static final int PANEL_HIGHT	= 400;
-	private static final int LIST_WIDTH		= 200;
-	private static final int LIST_HIGHT		= 300;
-	
-	/* Main window of this application */
-	private JFrame mainWindow;
-	
-	/* Menu bar for the main window */
-	private JMenuBar menuBar;
-	
-	/* A gui component to list all button channels */
-	private JList channelList;
-	
-	/* A gui component to list all found bluetooth devices */
-	private JList deviceList;
-	
-	/* A button to refresh the deviceList */
-	private JButton refreshButton;
-	
-	/* A mouse listener for the two JLists channelList and deviceList
-	 * which reacts to double-clicks on list entries
-	 */
-	private MouseListener doubleClickListener;
-	
-	/* Random number generator */
-	private Random random;
 	
 	/* Helper method to set up the home screen */
 	private void showHomeScreen() {

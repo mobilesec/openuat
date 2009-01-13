@@ -35,6 +35,9 @@ import org.openuat.channel.oob.LongVibrationToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.j2me.J2MEButtonChannelImpl;
+import org.openuat.log.Log;
+import org.openuat.log.LogFactory;
+import org.openuat.log.j2me.MicrologFactory;
 import org.openuat.util.BluetoothPeerManager;
 
 /**
@@ -46,22 +49,14 @@ import org.openuat.util.BluetoothPeerManager;
  * @author Lukas Huser
  * @version 1.0
  */
-public class BedaMIDlet extends MIDlet {
-
-	/**
-	 * Creates a new MIDlet. Used for one-time initializations.
-	 */
-	public BedaMIDlet() {
-		super();
-	}
-	
+public class BedaMIDlet extends MIDlet {	
 	/*
 	 * GUI stuff
 	 */
 	
 	/* string constants */
-	private static final String DEVICE_LIST_TITLE = "Choose a device";
-	private static final String CHANNEL_LIST_TITLE = "Choose a channel";
+	private static final String DEVICE_LIST_TITLE 	= "Choose a device";
+	private static final String CHANNEL_LIST_TITLE	= "Choose a channel";
 	
 	/* Current display */
 	private Display display;
@@ -103,6 +98,17 @@ public class BedaMIDlet extends MIDlet {
 	/* Random number generator to build random messages (for testing) */
 	private Random random;
 	
+	/* Logger instance */
+	private Log logger;
+	
+	
+	/**
+	 * Creates a new MIDlet. Used for one-time initializations.
+	 */
+	public BedaMIDlet() {
+		super();
+	}
+	
 	/**
 	 * Destroys this MIDlet. Frees resources first.
 	 * @param unconditional
@@ -123,7 +129,12 @@ public class BedaMIDlet extends MIDlet {
 	 * Starts this MIDlet. MIDlet initialization is done here.
 	 */
 	protected void startApp() throws MIDletStateChangeException {
-		// initialization
+		// Initialize the logger. Use a wrapper around microlog framework.
+		LogFactory.init(new MicrologFactory());
+		logger = LogFactory.getLogger("org.openuat.apps.j2me.BedaMIDlet");
+		logger.debug("Logger initialized!");
+		
+		// MIDlet initialization
 		display = Display.getDisplay(this);
 		welcomeScreen = new Form("BEDA MIDlet");
 		welcomeScreen.append("Button Enabled Device Association");
@@ -138,7 +149,6 @@ public class BedaMIDlet extends MIDlet {
 		currentPeerAddress = "";
 		random = new Random(System.currentTimeMillis());
 		
-		// some more complex initialization
 		setUpPeerManager();
 		
 		// create menu on welcome screen
@@ -248,7 +258,7 @@ public class BedaMIDlet extends MIDlet {
 			try {
 				listItems[i] = device.getFriendlyName(false) + "(" + device.getBluetoothAddress() + ")";
 			} catch (IOException e) {
-				// TODO: log warning
+				logger.warn("Could not get name of a bluetooth device.", e);
 				listItems[i] = "Unknown device";
 			}
 		}
@@ -303,8 +313,7 @@ public class BedaMIDlet extends MIDlet {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(listener);
 		} catch (IOException e) {
-			// TODO: log error
-			// logger.error(e);
+			logger.error("Could not initiate BluetoothPeerManager.", e);
 		}
 	}
 	
