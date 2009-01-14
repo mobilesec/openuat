@@ -13,7 +13,8 @@ package org.openuat.log;
  * <code>init</code> and <code>getLogger</code>, which conveniently
  * allow to receive a suitable logger for the current system. It is
  * important that <code>init</code> is called <b>before</b> the first
- * call to <code>getLogger</code>, else it will return <code>null</code>.<br/>
+ * call to <code>getLogger</code>, else it will return a default empty
+ * logger that just does nothing.<br/>
  * Usage and code example:<br/>
  * Initialize the <code>LogFactory</code> in the applications main class,
  * e.g. in the class inheriting from <code>MIDlet</code> (J2ME) or the class
@@ -57,11 +58,11 @@ public abstract class LogFactory {
 	 * returns it, wrapped in a <code>Log</code> instance.
 	 * 
 	 * @param name The name of the requested logger.
-	 * @return The requested named logger or <code>null</code> if
+	 * @return The requested named logger or the default empty logger if
 	 * <code>LogFactory</code> has not been initialized.
 	 */
 	public static Log getLogger(String name) {
-		return instance == null ? null : instance.newLogger(name);
+		return instance == null ? new EmptyLogger() : instance.newLogger(name);
 	}
 	
 	/**
@@ -71,5 +72,113 @@ public abstract class LogFactory {
 	 * @return The 
 	 */
 	protected abstract Log newLogger(String name);
+	
+	/*
+	 * This class is an empty logger, it implements all methods of the
+	 * Log interface and leaves them empty. Its main purpose is robustness:
+	 * It is only used in the case where LogFactory.init was not called, but
+	 * a class which uses the LogFactory interface is used somewhere. The
+	 * getLogger method will then return a new EmptyLogger instance instead of null,
+	 * such that existing code will not fail with a NullPointerException.
+	 */
+	private static class EmptyLogger implements Log {
+		
+		/**
+		 * Creates a new empty logger instance.
+		 */
+		public EmptyLogger() {
+			// Do nothing
+		}
+		
+		// @Override
+		public void debug(Object message, Throwable t) {
+			// Do nothing
+		}
+		
+		// @Override
+		public void debug(Object message) {
+			// Do nothing
+		}
+
+		// @Override
+		public void error(Object message, Throwable t) {
+			// Do nothing
+		}
+
+		// @Override
+		public void error(Object message) {
+			// Do nothing
+		}
+
+		// @Override
+		public void fatal(Object message, Throwable t) {
+			// Do nothing
+		}
+
+		// @Override
+		public void fatal(Object message) {
+			// Do nothing
+		}
+
+		// @Override
+		public void info(Object message, Throwable t) {
+			// Do nothing
+		}
+
+		// @Override
+		public void info(Object message) {
+			// Do nothing
+		}
+
+		// @Override
+		public boolean isDebugEnabled() {
+			return false;
+		}
+
+		// @Override
+		public boolean isErrorEnabled() {
+			return false;
+		}
+
+		// @Override
+		public boolean isFatalEnabled() {
+			return false;
+		}
+
+		// @Override
+		public boolean isInfoEnabled() {
+			return false;
+		}
+
+		// @Override
+		public boolean isTraceEnabled() {
+			return false;
+		}
+
+		// @Override
+		public boolean isWarnEnabled() {
+			return false;
+		}
+
+		// @Override
+		public void trace(Object message, Throwable t) {
+			// Do nothing
+		}
+
+		// @Override
+		public void trace(Object message) {
+			// Do nothing
+		}
+
+		// @Override
+		public void warn(Object message, Throwable t) {
+			// do nothing
+		}
+
+		// @Override
+		public void warn(Object message) {
+			// Do nothing
+		}
+	}
 	
 }
