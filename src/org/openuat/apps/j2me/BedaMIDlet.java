@@ -13,6 +13,7 @@ import java.util.Random;
 import java.util.Vector;
 
 import javax.bluetooth.RemoteDevice;
+import javax.bluetooth.UUID;
 import javax.microedition.lcdui.Alert;
 import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Choice;
@@ -25,6 +26,9 @@ import javax.microedition.lcdui.List;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
 
+import net.sf.microlog.ui.LogForm;
+
+import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.channel.oob.ButtonChannel;
@@ -38,7 +42,10 @@ import org.openuat.channel.oob.j2me.J2MEButtonChannelImpl;
 import org.openuat.log.Log;
 import org.openuat.log.LogFactory;
 import org.openuat.log.j2me.MicrologFactory;
+import org.openuat.log.j2me.MicrologLogger;
 import org.openuat.util.BluetoothPeerManager;
+import org.openuat.util.BluetoothRFCOMMChannel;
+import org.openuat.util.BluetoothRFCOMMServer;
 
 /**
  * This MIDlet demonstrates the different button channels within the OpenUAT
@@ -49,7 +56,7 @@ import org.openuat.util.BluetoothPeerManager;
  * @author Lukas Huser
  * @version 1.0
  */
-public class BedaMIDlet extends MIDlet {	
+public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler {	
 	/*
 	 * GUI stuff
 	 */
@@ -69,6 +76,9 @@ public class BedaMIDlet extends MIDlet {
 	
 	/* A list of all found bluetooth devices */
 	private List deviceList;
+	
+	/* The microlog LogForm */
+	private LogForm logForm;
 
 	/* Enables the user to go back to the last screen */
 	private Command backCommand;
@@ -88,6 +98,9 @@ public class BedaMIDlet extends MIDlet {
 	
 	/* Scans for bluetooth devices around */
 	private BluetoothPeerManager peerManager;
+	
+	/* Bluetooth server to advertise our services and accept incoming connections */
+	private BluetoothRFCOMMServer btServer;
 	
 	/* A collection of found devices */
 	private RemoteDevice[] devices;
@@ -129,9 +142,17 @@ public class BedaMIDlet extends MIDlet {
 	 * Starts this MIDlet. MIDlet initialization is done here.
 	 */
 	protected void startApp() throws MIDletStateChangeException {
-		// Initialize the logger. Use a wrapper around microlog framework.
+		// Initialize the logger. Use a wrapper around the microlog framework.
 		LogFactory.init(new MicrologFactory());
 		logger = LogFactory.getLogger("org.openuat.apps.j2me.BedaMIDlet");
+		// TODO: should configure microlog in its properties file
+		net.sf.microlog.Logger l = ((MicrologLogger)logger).getNativeLogger();
+		l.setLogLevel(net.sf.microlog.Level.DEBUG);
+		l.addAppender(new net.sf.microlog.appender.FileAppender());
+		logForm = new LogForm();
+		logForm.setDisplay(Display.getDisplay(this));
+		logForm.setPreviousScreen(welcomeScreen);
+		l.addAppender(new net.sf.microlog.appender.FormAppender(logForm));
 		logger.debug("Logger initialized!");
 		
 		// MIDlet initialization
@@ -149,12 +170,25 @@ public class BedaMIDlet extends MIDlet {
 		currentPeerAddress = "";
 		random = new Random(System.currentTimeMillis());
 		
+		// bluetooth
 		setUpPeerManager();
+		try {
+			UUID uuid = new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false);
+			btServer = new BluetoothRFCOMMServer(null, uuid, "UACAP-Beda", 30000, true, false);
+			btServer.addAuthenticationProgressHandler(this);
+			btServer.start();
+			if (logger.isInfoEnabled()) {
+				logger.info("Finished starting SDP service at " + btServer.getRegisteredServiceURL());
+			}
+		} catch (IOException e) {
+			logger.error("Could not create bluetooth server.", e);
+		}
 		
 		// create menu on welcome screen
-		final Command exitCommand = new Command("Exit", Command.EXIT, 1);
-		final Command testCommand = new Command("Test", "Test channels", Command.ITEM, 3);
-		final Command searchCommand = new Command("Search", "Search devices", Command.ITEM, 2);
+		final Command exitCommand	= new Command("Exit", Command.EXIT, 1);
+		final Command testCommand	= new Command("Test", "Test channels", Command.ITEM, 3);
+		final Command searchCommand	= new Command("Search", "Search devices", Command.ITEM, 2);
+		final Command logCommand	= new Command("Log", "Show log", Command.ITEM, 3);
 		
 		CommandListener listener = new CommandListener() {
 			public void commandAction(Command c, Displayable d) {
@@ -168,22 +202,52 @@ public class BedaMIDlet extends MIDlet {
 				}
 				else if (c == testCommand) {
 					buildChannelList(true);
+					logger.debug("Test channels...");
 					display.setCurrent(channelList);
 				}
 				else if (c == exitCommand) {
 					notifyDestroyed();
+				}
+				else if (c == logCommand) {
+					display.setCurrent(logForm);
 				}
 			}
 		};
 		welcomeScreen.addCommand(exitCommand);
 		welcomeScreen.addCommand(searchCommand);
 		welcomeScreen.addCommand(testCommand);
+		welcomeScreen.addCommand(logCommand);
 		welcomeScreen.setCommandListener(listener);
 		
 		// launch gui
 		display.setCurrent(welcomeScreen);
 	}
 	
+	
+	// @Override
+	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+		logger.error(msg, e);
+		// TODO: show error message
+		display.setCurrent(welcomeScreen);
+	}
+	
+	// @Override
+	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+		// so this is nice... just keep going
+	}
+	
+	// @Override
+	public boolean AuthenticationStarted(Object sender, Object remote) {
+		// TODO: not sure what to do here, just return true...
+		return true;
+	}
+
+	// @Override
+	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
+		// TODO: inform user
+		display.setCurrent(welcomeScreen);
+	}
+
 	/* Helper method to initialize the channelList */
 	private void buildChannelList(boolean isTest) {
 		String[] listItems = {"Input", "Flash display", "Progressbar", "Short vibration", "Long vibration"};
@@ -334,6 +398,9 @@ public class BedaMIDlet extends MIDlet {
 		devices 			= null;
 		currentPeerAddress	= null;
 		random 				= null;
+		logger				= null;
+		BluetoothRFCOMMChannel.shutdownAllChannels();
+		btServer 			= null;
 	}
 	
 	/* Test the transmit functionality (offline) */
