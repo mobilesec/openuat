@@ -26,6 +26,7 @@ public class MicrologFactory extends LogFactory {
 	public MicrologFactory() {
 		// empty constructor
 	}
+	
 	//@Override
 	protected Log newLogger(String name) {
 		return new MicrologLogger(name);
