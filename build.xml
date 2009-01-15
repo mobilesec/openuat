@@ -919,7 +919,7 @@
 	<target name="dist-source" description="Create source distribution">
 		<zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 			<fileset dir="." 
-		    	     includes="build.xml Changelog README FAQ METHODS TODO .classpath .project 
+		    	     includes="build.xml build.properties Changelog README FAQ METHODS TODO .classpath .project 
 						src/**/* lib/**/* doc/**/* dist/*.jnlp 
 						tests/**/*
 						thirdparty/bouncycastle-*-deps/**/* 
@@ -927,15 +927,14 @@
 						thirdparty/ipsec2k.1.1/**/*.cpp thirdparty/ipsec2k.1.1/**/wstring 
 						thirdparty/ipsec2k.1.1/**/buffer thirdparty/ipsec2k.1.1/**/*.vcproj 
 						thirdparty/ipsec2k.1.1/**/*.sln thirdparty/ipsec2k.1.1/**/*.txt 
-						thirdparty/apache-bzip2/**/* thirdparty/log4jMini/**/* 
-						thirdparty/microlog/**/* thirdparty/log4jNoop/**/* 
+						thirdparty/apache-bzip2/**/* thirdparty/microlog/**/* thirdparty/log4jNoop/**/* 
 						thirdparty/avetanaNoop/**/* nativelib/**/* 
 						thirdparty/NokiaAccelerometerSensorDaemon/**/*
 						thirdparty/findbugs-*/**/*"/>
 		</zip>
 	</target>
     
-	<target name="dist" depends="dist-webstart,dist-javadoc,dist-source"
+	<target name="dist" depends="junit,dist-webstart,dist-javadoc,dist-source"
 		description="Create a complete distribution, including webstart, source, and docs"/>
     
 <!--    <target name="deploy-webstart" depends="dist-webstart" 

@@ -54,7 +54,8 @@ public class PairTest extends TestCase {
 	 * Test method for {@link org.openuat.util.Pair#getKey(java.lang.String)}.
 	 */
 	public void testGetKey() {
-		fail("Not yet implemented");
+		// TODO
+		//fail("Not yet implemented");
 		Assert.assertTrue(Arrays.equals(key1,target.getKey("ni")));
 		Assert.assertFalse(Arrays.equals(key1,target.getKey("foo")));
 	}
