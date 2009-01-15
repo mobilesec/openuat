@@ -49,6 +49,8 @@
 	<property name="build.midp.work" location="${build}/midp-work"/>
 	<property name="build.midp.temp" location="${build}/midp-tmp"/>
 	<property name="bin.midp" location="${build}/midp-bin"/>
+	<property name="build.distcheck" location="${build}/dist-check"/>
+	
 	<property name="compile.debug" value="true"/>
 	<property name="debug" value="false"/>
 
@@ -906,7 +908,7 @@
 		     classpathref="lib.path.all"
 		     access="protected"
 		     version="true" author="true" source="1.5">
-			<bottom><![CDATA[<i>2005-2006, Rene Mayrhofer.</i>]]></bottom>
+			<bottom><![CDATA[<i>2005-2009, Rene Mayrhofer.</i>]]></bottom>
 			<link href="www.openuat.org"/>
 		</javadoc>
 		
@@ -920,16 +922,14 @@
 		<zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 			<fileset dir="." 
 		    	     includes="build.xml build.properties Changelog README FAQ METHODS TODO .classpath .project 
-						src/**/* lib/**/* doc/**/* dist/*.jnlp 
+						src/**/* pythonsrc/**/* phpsrc/**/* resources/**/* lib/**/* dist/*.jnlp 
 						tests/**/*
-						thirdparty/bouncycastle-*-deps/**/* 
-						thirdparty/avetanabt/**/* thirdparty/ipsec2k.1.1/**/*.h 
+						thirdparty/bouncycastle-*-deps/**/* thirdparty/ipsec2k.1.1/**/*.h 
 						thirdparty/ipsec2k.1.1/**/*.cpp thirdparty/ipsec2k.1.1/**/wstring 
 						thirdparty/ipsec2k.1.1/**/buffer thirdparty/ipsec2k.1.1/**/*.vcproj 
 						thirdparty/ipsec2k.1.1/**/*.sln thirdparty/ipsec2k.1.1/**/*.txt 
 						thirdparty/apache-bzip2/**/* thirdparty/microlog/**/* thirdparty/log4jNoop/**/* 
-						thirdparty/avetanaNoop/**/* nativelib/**/* 
-						thirdparty/NokiaAccelerometerSensorDaemon/**/*
+						thirdparty/avetanaNoop/**/* thirdparty/zxing/**/* thirdparty/bandy/**/* nativelib/**/* 
 						thirdparty/findbugs-*/**/*"/>
 		</zip>
 	</target>
@@ -937,6 +937,47 @@
 	<target name="dist" depends="junit,dist-webstart,dist-javadoc,dist-source"
 		description="Create a complete distribution, including webstart, source, and docs"/>
     
+	<target name="dist-checkbuild" depends="dist"
+		description="Test building the complete source distribution. This checks if a 'ant dist' as run from a clean tree creates a source ZIP that equals the source tree it was created with. It should be executed before publishing a release.">
+		<mkdir dir="${build.distcheck}" />
+		<mkdir dir="${build.distcheck}/orig" />
+		<mkdir dir="${build.distcheck}/build-clean" />
+		<mkdir dir="${build.distcheck}/build-extract" />
+		
+		<echo message="Unzipping source ZIP created from master tree (twice)" />
+		<unzip src="${zipfile.source}" dest="${build.distcheck}/orig" />
+		<unzip src="${zipfile.source}" dest="${build.distcheck}/build-clean" />
+		
+		<echo message="Calling 'junit' and 'dist' targets in unzipped source tree" />
+		<ant antfile="build.xml" inheritrefs="no" inheritall="no" dir="${build.distcheck}/build-clean">
+			<!-- don't call the "dist" target because that would include "dist-webstart" which can't run without the keystore -->
+			<target name="junit" />
+			<target name="dist-javadoc" />
+			<target name="dist-source" />
+		</ant>
+		
+		<echo message="Unzipping source ZIP created from unzipped tree" />
+		<unzip src="${build.distcheck}/build-clean/dist/${ant.project.name}-src.zip" dest="${build.distcheck}/build-extract" />
+	
+		<echo message="Calling 'clean' target in unzipped source tree" />
+		<ant antfile="build.xml" target="clean" inheritrefs="no" inheritall="no" dir="${build.distcheck}/build-clean"/>
+		<!-- manually clean those two parts - they are normally left intact on a "clean" -->
+		<delete dir="${build.distcheck}/build-clean/reports"/>
+		<delete file="${build.distcheck}/build-clean/build.number"/>
+		
+		<echo message="Comparing all three unzipped trees - they should be equal" />
+		<exec executable="diff" failonerror="true" failifexecutionfails="true">
+			<arg value="-rq" />
+			<arg value="${build.distcheck}/orig" />
+			<arg value="${build.distcheck}/build-clean" />
+		</exec>
+		<exec executable="diff" failonerror="true" failifexecutionfails="true">
+			<arg value="-rq" />
+			<arg value="${build.distcheck}/orig" />
+			<arg value="${build.distcheck}/build-extract" />
+		</exec>	
+	</target>
+
 <!--    <target name="deploy-webstart" depends="dist-webstart" 
 	    description="Upload the web start distribution files to the web server">
 	    <scp todir="root@ubicomp.lancs.ac.uk:/home/httpd/fileadmin/relate/webstart/"
