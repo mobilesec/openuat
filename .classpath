@@ -30,5 +30,6 @@
 	<classpathentry kind="lib" path="lib/j2me/jsr75.jar"/>
 	<classpathentry kind="lib" path="lib/bluecove-emu-2.0.3.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/martijn/My Documents/UniVie/Praktikum Vernetzte systeme/tgdh_classes/tgdh-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
