@@ -35,11 +35,18 @@ import junit.textui.TestRunner;
 
 public class App2tgdh  implements ifListener {
 	
+	private static LeafNode hostNode = new LeafNode();
+	
 	private static BasicTree testTree;
 	private static LeafNode newNode;
 	private static CommPlain communicator;
 	private static byte[] privateTestKey = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 	private static byte[] publicTestKey = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0};
+
+	private static String[] messageStringArray = new String[4];
+	
+
+	
 	
 	
 	public static BasicTree createTree(String _uniqueId){
@@ -51,12 +58,19 @@ public class App2tgdh  implements ifListener {
 		//Just one Node
 		Node[] node = new Node[]{M1};
 		
+		hostNode = M1;
+		
 		
 		TreeInfo treeinfo = new TreeInfo(node, TreeInfo.PREORDER, _uniqueId);
 
 		//Two types of trees can be created
 //		Tree newTree = new Tree(treeinfo);
 		BasicTree newTree = new BasicTree(treeinfo);
+		
+		ifListener ifListen = null;
+		communicator.sendMsg("tree", "1"+"*"+"1"+"*"+"1"+"*"+newTree.toString(), ifListen);
+		
+		
 		return newTree;
 	}
 	
@@ -67,8 +81,12 @@ public class App2tgdh  implements ifListener {
 		 * @param _basicTree Existing tree
 		 * @param _treeGroupName The group name the new node want to join to
 		 */
-		newNode = new LeafNode(_uniqueID);
 
+		newNode = new LeafNode(_uniqueID);
+		/**
+		 * newNode = hostNode; can be used as well after the node was created first
+		 */
+		
 
 		/**
 		 * HOW TO DO THISSS?
@@ -81,16 +99,14 @@ public class App2tgdh  implements ifListener {
 
 		JoinMessage joinMessage = new JoinMessage(_treeGroupName,newNode);
 		
-		/**
-		 * Creates new communicator threat
-		 */
+
 
 
 		/**
 		 * Why ifListener ifListen = null; ?
 		 */
 		ifListener ifListen = null;
-		communicator.sendMsg("tree", joinMessage.toString(), ifListen);
+		communicator.sendMsg("tree", "2"+"*"+"2"+"*"+"1"+"*"+joinMessage.toString(), ifListen);
 
 		
 
@@ -104,7 +120,10 @@ public class App2tgdh  implements ifListener {
 		 */
 		String uniqueId = "12345";
 		String uniqueId2 = "6789";
-		
+
+		/**
+		 * Creates new communicator threat
+		 */
 		communicator = new CommPlain();
 		Thread commThread = new Thread(communicator);
 		commThread.start();		
@@ -120,32 +139,33 @@ public class App2tgdh  implements ifListener {
 		System.out.println(testTree.basicTreeInfo());
 	}
 
-	@Override
 	public void handleStringEvent(String _data, boolean _success) {
 		// TODO Auto-generated method stub
 
 		/**
 		 * JOIN step 2
-		 * Let's say _data is join message (how to detect this!?)
 		 * 
 		 * TODO updates key tree
 		 * TODO get all nodes from SponsorNode to Root and remove all there keys
 		 */
 
-		
-		LeafNode[] nodesToRoot = testTree.leafNodes();
-		LeafNode sponsor = null;
-		try {
-			sponsor = (LeafNode) testTree.join(newNode);
-		} catch (TgdhException e) {
-			e.printStackTrace();
+		if(retreiveMessage(_data, "2", "2", "1")){
+			
+			//JoinMessage joinMessage =  messageStringArray[3];
+			
+			LeafNode sponsor = null;
+			try {
+				sponsor = (LeafNode) testTree.join(newNode);
+			} catch (TgdhException e) {
+				e.printStackTrace();
+			}			
+
+			ifListener ifListen = null;
+			//Broadcast new tree
+			communicator.sendMsg("tree", "1"+"*"+"2"+"*"+"2"+"*"+testTree.toString(), ifListen);
+			communicator.sendMsg("tree", sponsor.toString(), ifListen);
 		}
 
-	
-		ifListener ifListen = null;
-		//Broadcast new tree
-		communicator.sendMsg("tree", testTree.toString(), ifListen);
-		communicator.sendMsg("tree", sponsor.toString(), ifListen);
 
 		/**
 		 * JOIN step 3
@@ -154,11 +174,42 @@ public class App2tgdh  implements ifListener {
 		 * TODO compute new group key using the new tree
 		 */		
 		
-
+		if(retreiveMessage(_data, "1", "2", "2")){
 		
+		
+		}
 	}
 
-	@Override
+	/**
+	 * 
+	 * MESSAGE: messageType*messageProtocolAlteration*messageProtocolStep*PAYLOAD
+	 * 
+	 * MESSAGE TYPES:
+	 * 1. tree: message contains a tree
+	 * 2. joinMessage: JoinMessage 
+	 * 
+	 * MESSAGE TREE ALTERATION:
+	 * 1. create: at creating trees
+	 * 2. join:at joining into tree
+	 * 
+	 * MESSAGE PROTOCOL STEP
+	 * 1,2,3,4
+	 * 
+	 */	
+	
+	
+	public static boolean retreiveMessage(String _data, String _messageType, String _treeAlteration, String _messageStep){
+		
+		messageStringArray = null;
+		messageStringArray = _data.split("*");
+		if (messageStringArray[0] == _messageType && messageStringArray[1] == _treeAlteration && messageStringArray[2] == _messageStep && !messageStringArray[3].isEmpty()){
+			return true;
+		}
+		
+		return false;
+	}
+	
+
 	public void run() {
 		// TODO Auto-generated method stub
 		
