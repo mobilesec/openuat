@@ -1,4 +1,4 @@
-/* Copyright Martijn Sack
+/** Copyright Martijn Sack
  * File created 2009-01-18
  *
  * This program is free software; you can redistribute it and/or modify
