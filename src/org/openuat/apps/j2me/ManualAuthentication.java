@@ -19,14 +19,18 @@ import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
-import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.log.Log;
+import org.openuat.log.LogFactory;
+import org.openuat.log.j2me.MicrologFactory;
+import org.openuat.log.j2me.MicrologLogger;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
+import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
@@ -38,36 +42,52 @@ import org.openuat.util.RemoteConnection;
  */
 public class ManualAuthentication extends MIDlet implements CommandListener,
 		BluetoothPeerManager.PeerEventsListener, AuthenticationProgressHandler {
-	public final static UUID SERVICE_UUID = new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false);
 	
-	List main_list;
-
-	List dev_list;
-
-	List serv_list;
-
-	Command exit;
-
-	Command back;
-
-	Command log;
+	/**
+	 * Manual authentication service identifier.
+	 */
+	public static final UUID SERVICE_UUID = new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false);
 	
-	Command auth;
+	/* 
+	 * Number of characters of the hash string (hex) that will be shown to the user.
+	 * Used by the 'Hash Comparison' authentication method.
+	 */
+	private static final int HASH_STRING_LENGTH		= 12;
+	
+	/* Defines a channel for bluetooth connections */
+	private static final int BLUETOOTH_CHANNEL_NR	= 5;
+	
+	private List main_list;
 
-	Display display;
+	private List dev_list;
+
+	private List serv_list; 
+
+	private Command exit;
+
+	private Command back;
+
+	private Command log;
 	
-	BluetoothPeerManager peerManager;
+	private Command auth;
+
+	private Display display;
 	
-	BluetoothRFCOMMServer rfcommServer;
+	private BluetoothPeerManager peerManager;
 	
-	LogForm logForm;
+	private BluetoothRFCOMMServer rfcommServer;
+	
+	private String currentPeerAddress;
+	
+	private LogForm logForm;
 
 	// our logger
-	Logger logger = Logger.getLogger("org.openuat.apps.j2me.ManualAuthentication");
+	private Log logger;
 	
 	public ManualAuthentication() {
 		display = Display.getDisplay(this);
-
+		currentPeerAddress = null;
+		
 		// problem with CRLF in microlog.properies? try unix2dos...
         /*try {
             GlobalProperties.init(this);
@@ -76,7 +96,9 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
         }
 		logger.configure(GlobalProperties.getInstance());*/
 		
-		net.sf.microlog.Logger logBackend = net.sf.microlog.Logger.getLogger();
+		LogFactory.init(new MicrologFactory());
+		logger = LogFactory.getLogger("org.openuat.apps.j2me.ManualAuthentication");
+		net.sf.microlog.Logger logBackend = ((MicrologLogger)logger).getNativeLogger();
 		logForm = new LogForm();
 		logForm.setDisplay(display);
 		logBackend.addAppender(new FormAppender(logForm));
@@ -90,7 +112,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 		}
 
 		try {
-			rfcommServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, "J2ME Test Service", 
+			rfcommServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, "Manual Authentication", 
 					10000, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
@@ -161,9 +183,12 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 			if (dis == dev_list) { //select triggered from the device list
 				if (dev_list.getSelectedIndex() >= 0) { //find services
 					RemoteDevice[] devices = peerManager.getPeers();
-					
+					currentPeerAddress = devices[dev_list.getSelectedIndex()].getBluetoothAddress();
+					if (logger.isDebugEnabled()) {
+						logger.debug("currentPeerAddress set to " + currentPeerAddress);
+					}
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
-					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], null)) {
+					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], SERVICE_UUID)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
 					do_alert("Inquiring device for services...", Alert.FOREVER);
@@ -171,13 +196,21 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 			}
 			if (dis == serv_list) {
 				if (serv_list.getSelectedIndex() >= 0) {
-					boolean keepConnected = false;
-					String optionalParam = null;
 					
 					// TODO: ask for authentication type and direction
 					
-/*					HostProtocolHandler.startAuthenticationWith(new BluetoothRFCOMMChannel(),
-							this, 10000, keepConnected, optionalParam, false);*/
+					boolean keepConnected = true;
+					String optionalParam = null;
+					
+					// At the moment, only hash comparison is available
+					try {
+						BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(currentPeerAddress, BLUETOOTH_CHANNEL_NR);
+						channel.open();
+						logger.debug("Bluetooth channel opened, start DH key agreement.");
+						HostProtocolHandler.startAuthenticationWith(channel, this, 10000, keepConnected, optionalParam, false);
+					} catch (IOException e) {
+						logger.error("Failed to open connection to peer.", e);
+					}
 				}
 			}
 		}
@@ -277,18 +310,80 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
         byte[] sharedKey = (byte[]) res[0];
         // and extract the shared authentication key for phase 2
         byte[] authKey = (byte[]) res[1];
-        // then extraxt the optional parameter
+        // then extract the optional parameter
         String param = (String) res[2];
         logger.info("Extracted session key of length " + sharedKey.length +
         		", authentication key of length " + authKey.length + 
         		" and optional parameter '" + param + "'");
         RemoteConnection connectionToRemote = (RemoteConnection) res[3];
+        
+        // At the moment, only hash comparison is available
+		verifyHashComparison(authKey);
+		
+		/*
         try {
         	LineReaderWriter.println(connectionToRemote.getOutputStream(), 
         			"Finished DH key agreement - now start to verify");
 		} catch (IOException e) {
 			logger.debug("Unable to open stream to remote: " + e);
 		}
+		
 		do_alert("Authentication with " + remote + " successful", Alert.FOREVER);
+		*/
+	}
+	
+	/*
+	 * Verifies that the two devices agreed on the same public data string by
+	 * showing a hash of it to the user. The user will then compare the displayed
+	 * strings on both devices and gives appropriate feedback.
+	 */
+	private void verifyHashComparison(byte[] authKey) {
+		logger.debug("Start key verification: Hash comparison");
+		String hashString;
+        try {
+			hashString = getHexString(Hash.doubleSHA256(authKey, false));
+			hashString = hashString.substring(0, HASH_STRING_LENGTH);
+		} catch (InternalApplicationException e) {
+			logger.error("Failed to build hash.", e);
+			return;
+		}
+		Form userFeedback = new Form ("Hash Comparison");
+		userFeedback.append(hashString + "\n\n");
+		userFeedback.append("Please compare the above string with the other device.\nAre they the same?");
+		final Command equalsCommand 	= new Command("Yes", Command.OK, 1);
+		final Command notEqualsCommand	= new Command("No", Command.CANCEL, 1);
+		userFeedback.addCommand(equalsCommand);
+		userFeedback.addCommand(notEqualsCommand);
+		CommandListener feedbackListener = new CommandListener() {
+			//@Override
+			public void commandAction(Command command, Displayable d) {
+				if (command == equalsCommand) {
+					Alert a = new Alert("Hash comparison",
+							"Authentication successful!", null, AlertType.CONFIRMATION);
+					a.setTimeout(Alert.FOREVER);
+					display.setCurrent(a, main_list);
+				}
+				else if (command == notEqualsCommand) {
+					Alert a = new Alert("Hash comparison",
+							"Authentication failed!", null, AlertType.ERROR);
+					a.setTimeout(Alert.FOREVER);
+					display.setCurrent(a, main_list);
+				}
+			}
+		};
+		userFeedback.setCommandListener(feedbackListener);
+		display.setCurrent(userFeedback);
+	}
+	
+	/* 
+	 * Convenience method to convert a byte[] to a hex string
+	 * (since J2ME does not support the String.format() method) 
+	 */
+	private String getHexString(byte[] b) {
+		String result = "";
+		for (int i = 0; i < b.length; i++) {
+			result += Integer.toString((b[i] & 0xff) + 0x100, 16).substring(1);
+		}
+		return result;
 	}
 }
