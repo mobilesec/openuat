@@ -704,6 +704,26 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (timeoutMs > 0)
             	timer = new SafetyBeltTimer(timeoutMs, fromRemote);
 
+            // hello from client
+            if (!serverSide) {
+            	println(Protocol_Hello);
+            }
+            else {
+            	String msg = readLine();
+            	if (!msg.equals(Protocol_Hello)) {
+            		if (protocolCommandHandlers != null && protocolCommandHandlers.containsKey(msg)) {
+            			ProtocolCommandHandler commandHandler = (ProtocolCommandHandler)protocolCommandHandlers.get(msg);
+            			if (commandHandler.handleProtocol(msg, connection)) {
+            				return;
+            			}
+            		}
+            		raiseAuthenticationFailureEvent(connection, null, "Protocol error: did not get greeting from client");
+                    shutdownConnectionCleanly();
+                    return;
+            	}
+            }
+            
+            // hello from server
             if (serverSide) {
             	println(Protocol_Hello);
             }
