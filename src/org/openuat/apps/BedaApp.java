@@ -277,6 +277,9 @@ public class BedaApp {
 				String txt = String.format(
 					"The following message has been captured: %02x%02x%02x",
 					data[0], data[1], data[2]);
+				if (logger.isInfoEnabled()) {
+					logger.info("Capture ok. Message: " + txt);
+				}
 				JOptionPane.showMessageDialog(mainWindow, txt, "Capture ok", JOptionPane.INFORMATION_MESSAGE);
 			}
 		};
@@ -295,7 +298,9 @@ public class BedaApp {
 				String txt = String.format(
 					"The following message has been transmitted: %02x%02x%02x",
 					randomMessage[0], randomMessage[1], randomMessage[2]);
-				
+				if (logger.isInfoEnabled()) {
+					logger.info("Transmission ok. Message: " + txt);
+				}
 				JOptionPane.showMessageDialog(mainWindow, txt, "Transmission ok", JOptionPane.INFORMATION_MESSAGE);
 			}
 		};
