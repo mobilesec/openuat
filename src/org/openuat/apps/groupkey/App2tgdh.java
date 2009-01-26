@@ -12,6 +12,7 @@ package org.openuat.apps.groupkey;
 import java.io.NotSerializableException;
 
 import sun.security.provider.DSAPrivateKey;
+
 import tgdh.*;
 import tgdh.comm.*;
 
@@ -22,8 +23,9 @@ import org.openuat.util.ifListener;
 import tgdh.crypto.*;
 import tgdh.tree.*;
 import junit.framework.TestCase;
+import junit.framework.TestResult;
 import junit.textui.TestRunner;
-
+ 
 /**
  * @author Martijn Sack
  *
@@ -33,7 +35,7 @@ import junit.textui.TestRunner;
  * org.openuat.channel.http is used as communicator instead of the tgdh.comm class.
  */
 
-public class App2tgdh  implements ifListener {
+public class App2tgdh  implements ifListener  {
 	
 	private static LeafNode hostNode = new LeafNode();
 	
@@ -45,9 +47,9 @@ public class App2tgdh  implements ifListener {
 
 	private static String[] messageStringArray = new String[4];
 	
-
-	
-	
+	public App2tgdh(){
+		
+	};
 	
 	public static BasicTree createTree(String _uniqueId){
 		/**
@@ -67,14 +69,14 @@ public class App2tgdh  implements ifListener {
 //		Tree newTree = new Tree(treeinfo);
 		BasicTree newTree = new BasicTree(treeinfo);
 		
-		ifListener ifListen = null;
-		communicator.sendMsg("tree", "1"+"*"+"1"+"*"+"1"+"*"+newTree.toString(), ifListen);
-		
-		
+//		ifListener ifListen = null;
+//		communicator.sendMsg("tree", "1"+"*"+"1"+"*"+"1"+"*"+newTree.toString(), ifListen);
+
+
 		return newTree;
 	}
 	
-	public static void joinTree(BasicTree _basicTree, String _uniqueID, String _treeGroupName) throws Exception{
+	public static BasicTree joinTree(BasicTree _basicTree, String _uniqueID, String _treeGroupName) throws Exception{
 		/**
 		 * Sends join message to the server
 		 * @param _uniqueID Creates newNode from,  
@@ -82,6 +84,8 @@ public class App2tgdh  implements ifListener {
 		 * @param _treeGroupName The group name the new node want to join to
 		 */
 
+		BasicTree basicTree = _basicTree;
+		
 		newNode = new LeafNode(_uniqueID);
 		/**
 		 * newNode = hostNode; can be used as well after the node was created first
@@ -98,18 +102,18 @@ public class App2tgdh  implements ifListener {
 //		newNode.setKeys(privateKey , publicKey);
 
 		JoinMessage joinMessage = new JoinMessage(_treeGroupName,newNode);
-		
-
-
 
 		/**
 		 * Why ifListener ifListen = null; ?
 		 */
-		ifListener ifListen = null;
-		communicator.sendMsg("tree", "2"+"*"+"2"+"*"+"1"+"*"+joinMessage.toString(), ifListen);
+//		ifListener ifListen = null;
+//		communicator.sendMsg("tree", "2"+"*"+"2"+"*"+"1"+"*"+joinMessage.toString(), ifListen);
 
+
+		LeafNode sponsor = (LeafNode) basicTree.join(new LeafNode(_uniqueID));
+		System.out.println(basicTree);
 		
-
+		return basicTree;
 		
 		
 	}
@@ -124,9 +128,10 @@ public class App2tgdh  implements ifListener {
 		/**
 		 * Creates new communicator threat
 		 */
-		communicator = new CommPlain();
-		Thread commThread = new Thread(communicator);
-		commThread.start();		
+//		communicator = new CommPlain();
+//		Thread commThread = new Thread(communicator);
+//		commThread.start();		
+
 
 		
 		testTree = createTree(uniqueId);
@@ -136,7 +141,16 @@ public class App2tgdh  implements ifListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		System.out.println(testTree.basicTreeInfo());
+//		System.out.println(testTree.basicTreeInfo());
+		
+//	    try{
+//	        TestRunner.run( App2tgdh . class);
+//	        System.exit(0);
+//	    } catch(Exception e){
+//	        e.printStackTrace();
+//	        System.exit(-2);
+//	    }
+		
 	}
 
 	public void handleStringEvent(String _data, boolean _success) {
@@ -210,9 +224,9 @@ public class App2tgdh  implements ifListener {
 	}
 	
 
-	public void run() {
-		// TODO Auto-generated method stub
-		
-	}	
+	public  void run() {
+
+	}
 	
+
 }
