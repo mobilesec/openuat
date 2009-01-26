@@ -1,3 +1,12 @@
+/** Copyright Martijn Sack
+ * File created 2009-01-26
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
 package org.openuat.apps.groupkey;
 
 import com.sun.corba.se.impl.orb.ParserTable.TestBadServerIdHandler;
@@ -24,7 +33,7 @@ public class app2tgdh_tests extends TestCase{
 		testBasicTree();
 		testJoinTree();
 		testLeaveTree();
-		
+		testBasicPartitioning();
 		
 	}
 
@@ -119,5 +128,33 @@ public class app2tgdh_tests extends TestCase{
 		
 	}
 	
-	
+	public static void testBasicPartitioning(){
+		BasicTree tree1 = app2tgdh.createTree("M1");
+		BasicTree newTree = null;
+		
+		try {
+			tree1 = app2tgdh.joinTree(tree1, "M2", "testTree1");
+			tree1 = app2tgdh.joinTree(tree1, "M3", "testTree1");
+			tree1 = app2tgdh.joinTree(tree1, "M4", "testTree1");
+			tree1 = app2tgdh.joinTree(tree1, "M5", "testTree1");
+			tree1 = app2tgdh.joinTree(tree1, "M6", "testTree1");
+			tree1 = app2tgdh.joinTree(tree1, "M7", "testTree1");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		//expected tree1 before partitioning
+		String beforePartitioning = "Preorder: <0,0>, <1,0>, <2,0>, <3,0>(M1), <3,1>(M2), <2,1>, <3,2>(M3), <3,3>(M4), <1,1>, <2,2>(M5), <2,3>, <3,6>(M6), <3,7>(M7)";
+		assertEquals("Tree information before partitioning", beforePartitioning, tree1.toString());			
+		
+		Node[] nodesToLeave = new Node[]{tree1.leafNode("M1"),tree1.leafNode("M4")};
+
+		newTree = app2tgdh.partitionTree(tree1, nodesToLeave);
+		
+		//expected tree after partitioning
+		String afterPartitioning = "Preorder: <0,0>, <1,0>, <2,0>(M2), <2,1>(M3), <1,1>, <2,2>(M5), <2,3>, <3,6>(M6), <3,7>(M7)";
+		assertEquals("Tree information before partitioning", afterPartitioning, newTree.toString());
+		
+	}
 }

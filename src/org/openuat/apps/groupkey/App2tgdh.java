@@ -146,7 +146,19 @@ public class App2tgdh  implements ifListener  {
 		return newTree;
 	}
 	
-	
+	public static BasicTree partitionTree(BasicTree _basicTree, Node[] _nodesToLeave){
+		BasicTree basicTree = _basicTree;
+		Node[] nodesToLeave = _nodesToLeave;
+		
+		try {
+			LeafNode[] sponsors = basicTree.basicPartition(nodesToLeave);
+		} catch (TgdhException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return basicTree;
+	}
 	
 	public static void main(String[] args) {
 		/**
