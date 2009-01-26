@@ -22,9 +22,6 @@ import org.openuat.util.ifListener;
 
 import tgdh.crypto.*;
 import tgdh.tree.*;
-import junit.framework.TestCase;
-import junit.framework.TestResult;
-import junit.textui.TestRunner;
  
 /**
  * @author Martijn Sack
@@ -103,20 +100,53 @@ public class App2tgdh  implements ifListener  {
 
 		JoinMessage joinMessage = new JoinMessage(_treeGroupName,newNode);
 
+//		System.out.println(joinMessage);		
+		
+
 		/**
 		 * Why ifListener ifListen = null; ?
 		 */
 //		ifListener ifListen = null;
-//		communicator.sendMsg("tree", "2"+"*"+"2"+"*"+"1"+"*"+joinMessage.toString(), ifListen);
+//		(communicator).sendMsg("tree", "2"+"*"+"2"+"*"+"1"+"*"+joinMessage.toString(), ifListen);
 
 
 		LeafNode sponsor = (LeafNode) basicTree.join(new LeafNode(_uniqueID));
-		System.out.println(basicTree);
+		
 		
 		return basicTree;
 		
 		
 	}
+
+	public static BasicTree leaveTree(BasicTree _basicTree, Node _leavingNode){
+
+		BasicTree basicTree = _basicTree;
+
+		try {
+			LeafNode sponsor = (LeafNode) basicTree.leave(_leavingNode);
+		} catch (TgdhException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return basicTree;
+	}
+
+	public static BasicTree mergeTrees(BasicTree _basicTree1, BasicTree _basicTree2){
+		BasicTree newTree = _basicTree1;
+		
+		BasicTree[] trees = new BasicTree[]{_basicTree2};
+		try {
+			LeafNode[] sponsors = newTree.merge(trees);
+		} catch (TgdhException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return newTree;
+	}
+	
+	
 	
 	public static void main(String[] args) {
 		/**
@@ -128,29 +158,10 @@ public class App2tgdh  implements ifListener  {
 		/**
 		 * Creates new communicator threat
 		 */
-//		communicator = new CommPlain();
-//		Thread commThread = new Thread(communicator);
-//		commThread.start();		
+		communicator = new CommPlain();
+		Thread commThread = new Thread(communicator);
+		commThread.start();		
 
-
-		
-		testTree = createTree(uniqueId);
-		try {
-			joinTree(testTree, uniqueId2, "testTree");
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-//		System.out.println(testTree.basicTreeInfo());
-		
-//	    try{
-//	        TestRunner.run( App2tgdh . class);
-//	        System.exit(0);
-//	    } catch(Exception e){
-//	        e.printStackTrace();
-//	        System.exit(-2);
-//	    }
-		
 	}
 
 	public void handleStringEvent(String _data, boolean _success) {
@@ -183,7 +194,6 @@ public class App2tgdh  implements ifListener  {
 
 		/**
 		 * JOIN step 3
-		 * Let's say _data is a new tree after joining (how to detect this!?)
 		 * 
 		 * TODO compute new group key using the new tree
 		 */		
