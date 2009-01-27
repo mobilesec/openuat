@@ -73,11 +73,20 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	private static final String DEVICE_LIST_TITLE 	= "Choose a device";
 	private static final String CHANNEL_LIST_TITLE	= "Choose a channel";
 	
-	/* The authentication service uuid. */
+	/* The authentication service uuid... */
 	private static final UUID SERVICE_UUID = new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false);
 	
-	/* Defines a channel for bluetooth connections */
-	private static final int BLUETOOTH_CHANNEL_NR	= 5;
+	/* ...and it's name */
+	private static final String SERVICE_NAME = "UACAP - Beda";
+	
+	/* An identifier used to register a command handler with the RFCOMMServer */
+	private static final String PRE_AUTH = "PRE_AUTH";
+	
+	/* Authentication method supported by BEDA: authentic transfer */
+	private static final String TRANSFER_AUTH = "TRANSFER_AUTH";
+	
+	/* Authentication method supported by BEDA: input */
+	private static final String INPUT = "INPUT";
 	
 	/* Current display */
 	private Display display;
@@ -119,8 +128,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	/* A collection of found devices */
 	private RemoteDevice[] devices;
 	
-	/* Bluetooth address of the current peer */
-	private String currentPeerAddress;
+	/* Url of the authentication service on other device */
+	private String currentPeerUrl;
 	
 	/* Remember the currently used button channel */
 	private OOBChannel currentChannel;
@@ -177,7 +186,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		deviceList		= new List(DEVICE_LIST_TITLE, Choice.IMPLICIT);
 		isInitiator		= false;
 		currentChannel	= null;
-		currentPeerAddress = "";
+		currentPeerUrl	= "";
 		random			= new Random(System.currentTimeMillis());
 		
 		buttonChannels = new Hashtable(10);
@@ -210,7 +219,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		// bluetooth initialization
 		setUpPeerManager();
 		try {
-			btServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, "UACAP-Beda", 30000, true, false);
+			btServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, SERVICE_NAME, 30000, true, false);
 			btServer.addAuthenticationProgressHandler(this);
 			btServer.start();
 			if (logger.isInfoEnabled()) {
@@ -225,15 +234,14 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				if (logger.isDebugEnabled()) {
 					logger.debug("Handle protocol command: " + firstLine);
 				}
-				// TODO: PRE_AUTH as constant
-				if (firstLine.equals("PRE_AUTH")) {
+				if (firstLine.equals(PRE_AUTH)) {
 					inputProtocol(false, remote, null);
 					return true;
 				}
 				return false;
 			}
 		};
-		btServer.addProtocolCommandHandler("PRE_AUTH", inputProtocolHandler);
+		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
 		
 		// create menu on welcome screen
 		final Command exitCommand	= new Command("Exit", Command.EXIT, 1);
@@ -242,8 +250,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		final Command logCommand	= new Command("Log", "Show log", Command.ITEM, 3);
 		
 		CommandListener listener = new CommandListener() {
-			public void commandAction(Command c, Displayable d) {
-				if (c == searchCommand) {
+			public void commandAction(Command cmd, Displayable d) {
+				if (cmd == searchCommand) {
 					//updateDeviceList();
 					//display.setCurrent(deviceList);
 					if (peerManager != null) {
@@ -256,15 +264,15 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 						}
 					}
 				}
-				else if (c == testCommand) {
+				else if (cmd == testCommand) {
 					buildChannelList(true);
 					logger.debug("Test channels...");
 					display.setCurrent(channelList);
 				}
-				else if (c == exitCommand) {
+				else if (cmd == exitCommand) {
 					notifyDestroyed();
 				}
-				else if (c == logCommand) {
+				else if (cmd == logCommand) {
 					display.setCurrent(logForm);
 				}
 			}
@@ -295,7 +303,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	
 	// @Override
 	public boolean AuthenticationStarted(Object sender, Object remote) {
-		// not sure what to do here, just return true...
+		// not interested in it, just return true...
 		return true;
 	}
 
@@ -318,10 +326,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
         if (res.length > 3) {
         	connectionToRemote = (RemoteConnection) res[3];	
         }
-        // TODO: authentication method as string constants
         if (param != null) {
-	        if (param.equals("INPUT")) {
-	        	// for input: authentication successful finished
+	        if (param.equals(INPUT)) {
+	        	// for input: authentication successfully finished!
 	        	btServer.setPresharedShortSecret(null);
 	        	logger.info("Authentication through input successful!");
 	        	Alert successAlert = new Alert("Success", 
@@ -329,7 +336,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				successAlert.setTimeout(Alert.FOREVER);
 				display.setCurrent(successAlert, welcomeScreen);
 	        }
-	        else if (param.equals("TRANSFER_AUTH")) {
+	        else if (param.equals(TRANSFER_AUTH)) {
 	        	byte[] oobMsg = getShortHash(authKey);
 	        	if (oobMsg != null) {
 	        		transferProtocol(isInitiator, connectionToRemote, currentChannel, oobMsg);
@@ -383,34 +390,26 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 						}
 					}
 					if (c == okCommand && currentChannel != null) {
-						if (index == 0) {
-							// input case
-							try {
-								isInitiator = true;
-								BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerAddress, BLUETOOTH_CHANNEL_NR);
-								btChannel.open();
-								LineReaderWriter.println(btChannel.getOutputStream(), "PRE_AUTH");
+						try {
+							isInitiator = true;
+							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
+							btChannel.open();
+							if (index == 0) {
+								// input case
+								String hello = LineReaderWriter.readLine(btChannel.getInputStream());
+								if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
+									logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
+								}
+								LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
 								inputProtocol(true, btChannel, currentChannel);
-							} catch (IOException e) {
-								logger.error("Failed to start authentication.", e);
 							}
-						}
-						else {
-							// transfer case
-							try {
-								isInitiator = true;
-								// TODO: service discovery etc
-								String peerUrl = BluetoothPeerManager.getRemoteServiceURL(
-										currentPeerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
-								BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(peerUrl);
-								// BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerAddress, BLUETOOTH_CHANNEL_NR);
-								btChannel.open();
+							else {
+								// transfer case
 								boolean keepConnected = true; // since the key has to be authenticated after key agreement
-								// TODO: authentication method should be a constant
-								HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, -1, keepConnected, "TRANSFER_AUTH", false);
-							} catch (IOException e) {
-								logger.error("Failed to start authentication.", e);
+								HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, -1, keepConnected, TRANSFER_AUTH, false);
 							}
+						} catch (IOException e) {
+							logger.error("Failed to start authentication.", e);
 						}
 					}
 					else if (c == transmitCommand && currentChannel != null) {
@@ -457,9 +456,25 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					}
 					int index = deviceList.getSelectedIndex();
 					if (index > -1 && index < devices.length) {
-						currentPeerAddress = devices[index].getBluetoothAddress();
-						buildChannelList(false);
-						display.setCurrent(channelList);
+						currentPeerUrl = null;
+						String currentPeerAddress = devices[index].getBluetoothAddress();
+						try {
+							currentPeerUrl = BluetoothPeerManager.getRemoteServiceURL(
+									currentPeerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
+						} catch (IOException e) {
+							currentPeerUrl = null;
+						}
+						if (currentPeerUrl != null) {
+							buildChannelList(false);
+							display.setCurrent(channelList);
+						}
+						else {
+							Alert a = new Alert("Error", 
+									"Authentication service " + SERVICE_NAME + " is not currently available on this device.", 
+									null, AlertType.ERROR);
+							a.setTimeout(Alert.FOREVER);
+							display.setCurrent(a, deviceList);
+						}
 					}
 				}
 				else if (c == refreshCommand) {
@@ -512,7 +527,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 		peerManager			= null;
 		devices 			= null;
-		currentPeerAddress	= null;
+		currentPeerUrl		= null;
 		random 				= null;
 		logger				= null;
 		BluetoothRFCOMMChannel.shutdownAllChannels();
@@ -600,7 +615,13 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	 * Runs a transfer protocol over an authenticated out-of-band channel
 	 * and verifies the provided short string.
 	 * 
-	 * Protocol: I = initiator, R = responder
+	 * Legend:
+	 * I	initiator 
+	 * R 	responder
+	 * --->	insecure channel (bluetooth)
+	 * o-->	authentic channel (out-of-band)
+	 * 
+	 * Protocol:
 	 * I    --- "TRANSFER_AUTH:<channel_id>" -->    R
 	 *      <--        "READY"               ---
 	 *      o--         oobMsg               -->
@@ -610,10 +631,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	 */
 	private void transferProtocol(boolean isInitiator, final RemoteConnection connection, OOBChannel channel, final byte[] oobMsg) {
 		this.isInitiator = false; // reset, so we are ready for further pairing attempts.
-		final String TRANSFER_AUTH	= "TRANSFER_AUTH";
-		final String READY			= "READY";
-		final String DONE			= "DONE";
-		final String ABORT			= "ABORT";
+		final String READY	= "READY";
+		final String DONE	= "DONE";
 		
 		final InputStream in;
 		final OutputStream out;
@@ -631,41 +650,39 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String initString = TRANSFER_AUTH + ":" + channel.toString();
 				LineReaderWriter.println(out, initString);
 				String lineIn = LineReaderWriter.readLine(in);
-				if (lineIn.equals(READY)) {
-					channel.transmit(oobMsg);
-					// wait for other device
-					lineIn = LineReaderWriter.readLine(in);
-					if (lineIn.equals(DONE)) {
-						Form successFeedback = new Form("Authentication");
-						successFeedback.append("Was the other device successful?");
-						final Command yesCommand	= new Command("Yes", Command.OK, 1);
-						final Command noCommand		= new Command("No", Command.CANCEL, 1);
-						successFeedback.addCommand(yesCommand);
-						successFeedback.addCommand(noCommand);
-						CommandListener listener = new CommandListener() {
-							//@Override
-							public void commandAction(Command command, Displayable d) {
-								if (command == yesCommand) {
-									Alert a = new Alert("Success", "Successfully paired with other device!", null, AlertType.CONFIRMATION);
-									a.setTimeout(Alert.FOREVER);
-									display.setCurrent(a, welcomeScreen);
-								}
-								else if (command == noCommand) {
-									alertError("Authentication failed");
-								}
-								connection.close();
-							}
-						};
-						successFeedback.setCommandListener(listener);
-						display.setCurrent(successFeedback);
-					}
-					else {
-						logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
-					}
-				}
-				else {
+				if (!lineIn.equals(READY)) {
 					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
+					return;
 				}
+				channel.transmit(oobMsg);
+				// wait for other device
+				lineIn = LineReaderWriter.readLine(in);
+				if (!lineIn.equals(DONE)) {
+					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
+					return;
+				}
+				Form successFeedback = new Form("Authentication");
+				successFeedback.append("Was the other device successful?");
+				final Command yesCommand	= new Command("Yes", Command.OK, 1);
+				final Command noCommand		= new Command("No", Command.CANCEL, 1);
+				successFeedback.addCommand(yesCommand);
+				successFeedback.addCommand(noCommand);
+				CommandListener listener = new CommandListener() {
+					//@Override
+					public void commandAction(Command command, Displayable d) {
+						if (command == yesCommand) {
+							Alert a = new Alert("Success", "Successfully paired with other device!", null, AlertType.CONFIRMATION);
+							a.setTimeout(Alert.FOREVER);
+							display.setCurrent(a, welcomeScreen);
+						}
+						else if (command == noCommand) {
+							alertError("Authentication failed");
+						}
+						connection.close();
+					}
+				};
+				successFeedback.setCommandListener(listener);
+				display.setCurrent(successFeedback);
 			} catch (IOException e) {
 				logger.error("Failed to read/write from io stream. Abort transfer protocol.");
 			}
@@ -676,45 +693,44 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String lineIn = LineReaderWriter.readLine(in);
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
 				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
-				if (protocolDesc.equals(TRANSFER_AUTH)) {
-					// get appropriate channel
-					OOBChannel captureChannel = (OOBChannel)buttonChannels.get(channelDesc);
-					OOBMessageHandler messageHandler = new OOBMessageHandler() {
-						// @Override
-						public void handleOOBMessage(int channelType, byte[] data) {
-							try {
-								LineReaderWriter.println(out, DONE);
-								// check data
-								if (logger.isInfoEnabled()) {
-									logger.info("sent oobMsg: " + getHexString(oobMsg) +
-											" received oobMsg: " + getHexString(data));
-								}
-								// compare the byte arrays as hex strings... (since no Arrays class in J2ME)
-								if (getHexString(data).equals(getHexString(oobMsg))) {
-									Alert successAlert = new Alert("Success", 
-											"Authentication successful! Please report to the other device.",
-											null, AlertType.CONFIRMATION);
-									successAlert.setTimeout(Alert.FOREVER);
-									display.setCurrent(successAlert, welcomeScreen);
-								}
-								else {
-									alertError("Authentication failed! Please report to the other device");
-								}
-							} catch (IOException e) {
-								logger.error("Failed to read/write to io stream. Abort transfer protocol.");
-							}
-							finally {
-								connection.close();
-							}
-						}
-					};
-					captureChannel.setOOBMessageHandler(messageHandler);
-					LineReaderWriter.println(out, READY);
-					captureChannel.capture();
-				}
-				else {
+				if (!protocolDesc.equals(TRANSFER_AUTH)) {
 					logger.error("Wrong protocol descriptor from remote device. Abort transfer protocol.");
+					return;
 				}
+				// get appropriate channel
+				OOBChannel captureChannel = (OOBChannel)buttonChannels.get(channelDesc);
+				OOBMessageHandler messageHandler = new OOBMessageHandler() {
+					// @Override
+					public void handleOOBMessage(int channelType, byte[] data) {
+						try {
+							LineReaderWriter.println(out, DONE);
+							// check data
+							if (logger.isInfoEnabled()) {
+								logger.info("sent oobMsg: " + getHexString(oobMsg) +
+										" received oobMsg: " + getHexString(data));
+							}
+							// compare the byte arrays as hex strings... (since no Arrays class in J2ME)
+							if (getHexString(data).equals(getHexString(oobMsg))) {
+								Alert successAlert = new Alert("Success", 
+										"Authentication successful! Please report to the other device.",
+										null, AlertType.CONFIRMATION);
+								successAlert.setTimeout(Alert.FOREVER);
+								display.setCurrent(successAlert, welcomeScreen);
+							}
+							else {
+								alertError("Authentication failed! Please report to the other device");
+							}
+						} catch (IOException e) {
+							logger.error("Failed to read/write to io stream. Abort transfer protocol.");
+						}
+						finally {
+							connection.close();
+						}
+					}
+				};
+				captureChannel.setOOBMessageHandler(messageHandler);
+				LineReaderWriter.println(out, READY);
+				captureChannel.capture();
 			} catch (IOException e) {
 				logger.error("Failed to read/write from io stream. Abort transfer protocol.", e);
 			}
@@ -726,7 +742,14 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	 * Key verification will be handled afterwards through a MANA III variant
 	 * in the HostProtocolHandler class.
 	 * 
-	 * Protocol: I = initiator, R = responder, H = human user
+	 * Legend:
+	 * I	initiator
+	 * R	responder
+	 * H	human user
+	 * --->	insecure channel (bluetooth)
+	 * o->o secure channel, both authentic and confidential (out-of-band)
+	 * 
+	 * Protocol:
 	 * I    ---  "INPUT:<channel_id>"   -->    R
 	 *      o<-   s    --o H o--   s    ->o
 	 *      ---         "DONE"          -->
@@ -735,10 +758,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	 */
 	private void inputProtocol(boolean isInitiator, final RemoteConnection connection, OOBChannel channel) {
 		this.isInitiator = false; // reset, so we are ready for further pairing attempts.
-		final String INPUT	= "INPUT";
 		final String READY	= "READY";
 		final String DONE	= "DONE";
-		final String ABORT	= "ABORT";
 		
 		final InputStream in;
 		final OutputStream out;
@@ -756,36 +777,33 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String initString = INPUT + ":" + channel.toString();
 				LineReaderWriter.println(out, initString);
 				String lineIn = LineReaderWriter.readLine(in);
-				if (lineIn.equals(READY)) {
-					OOBMessageHandler messageHandler = new OOBMessageHandler() {
-						// @Override
-						public void handleOOBMessage(int channelType, byte[] data) {
-							logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
-							try {
-								LineReaderWriter.println(out, DONE);
-								String line = LineReaderWriter.readLine(in);
-								if (line.equals(DONE)) {
-									connection.close();
-									BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerAddress, BLUETOOTH_CHANNEL_NR);
-									btChannel.open();
-									HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, null, data, null, 20000, false, "INPUT", false);
-									//HostProtocolHandler.startAuthenticationWith(connection, BedaMIDlet.this, null, null, null, 20000, false, "INPUT", false);
-									display.setCurrent(welcomeScreen);
-								}
-								else {
-									logger.error("Unexpected protocol string from remote device. Abort input protocol.");
-								}
-							} catch (IOException e) {
-								logger.error("Failed to read/write from io stream. Abort input protocol.", e);
-							}
-						}
-					};
-					channel.setOOBMessageHandler(messageHandler);
-					channel.capture();
-				}
-				else {
+				if (!lineIn.equals(READY)) {
 					logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+					return;
 				}
+				OOBMessageHandler messageHandler = new OOBMessageHandler() {
+					// @Override
+					public void handleOOBMessage(int channelType, byte[] data) {
+						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						try {
+							LineReaderWriter.println(out, DONE);
+							String line = LineReaderWriter.readLine(in);
+							if (!line.equals(DONE)) {
+								logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+								return;
+							}
+							connection.close();
+							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
+							btChannel.open();
+							HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, null, data, null, 20000, false, "INPUT", false);
+							display.setCurrent(welcomeScreen);
+						} catch (IOException e) {
+							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+						}
+					}
+				};
+				channel.setOOBMessageHandler(messageHandler);
+				channel.capture();
 			} catch (IOException e) {
 				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 			}
@@ -796,37 +814,35 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String lineIn = LineReaderWriter.readLine(in);
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
 				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
-				if (protocolDesc.equals(INPUT)) {
-					// get appropriate channel
-					OOBChannel captureChannel = (OOBChannel)buttonChannels.get(channelDesc);
-					OOBMessageHandler messageHandler = new OOBMessageHandler() {
-						// @Override
-						public void handleOOBMessage(int channelType, byte[] data) {
-							logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
-							try {
-								String line = LineReaderWriter.readLine(in);
-								if (line.equals(DONE)) {
-									// prepare server to handle incoming request
-									btServer.setPresharedShortSecret(data);
-									LineReaderWriter.println(out, DONE);
-									//connection.close();
-									display.setCurrent(welcomeScreen);
-								}
-								else {
-									logger.error("Unexpected protocol string from remote device. Abort input protocol.");
-								}
-							} catch (IOException e) {
-								logger.error("Failed to read/write from io stream. Abort input protocol.", e);
-							}
-						}
-					};
-					captureChannel.setOOBMessageHandler(messageHandler);
-					captureChannel.capture();
-					LineReaderWriter.println(out, READY);
-				}
-				else {
+				if (!protocolDesc.equals(INPUT)) {
 					logger.error("Wrong protocol descriptor from remote device. Abort input protocol.");
+					return;
 				}
+				// get appropriate channel
+				OOBChannel captureChannel = (OOBChannel)buttonChannels.get(channelDesc);
+				OOBMessageHandler messageHandler = new OOBMessageHandler() {
+					// @Override
+					public void handleOOBMessage(int channelType, byte[] data) {
+						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						try {
+							String line = LineReaderWriter.readLine(in);
+							if (!line.equals(DONE)) {
+								logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+								return;
+							}
+							// prepare server to handle incoming request
+							btServer.setPresharedShortSecret(data);
+							LineReaderWriter.println(out, DONE);
+							//connection.close();
+							display.setCurrent(welcomeScreen);
+						} catch (IOException e) {
+							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+						}
+					}
+				};
+				captureChannel.setOOBMessageHandler(messageHandler);
+				captureChannel.capture();
+				LineReaderWriter.println(out, READY);
 			} catch (IOException e) {
 				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 			}
