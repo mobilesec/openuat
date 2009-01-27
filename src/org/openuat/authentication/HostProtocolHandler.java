@@ -433,6 +433,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	if (msg == null) {
         	logger.warn("helper_getAuthenticationParamLine called with null argument");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: no message received");
+            shutdownConnectionCleanly();
             return null;
         }
 
@@ -465,6 +466,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         	logger.warn("Protocol error: unkown message '" + msg + "'");
             println("Protocol error: unknown message: '" + msg + "'");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: unknown message");
+            shutdownConnectionCleanly();
             return null;
         }
 
@@ -531,6 +533,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	    		logger.warn(err);
     	    		println(err);
     	    		raiseAuthenticationFailureEvent(remote, null, err);
+    	    		shutdownConnectionCleanly();
     	    		return null;
     			}
     		}
@@ -546,6 +549,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	    		logger.warn(err);
     	    		println(err);
     	    		raiseAuthenticationFailureEvent(remote, e, err);
+    	    		shutdownConnectionCleanly();
     	            return null;
     	        }
     		}
@@ -561,6 +565,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             logger.warn(err);
             println(err);
             raiseAuthenticationFailureEvent(remote, null, err);
+            shutdownConnectionCleanly();
             return null;
     	}
         return ret;
@@ -704,26 +709,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (timeoutMs > 0)
             	timer = new SafetyBeltTimer(timeoutMs, fromRemote);
 
-            // hello from client
-            if (!serverSide) {
-            	println(Protocol_Hello);
-            }
-            else {
-            	String msg = readLine();
-            	if (!msg.equals(Protocol_Hello)) {
-            		if (protocolCommandHandlers != null && protocolCommandHandlers.containsKey(msg)) {
-            			ProtocolCommandHandler commandHandler = (ProtocolCommandHandler)protocolCommandHandlers.get(msg);
-            			if (commandHandler.handleProtocol(msg, connection)) {
-            				return;
-            			}
-            		}
-            		raiseAuthenticationFailureEvent(connection, null, "Protocol error: did not get greeting from client");
-                    shutdownConnectionCleanly();
-                    return;
-            	}
-            }
-            
-            // hello from server
             if (serverSide) {
             	println(Protocol_Hello);
             }
@@ -773,7 +758,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             			new String[] {null, null, Protocol_AuthenticationRequest_Param, null}, 
             			2, connection);
             	if (parms == null) {
-            		shutdownConnectionCleanly();
                     return;
             	}
             		
@@ -807,7 +791,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	Object[] parms = parseLine(line, expectedMsg, 
             			new boolean[] {true, true}, null, 2, connection);
             	if (parms == null) {
-            		shutdownConnectionCleanly();
                     return;
             	}
             	
@@ -840,7 +823,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	Object[] parms = parseLine(line, expectedMsg, 
             			new boolean[] {true}, null, 1, connection);
             	if (parms == null) {
-            		shutdownConnectionCleanly();
                     return;
             	}
             	
@@ -971,7 +953,6 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	parms = parseLine(line, Protocol_AuthenticationInputOpen, 
             			new boolean[] {true}, null, 1, connection);
             	if (parms == null) {
-            		shutdownConnectionCleanly();
                     return;
             	}
             	byte[] remoteK = (byte[]) parms[0];
