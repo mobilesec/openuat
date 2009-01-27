@@ -9,8 +9,6 @@
 
 package org.openuat.apps.groupkey;
 
-import com.sun.corba.se.impl.orb.ParserTable.TestBadServerIdHandler;
-
 import tgdh.tree.BasicTree;
 import tgdh.tree.LeafNode;
 import tgdh.tree.Node;
@@ -38,24 +36,24 @@ public class app2tgdh_tests extends TestCase{
 	}
 
 	public static void testBasicTree(){
-		BasicTree newTree = app2tgdh.createTree("12345");
+		BasicTree newTree = app2tgdh.createTree("M1");
 		
 		//expected tree
-		String expectedTree = "Preorder: <0,0>(12345)";
+		String expectedTree = "Preorder: <0,0>(M1)";
 		assertEquals("Tree information", expectedTree, newTree.toString());
 		
 	}
 	
 	public static void testJoinTree(){
 
-		BasicTree aTree = app2tgdh.createTree("12345");
+		BasicTree aTree = app2tgdh.createTree("M1");
 		
 		//expected tree before join
-		String tree = "Preorder: <0,0>(12345)";
+		String tree = "Preorder: <0,0>(M1)";
 		assertEquals("Tree information before join", tree, aTree.toString());		
 		
 		
-		String uniqueId2 = "6789";
+		String uniqueId2 = "M2";
 		BasicTree joinedTree = null;
 		try {
 			joinedTree = app2tgdh.joinTree(aTree, uniqueId2, "testTree");
@@ -64,15 +62,16 @@ public class app2tgdh_tests extends TestCase{
 		}
 
 		//expected tree after join
-		String expectedTree = "Preorder: <0,0>, <1,0>(12345), <1,1>(6789)";
-		assertEquals("Tree information after join", expectedTree, joinedTree.toString());			
+		String expectedTree = "Preorder: <0,0>, <1,0>(M1), <1,1>(M2)";
+		assertEquals("Tree information after join", expectedTree, joinedTree.toString());
+		assertTrue("Does contain node M2", expectedTree.toString().contains("M2"));
 	
 	}
 	
 	public static void testLeaveTree(){
-		String uniqueId2 = "6789";
-		String uniqueId3 = "345";
-		BasicTree aTree = app2tgdh.createTree("12345");
+		String uniqueId2 = "M2";
+		String uniqueId3 = "M3";
+		BasicTree aTree = app2tgdh.createTree("M1");
 		BasicTree joinedTree = null;
 		try {
 			joinedTree = app2tgdh.joinTree(aTree, uniqueId2, "testTree");
@@ -82,14 +81,14 @@ public class app2tgdh_tests extends TestCase{
 		}
 
 		//expected tree before leaving
-		String beforeLeavingTree = "Preorder: <0,0>, <1,0>, <2,0>(12345), <2,1>(6789), <1,1>(345)";
+		String beforeLeavingTree = "Preorder: <0,0>, <1,0>, <2,0>(M1), <2,1>(M2), <1,1>(M3)";
 		assertEquals("Tree information before leaving", beforeLeavingTree, joinedTree.toString());	
 		
-		LeafNode leavingNode = joinedTree.leafNode("345");
+		LeafNode leavingNode = joinedTree.leafNode("M3");
 		BasicTree newTree = app2tgdh.leaveTree(joinedTree, leavingNode); 
 		
 		//expected tree before leaving
-		String expectedTree = "Preorder: <0,0>, <1,0>(12345), <1,1>(6789)";
+		String expectedTree = "Preorder: <0,0>, <1,0>(M1), <1,1>(M2)";
 		assertEquals("Tree information after leaving", expectedTree, newTree.toString());		
 	}
 	
@@ -155,6 +154,8 @@ public class app2tgdh_tests extends TestCase{
 		//expected tree after partitioning
 		String afterPartitioning = "Preorder: <0,0>, <1,0>, <2,0>(M2), <2,1>(M3), <1,1>, <2,2>(M5), <2,3>, <3,6>(M6), <3,7>(M7)";
 		assertEquals("Tree information before partitioning", afterPartitioning, newTree.toString());
+		assertFalse("Does not contain node M1", newTree.toString().contains("M1"));
+		assertFalse("Does not contain node M4", newTree.toString().contains("M4"));
 		
 	}
 }

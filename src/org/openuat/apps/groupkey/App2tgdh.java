@@ -17,6 +17,7 @@ import tgdh.*;
 import tgdh.comm.*;
 
 
+import org.openuat.channel.ifComm;
 import org.openuat.channel.http.*;
 import org.openuat.util.ifListener;
 
@@ -43,9 +44,17 @@ public class App2tgdh  implements ifListener  {
 	private static byte[] publicTestKey = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0};
 
 	private static String[] messageStringArray = new String[4];
+//	private ifComm comm;
+//	private ifListener ifListen = null;
+	
+	
 	
 	public App2tgdh(){
+		communicator = new CommPlain();
+		Thread commThread = new Thread(communicator);
+		commThread.start();
 		
+//		communicator.sendMsg("tree", "beuh", this);
 	};
 	
 	public static BasicTree createTree(String _uniqueId){
@@ -95,7 +104,6 @@ public class App2tgdh  implements ifListener  {
 
 //		TgdhPrivateKey privateKey = new TgdhPrivateKey();
 //		TgdhPublicKey publicKey = new TgdhPublicKey();
-		
 //		newNode.setKeys(privateKey , publicKey);
 
 		JoinMessage joinMessage = new JoinMessage(_treeGroupName,newNode);
@@ -107,7 +115,8 @@ public class App2tgdh  implements ifListener  {
 		 * Why ifListener ifListen = null; ?
 		 */
 //		ifListener ifListen = null;
-//		(communicator).sendMsg("tree", "2"+"*"+"2"+"*"+"1"+"*"+joinMessage.toString(), ifListen);
+//		communicator.sendMsg("tree", "2"+"|"+"2"+"|"+"1"+"|"+joinMessage.toString(), this );
+//		(communicator).sendMsg("tree", "hello-martijn", this );
 
 
 		LeafNode sponsor = (LeafNode) basicTree.join(new LeafNode(_uniqueID));
@@ -160,25 +169,17 @@ public class App2tgdh  implements ifListener  {
 		return basicTree;
 	}
 	
-	public static void main(String[] args) {
-		/**
-		 * Test runs...
-		 */
-		String uniqueId = "12345";
-		String uniqueId2 = "6789";
-
-		/**
-		 * Creates new communicator threat
-		 */
-		communicator = new CommPlain();
-		Thread commThread = new Thread(communicator);
-		commThread.start();		
-
-	}
-
 	public void handleStringEvent(String _data, boolean _success) {
-		// TODO Auto-generated method stub
-
+		synchronized(this){
+			this.notify();
+		}
+		
+		communicator.getMsgSince("tree",0 ,this);
+		
+		System.out.println("data: "+_data);
+		System.out.println("success: "+_success);
+		System.out.println("message");
+		
 		/**
 		 * JOIN step 2
 		 * 
@@ -197,10 +198,11 @@ public class App2tgdh  implements ifListener  {
 				e.printStackTrace();
 			}			
 
-			ifListener ifListen = null;
+//			ifListener ifListen = null;
 			//Broadcast new tree
-			communicator.sendMsg("tree", "1"+"*"+"2"+"*"+"2"+"*"+testTree.toString(), ifListen);
-			communicator.sendMsg("tree", sponsor.toString(), ifListen);
+			communicator.sendMsg("tree", "1"+"*"+"2"+"*"+"2"+"*"+testTree.toString(), this);
+			communicator.sendMsg("tree", sponsor.toString(), this);
+			
 		}
 
 
@@ -235,9 +237,9 @@ public class App2tgdh  implements ifListener  {
 	
 	
 	public static boolean retreiveMessage(String _data, String _messageType, String _treeAlteration, String _messageStep){
-		
+		System.out.println(_data);
 		messageStringArray = null;
-		messageStringArray = _data.split("*");
+		messageStringArray = _data.split("|");
 		if (messageStringArray[0] == _messageType && messageStringArray[1] == _treeAlteration && messageStringArray[2] == _messageStep && !messageStringArray[3].isEmpty()){
 			return true;
 		}
@@ -245,9 +247,39 @@ public class App2tgdh  implements ifListener  {
 		return false;
 	}
 	
+	
+	public void testJoinTree(){
 
-	public  void run() {
+		BasicTree aTree = createTree("M1");
+		
+		//expected tree before join
+		String tree = "Preorder: <0,0>(M1)";
+		
+		
+		String uniqueId2 = "M2";
+		BasicTree joinedTree = null;
+		try {
+			joinedTree = joinTree(aTree, uniqueId2, "testTree");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
+	
+	}	
+
+	public void run() {
+		
+		
+		while (true){
+			try {
+				synchronized (this) {
+					this.wait(5000);
+				}
+				System.out.println("app2tgdh is alive");
+				testJoinTree();
+			} catch (InterruptedException e) {
+			}
+		}
 	}
 	
 
