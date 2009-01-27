@@ -15,8 +15,12 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.IOException;
 import java.util.Random;
+import java.util.Vector;
 
+import javax.bluetooth.RemoteDevice;
+import javax.bluetooth.UUID;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -28,8 +32,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.ListSelectionModel;
 
+import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
+import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.oob.AWTButtonChannelImpl;
 import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
@@ -40,6 +46,12 @@ import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.log.Log;
 import org.openuat.log.Log4jFactory;
 import org.openuat.log.LogFactory;
+import org.openuat.util.BluetoothPeerManager;
+import org.openuat.util.BluetoothRFCOMMServer;
+import org.openuat.util.BluetoothSupport;
+import org.openuat.util.Hash;
+import org.openuat.util.ProtocolCommandHandler;
+import org.openuat.util.RemoteConnection;
 
 /**
  * This Swing application demonstrates the different button channels within
@@ -50,7 +62,22 @@ import org.openuat.log.LogFactory;
  * @author Lukas Huser
  * @version 1.0
  */
-public class BedaApp {
+public class BedaApp implements AuthenticationProgressHandler {
+	
+	/* The authentication service uuid... */
+	private static final UUID SERVICE_UUID = new UUID("447d8ecbefea4b2d93107ced5d1bba7e", false);
+	
+	/* ...and it's name */
+	private static final String SERVICE_NAME = "UACAP - Beda";
+	
+	/* An identifier used to register a command handler with the RFCOMMServer */
+	private static final String PRE_AUTH = "PRE_AUTH";
+	
+	/* Authentication method supported by BEDA: authentic transfer */
+	private static final String TRANSFER_AUTH = "TRANSFER_AUTH";
+	
+	/* Authentication method supported by BEDA: input */
+	private static final String INPUT = "INPUT";
 	
 	/*
 	 * GUI related constants
@@ -81,6 +108,12 @@ public class BedaApp {
 	 * which reacts to double-clicks on list entries
 	 */
 	private MouseListener doubleClickListener;
+	
+	/* Scans for bluetooth devices around */
+	private BluetoothPeerManager peerManager;
+	
+	/* Bluetooth server to advertise our services and accept incoming connections */
+	private BluetoothRFCOMMServer btServer;
 	
 	/* Random number generator */
 	private Random random;
@@ -192,6 +225,58 @@ public class BedaApp {
 		};
 		refreshButton.addActionListener(buttonListener);
 		
+		// init bluetooth support
+		if (! BluetoothSupport.init()) {
+			logger.error("Could not initialize Bluetooth API");
+		}
+		
+		// set up the bluetooth peer manager
+		BluetoothPeerManager.PeerEventsListener listener =
+			new BluetoothPeerManager.PeerEventsListener() {
+				public void inquiryCompleted(Vector newDevices) {
+					// TODO: populate device list
+					// updateDeviceList();
+				}
+				public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
+					// ignore
+				}
+		};
+		
+		try {
+			peerManager = new BluetoothPeerManager();
+			peerManager.addListener(listener);
+		} catch (IOException e) {
+			logger.error("Could not initiate BluetoothPeerManager.", e);
+		}
+		
+		// set up the bluetooth rfcomm server
+		try {
+			btServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, SERVICE_NAME, 30000, true, false);
+			btServer.addAuthenticationProgressHandler(this);
+			btServer.start();
+			if (logger.isInfoEnabled()) {
+				logger.info("Finished starting SDP service at " + btServer.getRegisteredServiceURL());
+			}
+		} catch (IOException e) {
+			logger.error("Could not create bluetooth server.", e);
+		}
+		ProtocolCommandHandler inputProtocolHandler = new ProtocolCommandHandler() {
+			@Override
+			public boolean handleProtocol(String firstLine, RemoteConnection remote) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Handle protocol command: " + firstLine);
+				}
+				if (firstLine.equals(PRE_AUTH)) {
+					// TODO: run input protocol
+					//inputProtocol(false, remote, null);
+					return true;
+				}
+				return false;
+			}
+		};
+		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
+		
+		
 		// build initial screen (the home screen)
 		showHomeScreen();
 		
@@ -200,6 +285,60 @@ public class BedaApp {
 		mainWindow.setVisible(true);
 	}
 	
+	@Override
+	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
+		// in the input case, reset the shared key
+		btServer.setPresharedShortSecret(null);
+		logger.error(msg, e);
+		// TODO: alertError(msg);
+	}
+
+	@Override
+	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
+		// is safely ignored
+	}
+
+	@Override
+	public boolean AuthenticationStarted(Object sender, Object remote) {
+		// not interested in it, return true
+		return true;
+	}
+
+	@Override
+	public void AuthenticationSuccess(Object sender, Object remote,Object result) {
+		logger.info("Authentication success event.");
+        Object[] res = (Object[]) result;
+        // remember the secret key shared with the other device
+        byte[] sharedKey = (byte[]) res[0];
+        // and extract the shared authentication key for phase 2
+        byte[] authKey = (byte[]) res[1];
+        // then extract the optional parameter
+        String param = (String) res[2];
+        if (logger.isInfoEnabled()) {
+        	logger.info("Extracted session key of length " + sharedKey.length +
+        		", authentication key of length " + (authKey != null ? authKey.length : 0) + 
+        		" and optional parameter '" + param + "'");
+        }
+        RemoteConnection connectionToRemote = null;
+        if (res.length > 3) {
+        	connectionToRemote = (RemoteConnection) res[3];	
+        }
+        if (param != null) {
+	        if (param.equals(INPUT)) {
+	        	// for input: authentication successfully finished!
+	        	btServer.setPresharedShortSecret(null);
+	        	logger.info("Authentication through input successful!");
+				// TODO: inform success 
+	        }
+	        else if (param.equals(TRANSFER_AUTH)) {
+	        	byte[] oobMsg = getShortHash(authKey);
+	        	if (oobMsg != null) {
+	        		// TODO transferProtocol(isInitiator, connectionToRemote, currentChannel, oobMsg);
+	        	}
+	        }
+        }
+	}
+
 	/* Helper method to set up the home screen */
 	private void showHomeScreen() {
 		JPanel devicePanel = new JPanel();
@@ -306,5 +445,21 @@ public class BedaApp {
 		};
 		channel.setOOBMessageHandler(handler);
 		channel.transmit(randomMessage);
+	}
+	
+	/* 
+	 * Takes the hash of the input and returns its first 3 bytes.
+	 * The result is suitable to send over a button channel
+	 */
+	private byte[] getShortHash(byte[] bytes) {
+		byte[] result = new byte[3];
+    	try {
+			byte[] hash = Hash.doubleSHA256(bytes, false);
+			System.arraycopy(hash, 0, result, 0, 3);
+		} catch (InternalApplicationException e) {
+			logger.error("Could not create hash.", e);
+			result = null;
+		}
+		return result;
 	}
 }
