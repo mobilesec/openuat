@@ -539,7 +539,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	private void testTransmit(OOBChannel channel) {
 		int r = random.nextInt();
 		final byte[] randomMessage = {(byte)r, (byte)(r >>> 8), (byte)(r >>> 16)};
-		final String hexString = getHexString(randomMessage);
+		final String hexString = new String(Hex.encodeHex(randomMessage));
 		
 		OOBMessageHandler handler = new OOBMessageHandler() {
 			public void handleOOBMessage(int channelType, byte[] data) {
@@ -565,10 +565,10 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		OOBMessageHandler handler = new OOBMessageHandler() {
 			public void handleOOBMessage(int channelType, byte[] data) {
 				if (logger.isInfoEnabled()) {
-					logger.info("Capture ok. Message: " + getHexString(data));
+					logger.info("Capture ok. Message: " + new String(Hex.encodeHex(data)));
 				}
 				Alert alert = new Alert("Capture ok", 
-						"The following message has been captured: " + getHexString(data),
+						"The following message has been captured: " + new String(Hex.encodeHex(data)),
 						null, AlertType.INFO);
 				alert.setTimeout(Alert.FOREVER);
 				display.setCurrent(alert, welcomeScreen);
@@ -576,16 +576,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		};
 		channel.setOOBMessageHandler(handler);
 		channel.capture();
-	}
-	
-	/* Convenience method to convert a byte[] to a hex string
-	 * (since J2ME does not support the String.format() method) */
-	private String getHexString(byte[] b) {
-		String result = "";
-		for (int i = 0; i < b.length; i++) {
-			result += Integer.toString((b[i] & 0xff) + 0x100, 16).substring(1);
-		}
-		return result;
 	}
 	
 	/* Informs the user of an error and return to main screen */
@@ -706,11 +696,11 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							LineReaderWriter.println(out, DONE);
 							// check data
 							if (logger.isInfoEnabled()) {
-								logger.info("sent oobMsg: " + getHexString(oobMsg) +
-										" received oobMsg: " + getHexString(data));
+								logger.info("sent oobMsg: " + new String(Hex.encodeHex(oobMsg)) +
+										" received oobMsg: " + new String(Hex.encodeHex(data)));
 							}
 							// compare the byte arrays as hex strings... (since no Arrays class in J2ME)
-							if (getHexString(data).equals(getHexString(oobMsg))) {
+							if ((new String(Hex.encodeHex(data))).equals(new String(Hex.encodeHex(oobMsg)))) {
 								Alert successAlert = new Alert("Success", 
 										"Authentication successful! Please report to the other device.",
 										null, AlertType.CONFIRMATION);
