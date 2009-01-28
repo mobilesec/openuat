@@ -16,11 +16,17 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.Vector;
 
 import javax.bluetooth.RemoteDevice;
+import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -31,8 +37,12 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
+import org.apache.commons.codec.binary.Hex;
 import org.openuat.authentication.AuthenticationProgressHandler;
+import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -47,9 +57,10 @@ import org.openuat.log.Log;
 import org.openuat.log.Log4jFactory;
 import org.openuat.log.LogFactory;
 import org.openuat.util.BluetoothPeerManager;
+import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
-import org.openuat.util.BluetoothSupport;
 import org.openuat.util.Hash;
+import org.openuat.util.LineReaderWriter;
 import org.openuat.util.ProtocolCommandHandler;
 import org.openuat.util.RemoteConnection;
 
@@ -115,6 +126,21 @@ public class BedaApp implements AuthenticationProgressHandler {
 	/* Bluetooth server to advertise our services and accept incoming connections */
 	private BluetoothRFCOMMServer btServer;
 	
+	/* Keep track of the currently available remote peers */
+	private RemoteDevice[] devices;
+	
+	/* Url of the authentication service on other device */
+	private String currentPeerUrl;
+	
+	/* Remember the currently used button channel */
+	private OOBChannel currentChannel;
+	
+	/* Keep a mapping of the different button channels with their names */
+	private HashMap<String, OOBChannel> buttonChannels;
+	
+	/* Is this device the initiator of the verification protocol? */
+	private boolean isInitiator;
+	
 	/* Random number generator */
 	private Random random;
 	
@@ -136,7 +162,12 @@ public class BedaApp implements AuthenticationProgressHandler {
 	 * actual application.
 	 */
 	public BedaApp() {
-		random = new Random(System.currentTimeMillis());
+		random			= new Random(System.currentTimeMillis());
+		devices			= new RemoteDevice[0];
+		currentPeerUrl	= null;
+		currentChannel	= null;
+		isInitiator		= false;
+				
 		// Initialize the logger. Use a wrapper around the log4j framework.
 		LogFactory.init(new Log4jFactory());
 		logger = LogFactory.getLogger(BedaApp.class.getName());
@@ -146,6 +177,20 @@ public class BedaApp implements AuthenticationProgressHandler {
 		mainWindow.setSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
 		mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainWindow.getContentPane().setLayout(new FlowLayout());
+		
+		// prepare the button channels
+		buttonChannels = new HashMap<String, OOBChannel>();
+		ButtonChannelImpl impl = new AWTButtonChannelImpl(mainWindow.getContentPane());
+		OOBChannel c = new ButtonToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new FlashDisplayToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new ProgressBarToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new ShortVibrationToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new LongVibrationToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
 		
 		// set up the menu bar
 		menuBar = new JMenuBar();
@@ -174,7 +219,6 @@ public class BedaApp implements AuthenticationProgressHandler {
 		mainWindow.setJMenuBar(menuBar);
 		
 		// set up channel list
-		ButtonChannelImpl impl = new AWTButtonChannelImpl(mainWindow.getContentPane());
 		OOBChannel[] channels = {
 			new ButtonToButtonChannel(impl),
 			new FlashDisplayToButtonChannel(impl),
@@ -200,18 +244,69 @@ public class BedaApp implements AuthenticationProgressHandler {
 				// react on double clicks
 				if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
 					JList source = (JList)event.getSource();
-					if (source == channelList) {
-						OOBChannel channel = (OOBChannel)channelList.getSelectedValue();
-						// TODO: launch protocol
+					if (source == channelList && channelList.isEnabled()) {
+						try {
+							currentChannel = (OOBChannel)channelList.getSelectedValue();
+							if (currentChannel != null) {
+								isInitiator = true;
+								BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
+								btChannel.open();
+								if (channelList.getSelectedIndex() == 0) {
+									// input case
+									String hello = LineReaderWriter.readLine(btChannel.getInputStream());
+									if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
+										logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
+									}
+									LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
+									inputProtocol(true, btChannel, currentChannel);
+								}
+								else {
+									// transfer case
+									boolean keepConnected = true; // since the key has to be authenticated after key agreement
+									HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, -1, keepConnected, TRANSFER_AUTH, false);
+								}
+							}
+						} catch (IOException e) {
+							logger.error("Failed to start authentication.", e);
+						}
 					}
 					else if (source == deviceList) {
-						channelList.setEnabled(true);
+						int index = deviceList.getSelectedIndex();
+						if (index > -1) {
+							String peerAddress = devices[index].getBluetoothAddress();
+							currentPeerUrl = null;
+							try {
+								currentPeerUrl = BluetoothPeerManager.getRemoteServiceURL(
+										peerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
+							} catch (IOException e) {
+								currentPeerUrl = null;
+							}
+							if (currentPeerUrl != null) {
+								channelList.setEnabled(true);
+							}
+							else {
+								channelList.setEnabled(false);
+								// TODO: move this warning to a status bar or similar
+								JOptionPane.showMessageDialog(mainWindow,
+										"The service " + SERVICE_NAME + " is not running on the selected device",
+										"Error", JOptionPane.ERROR_MESSAGE);
+							}
+						}
 					}
 				}
+				event.consume();
 			}
 		};
 		deviceList.addMouseListener(doubleClickListener);
 		// note: this listener will be set on the channelList in the showHomeScreen method
+		
+		ListSelectionListener selectionListener = new ListSelectionListener() {
+			@Override
+			public void valueChanged(ListSelectionEvent event) {
+				channelList.setEnabled(false);
+			}
+		};
+		deviceList.addListSelectionListener(selectionListener);
 		
 		// create refresh button
 		refreshButton = new JButton("Refresh list");
@@ -219,23 +314,18 @@ public class BedaApp implements AuthenticationProgressHandler {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				if ((JButton)event.getSource() == refreshButton) {
-					refreshDeviceList();
+					peerManager.startInquiry(false);
 				}
 			}
 		};
 		refreshButton.addActionListener(buttonListener);
 		
-		// init bluetooth support
-		if (! BluetoothSupport.init()) {
-			logger.error("Could not initialize Bluetooth API");
-		}
 		
 		// set up the bluetooth peer manager
 		BluetoothPeerManager.PeerEventsListener listener =
 			new BluetoothPeerManager.PeerEventsListener() {
 				public void inquiryCompleted(Vector newDevices) {
-					// TODO: populate device list
-					// updateDeviceList();
+					updateDeviceList();
 				}
 				public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
 					// ignore
@@ -267,8 +357,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 					logger.debug("Handle protocol command: " + firstLine);
 				}
 				if (firstLine.equals(PRE_AUTH)) {
-					// TODO: run input protocol
-					//inputProtocol(false, remote, null);
+					inputProtocol(false, remote, null);
 					return true;
 				}
 				return false;
@@ -290,7 +379,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		// in the input case, reset the shared key
 		btServer.setPresharedShortSecret(null);
 		logger.error(msg, e);
-		// TODO: alertError(msg);
+		alertError(msg);
 	}
 
 	@Override
@@ -328,12 +417,12 @@ public class BedaApp implements AuthenticationProgressHandler {
 	        	// for input: authentication successfully finished!
 	        	btServer.setPresharedShortSecret(null);
 	        	logger.info("Authentication through input successful!");
-				// TODO: inform success 
+	        	informSuccess();
 	        }
 	        else if (param.equals(TRANSFER_AUTH)) {
 	        	byte[] oobMsg = getShortHash(authKey);
 	        	if (oobMsg != null) {
-	        		// TODO transferProtocol(isInitiator, connectionToRemote, currentChannel, oobMsg);
+	        		transferProtocol(isInitiator, connectionToRemote, currentChannel, oobMsg);
 	        	}
 	        }
         }
@@ -401,10 +490,18 @@ public class BedaApp implements AuthenticationProgressHandler {
 		mainWindow.getContentPane().repaint();
 	}
 	
-	/* Scans for new Bluetooth devices and displays them in the deviceList */
-	private void refreshDeviceList() {
-		// TODO
-	
+	/* Callback method which is called when scanning for devices has finished. */
+	private void updateDeviceList() {
+		devices = peerManager.getPeers();
+		DefaultListModel listModel = new DefaultListModel();
+		for (RemoteDevice device : devices) {
+			try {
+				listModel.addElement(device.getFriendlyName(false));
+			} catch (IOException e) {
+				listModel.addElement("Unknown device");
+			}
+		}
+		deviceList.setModel(listModel);
 	}
 	
 	/* Test the capture functionality (offline) */
@@ -461,5 +558,249 @@ public class BedaApp implements AuthenticationProgressHandler {
 			result = null;
 		}
 		return result;
+	}
+	
+	/* Informs the user of an error and return to main screen */
+	private void alertError(String msg) {
+		JOptionPane.showMessageDialog(mainWindow, msg, "Error", JOptionPane.ERROR_MESSAGE);
+		showHomeScreen();
+	}
+	
+	/* Informs the user about the successfully completed authentication process */
+	private void informSuccess() {
+		JOptionPane.showMessageDialog(mainWindow, "Successfully paired with other device!",
+				"Success", JOptionPane.INFORMATION_MESSAGE);
+		showHomeScreen();
+	}
+	
+	/* 
+	 * Runs a transfer protocol over an authenticated out-of-band channel
+	 * and verifies the provided short string.
+	 * 
+	 * Legend:
+	 * I	initiator 
+	 * R 	responder
+	 * --->	insecure channel (bluetooth)
+	 * o-->	authentic channel (out-of-band)
+	 * 
+	 * Protocol:
+	 * I    --- "TRANSFER_AUTH:<channel_id>" -->    R
+	 *      <--        "READY"               ---
+	 *      o--         oobMsg               -->
+	 *      <--         "DONE"               ---
+	 *      <--         ack/nack             --o
+	 * 
+	 */
+	private void transferProtocol(boolean isInitiator, final RemoteConnection connection, OOBChannel channel, final byte[] oobMsg) {
+		this.isInitiator = false; // reset, so we are ready for further pairing attempts.
+		final String READY	= "READY";
+		final String DONE	= "DONE";
+		
+		final InputStream in;
+		final OutputStream out;
+		try {
+			in = connection.getInputStream();
+			out = connection.getOutputStream();
+		} catch (IOException e) {
+			logger.error("Failed to open stream from connection. Abort transfer protocol.", e);
+			return;
+		}
+		
+		if (isInitiator) {
+			logger.debug("Running transfer as initiator");
+			try {
+				String initString = TRANSFER_AUTH + ":" + channel.toString();
+				LineReaderWriter.println(out, initString);
+				String lineIn = LineReaderWriter.readLine(in);
+				if (!lineIn.equals(READY)) {
+					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
+					return;
+				}
+				channel.transmit(oobMsg);
+				// wait for other device
+				lineIn = LineReaderWriter.readLine(in);
+				if (!lineIn.equals(DONE)) {
+					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
+					return;
+				}
+				int ret = JOptionPane.showConfirmDialog(mainWindow, 
+	        			"Was the other device successful?", "Authentication", 
+	        			JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				if (ret == JOptionPane.YES_OPTION) {
+					informSuccess();
+				}
+				else if (ret == JOptionPane.NO_OPTION) {
+					alertError("Authentication failed!");
+				}
+			} catch (IOException e) {
+				logger.error("Failed to read/write from io stream. Abort transfer protocol.");
+			}
+		}
+		else { // responder
+			logger.debug("Running transfer as responder");
+			try {
+				String lineIn = LineReaderWriter.readLine(in);
+				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
+				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
+				if (!protocolDesc.equals(TRANSFER_AUTH)) {
+					logger.error("Wrong protocol descriptor from remote device. Abort transfer protocol.");
+					return;
+				}
+				// get appropriate channel
+				OOBChannel captureChannel = buttonChannels.get(channelDesc);
+				OOBMessageHandler messageHandler = new OOBMessageHandler() {
+					@Override
+					public void handleOOBMessage(int channelType, byte[] data) {
+						try {
+							LineReaderWriter.println(out, DONE);
+							// check data
+							if (logger.isInfoEnabled()) {
+								logger.info("sent oobMsg: " + new String(Hex.encodeHex(oobMsg)) +
+										" received oobMsg: " + new String(Hex.encodeHex(data)));
+							}
+							if (Arrays.equals(data, oobMsg)) {
+								JOptionPane.showMessageDialog(mainWindow, 
+					        			"Authentication successful! Please report to the other device",
+					        			"Success", JOptionPane.INFORMATION_MESSAGE);
+								showHomeScreen();
+							}
+							else {
+								alertError("Authentication failed! Please report to the other device");
+							}
+						} catch (IOException e) {
+							logger.error("Failed to read/write to io stream. Abort transfer protocol.");
+						}
+						finally {
+							connection.close();
+						}
+					}
+				};
+				captureChannel.setOOBMessageHandler(messageHandler);
+				LineReaderWriter.println(out, READY);
+				captureChannel.capture();
+			} catch (IOException e) {
+				logger.error("Failed to read/write from io stream. Abort transfer protocol.", e);
+			}
+		}
+	}
+	
+	/*
+	 * Runs an input protocol over a secure out-of-band channel.
+	 * Key verification will be handled afterwards through a MANA III variant
+	 * in the HostProtocolHandler class.
+	 * 
+	 * Legend:
+	 * I	initiator
+	 * R	responder
+	 * H	human user
+	 * --->	insecure channel (bluetooth)
+	 * o->o secure channel, both authentic and confidential (out-of-band)
+	 * 
+	 * Protocol:
+	 * I    ---  "INPUT:<channel_id>"   -->    R
+	 *      o<-   s    -Successfully paired with other device-o H o--   s    ->o
+	 *      ---         "DONE"          -->
+	 *      <--         "DONE"          ---
+	 * 
+	 */
+	private void inputProtocol(boolean isInitiator, final RemoteConnection connection, OOBChannel channel) {
+		this.isInitiator = false; // reset, so we are ready for further pairing attempts.
+		final String READY	= "READY";
+		final String DONE	= "DONE";
+		
+		final InputStream in;
+		final OutputStream out;
+		try {
+			in = connection.getInputStream();
+			out = connection.getOutputStream();
+		} catch (IOException e) {
+			logger.error("Failed to open stream from connection. Abort input protocol.", e);
+			return;
+		}
+		
+		if (isInitiator) {
+			logger.debug("Running input as initiator");
+			try {
+				String initString = INPUT + ":" + channel.toString();
+				LineReaderWriter.println(out, initString);
+				String lineIn = LineReaderWriter.readLine(in);
+				if (!lineIn.equals(READY)) {
+					logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+					return;
+				}
+				OOBMessageHandler messageHandler = new OOBMessageHandler() {
+					@Override
+					public void handleOOBMessage(int channelType, byte[] data) {
+						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						try {
+							LineReaderWriter.println(out, DONE);
+							String line = LineReaderWriter.readLine(in);
+							if (!line.equals(DONE)) {
+								logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+								return;
+							}
+							connection.close();
+							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
+							// this delay is needed on J2SE before opening a new bluetooth channel (don't know why...)
+							try {
+								Thread.sleep(1000);
+							} catch (InterruptedException e) {
+								// safely ignore it
+							}
+							btChannel.open();
+							HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, null, data, null, 20000, false, "INPUT", false);
+							//display.setCurrent(welcomeScreen);
+							// TODO: please wait
+						} catch (IOException e) {
+							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+						}
+					}
+				};
+				channel.setOOBMessageHandler(messageHandler);
+				channel.capture();
+			} catch (IOException e) {
+				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+			}
+		}
+		else { // responder
+			logger.debug("Running input as responder");
+			try {
+				String lineIn = LineReaderWriter.readLine(in);
+				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
+				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
+				if (!protocolDesc.equals(INPUT)) {
+					logger.error("Wrong protocol descriptor from remote device. Abort input protocol.");
+					return;
+				}
+				// get appropriate channel
+				OOBChannel captureChannel = buttonChannels.get(channelDesc);
+				OOBMessageHandler messageHandler = new OOBMessageHandler() {
+					@Override
+					public void handleOOBMessage(int channelType, byte[] data) {
+						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						try {
+							String line = LineReaderWriter.readLine(in);
+							if (!line.equals(DONE)) {
+								logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+								return;
+							}
+							// prepare server to handle incoming request
+							btServer.setPresharedShortSecret(data);
+							LineReaderWriter.println(out, DONE);
+							//connection.close();
+							//display.setCurrent(welcomeScreen);
+							// TODO: please wait
+						} catch (IOException e) {
+							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+						}
+					}
+				};
+				captureChannel.setOOBMessageHandler(messageHandler);
+				captureChannel.capture();
+				LineReaderWriter.println(out, READY);
+			} catch (IOException e) {
+				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+			}
+		}
 	}
 }
