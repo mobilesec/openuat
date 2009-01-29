@@ -34,7 +34,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		this.impl = impl;
 		minTimeUnit		= 1000;
 		inputMode		= MODE_PRESS_RELEASE;
-		doRoundDown		= true;
+		doRoundDown		= false;
 		useCarry		= true;
 		messageHandler	= null;
 		shortDescription = "Long Vibration";
@@ -76,6 +76,9 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 	public void transmit(byte[] message) {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
+		if (logger.isTraceEnabled()) {
+			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
+		}
 		intervals.addFirst(initInterval);
 		if (intervalCount % 2 == 0) {
 			intervals.add(endInterval);

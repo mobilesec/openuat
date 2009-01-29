@@ -92,6 +92,9 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 	public void transmit(byte[] message) {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
+		if (logger.isTraceEnabled()) {
+			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
+		}
 		intervals.addFirst(initInterval);
 		impl.setInterval(intervals);
 		

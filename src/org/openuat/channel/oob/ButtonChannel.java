@@ -181,6 +181,10 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 			}
 			buttonEventsLeft--;
 			if (buttonEventsLeft <= 0) {
+				if (logger.isTraceEnabled()) {
+					logger.trace("[STAT] channel: " + this.toString());
+					logger.trace("[STAT] captured intervals: " + oobInput.toString());
+				}
 				// massage has been transmitted, pass it on
 				if (messageHandler != null) {
 					byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarry);
