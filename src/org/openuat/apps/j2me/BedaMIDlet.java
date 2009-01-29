@@ -140,6 +140,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	/* Random number generator to build random messages (for testing) */
 	private Random random;
 	
+	/* Remember the start time of a pairing attempt. Used for statistics logging. */
+	private long startTime;
+	
 	/* Logger instance */
 	private Log logger;
 	
@@ -188,18 +191,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		currentChannel	= null;
 		currentPeerUrl	= "";
 		random			= new Random(System.currentTimeMillis());
-		
-		buttonChannels = new Hashtable(10);
-		OOBChannel c = new ButtonToButtonChannel(impl);
-		buttonChannels.put(c.toString(), c);
-		c = new FlashDisplayToButtonChannel(impl);
-		buttonChannels.put(c.toString(), c);
-		c = new ProgressBarToButtonChannel(impl);
-		buttonChannels.put(c.toString(), c);
-		c = new ShortVibrationToButtonChannel(impl);
-		buttonChannels.put(c.toString(), c);
-		c = new LongVibrationToButtonChannel(impl);
-		buttonChannels.put(c.toString(), c);
+		startTime		= 0L;
 		
 		// Initialize the logger. Use a wrapper around the microlog framework.
 		LogFactory.init(new MicrologFactory());
@@ -214,7 +206,19 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		logForm.setDisplay(display);
 		logForm.setPreviousScreen(welcomeScreen);
 		nativeLogger.addAppender(new net.sf.microlog.appender.FormAppender(logForm));
-		logger.debug("Logger initialized!");
+		
+		// build button channels
+		buttonChannels = new Hashtable(10);
+		OOBChannel c = new ButtonToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new FlashDisplayToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new ProgressBarToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new ShortVibrationToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new LongVibrationToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
 		
 		// bluetooth initialization
 		setUpPeerManager();
@@ -293,6 +297,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		// in the input case, reset the shared key
 		btServer.setPresharedShortSecret(null);
 		logger.error(msg, e);
+		statisticsEnd(currentChannel.toString());
 		alertError(msg);
 	}
 	
@@ -329,6 +334,11 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
         if (param != null) {
 	        if (param.equals(INPUT)) {
 	        	// for input: authentication successfully finished!
+	        	if (currentChannel != null) {
+	        		// log session duration only on initiator
+	        		// on responder, currentChannel is null
+	        		statisticsEnd(currentChannel.toString());
+	        	}
 	        	btServer.setPresharedShortSecret(null);
 	        	logger.info("Authentication through input successful!");
 	        	Alert successAlert = new Alert("Success", 
@@ -394,6 +404,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							isInitiator = true;
 							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
 							btChannel.open();
+							statisticsStart(currentChannel.toString());
 							if (index == 0) {
 								// input case
 								String hello = LineReaderWriter.readLine(btChannel.getInputStream());
@@ -600,6 +611,23 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 		return result;
 	}
+	
+	/* Log statistics info: start of a protocol run */
+	private void statisticsStart(String desc) {
+		if (logger.isTraceEnabled()) {
+			startTime = System.currentTimeMillis();
+			logger.trace("[STAT] START " + desc);
+		}
+	}
+	
+	/* Log statistics info: end of a protocol run */
+	private void statisticsEnd(String desc) {
+    	if (logger.isTraceEnabled() && startTime != 0L) {
+    		long duration = System.currentTimeMillis() - startTime;
+    		logger.trace("[STAT] END " + desc + " - authentication duration in ms: " + duration);
+    		startTime = 0L;
+    	}
+	}
 
 	/* 
 	 * Runs a transfer protocol over an authenticated out-of-band channel
@@ -668,6 +696,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 						else if (command == noCommand) {
 							alertError("Authentication failed");
 						}
+						statisticsEnd(currentChannel.toString());
 						connection.close();
 					}
 				};
