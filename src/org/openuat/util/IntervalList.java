@@ -138,6 +138,21 @@ public class IntervalList {
 		}
 		return hash;
 	}
-	
-	
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	//@Override
+	public String toString() {
+		String result = (this.size() == 0) ? "(empty)" : "";
+		for (int i = 0; i < this.size(); i++) {
+			if (i != 0) {
+				result += "; " + this.item(i);
+			}
+			else {
+				result += this.item(i);
+			}
+		}
+		return result;
+	}
 }
