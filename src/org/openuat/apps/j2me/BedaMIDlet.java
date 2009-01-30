@@ -109,10 +109,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	/* Standard OK command */
 	private Command okCommand;
 	
-	/* Display while searching for bluetooth devices */
-	private Alert bluetoothAlert;
-	
-	
 	/* Needed to build the various button channels */
 	private ButtonChannelImpl impl;
 	
@@ -181,8 +177,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		welcomeScreen.append("Button Enabled Device Association");
 		backCommand		= new Command("Back", Command.BACK, 1);
 		okCommand		= new Command("OK", Command.OK, 1);
-		bluetoothAlert	= new Alert("Bluetooth", "Searching for devices...", null, AlertType.INFO);
-		bluetoothAlert.setTimeout(Alert.FOREVER);
 		
 		impl			= new J2MEButtonChannelImpl(display);
 		devices			= new RemoteDevice[0];
@@ -264,7 +258,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 						}
 						else {
 							peerManager.startInquiry(false);
-							display.setCurrent(bluetoothAlert);
+							alertWait("Searching for devices...", false);
 						}
 					}
 				}
@@ -297,7 +291,11 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		// in the input case, reset the shared key
 		btServer.setPresharedShortSecret(null);
 		logger.error(msg, e);
-		statisticsEnd(currentChannel.toString());
+    	if (currentChannel != null) {
+    		// log session duration only on initiator
+    		// on responder, currentChannel is null
+    		statisticsEnd(currentChannel.toString(), false);
+    	}
 		alertError(msg);
 	}
 	
@@ -337,7 +335,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	        	if (currentChannel != null) {
 	        		// log session duration only on initiator
 	        		// on responder, currentChannel is null
-	        		statisticsEnd(currentChannel.toString());
+	        		statisticsEnd(currentChannel.toString(), true);
 	        	}
 	        	btServer.setPresharedShortSecret(null);
 	        	logger.info("Authentication through input successful!");
@@ -402,6 +400,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					if (c == okCommand && currentChannel != null) {
 						try {
 							isInitiator = true;
+							alertWait("Prepare authentication...", false);
 							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
 							btChannel.open();
 							statisticsStart(currentChannel.toString());
@@ -467,6 +466,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					}
 					int index = deviceList.getSelectedIndex();
 					if (index > -1 && index < devices.length) {
+						alertWait("Search for authenticaton service...", false);
 						currentPeerUrl = null;
 						String currentPeerAddress = devices[index].getBluetoothAddress();
 						try {
@@ -490,7 +490,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				}
 				else if (c == refreshCommand) {
 					peerManager.startInquiry(false);
-					display.setCurrent(bluetoothAlert);
+					alertWait("Searching for devices", false);
 				}
 			}
 		};
@@ -531,7 +531,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		deviceList			= null;
 		backCommand 		= null;
 		okCommand			= null;
-		bluetoothAlert		= null;
 		impl 				= null;
 		if (peerManager != null) {
 			peerManager.stopInquiry(true);
@@ -596,6 +595,19 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		display.setCurrent(a, welcomeScreen);
 	}
 	
+	/* Places a "Please wait..." message on screen.
+	 * Launch it while some background processing is done. */
+	private void alertWait(String msg, boolean returnToHome) {
+		Alert a = new Alert("Please wait...", msg, null, AlertType.INFO);
+		a.setTimeout(Alert.FOREVER);
+		if (returnToHome) {
+			display.setCurrent(a, welcomeScreen);
+		}
+		else {
+			display.setCurrent(a);
+		}
+	}
+	
 	/* 
 	 * Takes the hash of the input and returns its first 3 bytes.
 	 * The result is suitable to send over a button channel
@@ -621,10 +633,12 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	}
 	
 	/* Log statistics info: end of a protocol run */
-	private void statisticsEnd(String desc) {
+	private void statisticsEnd(String desc, boolean success) {
     	if (logger.isTraceEnabled() && startTime != 0L) {
     		long duration = System.currentTimeMillis() - startTime;
-    		logger.trace("[STAT] END " + desc + " - authentication duration in ms: " + duration);
+    		String result = success ? "success" : "failure";
+    		logger.trace("[STAT] END: " + result + " " +
+    					desc + " - authentication duration in ms: " + duration);
     		startTime = 0L;
     	}
 	}
@@ -696,7 +710,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 						else if (command == noCommand) {
 							alertError("Authentication failed");
 						}
-						statisticsEnd(currentChannel.toString());
+						statisticsEnd(currentChannel.toString(), command == yesCommand);
 						connection.close();
 					}
 				};
@@ -812,10 +826,10 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 								return;
 							}
 							connection.close();
+							alertWait("Authentication in progress...", true);
 							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
 							btChannel.open();
 							HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, null, data, null, 20000, false, "INPUT", false);
-							display.setCurrent(welcomeScreen);
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 						}
@@ -853,7 +867,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							btServer.setPresharedShortSecret(data);
 							LineReaderWriter.println(out, DONE);
 							//connection.close();
-							display.setCurrent(welcomeScreen);
+							alertWait("Authentication in progress...", true);
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 						}
