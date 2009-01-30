@@ -24,11 +24,12 @@
 	<classpathentry kind="lib" path="lib/j2me/mmapi.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/jsr082.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/jsr234.jar"/>
-	<classpathentry kind="lib" path="lib/bluecove-2.0.3.jar"/>
+	<classpathentry kind="lib" path="lib/bluecove-gpl-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/bluecove-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/bluecove-emu-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/cldcapi11.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/midpapi20.jar"/>
 	<classpathentry kind="lib" path="lib/j2me/jsr75.jar"/>
-	<classpathentry kind="lib" path="lib/bluecove-emu-2.0.3.jar"/>
 	<classpathentry kind="lib" path="lib/tgdh-1.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
 	<classpathentry kind="output" path="bin"/>
