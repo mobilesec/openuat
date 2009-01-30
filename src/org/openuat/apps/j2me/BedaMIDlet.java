@@ -194,7 +194,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		net.sf.microlog.Logger nativeLogger = ((MicrologLogger)logger).getNativeLogger();
 		nativeLogger.setLogLevel(net.sf.microlog.Level.DEBUG);
 		FileAppender fileAppender = new FileAppender();
-		fileAppender.setRootDir(FileAppender.DEFAULT_MEMORY_CARD_ROOT);
+		fileAppender.setDirectory("Memory card/Others");
 		nativeLogger.addAppender(fileAppender);
 		logForm = new LogForm();
 		logForm.setDisplay(display);
