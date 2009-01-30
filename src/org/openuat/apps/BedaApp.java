@@ -99,6 +99,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	private static final int PANEL_HIGHT	= 400;
 	private static final int LIST_WIDTH		= 200;
 	private static final int LIST_HIGHT		= 300;
+	private static final int LABEL_HIGHT	= 20;
 	
 	/* Main window of this application */
 	private JFrame mainWindow;
@@ -114,6 +115,9 @@ public class BedaApp implements AuthenticationProgressHandler {
 	
 	/* A button to refresh the deviceList */
 	private JButton refreshButton;
+	
+	/* A label used as status bar (to inform user about what's happening) */
+	private JLabel statusLabel;
 	
 	/* A mouse listener for the two JLists channelList and deviceList
 	 * which reacts to double-clicks on list entries
@@ -175,6 +179,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		
 		mainWindow = new JFrame("Beda App");
 		mainWindow.setSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
+		mainWindow.setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
 		mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainWindow.getContentPane().setLayout(new FlowLayout());
 		
@@ -248,6 +253,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 						try {
 							currentChannel = (OOBChannel)channelList.getSelectedValue();
 							if (currentChannel != null) {
+								statusLabel.setText("Please wait... Prepare authentication");
 								isInitiator = true;
 								BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
 								btChannel.open();
@@ -287,9 +293,10 @@ public class BedaApp implements AuthenticationProgressHandler {
 							else {
 								channelList.setEnabled(false);
 								// TODO: move this warning to a status bar or similar
-								JOptionPane.showMessageDialog(mainWindow,
+								statusLabel.setText("Sorry, but the service " + SERVICE_NAME + " is not running on the selected device");
+								/* JOptionPane.showMessageDialog(mainWindow,
 										"The service " + SERVICE_NAME + " is not running on the selected device",
-										"Error", JOptionPane.ERROR_MESSAGE);
+										"Error", JOptionPane.ERROR_MESSAGE); */
 							}
 						}
 					}
@@ -314,6 +321,8 @@ public class BedaApp implements AuthenticationProgressHandler {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				if ((JButton)event.getSource() == refreshButton) {
+					refreshButton.setEnabled(false);
+					statusLabel.setText("Please wait... scanning for devices...");
 					peerManager.startInquiry(false);
 				}
 			}
@@ -325,6 +334,8 @@ public class BedaApp implements AuthenticationProgressHandler {
 		BluetoothPeerManager.PeerEventsListener listener =
 			new BluetoothPeerManager.PeerEventsListener() {
 				public void inquiryCompleted(Vector newDevices) {
+					refreshButton.setEnabled(true);
+					statusLabel.setText("");
 					updateDeviceList();
 				}
 				public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
@@ -365,6 +376,9 @@ public class BedaApp implements AuthenticationProgressHandler {
 		};
 		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
 		
+		// build staus bar
+		statusLabel = new JLabel("");
+		statusLabel.setPreferredSize(new Dimension(FRAME_WIDTH - 40, LABEL_HIGHT));
 		
 		// build initial screen (the home screen)
 		showHomeScreen();
@@ -417,6 +431,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	        	// for input: authentication successfully finished!
 	        	btServer.setPresharedShortSecret(null);
 	        	logger.info("Authentication through input successful!");
+	        	statusLabel.setText("");
 	        	informSuccess();
 	        }
 	        else if (param.equals(TRANSFER_AUTH)) {
@@ -445,9 +460,12 @@ public class BedaApp implements AuthenticationProgressHandler {
 		channelPanel.add(label);
 		channelPanel.add(channelList);
 		
+		statusLabel.setText("");
+		
 		mainWindow.getContentPane().removeAll();
 		mainWindow.getContentPane().add(devicePanel);
 		mainWindow.getContentPane().add(channelPanel);
+		mainWindow.getContentPane().add(statusLabel);
 		mainWindow.getContentPane().validate();
 		mainWindow.getContentPane().repaint();
 	}
@@ -484,8 +502,11 @@ public class BedaApp implements AuthenticationProgressHandler {
 		testPanel.add(captureButton);
 		testPanel.add(transmitButton);
 		
+		statusLabel.setText("");
+		
 		mainWindow.getContentPane().removeAll();
 		mainWindow.getContentPane().add(testPanel);
+		mainWindow.getContentPane().add(statusLabel);
 		mainWindow.getContentPane().validate();
 		mainWindow.getContentPane().repaint();
 	}
@@ -623,6 +644,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
 					return;
 				}
+				statusLabel.setText("");
 				int ret = JOptionPane.showConfirmDialog(mainWindow, 
 	        			"Was the other device successful?", "Authentication", 
 	        			JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
@@ -658,6 +680,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 								logger.info("sent oobMsg: " + new String(Hex.encodeHex(oobMsg)) +
 										" received oobMsg: " + new String(Hex.encodeHex(data)));
 							}
+							statusLabel.setText("");
 							if (Arrays.equals(data, oobMsg)) {
 								JOptionPane.showMessageDialog(mainWindow, 
 					        			"Authentication successful! Please report to the other device",
@@ -698,7 +721,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	 * 
 	 * Protocol:
 	 * I    ---  "INPUT:<channel_id>"   -->    R
-	 *      o<-   s    -Successfully paired with other device-o H o--   s    ->o
+	 *      o<-   s    --o H o--   s    ->o
 	 *      ---         "DONE"          -->
 	 *      <--         "DONE"          ---
 	 * 
@@ -741,16 +764,23 @@ public class BedaApp implements AuthenticationProgressHandler {
 							}
 							connection.close();
 							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
-							// this delay is needed on J2SE before opening a new bluetooth channel (don't know why...)
 							try {
-								Thread.sleep(1000);
-							} catch (InterruptedException e) {
-								// safely ignore it
+								btChannel.open();
+							} catch (Exception be) {
+								try {
+									// retry after a second
+									Thread.sleep(1000);
+									btChannel.open();
+								} catch (Exception e) {
+									logger.error("Failed to open bluetooth channel. Abort input protocol.", e);
+									return;
+								}
 							}
-							btChannel.open();
+							
 							HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, null, data, null, 20000, false, "INPUT", false);
 							//display.setCurrent(welcomeScreen);
 							// TODO: please wait
+							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 						}
@@ -790,6 +820,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 							//connection.close();
 							//display.setCurrent(welcomeScreen);
 							// TODO: please wait
+							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 						}
