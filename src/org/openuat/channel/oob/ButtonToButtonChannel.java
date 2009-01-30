@@ -35,7 +35,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		minTimeUnit		= 300;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
-		useCarry		= true;
+		useCarry		= false;
 		messageHandler	= null;
 		shortDescription	= "Input";
 		transmitDisplayText = "";
