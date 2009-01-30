@@ -113,8 +113,8 @@
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
 		<!--<include name="avetanaBT.jar"/>-->
-		<include name="bluecove-2.0.3.jar"/>
-		<include name="bluecove-gpl-2.0.3.jar"/>
+		<include name="bluecove-2.1.0.jar"/>
+		<include name="bluecove-gpl-2.1.0.jar"/>
 		<include name="jsapi.jar"/>
 		<include name="TableLayout.jar"/>
 		<include name="freetts.jar"/>
@@ -735,7 +735,7 @@
 			<jvmarg value="-Xmx512m" />
 			<jvmarg value="-Xms512m" />
 			<classpath>
-				<pathelement location="${lib}/bluecove-emu-2.0.3.jar"/>
+				<pathelement location="${lib}/bluecove-emu-2.1.0.jar"/>
 				<fileset refid="lib.alljars"/>
 				<pathelement location="${jarfile.core}"/>
 				<pathelement location="${jarfile.channels}"/>
@@ -778,7 +778,7 @@
 				<!-- to also use the log4.properties file -->
 				<pathelement location="${src}"/>
 				<!-- for Bluetooth loopback (emulator) tests -->
-				<pathelement location="${lib}/bluecove-emu-2.0.3.jar"/>
+				<pathelement location="${lib}/bluecove-emu-2.1.0.jar"/>
 			</classpath>
 			<formatter type="plain" usefile="true"/>
 			<batchtest todir="${reports.tests}">
