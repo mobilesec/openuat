@@ -26,6 +26,9 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
+import javax.microedition.lcdui.Image;
+import javax.microedition.lcdui.ImageItem;
+import javax.microedition.lcdui.Item;
 import javax.microedition.lcdui.List;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
@@ -102,15 +105,20 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	
 	/* The microlog LogForm */
 	private LogForm logForm;
+	
+	/* Simple icons (showing a button) in the colors red, yellow and green */
+	private Image errorIcon;
+	private Image warnIcon;
+	private Image successIcon;
+	
+	/* Simple icon (showing a button) used as list 'bullets' */
+	private Image listIcon;
 
 	/* Enables the user to go back to the last screen */
 	private Command backCommand;
 	
 	/* Standard OK command */
 	private Command okCommand;
-	
-	/* Needed to build the various button channels */
-	private ButtonChannelImpl impl;
 	
 	/* Scans for bluetooth devices around */
 	private BluetoothPeerManager peerManager;
@@ -174,11 +182,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		// MIDlet initialization
 		display = Display.getDisplay(this);
 		welcomeScreen	= new Form("BEDA MIDlet");
-		welcomeScreen.append("Button Enabled Device Association");
 		backCommand		= new Command("Back", Command.BACK, 1);
 		okCommand		= new Command("OK", Command.OK, 1);
 		
-		impl			= new J2MEButtonChannelImpl(display);
 		devices			= new RemoteDevice[0];
 		deviceList		= new List(DEVICE_LIST_TITLE, Choice.IMPLICIT);
 		isInitiator		= false;
@@ -201,7 +207,34 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		logForm.setPreviousScreen(welcomeScreen);
 		nativeLogger.addAppender(new net.sf.microlog.appender.FormAppender(logForm));
 		
+		// create icon images
+		try {
+			errorIcon = Image.createImage("/Button_Icon_Red_32.png");
+		} catch (IOException ioe) {
+			errorIcon = null;
+			logger.warn("Could not create error icon", ioe);
+		}
+		try {
+			warnIcon = Image.createImage("/Button_Icon_Yellow_32.png");
+		} catch (IOException ioe) {
+			warnIcon = null;
+			logger.warn("Could not create warn icon", ioe);
+		}
+		try {
+			successIcon = Image.createImage("/Button_Icon_Green_32.png");
+		} catch (IOException ioe) {
+			successIcon = null;
+			logger.warn("Could not create success icon", ioe);
+		}
+		try {
+			listIcon = Image.createImage("/Button_Icon_Blue_12.png");
+		} catch (IOException ioe) {
+			listIcon = null;
+			logger.warn("Could not create list icon", ioe);
+		}
+		
 		// build button channels
+		ButtonChannelImpl impl = new J2MEButtonChannelImpl(display);
 		buttonChannels = new Hashtable(10);
 		OOBChannel c = new ButtonToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
@@ -241,17 +274,15 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		};
 		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
 		
-		// create menu on welcome screen
+		// build welcome screen: create menu
 		final Command exitCommand	= new Command("Exit", Command.EXIT, 1);
+		final Command searchCommand = new Command("Search", "Search devices", Command.ITEM, 2);
 		final Command testCommand	= new Command("Test", "Test channels", Command.ITEM, 3);
-		final Command searchCommand	= new Command("Search", "Search devices", Command.ITEM, 2);
 		final Command logCommand	= new Command("Log", "Show log", Command.ITEM, 3);
 		
 		CommandListener listener = new CommandListener() {
 			public void commandAction(Command cmd, Displayable d) {
 				if (cmd == searchCommand) {
-					//updateDeviceList();
-					//display.setCurrent(deviceList);
 					if (peerManager != null) {
 						if (deviceList.size() > 0) {
 							display.setCurrent(deviceList);
@@ -280,6 +311,15 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		welcomeScreen.addCommand(testCommand);
 		welcomeScreen.addCommand(logCommand);
 		welcomeScreen.setCommandListener(listener);
+		
+		// build welcome screen: create form elements
+		try {
+			Image logo = Image.createImage("/Button_Icon_Blue_beda.png");
+			welcomeScreen.append(new ImageItem(null, logo, Item.LAYOUT_CENTER, null));
+		} catch (IOException e) {
+			logger.warn("Could not create beda logo", e);
+		}
+		welcomeScreen.append("\nButton Enabled Device Association");
 		
 		// launch gui
 		display.setCurrent(welcomeScreen);
@@ -312,7 +352,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 
 	// @Override
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-		logger.info("Authentication success event.");
         Object[] res = (Object[]) result;
         // remember the secret key shared with the other device
         byte[] sharedKey = (byte[]) res[0];
@@ -340,7 +379,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	        	btServer.setPresharedShortSecret(null);
 	        	logger.info("Authentication through input successful!");
 	        	Alert successAlert = new Alert("Success", 
-						"Authentication successful!", null, AlertType.CONFIRMATION);
+						"Authentication successful!", successIcon, AlertType.CONFIRMATION);
 				successAlert.setTimeout(Alert.FOREVER);
 				display.setCurrent(successAlert, welcomeScreen);
 	        }
@@ -355,8 +394,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 
 	/* Helper method to initialize the channelList */
 	private void buildChannelList(boolean isTest) {
-		String[] listItems = {"Input", "Flash display", "Progressbar", "Short vibration", "Long vibration"};
-		channelList = new List(CHANNEL_LIST_TITLE, Choice.IMPLICIT, listItems, null);
+		String[] listItems = {"Input", "Flash Display", "Progress Bar", "Short Vibration", "Long Vibration"};
+		Image[] imageItems = {listIcon, listIcon, listIcon, listIcon, listIcon};
+		channelList = new List(CHANNEL_LIST_TITLE, Choice.IMPLICIT, listItems, imageItems);
 		channelList.addCommand(backCommand);
 		final Command transmitCommand = new Command("Transmit", Command.ITEM, 2);
 		final Command captureCommand = new Command("Capture", Command.ITEM, 2);
@@ -375,52 +415,21 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					display.setCurrent(welcomeScreen);
 				}
 				else {
+					
 					int index = channelList.getSelectedIndex();
 					if (index > -1) {
-						switch (index) {
-						case 0:
-							currentChannel = new ButtonToButtonChannel(impl);
-							break;
-						case 1:
-							currentChannel = new FlashDisplayToButtonChannel(impl);
-							break;
-						case 2:
-							currentChannel = new ProgressBarToButtonChannel(impl);
-							break;
-						case 3:
-							currentChannel = new ShortVibrationToButtonChannel(impl);
-							break;
-						case 4:
-							currentChannel = new LongVibrationToButtonChannel(impl);
-							break;
-						default:	
-							currentChannel = null;
-						}
+						String channelDesc = channelList.getString(index);
+						currentChannel = (OOBChannel)buttonChannels.get(channelDesc);
 					}
 					if (c == okCommand && currentChannel != null) {
-						try {
-							isInitiator = true;
-							alertWait("Prepare authentication...", false);
-							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
-							btChannel.open();
-							statisticsStart(currentChannel.toString());
-							if (index == 0) {
-								// input case
-								String hello = LineReaderWriter.readLine(btChannel.getInputStream());
-								if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
-									logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
-								}
-								LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
-								inputProtocol(true, btChannel, currentChannel);
+						alertWait("Prepare authentication...", false);
+						// start protocols in new thread, so the gui can be updated
+						Thread thread = new Thread(new Runnable(){
+							public void run() {
+								startAuthentication();
 							}
-							else {
-								// transfer case
-								boolean keepConnected = true; // since the key has to be authenticated after key agreement
-								HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, -1, keepConnected, TRANSFER_AUTH, false);
-							}
-						} catch (IOException e) {
-							logger.error("Failed to start authentication.", e);
-						}
+						});
+						thread.start();
 					}
 					else if (c == transmitCommand && currentChannel != null) {
 						testTransmit(currentChannel);
@@ -441,14 +450,15 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 		final Command refreshCommand = new Command("Refresh list", Command.ITEM, 1);
 		
-		String[] listItems = new String[devices.length];
+		deviceList = new List(DEVICE_LIST_TITLE, Choice.IMPLICIT);
 		for (int i = 0; i < devices.length; i++) {
 			RemoteDevice device = devices[i];
 			try {
-				listItems[i] = device.getFriendlyName(false);
+				String deviceName = device.getFriendlyName(false);
+				deviceList.append(deviceName, listIcon);
 			} catch (IOException e) {
 				logger.warn("Could not get name of a bluetooth device.", e);
-				listItems[i] = "Unknown device";
+				deviceList.append("Unknown device", listIcon);
 			}
 		}
 		
@@ -464,38 +474,25 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					if (peerManager != null) {
 						peerManager.stopInquiry(true);
 					}
-					int index = deviceList.getSelectedIndex();
+					final int index = deviceList.getSelectedIndex();
 					if (index > -1 && index < devices.length) {
-						alertWait("Search for authenticaton service...", false);
-						currentPeerUrl = null;
-						String currentPeerAddress = devices[index].getBluetoothAddress();
-						try {
-							currentPeerUrl = BluetoothPeerManager.getRemoteServiceURL(
-									currentPeerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
-						} catch (IOException e) {
-							currentPeerUrl = null;
-						}
-						if (currentPeerUrl != null) {
-							buildChannelList(false);
-							display.setCurrent(channelList);
-						}
-						else {
-							Alert a = new Alert("Error", 
-									"Authentication service " + SERVICE_NAME + " is not currently available on this device.", 
-									null, AlertType.ERROR);
-							a.setTimeout(Alert.FOREVER);
-							display.setCurrent(a, deviceList);
-						}
+						alertWait("Searching for authenticaton service...", false);
+						// search for service in a separate thread, so the gui can be updated
+						Thread thread = new Thread(new Runnable(){
+							public void run() {
+								searchForService();
+							}
+						});
+						thread.start();
 					}
 				}
 				else if (c == refreshCommand) {
 					peerManager.startInquiry(false);
-					alertWait("Searching for devices", false);
+					alertWait("Searching for devices...", false);
 				}
 			}
 		};
 		
-		deviceList = new List(DEVICE_LIST_TITLE, Choice.IMPLICIT, listItems, null);
 		deviceList.setSelectCommand(okCommand);
 		deviceList.addCommand(backCommand);
 		deviceList.addCommand(refreshCommand);
@@ -523,26 +520,57 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 	}
 	
-	/* Frees resources */
-	private void cleanUp() {
-		display 			= null;
-		welcomeScreen 		= null;
-		channelList 		= null;
-		deviceList			= null;
-		backCommand 		= null;
-		okCommand			= null;
-		impl 				= null;
-		if (peerManager != null) {
-			peerManager.stopInquiry(true);
+	/* Initiates the authentication protocol. */
+	private void startAuthentication() {
+		try {
+			isInitiator = true;
+			BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
+			btChannel.open();
+			statisticsStart(currentChannel.toString());
+			if (currentChannel.toString().equals("Input")) {
+				// input case
+				String hello = LineReaderWriter.readLine(btChannel.getInputStream());
+				if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
+					logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
+				}
+				LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
+				inputProtocol(true, btChannel, currentChannel);
+			}
+			else {
+				// transfer case
+				boolean keepConnected = true; // since the key has to be authenticated after key agreement
+				HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, -1, keepConnected, TRANSFER_AUTH, false);
+			}
+		} catch (IOException e) {
+			logger.error("Failed to start authentication.", e);
 		}
-		peerManager			= null;
-		devices 			= null;
-		currentPeerUrl		= null;
-		random 				= null;
-		logger				= null;
-		BluetoothRFCOMMChannel.shutdownAllChannels();
-		btServer 			= null;
-		buttonChannels		= null;
+	}
+	
+	/* 
+	 * Searches for the Beda service on currentPeerAddress 
+	 * and launches the channel list if the service is available.
+	 */
+	private void searchForService() {
+		int index = deviceList.getSelectedIndex();
+		currentPeerUrl = null;
+		String currentPeerAddress = devices[index].getBluetoothAddress();
+		try {
+			currentPeerUrl = BluetoothPeerManager.getRemoteServiceURL(
+					currentPeerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
+		} catch (IOException e) {
+			currentPeerUrl = null;
+		}
+		if (currentPeerUrl != null) {
+			buildChannelList(false);
+			display.setCurrent(channelList);
+		}
+		else {
+			Alert a = new Alert("Warning", 
+					"Authentication service " + SERVICE_NAME + " is not currently available on this device.", 
+					warnIcon, AlertType.WARNING);
+			a.setTimeout(Alert.FOREVER);
+			display.setCurrent(a, deviceList);
+		}
 	}
 	
 	/* Test the transmit functionality (offline) */
@@ -590,7 +618,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	
 	/* Informs the user of an error and return to main screen */
 	private void alertError(String msg) {
-		Alert a = new Alert("Error", msg, null, AlertType.ERROR);
+		Alert a = new Alert("Error", msg, errorIcon, AlertType.ERROR);
 		a.setTimeout(Alert.FOREVER);
 		display.setCurrent(a, welcomeScreen);
 	}
@@ -598,7 +626,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	/* Places a "Please wait..." message on screen.
 	 * Launch it while some background processing is done. */
 	private void alertWait(String msg, boolean returnToHome) {
-		Alert a = new Alert("Please wait...", msg, null, AlertType.INFO);
+		Alert a = new Alert("Please wait...", msg, warnIcon, AlertType.INFO);
 		a.setTimeout(Alert.FOREVER);
 		if (returnToHome) {
 			display.setCurrent(a, welcomeScreen);
@@ -703,7 +731,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					//@Override
 					public void commandAction(Command command, Displayable d) {
 						if (command == yesCommand) {
-							Alert a = new Alert("Success", "Successfully paired with other device!", null, AlertType.CONFIRMATION);
+							Alert a = new Alert("Success", "Successfully paired with other device!",
+									successIcon, AlertType.CONFIRMATION);
 							a.setTimeout(Alert.FOREVER);
 							display.setCurrent(a, welcomeScreen);
 						}
@@ -746,7 +775,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							if ((new String(Hex.encodeHex(data))).equals(new String(Hex.encodeHex(oobMsg)))) {
 								Alert successAlert = new Alert("Success", 
 										"Authentication successful! Please report to the other device.",
-										null, AlertType.CONFIRMATION);
+										successIcon, AlertType.CONFIRMATION);
 								successAlert.setTimeout(Alert.FOREVER);
 								display.setCurrent(successAlert, welcomeScreen);
 							}
@@ -829,7 +858,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							alertWait("Authentication in progress...", true);
 							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
 							btChannel.open();
-							HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, null, data, null, 20000, false, "INPUT", false);
+							HostProtocolHandler.startAuthenticationWith(
+									btChannel, BedaMIDlet.this, null, data, null, 20000, false, "INPUT", false);
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 						}
@@ -880,6 +910,27 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 			}
 		}
+	}
+	
+	/* Frees resources */
+	private void cleanUp() {
+		display 			= null;
+		welcomeScreen 		= null;
+		channelList 		= null;
+		deviceList			= null;
+		backCommand 		= null;
+		okCommand			= null;
+		if (peerManager != null) {
+			peerManager.stopInquiry(true);
+		}
+		peerManager			= null;
+		devices 			= null;
+		currentPeerUrl		= null;
+		random 				= null;
+		logger				= null;
+		BluetoothRFCOMMChannel.shutdownAllChannels();
+		btServer 			= null;
+		buttonChannels		= null;
 	}
 
 }
