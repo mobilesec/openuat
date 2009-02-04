@@ -40,8 +40,7 @@ public class MicrologLogger implements Log {
 	 * @param name The name of the new logger.
 	 */
 	public MicrologLogger(String name) {
-		// TODO: microlog 1.0 supports named loggers
-		this.logger = Logger.getLogger();
+		this.logger = Logger.getLogger(name);
 	}
 	
 	/**
@@ -84,14 +83,12 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public void fatal(Object message) {
-		// TODO: microlog 1.0 supports log level fatal.
-		logger.error(message);
+		logger.fatal(message);
 	}
 
 	// @Override
 	public void fatal(Object message, Throwable t) {
-		// TODO: microlog 1.0 supports log level fatal.
-		logger.error(message, t);
+		logger.fatal(message, t);
 	}
 
 	// @Override
@@ -116,8 +113,7 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public boolean isFatalEnabled() {
-		// TODO: microlog 1.0 supports log level fatal.
-		return logger.isErrorEnabled();
+		return logger.isFatalEnabled();
 	}
 
 	// @Override
@@ -127,8 +123,7 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public boolean isTraceEnabled() {
-		// TODO: microlog 1.0 supports log level trace
-		return logger.isDebugEnabled();
+		return logger.isTraceEnabled();
 	}
 
 	// @Override
@@ -138,14 +133,12 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public void trace(Object message) {
-		// TODO: microlog 1.0 supports log level trace
-		logger.debug(message);
+		logger.trace(message);
 	}
 
 	// @Override
 	public void trace(Object message, Throwable t) {
-		// TODO: microlog 1.0 supports log level trace
-		logger.debug(message, t);
+		logger.trace(message, t);
 	}
 
 	// @Override
