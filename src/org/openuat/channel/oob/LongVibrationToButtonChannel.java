@@ -23,15 +23,50 @@ import org.openuat.util.IntervalList;
  * @version 1.0
  */
 public class LongVibrationToButtonChannel extends ButtonChannel {
-
+	
+	/* The first interval in ms (before the first signal will be sent). */
+	private int initInterval;
+	
+	/* The last interval in ms. This is only needed if the number of intervals
+	 * (which actually contain the data) is even, and hence the number of button
+	 * events is odd. This situation leads to an empty (non-vibrating) last
+	 * interval and an additional vibration signal is needed to make it clear
+	 * when this interval end. */
+	private int endInterval;
+	
+	/* When in TRANSMIT_SIGNAL mode: Wait some time to let the user read the text. */
+	private int textDelay;
+	
+	/* How long is the (visual) preparatory signal (in ms)? */
+	private int prepSignalDuration;
+	
+	/* Is the prepare signal enabled? */
+	private boolean isPrepareEnabled;
+	
 	/**
-	 * Creates a new instance of this channel.
+	 * Creates a new instance of this channel.<br/>
+	 * This constructor is equivalent to
+	 * <code>LongVibrationToButtonChannel(impl, true)</code>.
 	 * 
 	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
 	 * to handle platform dependent method calls.
 	 */
 	public LongVibrationToButtonChannel(ButtonChannelImpl impl) {
+		this(impl, true);
+	}
+	
+	/**
+	 * Creates a new instance of this channel.
+	 * 
+	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
+	 * to handle platform dependent method calls.
+	 * @param usePrepareSignal Should a preparatory signal be sent
+	 * before a real signal is emitted?
+	 */
+	public LongVibrationToButtonChannel(ButtonChannelImpl impl, boolean usePrepareSignal) {
 		this.impl = impl;
+		isPrepareEnabled = usePrepareSignal;
+		
 		minTimeUnit		= 1000;
 		inputMode		= MODE_PRESS_RELEASE;
 		doRoundDown		= false;
@@ -40,8 +75,10 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		shortDescription = "Long Vibration";
 		logger = LogFactory.getLogger(this.getClass().getName());
 		
-		initInterval	= 6500;
-		endInterval		= 600;
+		initInterval		= isPrepareEnabled ? 2500 : 6500;
+		endInterval			= 600;
+		textDelay			= 5000;
+		prepSignalDuration	= 500;
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {
@@ -54,16 +91,6 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		transmitDisplayText	= "This device will send vibration signals. Please press "
 							+ "the button on the other device.";
 	}
-	
-	/* The first interval in ms (before the first signal will be sent). */
-	private int initInterval;
-	
-	/* The last interval in ms. This is only needed if the number of intervals
-	 * (which actually contain the data) is even, and hence the number of button
-	 * events is odd. This situation leads to an empty (non-vibrating) last
-	 * interval and an additional vibration signal is needed to make it clear
-	 * when this interval end. */
-	private int endInterval;
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
@@ -87,19 +114,53 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		// now run the transmission in a separate thread
 		Thread t = new Thread(new Runnable() {
 			public void run() {
+				int signalCount = 0;
+				impl.setSignalCount(signalCount);
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
 
-				// transmit the data (given from 'intervals')
-				// note: the first interval is always an empty (non-vibrating)
-				// interval ('initInterval') to give the user some time to prepare.
-				// It follows that all vibrating intervals have odd indices in the interval list.
-				for (int i = 0; i < intervals.size(); i++) {
-					int interval = intervals.item(i);
-					if (i % 2 == 1) {
-						impl.vibrate(interval);
+				/* 
+				 * transmit the data (given from 'intervals')
+				 * note: the first interval is always an empty (non-vibrating)
+				 * interval ('initInterval') to give the user some time to prepare.
+				 * It follows that all vibrating intervals have odd indices in the interval list.
+				 */
+				if (!isPrepareEnabled) {
+					for (int i = 0; i < intervals.size(); i++) {
+						int interval = intervals.item(i);
+						if (i % 2 == 1) {
+							impl.vibrate(interval);
+						}
+						try {
+							Thread.sleep(interval);
+							signalCount++;
+							impl.setSignalCount(signalCount);
+							impl.repaint();
+						} catch (InterruptedException e) {
+							logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+						}
 					}
+				}
+				else { // isPrepareEnabled
 					try {
-						Thread.sleep(interval);
+						Thread.sleep(textDelay);
+						impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_SIGNAL);
+						for (int i = 0; i < intervals.size(); i++) {
+							int interval = intervals.item(i);
+							if (i % 2 == 1) {
+								impl.vibrate(interval);
+							}
+							interval -= prepSignalDuration;
+							Thread.sleep(interval);
+							impl.setSignal(false);
+							impl.setPrepareSignal(true);
+							impl.repaint();
+							Thread.sleep(prepSignalDuration);
+							impl.setSignal(false);
+							impl.setPrepareSignal(false);
+							signalCount++;
+							impl.setSignalCount(signalCount);
+							impl.repaint();
+						}
 					} catch (InterruptedException e) {
 						logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
 					}

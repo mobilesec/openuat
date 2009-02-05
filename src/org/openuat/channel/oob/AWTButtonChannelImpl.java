@@ -24,7 +24,6 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JTextPane;
 
-import org.openuat.log.Log;
 import org.openuat.log.LogFactory;
 
 
@@ -58,12 +57,13 @@ import org.openuat.log.LogFactory;
  * </tr></table>
  * Presumably, the key repeat functionality is activated on most systems. However, it
  * could be deactivated by the user as well (which is the same behavior as with the
- * modifier keys like CTRL, SHIFT, ALT on linux).
+ * modifier keys like CTRL, SHIFT, ALT on linux).<br/>
+ * This class has been tested under Linux (Ubuntu 8.10) and quickly on Windows XP.
  *
  * @author Lukas Huser
  * @version 1.0
  */
-public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionListener {
+public class AWTButtonChannelImpl extends ButtonChannelImpl {
 
 	/**
 	 * The parent gui component. It serves as a container for gui elements
@@ -76,6 +76,19 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 * through the <code>repaint</code> method.
 	 */
 	protected Component paintableComponent;
+	
+	/**
+	 * A gui component that displays text. It it is set and the <code>repaint</code>
+	 * method is called, its content will be updated with the current
+	 * <code>signalCount</code>
+	 */
+	protected JTextPane textComponent;
+	
+	/**
+	 * Text content which will be displayed in the <code>textComponent</code>
+	 * gui element.
+	 */
+	protected String currentText;
 	
 	/**
 	 * A button that allows the user to abort the current processing (capture or transmit).
@@ -93,33 +106,37 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 */
 	protected int buttonKey;
 	
+	
 	/* Keep track of button presses: ignore fake key press events */
 	private boolean isKeyDown;
 	
 	/* Keep track of button presses: ignore fake key release events */
 	private long lastKeyDown;
 	
-	/* Logger instance */
-	private Log logger;
 	
 	/**
 	 * Creates a new instance.
 	 * @param parentComponent The parent gui element which will hold gui elements
 	 * created by this class.
+	 * @param abortHandler An action listener which will be called when the user
+	 * aborts the current transmission or capture process.
 	 */
-	public AWTButtonChannelImpl(Container parentComponent) {
+	public AWTButtonChannelImpl(Container parentComponent, ActionListener abortHandler) {
 		transmissionMode	= 0;
 		progress			= 0;
+		signalCount			= 0;
 		showSignal			= false;
 		intervalList		= null;
 		paintableComponent	= null;
+		textComponent		= null;
+		currentText			= "";
 		parent				= parentComponent;
 		buttonKey			= KeyEvent.VK_SPACE;
 		isKeyDown			= false;
 		lastKeyDown			= 0L;
 		defaultFont = new Font(Font.SANS_SERIF, Font.PLAIN, 16);
 		abortButton = new JButton("Abort");
-		abortButton.addActionListener(this);
+		abortButton.addActionListener(abortHandler);
 		logger = LogFactory.getLogger(AWTButtonChannelImpl.class.getName());
 	}
 
@@ -131,8 +148,12 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		if (paintableComponent != null) {
 			paintableComponent.repaint();
 		}
+		else if (textComponent != null) {
+			String text = currentText + signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+			textComponent.setText(text);
+		}
 		else {
-			logger.warn("Method repaint(): paintableComponent is null");
+			logger.warn("Method repaint(): paintableComponent and textComponent are null");
 		}
 	}
 
@@ -140,8 +161,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#showCaptureGui(java.lang.String, org.openuat.channel.oob.ButtonInputHandler)
 	 */
 	// @Override
-	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
-		final ButtonInputHandler buttonInputHandler = inputHandler;
+	public void showCaptureGui(String text, final ButtonInputHandler inputHandler) {
 		JTextPane captureGui = new JTextPane();
 		Dimension size = new Dimension(
 			parent.getWidth() - 20,
@@ -162,7 +182,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 										" Captured at: " + System.currentTimeMillis());
 						}
 						isKeyDown = true;
-						buttonInputHandler.buttonPressed(e.getWhen());
+						inputHandler.buttonPressed(e.getWhen());
 					}
 				}
 			}
@@ -202,7 +222,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 												" Captured at: " + System.currentTimeMillis());
 									}
 									isKeyDown = false;
-									buttonInputHandler.buttonReleased(e.getWhen());
+									inputHandler.buttonReleased(e.getWhen());
 								}
 							}
 						});
@@ -211,10 +231,14 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			}
 		};
 		
+		signalCount = 0;
+		paintableComponent = null;
+		currentText = text + "\n\n" + "Button events Processed: ";
+		textComponent = captureGui;
 		captureGui.addKeyListener(keyListener);
 		captureGui.setFont(defaultFont);
-		captureGui.setText(text);
 		captureGui.setEditable(false);
+		this.repaint();
 		
 		// display the capture gui
 		parent.removeAll();
@@ -234,19 +258,24 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 	public void showTransmitGui(String text, int type) {
 		transmissionMode = type;
 		JComponent transmitGui = null;
+		signalCount = 0;
 		
 		if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
+			currentText = text + "\n\n" + "Signals sent: ";
 			JTextPane temp = new JTextPane();
 			temp.setFont(defaultFont);
-			temp.setText(text);
 			temp.setEditable(false);
 			transmitGui = temp;
+			paintableComponent = null;
+			textComponent = temp;
+			this.repaint();
 		}
 		else {
-			transmitGui = new TransmitGui(text);
+			transmitGui = new TransmitGui();
 			transmitGui.setBackground(Color.WHITE);
 			transmitGui.setDoubleBuffered(true);
 			paintableComponent = transmitGui;
+			textComponent = null;
 		}
 		
 		Dimension size = new Dimension(
@@ -271,46 +300,32 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 		// can't be implemented on this platform
 		logger.warn("Method vibrate(int): Not implemented on J2SE (AWT)");
 	}
-
-	/* (non-Javadoc)
-	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
-	 */
-	// @Override
-	public void actionPerformed(ActionEvent e) {
-		if (e.getID() == ActionEvent.ACTION_PERFORMED
-				&& e.getActionCommand().equals("Abort")) {
-			// TODO: abort current processing...
-		}
-	}
 	
 	
 	/*
 	 * Private helper/wrapper class to launch the transmit gui.
 	 */
 	private class TransmitGui extends JComponent {
-		// TODO: remove TRANSFER_PLAIN from this class
 		/*
 		 * Creates a new Instance.
 		 */
-		public TransmitGui(String displayText) {
-			this.displayText	= displayText;
+		public TransmitGui() {
 			textMarginLeft		= 20;
 			textMarginTop		= 20;
 			signalLength		= 200;
+			prepSignalLength	= 150;
 			barMaxWidth			= 400;
 			barMinMargin		= 20;
 			barHeight			= 40;
 		}
 		
-		/* Display this text before transmission starts. */
-		private String displayText;
-		
 		/* Margins to draw text */
 		private int textMarginLeft;
 		private int textMarginTop;
 		
-		/* Length of one side of the signal */
+		/* Length of one side of the signals */
 		private int signalLength;
+		private int prepSignalLength;
 		
 		/* Height, maximum width and minimum margin of the progress bar */
 		private int barMaxWidth;
@@ -323,18 +338,27 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl implements ActionLis
 			g.setColor(this.getBackground());
 			g.fillRect(0, 0, this.getWidth(), this.getHeight());
 			
-			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
+			if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
+				String eventCountText = "Signals sent: " + signalCount
+						+ "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+				int marginTopText = textMarginTop + defaultFont.getSize();
 				g.setColor(Color.BLACK);
 				g.setFont(defaultFont);
-				g.drawString(displayText, textMarginLeft, textMarginTop + defaultFont.getSize());
-			}
-			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
+				g.drawString(eventCountText, textMarginLeft, marginTopText);
+				// the 'real' signal has always precedence over the preparatory signal
 				if (showSignal) {
 					g.setColor(Color.BLACK);
 					// the signal is just a simple square, painted black
 					int marginLeft = (this.getWidth()  - signalLength) / 2;
-					int marginTop  = (this.getHeight() - signalLength) / 2;
+					int marginTop  = (this.getHeight() - signalLength) / 2 + marginTopText;
 					g.fillRect(marginLeft, marginTop, signalLength, signalLength);
+				}
+				else if (prepareSignal) {
+					g.setColor(Color.LIGHT_GRAY);
+					// the preparatory signal is a smaller square, painted gray
+					int marginLeft = (this.getWidth()  - prepSignalLength) / 2;
+					int marginTop  = (this.getHeight() - prepSignalLength) / 2 + marginTopText;
+					g.fillRect(marginLeft, marginTop, prepSignalLength, prepSignalLength);
 				}
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {

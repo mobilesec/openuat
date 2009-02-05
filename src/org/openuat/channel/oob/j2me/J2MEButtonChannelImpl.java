@@ -14,10 +14,10 @@ import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
-import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 
+import org.openuat.channel.oob.ButtonChannel;
 import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonInputHandler;
 import org.openuat.log.LogFactory;
@@ -30,23 +30,7 @@ import org.openuat.util.RgbColor;
  * @author Lukas Huser
  * @version 1.0
  */
-public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandListener {
-
-	/**
-	 * Creates a new instance.
-	 * @param display main applications <code>Display</code>
-	 */
-	public J2MEButtonChannelImpl(Display display) {
-		transmissionMode	= 0;
-		progress			= 0;
-		showSignal			= false;
-		intervalList		= null;
-		currentScreen		= null;
-		this.display		= display;
-		logger 			= LogFactory.getLogger(this.getClass().getName());
-		abortCommand	= new Command("Abort", Command.STOP, 1);
-		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
-	}
+public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 	
 	/**
 	 * Main applications <code>Display</code>.
@@ -64,10 +48,45 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	protected Command abortCommand;
 	
 	/**
+	 * This <code>CommandListener</code> will be invoked whenever
+	 * the user aborts the current transmission or capture process.
+	 */
+	protected CommandListener abortHandler;
+	
+	/**
 	 *  Default font when drawing text on the screen.
 	 */
 	protected Font defaultFont;
 
+	/**
+	 * Creates a new instance.
+	 * @param display The main applications <code>Display</code>.
+	 * @param abortHandler It will be invoked when the user aborts the
+	 * current transmission or capture process. Note: this listener should
+	 * only react to events of type <code>Command.STOP</code>.<br/>
+	 * Example:
+	 * <pre>
+	 * 	public void commandAction(Command command, Displayable displayable) {
+	 *		if (command.getCommandType() == Command.STOP) {
+	 *			// abort current processing...
+	 *		}
+	 *	}
+	 * </pre>
+	 */
+	public J2MEButtonChannelImpl(Display display, CommandListener abortHandler) {
+		transmissionMode	= 0;
+		progress			= 0;
+		signalCount			= 0;
+		showSignal			= false;
+		intervalList		= null;
+		currentScreen		= null;
+		this.display		= display;
+		this.abortHandler	= abortHandler;
+		logger 			= LogFactory.getLogger(this.getClass().getName());
+		abortCommand	= new Command("Abort", Command.STOP, 1);
+		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_MEDIUM);
+	}
+	
 	/* (non-Javadoc)
 	 * @see org.openuat.channel.oob.ButtonChannelImpl#repaint()
 	 */
@@ -86,10 +105,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	 */
 	// @Override
 	public void showCaptureGui(String text, ButtonInputHandler inputHandler) {
+		signalCount = 0;
 		currentScreen = new CaptureGui(text, inputHandler);
 		currentScreen.setFullScreenMode(false);
 		currentScreen.addCommand(abortCommand);
-		currentScreen.setCommandListener(this);
+		currentScreen.setCommandListener(abortHandler);
 		
 		// make currentScreen the active Displayable
 		display.setCurrent(currentScreen);
@@ -101,10 +121,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	// @Override
 	public void showTransmitGui(String text, int type) {
 		transmissionMode = type;
+		signalCount = 0;
 		currentScreen = new TransmitGui(text);
 		currentScreen.setFullScreenMode(false);
 		currentScreen.addCommand(abortCommand);
-		currentScreen.setCommandListener(this);
+		currentScreen.setCommandListener(abortHandler);
 
 		// make currentScreen the active Displayable
 		display.setCurrent(currentScreen);
@@ -117,19 +138,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 	public void vibrate(int milliseconds) {
 		display.vibrate(milliseconds);
 	}
-	
-	/* (non-Javadoc)
-	 * @see javax.microedition.lcdui.CommandListener#commandAction(javax.microedition.lcdui.Command, javax.microedition.lcdui.Displayable)
-	 */
-	// @Override
-	public void commandAction(Command command, Displayable displayable) {
-		if (command.getCommandType() == Command.STOP) {
-			// TODO: abort current processing...
-		}
-		else {
-			logger.warn("Command not handled: " + command.getLabel());
-		}
-	}
+
 	
 	/* Helper method to split a string to fit on the canvas.
 	 * Returns a Vector<String>.
@@ -213,6 +222,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			g.setColor(RgbColor.BLACK);
 			g.setFont(defaultFont);
 			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*marginLeft);
+			String eventCount = "Button events processed: " 
+				+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+			lines.addElement("");
+			lines.addElement("");
+			lines.addElement(eventCount);
 			int mTop = marginTop;
 			for (int i = 0; i < lines.size(); i++) {
 				String line = (String)lines.elementAt(i);
@@ -253,14 +267,15 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		 */
 		public TransmitGui(String displayText) {
 			super();
-			this.displayText = displayText;
-			textMarginLeft	= 10;
-			textMarginTop	= 10;
-			signalMargin	= 30;
-			barMargin		= 5;
-			barHeight		= 30;
-			barMarginTop 	= (this.getHeight() - barHeight) / 2;
-			barWidth 		= this.getWidth() - 2 * barMargin;
+			this.displayText	= displayText;
+			textMarginLeft		= 10;
+			textMarginTop		= 10;
+			signalMargin		= 30;
+			prepSignalMargin	= 50;
+			barMargin			= 5;
+			barHeight			= 30;
+			barMarginTop 		= (this.getHeight() - barHeight) / 2;
+			barWidth 			= this.getWidth() - 2 * barMargin;
 		}
 		
 		/* Text to display before transmission starts */
@@ -270,8 +285,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 		private int textMarginLeft;
 		private int textMarginTop;
 		
-		/* Margin value when drawing the signal */
+		/* Margin value when drawing the signals */
 		private int signalMargin;
+		private int prepSignalMargin;
 		
 		/* Margin (left and right) when drawing the progress bar. Bar height. */
 		private int barMargin;
@@ -291,11 +307,16 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 			// clear the screen first
 			g.setColor(RgbColor.WHITE);
 			g.fillRect(0, 0, this.getWidth(), this.getHeight());
+			String signalCountText = "Signals sent: " 
+				+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
 			
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
 				g.setColor(RgbColor.BLACK);
 				g.setFont(defaultFont);
 				Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
+				lines.addElement("");
+				lines.addElement("");
+				lines.addElement(signalCountText);
 				int mTop = textMarginTop;
 				for (int i = 0; i < lines.size(); i++) {
 					String line = (String)lines.elementAt(i);
@@ -304,12 +325,25 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl implements CommandL
 				}
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
+				int marginTop = textMarginTop + defaultFont.getHeight();
+				g.setColor(RgbColor.BLACK);
+				g.setFont(defaultFont);
+				g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
+				// the 'real' signal has always precedence over the preparatory signal
 				if (showSignal) {
 					// the signal is just a simple rectangle, painted black
 					g.setColor(RgbColor.BLACK);
 					int rectWidth = this.getWidth() - 2 * signalMargin;
-					int rectHeight = this.getHeight() - 2 * signalMargin;
-					g.fillRect(signalMargin, signalMargin, rectWidth, rectHeight);
+					int rectHeight = this.getHeight() - 2 * signalMargin - marginTop;
+					g.fillRect(signalMargin, signalMargin + marginTop, rectWidth, rectHeight);
+				}
+				else if (prepareSignal) {
+					// the preparatory signal is a smaller rectangle, painted gray
+					g.setColor(RgbColor.LIGHT_GRAY);
+					int rectWidth = this.getWidth() - 2 * prepSignalMargin;
+					int rectHeight = this.getHeight() - 2 * prepSignalMargin - marginTop;
+					g.fillRect(prepSignalMargin, prepSignalMargin + marginTop, rectWidth, rectHeight);
+					
 				}
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {

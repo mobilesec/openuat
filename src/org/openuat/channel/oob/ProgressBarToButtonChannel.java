@@ -28,7 +28,22 @@ import org.openuat.util.IntervalList;
  * @version 1.0
  */
 public class ProgressBarToButtonChannel extends ButtonChannel {
-
+	
+	/* The first interval in ms (will be painted in gray). */
+	private int initInterval;
+	
+	/* Wait some time (in ms) to let the user read the 'transmitDisplayText' first. */
+	private int textDelay;
+	
+	/* Repeatedly repaints the gui */
+	private Timer timer;
+	
+	/* The temporal resolution. Update the screen every 'deltaT' milliseconds. */
+	private int deltaT;
+	
+	/* Transmission start timestamp */
+	private long startTime;
+	
 	/**
 	 * Creates a new instance of this channel.
 	 * 
@@ -61,25 +76,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		
 		transmitDisplayText	= "This device will display the progress bar. Please press "
 							+ "the button on the other device.";
-	}
-	
-	/* The first interval in ms (will be painted in gray). */
-	private int initInterval;
-	
-	/* Wait some time (in ms) to let the user read the 'transmitDisplayText' first. */
-	private int textDelay;
-	
-	/* Repeatedly repaints the gui */
-	private Timer timer;
-	
-	/* The temporal resolution. Update the screen every 'deltaT' milliseconds. */
-	private int deltaT;
-	
-	/* Transmission start timestamp */
-	private long startTime;
-	
-	/* only repaint if progress has actually changed */
-	//private int lastProgress;
+	}	
 	
 	/**
 	 * Transmits provided data over this channel.<br/>

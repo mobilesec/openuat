@@ -48,6 +48,16 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	public static final int BITS_PER_INTERVAL	= 3;
 	
 	/**
+	 * The total number of signals needed to transfer
+	 * a given message is given as the number of needed
+	 * intervals plus one (n intervals are defined by
+	 * n+1 signals).<br/>
+	 * It's defined as:<br/>
+	 * <code>TOTAL_SIGNAL_COUNT	= (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1</code>.
+	 */
+	public static final int TOTAL_SIGNAL_COUNT	= (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
+	
+	/**
 	 * Input mode: Press. Button presses represent a
 	 * button event, button releases are ignored.
 	 */
@@ -150,9 +160,10 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 */
 	// @Override
 	public void capture() {
-		buttonEventsLeft = (MESSAGE_LENGTH / BITS_PER_INTERVAL) + 1;
+		buttonEventsLeft = ButtonChannel.TOTAL_SIGNAL_COUNT;
 		timestamp = 0L;
 		oobInput = new IntervalList();
+		impl.setSignalCount(0);
 		impl.showCaptureGui(captureDisplayText, this);
 	}	
 	
@@ -180,6 +191,8 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 				timestamp = eventTime;
 			}
 			buttonEventsLeft--;
+			impl.setSignalCount(ButtonChannel.TOTAL_SIGNAL_COUNT - buttonEventsLeft);
+			impl.repaint();
 			if (buttonEventsLeft <= 0) {
 				if (logger.isTraceEnabled()) {
 					logger.trace("[STAT] channel: " + this.toString());

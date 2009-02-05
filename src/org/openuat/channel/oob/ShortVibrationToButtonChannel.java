@@ -23,15 +23,46 @@ import org.openuat.util.IntervalList;
  * @version 1.0
  */
 public class ShortVibrationToButtonChannel extends ButtonChannel {
-
+	
+	/* The first interval in ms (before the first signal will be sent). */
+	private int initInterval;
+	
+	/* When in TRANSMIT_SIGNAL mode: Wait some time to let the user read the text. */
+	private int textDelay;
+	
+	/* How long is the signal/vibration (in ms)? */
+	private int signalDuration;
+	
+	/* How long is the (visual) preparatory signal (in ms)? */
+	private int prepSignalDuration;
+	
+	/* Is the prepare signal enabled? */
+	private boolean isPrepareEnabled;
+	
 	/**
-	 * Creates a new instance of this channel.
+	 * Creates a new instance of this channel.<br/>
+	 * This constructor is equivalent to
+	 * <code>ShortVibrationToButtonChannel(impl, true)</code>.
 	 * 
 	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
 	 * to handle platform dependent method calls.
 	 */
 	public ShortVibrationToButtonChannel(ButtonChannelImpl impl) {
+		this(impl, true);
+	}
+	
+	/**
+	 * Creates a new instance of this channel.
+	 * 
+	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
+	 * to handle platform dependent method calls.
+	 * @param usePrepareSignal Should a preparatory signal be sent
+	 * before a real signal is emitted?
+	 */
+	public ShortVibrationToButtonChannel(ButtonChannelImpl impl, boolean usePrepareSignal) {
 		this.impl = impl;
+		isPrepareEnabled = usePrepareSignal;
+		
 		minTimeUnit		= 1000;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
@@ -40,8 +71,10 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		shortDescription = "Short Vibration";
 		logger = LogFactory.getLogger(this.getClass().getName());
 		
-		initInterval	= 6500;
-		signalDuration	= 500;
+		initInterval = isPrepareEnabled ? 2500 : 6500;
+		textDelay			= 5000;
+		signalDuration		= 500;
+		prepSignalDuration	= 500;
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {
@@ -54,12 +87,6 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		transmitDisplayText	= "This device will send vibration signals. Please press "
 							+ "the button on the other device.";
 	}
-	
-	/* The first interval in ms (before the first signal will be sent). */
-	private int initInterval;
-	
-	/* How long is the signal/vibration (in ms)? */
-	private int signalDuration;
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
@@ -79,19 +106,54 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		
 		Thread t = new Thread(new Runnable() {
 			public void run() {
+				int signalCount = 0;
+				impl.setSignalCount(signalCount);
 				// start transmission
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
-
-				// transmit the data (given from 'intervals')
-				// note: a given interval is split into two parts:
-				// * vibrate for 'signalDuration' ms
-				// * wait for 'interval' - 'signalDuration' ms
-				for (int i = 0; i < intervals.size(); i++) {
-					int interval = intervals.item(i) - signalDuration;
+				
+				/* transmit the data (given from 'intervals')
+				 * If !isPrepareEnabled: a given interval is split into two parts:
+				 * - vibrate for 'signalDuration' ms
+				 * - wait for 'interval' - 'signalDuration' ms
+				 * 
+				 * If isPrepareEnabled: a given interval is split into three parts:
+				 * - vibrate for 'signalDuration' ms
+				 * - wait for 'interval' - 'signalDuration' - 'prepSignalDuration' ms
+				 * - display the preparatory signal for 'prepSignalDuration' ms
+				 */
+				if (!isPrepareEnabled) {
+					for (int i = 0; i < intervals.size(); i++) {
+						int interval = intervals.item(i) - signalDuration;
+						try {
+							Thread.sleep(interval);
+							signalCount++;
+							impl.setSignalCount(signalCount);
+							impl.vibrate(signalDuration);
+							Thread.sleep(signalDuration);
+						} catch (InterruptedException e) {
+							logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+						}
+					}
+				}
+				else { // isPrepareEnabled
 					try {
-						Thread.sleep(interval);
-						impl.vibrate(signalDuration);
-						Thread.sleep(signalDuration);
+						Thread.sleep(textDelay);
+						impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_SIGNAL);
+						for (int i = 0; i < intervals.size(); i++) {
+							int interval = intervals.item(i) - signalDuration - prepSignalDuration;
+							Thread.sleep(interval);
+							impl.setSignal(false);
+							impl.setPrepareSignal(true);
+							impl.repaint();
+							Thread.sleep(prepSignalDuration);
+							impl.setSignal(false);
+							impl.setPrepareSignal(false);
+							signalCount++;
+							impl.setSignalCount(signalCount);
+							impl.repaint();
+							impl.vibrate(signalDuration);
+							Thread.sleep(signalDuration);
+						}
 					} catch (InterruptedException e) {
 						logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
 					}

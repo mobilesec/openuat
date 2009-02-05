@@ -18,7 +18,12 @@ import org.openuat.util.IntervalList;
  * and implement a platform specific variant of this class.<br/>
  * If a platform can't implement a specific method (e.g.
  * <code>vibrate</code>), it should do nothing (empty method body)
- * and shouldn't be called by an application.
+ * and shouldn't be called by an application. <br/>
+ * For all graphical operations (displaying a signal or a
+ * progress bar etc.) the usage of this class works as follows:
+ * All operations just manipulate the internal state and have no
+ * immediate effect on the screen. The changes become visible on screen
+ * after the next call to the <code>repaint</code> method.
  * 
  * @author Lukas Huser
  * @version 1.0
@@ -48,9 +53,19 @@ public abstract class ButtonChannelImpl {
 	protected int transmissionMode;
 	
 	/**
+	 * Number of already processed (sent or received) signals/button inputs.
+	 */
+	protected int signalCount;
+	
+	/**
 	 * Should the signal currently be displayed?
 	 */
 	protected boolean showSignal;
+	
+	/**
+	 * Should a hint to a following signal currently be displayed?
+	 */
+	protected boolean prepareSignal;
 	
 	/**
 	 * An <code>IntervalList</code> used to draw
@@ -91,7 +106,7 @@ public abstract class ButtonChannelImpl {
 	 * This method returns immediately and does not
 	 * block the caller.
 	 * 
-	 * @param milliseconds
+	 * @param milliseconds The vibration duration.
 	 */
 	public abstract void vibrate(int milliseconds);
 	
@@ -101,19 +116,63 @@ public abstract class ButtonChannelImpl {
 	public abstract void repaint();
 	
 	/**
-	 * Should the signal currently be displayed?
+	 * Sets the number of already processed signals.<br/>
+	 * When transmitting, it represents the number of already sent
+	 * signals. When capturing, it represents the number of
+	 * processes button events.<br/>
+	 * If <code>signalCount</code> is not within the boundaries
+	 * <code>0 <= signalCount <= TOTAL_SIGNAL_COUNT</code> its
+	 * value will be automatically truncated to the respective
+	 * boundary.
 	 * 
-	 * @param show
+	 * @param signalCount The current signal count.
 	 */
-	public void setSignal(boolean show) {
-		showSignal = show;
+	public void setSignalCount(int signalCount) {
+		if (signalCount < 0) {
+			this.signalCount = 0;
+		}
+		else if (signalCount > ButtonChannel.TOTAL_SIGNAL_COUNT) {
+			this.signalCount = ButtonChannel.TOTAL_SIGNAL_COUNT;
+		}
+		else {
+			this.signalCount = signalCount;
+		}
+	}
+	
+	/**
+	 * Should the signal currently be displayed?<br/>
+	 * This method only modifies the state of the current object
+	 * and has no immediate effect. The effect becomes visible
+	 * after the next call to <code>repaint</code>.
+	 * 
+	 * @param enabled Enable or disable the signal.
+	 */
+	public void setSignal(boolean enabled) {
+		showSignal = enabled;
+	}
+	
+	/**
+	 * Should a hint to a following signal currently be displayed?<br/>
+	 * This method only modifies the state of the current object
+	 * and has no immediate effect. The effect becomes visible
+	 * after the next call to <code>repaint</code>.<br/>
+	 * Note: When in <code>TRANSMIT_SIGNAL</code> mode: 
+	 * To enable the preparatory signal, the 'real' signal
+	 * must be disabled first (<code>setSignal(false)</code>).
+	 * If the signal is active, it always has precedence over the
+	 * preparatory signal.
+	 * 
+	 * @param enabled Enable or disable the preparatory signal.
+	 */
+	public void setPrepareSignal(boolean enabled) {
+		prepareSignal = enabled;
 	}
 	
 	/**
 	 * Before transmitting with the help of a progress
 	 * bar, an <code>IntervalList</code> must be set.
 	 * 
-	 * @param list 
+	 * @param list An <code>IntervalList</code>.
 	 */
 	public void setInterval(IntervalList list) {
 		intervalList = list;
@@ -122,7 +181,10 @@ public abstract class ButtonChannelImpl {
 	/**
 	 * Sets the progress of the progress bar in %.
 	 * Values which are too small (< 0) or too big
-	 * (> 100) are set to the respective boundary.
+	 * (> 100) are set to the respective boundary.<br/>
+	 * This method only modifies the state of the current object
+	 * and has no immediate effect. The effect becomes visible
+	 * after the next call to <code>repaint</code>.
 	 * 
 	 * @param progress Progress of the progress bar in %.
 	 */

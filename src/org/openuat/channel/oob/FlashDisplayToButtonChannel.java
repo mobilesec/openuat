@@ -24,15 +24,46 @@ import org.openuat.util.IntervalList;
  * @version 1.0
  */
 public class FlashDisplayToButtonChannel extends ButtonChannel {
-
+	
+	/* The first interval in ms (before the first signal is displayed). */
+	private int initInterval;
+	
+	/* Wait some time (in ms) to let the user read the 'transmitDisplayText' first. */
+	private int textDelay;
+	
+	/* How long will the signal be displayed (in ms)? */
+	private int signalDuration;
+	
+	/* How long will the preparatory signal be displayed (in ms)? */
+	private int prepSignalDuration;
+	
+	/* Is the prepare signal enabled? */
+	private boolean isPrepareEnabled;
+	
 	/**
-	 * Creates a new instance of this channel.
+	 * Creates a new instance of this channel.<br/>
+	 * This constructor is equivalent to
+	 * <code>FlashDisplayToButtonChannel(impl, true)</code>.
 	 * 
 	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
 	 * to handle platform dependent method calls.
 	 */
 	public FlashDisplayToButtonChannel(ButtonChannelImpl impl) {
+		this (impl, true);
+	}
+	
+	/**
+	 * Creates a new instance of this channel.
+	 * 
+	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
+	 * to handle platform dependent method calls.
+	 * @param usePrepareSignal Should a preparatory signal be sent
+	 * before a real signal is emitted?
+	 */
+	public FlashDisplayToButtonChannel(ButtonChannelImpl impl, boolean usePrepareSignal) {
 		this.impl = impl;
+		isPrepareEnabled = usePrepareSignal;
+		
 		minTimeUnit		= 1000;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
@@ -41,9 +72,10 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		shortDescription = "Flash Display";
 		logger = LogFactory.getLogger(this.getClass().getName());
 		
-		initInterval	= 2500;
-		textDelay		= 5000;
-		signalDuration	= 500;
+		initInterval		= 2500;
+		textDelay			= 5000;
+		signalDuration		= 500;
+		prepSignalDuration	= 500;
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {
@@ -56,16 +88,6 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		transmitDisplayText	= "This device will send visual signals. Please press "
 							+ "the button on the other device.";
 	}
-	
-	/* The first interval in ms (before the first signal is displayed). */
-	private int initInterval;
-	
-	/* Wait some time (in ms) to let the user read the 'transmitDisplayText' first. */
-	private int textDelay;
-	
-	/* How long will the signal be displayed (in ms)? */
-	private int signalDuration;
-	
 	
 	/**
 	 * Transmits provided data over this channel.<br/>
@@ -86,6 +108,8 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		// now run the transmission in a separate thread
 		Thread t = new Thread(new Runnable() {
 			public void run() {
+				int signalCount = 0;
+				impl.setSignalCount(signalCount);
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
 				try {
 					Thread.sleep(textDelay);
@@ -93,19 +117,38 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 					logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
 				}
 				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_SIGNAL);
-				// transmit the data (given from 'intervals')
-				// note: a given interval is split into two parts:
-				// * 'signalDuration' ms to show the signal
-				// * 'interval' - 'signalDuration' to show a blank screen
+				/* transmit the data (given from 'intervals')
+				 * if !isPrepareEnabled: a given interval is split into two parts:
+				 * - 'signalDuration' ms to show the signal
+				 * - 'interval' - 'signalDuration' to show a blank screen
+				 * 
+				 * if isPrepareEnabled: a given interval is split into three parts:
+				 * - 'signalDuration ms to show the signal
+				 * - 'interval' - 'signalDuration' - 'prepSignalDuration' to show a blan screen
+				 * - 'prepSignalDuration' to show the preparatory signal
+				 */
 				impl.setSignal(false);
 				for (int i = 0; i < intervals.size(); i++) {
 					int interval = intervals.item(i) - signalDuration;
+					if (isPrepareEnabled) {
+						interval -= prepSignalDuration;
+					}
 					try {
 						Thread.sleep(interval);
+						if (isPrepareEnabled) {
+							impl.setSignal(false);
+							impl.setPrepareSignal(true);
+							impl.repaint();
+							Thread.sleep(prepSignalDuration);
+						}
 						impl.setSignal(true);
+						impl.setPrepareSignal(false);
+						signalCount++;
+						impl.setSignalCount(signalCount);
 						impl.repaint();
 						Thread.sleep(signalDuration);
 						impl.setSignal(false);
+						impl.setPrepareSignal(false);
 						impl.repaint();
 					} catch (InterruptedException e) {
 						logger.warn("Method transmit(byte[]): transmission thread interrupted", e);
