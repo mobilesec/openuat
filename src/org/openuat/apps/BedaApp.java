@@ -27,6 +27,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -182,10 +183,22 @@ public class BedaApp implements AuthenticationProgressHandler {
 		mainWindow.setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
 		mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainWindow.getContentPane().setLayout(new FlowLayout());
+		ImageIcon icon = new ImageIcon("resources/Button_Icon_Blue_beda.png");
+		mainWindow.setIconImage(icon.getImage());
 		
 		// prepare the button channels
+		ActionListener abortHandler = new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (e.getID() == ActionEvent.ACTION_PERFORMED) {
+					// TODO: cleanly stop protocol runs, channels etc.
+					logger.warn("Protocol run aborted by user");
+					BluetoothRFCOMMChannel.shutdownAllChannels();
+					alertError("Protocol run aborted.");
+				}
+			}
+		};
 		buttonChannels = new HashMap<String, OOBChannel>();
-		ButtonChannelImpl impl = new AWTButtonChannelImpl(mainWindow.getContentPane());
+		ButtonChannelImpl impl = new AWTButtonChannelImpl(mainWindow.getContentPane(), abortHandler);
 		OOBChannel c = new ButtonToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new FlashDisplayToButtonChannel(impl);
@@ -292,11 +305,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 							}
 							else {
 								channelList.setEnabled(false);
-								// TODO: move this warning to a status bar or similar
 								statusLabel.setText("Sorry, but the service " + SERVICE_NAME + " is not running on the selected device");
-								/* JOptionPane.showMessageDialog(mainWindow,
-										"The service " + SERVICE_NAME + " is not running on the selected device",
-										"Error", JOptionPane.ERROR_MESSAGE); */
 							}
 						}
 					}
@@ -778,8 +787,6 @@ public class BedaApp implements AuthenticationProgressHandler {
 							}
 							
 							HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, null, data, null, 20000, false, "INPUT", false);
-							//display.setCurrent(welcomeScreen);
-							// TODO: please wait
 							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
@@ -818,8 +825,6 @@ public class BedaApp implements AuthenticationProgressHandler {
 							btServer.setPresharedShortSecret(data);
 							LineReaderWriter.println(out, DONE);
 							//connection.close();
-							//display.setCurrent(welcomeScreen);
-							// TODO: please wait
 							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
