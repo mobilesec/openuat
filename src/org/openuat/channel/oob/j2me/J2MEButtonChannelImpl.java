@@ -8,6 +8,7 @@
  */
 package org.openuat.channel.oob.j2me;
 
+import java.io.IOException;
 import java.util.Vector;
 
 import javax.microedition.lcdui.Canvas;
@@ -16,6 +17,7 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
+import javax.microedition.lcdui.Image;
 
 import org.openuat.channel.oob.ButtonChannel;
 import org.openuat.channel.oob.ButtonChannelImpl;
@@ -78,6 +80,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		progress			= 0;
 		signalCount			= 0;
 		showSignal			= false;
+		showCount			= false;
 		intervalList		= null;
 		currentScreen		= null;
 		this.display		= display;
@@ -222,11 +225,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			g.setColor(RgbColor.BLACK);
 			g.setFont(defaultFont);
 			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*marginLeft);
-			String eventCount = "Button events processed: " 
-				+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
-			lines.addElement("");
-			lines.addElement("");
-			lines.addElement(eventCount);
+			if (showCount) {
+				String eventCount = "Button events processed: " 
+					+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+				lines.addElement("");
+				lines.addElement("");
+				lines.addElement(eventCount);
+			}
 			int mTop = marginTop;
 			for (int i = 0; i < lines.size(); i++) {
 				String line = (String)lines.elementAt(i);
@@ -261,23 +266,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 	 * Private helper/wrapper class to launch the transmit gui.
 	 */
 	private class TransmitGui extends Canvas {
-		
-		/*
-		 * Constructor for this class.
-		 */
-		public TransmitGui(String displayText) {
-			super();
-			this.displayText	= displayText;
-			textMarginLeft		= 10;
-			textMarginTop		= 10;
-			signalMargin		= 30;
-			prepSignalMargin	= 50;
-			barMargin			= 5;
-			barHeight			= 30;
-			barMarginTop 		= (this.getHeight() - barHeight) / 2;
-			barWidth 			= this.getWidth() - 2 * barMargin;
-		}
-		
+				
 		/* Text to display before transmission starts */
 		private String displayText;
 		
@@ -298,6 +287,46 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		private int barMarginTop;
 		private int barWidth;
 
+		/* Traffic light images */
+		private Image trafficLightRed;
+		private Image trafficLightYellow;
+		private Image trafficLightGreen;
+		
+		/*
+		 * Constructor for this class.
+		 */
+		public TransmitGui(String displayText) {
+			super();
+			this.displayText	= displayText;
+			textMarginLeft		= 10;
+			textMarginTop		= 10;
+			signalMargin		= 30;
+			prepSignalMargin	= 50;
+			barMargin			= 5;
+			barHeight			= 30;
+			barMarginTop 		= (this.getHeight() - barHeight) / 2;
+			barWidth 			= this.getWidth() - 2 * barMargin;
+			
+			// load images
+			try {
+				trafficLightRed = Image.createImage("/Traffic_lights_dark_red.png");
+			} catch (IOException ioe) {
+				trafficLightRed = null;
+				logger.warn("Could not create image: red traffic light", ioe);
+			}
+			try {
+				trafficLightYellow = Image.createImage("/Traffic_lights_dark_yellow.png");
+			} catch (IOException ioe) {
+				trafficLightYellow = null;
+				logger.warn("Could not create image: yellow traffic light", ioe);
+			}
+			try {
+				trafficLightGreen = Image.createImage("/Traffic_lights_dark_green.png");
+			} catch (IOException ioe) {
+				trafficLightGreen = null;
+				logger.warn("Could not create image: green traffic light", ioe);
+			}
+		}
 		
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(javax.microedition.lcdui.Graphics)
@@ -314,9 +343,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				g.setColor(RgbColor.BLACK);
 				g.setFont(defaultFont);
 				Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
-				lines.addElement("");
-				lines.addElement("");
-				lines.addElement(signalCountText);
+				if (showCount) {
+					lines.addElement("");
+					lines.addElement("");
+					lines.addElement(signalCountText);
+				}
 				int mTop = textMarginTop;
 				for (int i = 0; i < lines.size(); i++) {
 					String line = (String)lines.elementAt(i);
@@ -325,10 +356,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				}
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
-				int marginTop = textMarginTop + defaultFont.getHeight();
-				g.setColor(RgbColor.BLACK);
-				g.setFont(defaultFont);
-				g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
+				int marginTop = 0;
+				if (showCount) {
+					marginTop = textMarginTop + defaultFont.getHeight();
+					g.setColor(RgbColor.BLACK);
+					g.setFont(defaultFont);
+					g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
+				}
 				// the 'real' signal has always precedence over the preparatory signal
 				if (showSignal) {
 					// the signal is just a simple rectangle, painted black
@@ -345,6 +379,26 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 					g.fillRect(prepSignalMargin, prepSignalMargin + marginTop, rectWidth, rectHeight);
 					
 				}
+			}
+			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_TRAFFIC_LIGHT) {
+				int marginTop = 0;
+				if (showCount) {
+					marginTop = textMarginTop + defaultFont.getHeight();
+					g.setColor(RgbColor.BLACK);
+					g.setFont(defaultFont);
+					g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
+				}
+				// the 'real' signal has always precedence over the preparatory signal
+				// i.e. green light wins over yellow light
+				Image currentState = trafficLightRed;
+				if (showSignal) {
+					currentState = trafficLightGreen;
+				}
+				else if (prepareSignal) {
+					currentState = trafficLightYellow;
+				}
+				g.drawImage(currentState, this.getWidth() / 2, signalMargin + marginTop,
+							Graphics.TOP|Graphics.HCENTER);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {
 				if (intervalList != null) {
