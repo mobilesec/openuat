@@ -68,6 +68,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
 		useCarry		= true;
+		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Flash Display";
 		logger = LogFactory.getLogger(this.getClass().getName());
@@ -87,6 +88,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		
 		transmitDisplayText	= "This device will send visual signals. Please press "
 							+ "the button on the other device.";
+	
 	}
 	
 	/**
@@ -110,6 +112,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 			public void run() {
 				int signalCount = 0;
 				impl.setSignalCount(signalCount);
+				impl.setShowCount(showFeedback);
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
 				try {
 					Thread.sleep(textDelay);

@@ -33,17 +33,22 @@ public abstract class ButtonChannelImpl {
 	/**
 	 * Transmission mode: plain (simply display text).
 	 */
-	public static final int TRANSMIT_PLAIN	= 1;
+	public static final int TRANSMIT_PLAIN			= 1;
 	
 	/**
 	 * Transmission mode: signal.
 	 */
-	public static final int TRANSMIT_SIGNAL = 2;
+	public static final int TRANSMIT_SIGNAL 		= 2;
+	
+	/**
+	 * Transmission mode: traffic light.
+	 */
+	public static final int TRANSMIT_TRAFFIC_LIGHT	= 3;
 	
 	/**
 	 * Transmission mode: progress bar.
 	 */
-	public static final int TRANSMIT_BAR	= 3;
+	public static final int TRANSMIT_BAR			= 4;
 	
 	/**
 	 * <code>transmissionMode</code> is one of:<br/>
@@ -56,6 +61,14 @@ public abstract class ButtonChannelImpl {
 	 * Number of already processed (sent or received) signals/button inputs.
 	 */
 	protected int signalCount;
+	
+	/**
+	 * Should the <code>signalCount</count> be displayed on screen? It's more
+	 * convenient for the user, but use with care: it may leak information to
+	 * an attacker (a <i>secure</i> channel should not display this information
+	 * on screen).
+	 */
+	protected boolean showCount;
 	
 	/**
 	 * Should the signal currently be displayed?
@@ -137,6 +150,15 @@ public abstract class ButtonChannelImpl {
 		else {
 			this.signalCount = signalCount;
 		}
+	}
+	
+	/**
+	 * Should the signalCount be displayed on screen?
+	 * 
+	 * @param enabled Enable or disable the signal count on screen.
+	 */
+	public void setShowCount(boolean enabled) {
+		showCount = enabled;
 	}
 	
 	/**

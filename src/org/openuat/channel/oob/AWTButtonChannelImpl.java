@@ -14,7 +14,6 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -126,6 +125,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		progress			= 0;
 		signalCount			= 0;
 		showSignal			= false;
+		showCount			= false;
 		intervalList		= null;
 		paintableComponent	= null;
 		textComponent		= null;
@@ -149,7 +149,10 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 			paintableComponent.repaint();
 		}
 		else if (textComponent != null) {
-			String text = currentText + signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+			String text = currentText;
+			if (showCount) {
+				text += signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+			}
 			textComponent.setText(text);
 		}
 		else {
@@ -165,7 +168,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		JTextPane captureGui = new JTextPane();
 		Dimension size = new Dimension(
 			parent.getWidth() - 20,
-			parent.getHeight() - abortButton.getHeight() - 10
+			parent.getHeight() - abortButton.getHeight() - 40
 		);
 		captureGui.setPreferredSize(size);
 		isKeyDown = false;
@@ -233,7 +236,10 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		
 		signalCount = 0;
 		paintableComponent = null;
-		currentText = text + "\n\n" + "Button events Processed: ";
+		currentText = text;
+		if (showCount) {
+			currentText += "\n\n" + "Button events Processed: ";
+		}
 		textComponent = captureGui;
 		captureGui.addKeyListener(keyListener);
 		captureGui.setFont(defaultFont);
@@ -261,7 +267,10 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		signalCount = 0;
 		
 		if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
-			currentText = text + "\n\n" + "Signals sent: ";
+			currentText = text;
+			if (showCount) {
+				currentText += "\n\n" + "Signals sent: ";
+			}
 			JTextPane temp = new JTextPane();
 			temp.setFont(defaultFont);
 			temp.setEditable(false);
@@ -340,11 +349,14 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 			
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
 				String eventCountText = "Signals sent: " + signalCount
-						+ "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
-				int marginTopText = textMarginTop + defaultFont.getSize();
-				g.setColor(Color.BLACK);
-				g.setFont(defaultFont);
-				g.drawString(eventCountText, textMarginLeft, marginTopText);
+							+ "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+				int marginTopText = 0;
+				if (showCount) {
+					marginTopText = textMarginTop + defaultFont.getSize();
+					g.setColor(Color.BLACK);
+					g.setFont(defaultFont);
+					g.drawString(eventCountText, textMarginLeft, marginTopText);
+				}
 				// the 'real' signal has always precedence over the preparatory signal
 				if (showSignal) {
 					g.setColor(Color.BLACK);

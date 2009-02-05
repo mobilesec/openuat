@@ -71,6 +71,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		inputMode		= MODE_PRESS_RELEASE;
 		doRoundDown		= false;
 		useCarry		= true;
+		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Long Vibration";
 		logger = LogFactory.getLogger(this.getClass().getName());
@@ -116,6 +117,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 			public void run() {
 				int signalCount = 0;
 				impl.setSignalCount(signalCount);
+				impl.setShowCount(showFeedback);
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
 
 				/* 

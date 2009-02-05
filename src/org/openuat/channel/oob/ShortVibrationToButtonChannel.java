@@ -67,6 +67,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
 		useCarry		= true;
+		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Short Vibration";
 		logger = LogFactory.getLogger(this.getClass().getName());
@@ -108,6 +109,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 			public void run() {
 				int signalCount = 0;
 				impl.setSignalCount(signalCount);
+				impl.setShowCount(showFeedback);
 				// start transmission
 				impl.showTransmitGui(transmitDisplayText, ButtonChannelImpl.TRANSMIT_PLAIN);
 				

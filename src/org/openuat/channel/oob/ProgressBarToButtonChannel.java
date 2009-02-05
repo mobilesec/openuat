@@ -56,6 +56,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		inputMode		= MODE_PRESS_RELEASE;
 		doRoundDown		= false;
 		useCarry		= false;
+		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Progress Bar";
 		logger = LogFactory.getLogger(this.getClass().getName());
@@ -94,6 +95,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		}
 		intervals.addFirst(initInterval);
 		impl.setInterval(intervals);
+		impl.setShowCount(showFeedback);
 		
 		// now run transmission in a separate thread
 		final TimerTask task = new TimerTask() {

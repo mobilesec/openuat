@@ -36,6 +36,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
 		useCarry		= false;
+		showFeedback	= false;
 		messageHandler	= null;
 		shortDescription	= "Input";
 		transmitDisplayText = "";
@@ -49,6 +50,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 							+ " for a total of " + ButtonChannel.TOTAL_SIGNAL_COUNT 
 							+ " times." + endl
 							+ "This device is ready.";
+		
 	}
 
 	/**

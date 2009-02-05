@@ -102,6 +102,12 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	protected boolean useCarry;
 	
 	/**
+	 * Should additional user feedback be output? As for example
+	 * the current signal count etc.
+	 */
+	protected boolean showFeedback;
+	
+	/**
 	 * oob message handler
 	 * @see #setOOBMessageHandler
 	 */
@@ -163,6 +169,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		buttonEventsLeft = ButtonChannel.TOTAL_SIGNAL_COUNT;
 		timestamp = 0L;
 		oobInput = new IntervalList();
+		impl.setShowCount(showFeedback);
 		impl.setSignalCount(0);
 		impl.showCaptureGui(captureDisplayText, this);
 	}	
