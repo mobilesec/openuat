@@ -48,6 +48,7 @@ import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
+import org.openuat.channel.oob.TrafficLightToButtonChannel;
 import org.openuat.channel.oob.j2me.J2MEButtonChannelImpl;
 import org.openuat.log.Log;
 import org.openuat.log.LogFactory;
@@ -198,9 +199,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		logger = LogFactory.getLogger("org.openuat.apps.j2me.BedaMIDlet");
 		// TODO: should configure microlog in its properties file
 		net.sf.microlog.Logger nativeLogger = ((MicrologLogger)logger).getNativeLogger();
-		nativeLogger.setLogLevel(net.sf.microlog.Level.DEBUG);
+		nativeLogger.setLogLevel(net.sf.microlog.Level.TRACE);
 		FileAppender fileAppender = new FileAppender();
-		fileAppender.setDirectory("Memory card/Others");
+		fileAppender.setDirectory("Memory card/Others/");
 		nativeLogger.addAppender(fileAppender);
 		logForm = new LogForm();
 		logForm.setDisplay(display);
@@ -234,11 +235,27 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 		
 		// build button channels
-		ButtonChannelImpl impl = new J2MEButtonChannelImpl(display);
+		CommandListener abortHandler = new CommandListener() {
+			public void commandAction(Command command, Displayable displayable) {
+				if (command.getCommandType() == Command.STOP) {
+					// TODO: cleanly stop protocol runs, channels etc.
+					logger.warn("Protocol run aborted by user.");
+					statisticsEnd(currentChannel.toString(), false);
+					BluetoothRFCOMMChannel.shutdownAllChannels();
+					alertError("Protocol run aborted.");
+				}
+				else {
+					logger.warn("Command not handled: " + command.getLabel());
+				}
+			}
+		};
+		ButtonChannelImpl impl = new J2MEButtonChannelImpl(display, abortHandler);
 		buttonChannels = new Hashtable(10);
 		OOBChannel c = new ButtonToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new FlashDisplayToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new TrafficLightToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new ProgressBarToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
@@ -248,31 +265,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		buttonChannels.put(c.toString(), c);
 		
 		// bluetooth initialization
-		setUpPeerManager();
-		try {
-			btServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, SERVICE_NAME, 30000, true, false);
-			btServer.addAuthenticationProgressHandler(this);
-			btServer.start();
-			if (logger.isInfoEnabled()) {
-				logger.info("Finished starting SDP service at " + btServer.getRegisteredServiceURL());
-			}
-		} catch (IOException e) {
-			logger.error("Could not create bluetooth server.", e);
-		}
-		ProtocolCommandHandler inputProtocolHandler = new ProtocolCommandHandler() {
-			// @Override
-			public boolean handleProtocol(String firstLine, RemoteConnection remote) {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Handle protocol command: " + firstLine);
-				}
-				if (firstLine.equals(PRE_AUTH)) {
-					inputProtocol(false, remote, null);
-					return true;
-				}
-				return false;
-			}
-		};
-		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
+		setUpBluetooth();
 		
 		// build welcome screen: create menu
 		final Command exitCommand	= new Command("Exit", Command.EXIT, 1);
@@ -394,8 +387,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 
 	/* Helper method to initialize the channelList */
 	private void buildChannelList(boolean isTest) {
-		String[] listItems = {"Input", "Flash Display", "Progress Bar", "Short Vibration", "Long Vibration"};
-		Image[] imageItems = {listIcon, listIcon, listIcon, listIcon, listIcon};
+		// TODO: get channels from existing map
+		String[] listItems = {"Input", "Flash Display", "Traffic Light", "Progress Bar", "Short Vibration", "Long Vibration"};
+		Image[] imageItems = {listIcon, listIcon, listIcon, listIcon, listIcon, listIcon};
 		channelList = new List(CHANNEL_LIST_TITLE, Choice.IMPLICIT, listItems, imageItems);
 		channelList.addCommand(backCommand);
 		final Command transmitCommand = new Command("Transmit", Command.ITEM, 2);
@@ -500,8 +494,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		display.setCurrent(deviceList);
 	}
 	
-	/* Helper method to set-up the bluetooth peer manager */
-	private void setUpPeerManager() {
+	/* Helper method to set-up the bluetooth facilities */
+	private void setUpBluetooth() {
+		// peer manager
 		BluetoothPeerManager.PeerEventsListener listener =
 			new BluetoothPeerManager.PeerEventsListener() {
 				public void inquiryCompleted(Vector newDevices) {
@@ -518,6 +513,32 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		} catch (IOException e) {
 			logger.error("Could not initiate BluetoothPeerManager.", e);
 		}
+		
+		// bluetooth server
+		try {
+			btServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, SERVICE_NAME, 30000, true, false);
+			btServer.addAuthenticationProgressHandler(this);
+			btServer.start();
+			if (logger.isInfoEnabled()) {
+				logger.info("Finished starting SDP service at " + btServer.getRegisteredServiceURL());
+			}
+		} catch (IOException e) {
+			logger.error("Could not create bluetooth server.", e);
+		}
+		ProtocolCommandHandler inputProtocolHandler = new ProtocolCommandHandler() {
+			// @Override
+			public boolean handleProtocol(String firstLine, RemoteConnection remote) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Handle protocol command: " + firstLine);
+				}
+				if (firstLine.equals(PRE_AUTH)) {
+					inputProtocol(false, remote, null);
+					return true;
+				}
+				return false;
+			}
+		};
+		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
 	}
 	
 	/* Initiates the authentication protocol. */
