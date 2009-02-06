@@ -14,6 +14,8 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -137,7 +139,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		defaultFont = new Font(Font.SANS_SERIF, Font.PLAIN, 16);
 		abortButton = new JButton("Abort");
 		abortButton.addActionListener(abortHandler);
-		logger = LogFactory.getLogger(AWTButtonChannelImpl.class.getName());
+		logger = LogFactory.getLogger("org.openuat.channel.oob.AWTButtonChannelImpl");
 	}
 
 	/* (non-Javadoc)
@@ -315,18 +317,6 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 	 * Private helper/wrapper class to launch the transmit gui.
 	 */
 	private class TransmitGui extends JComponent {
-		/*
-		 * Creates a new Instance.
-		 */
-		public TransmitGui() {
-			textMarginLeft		= 20;
-			textMarginTop		= 20;
-			signalLength		= 200;
-			prepSignalLength	= 150;
-			barMaxWidth			= 400;
-			barMinMargin		= 20;
-			barHeight			= 40;
-		}
 		
 		/* Margins to draw text */
 		private int textMarginLeft;
@@ -340,16 +330,39 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		private int barMaxWidth;
 		private int barMinMargin;
 		private int barHeight;
+		
+		/* Traffic light images */
+		private Image trafficLightRed;
+		private Image trafficLightYellow;
+		private Image trafficLightGreen;
+		
+		/*
+		 * Creates a new Instance.
+		 */
+		public TransmitGui() {
+			textMarginLeft		= 20;
+			textMarginTop		= 20;
+			signalLength		= 200;
+			prepSignalLength	= 150;
+			barMaxWidth			= 400;
+			barMinMargin		= 20;
+			barHeight			= 40;
+			
+			// load the traffic light images
+			trafficLightRed = Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_red.png");
+			trafficLightYellow = Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_yellow.png");
+			trafficLightGreen = Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_green.png");
+		}
 
 		// @Override
 		public void paint(Graphics g) {
 			// clear area
 			g.setColor(this.getBackground());
 			g.fillRect(0, 0, this.getWidth(), this.getHeight());
+			String eventCountText = "Signals sent: " + signalCount
+				+ "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
 			
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
-				String eventCountText = "Signals sent: " + signalCount
-							+ "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
 				int marginTopText = 0;
 				if (showCount) {
 					marginTopText = textMarginTop + defaultFont.getSize();
@@ -373,6 +386,27 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 					g.fillRect(marginLeft, marginTop, prepSignalLength, prepSignalLength);
 				}
 			}
+			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_TRAFFIC_LIGHT) {
+				int marginTopText = 0;
+				if (showCount) {
+					marginTopText = textMarginTop + defaultFont.getSize();
+					g.setColor(Color.BLACK);
+					g.setFont(defaultFont);
+					g.drawString(eventCountText, textMarginLeft, marginTopText);
+				}
+				// the 'real' signal has always precedence over the preparatory signal
+				// i.e. green light wins over yellow light
+				Image currentState = trafficLightRed;
+				if (showSignal) {
+					currentState = trafficLightGreen;
+				}
+				else if (prepareSignal) {
+					currentState = trafficLightYellow;
+				}
+				int imgX = (this.getWidth() - currentState.getWidth(this)) / 2;
+				int imgY = (this.getHeight() - marginTopText - currentState.getHeight(this)) / 2;
+				g.drawImage(currentState, imgX, imgY, this);
+			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {
 				if (intervalList != null) {
 					int barWidth	= Math.min(barMaxWidth, this.getWidth() - 2 * barMinMargin);
@@ -382,6 +416,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 					int currentMargin = marginLeft;
 					for (int i = 0; i < intervalList.size(); i++) {
 						int intervalWidth = (int)((double)intervalList.item(i) / (double)intervalList.getTotalIntervalLength() * barWidth);
+						/*
 						if (i == 0) {
 							g.setColor(Color.LIGHT_GRAY);
 						}
@@ -390,6 +425,13 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 						}
 						else {
 							g.setColor(Color.ORANGE);
+						}
+						*/
+						if (i%2 == 0) {
+							g.setColor(Color.LIGHT_GRAY);
+						}
+						else {
+							g.setColor(Color.GREEN);
 						}
 						g.fillRect(currentMargin, marginTop, intervalWidth, barHeight);
 						currentMargin += intervalWidth;
