@@ -54,6 +54,7 @@ import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
+import org.openuat.channel.oob.TrafficLightToButtonChannel;
 import org.openuat.log.Log;
 import org.openuat.log.Log4jFactory;
 import org.openuat.log.LogFactory;
@@ -203,6 +204,8 @@ public class BedaApp implements AuthenticationProgressHandler {
 		buttonChannels.put(c.toString(), c);
 		c = new FlashDisplayToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
+		c = new TrafficLightToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
 		c = new ProgressBarToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new ShortVibrationToButtonChannel(impl);
@@ -240,6 +243,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		OOBChannel[] channels = {
 			new ButtonToButtonChannel(impl),
 			new FlashDisplayToButtonChannel(impl),
+			new TrafficLightToButtonChannel(impl),
 			new ProgressBarToButtonChannel(impl),
 			new ShortVibrationToButtonChannel(impl),
 			new LongVibrationToButtonChannel(impl)
