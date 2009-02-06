@@ -85,7 +85,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		currentScreen		= null;
 		this.display		= display;
 		this.abortHandler	= abortHandler;
-		logger 			= LogFactory.getLogger(this.getClass().getName());
+		logger 			= LogFactory.getLogger("org.openuat.channel.oob.j2me.J2MEButtonChannelImpl");
 		abortCommand	= new Command("Abort", Command.STOP, 1);
 		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_MEDIUM);
 	}
@@ -238,6 +238,30 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				g.drawString(line, marginLeft, mTop, Graphics.TOP|Graphics.LEFT);
 				mTop += defaultFont.getHeight();
 			}
+			if (showCount) {
+				g.setColor(RgbColor.DARK_RED);
+				// draw progress wheel
+				int h = defaultFont.getHeight() * 2;
+				int xRef = this.getWidth() / 2 - h;
+				int yRef = mTop + defaultFont.getHeight();
+				
+				int cx = xRef + h;
+				int cy = yRef + h;
+				double angle = 2 * Math.PI / ButtonChannel.TOTAL_SIGNAL_COUNT;
+				double qx =	 Math.sin(angle / 2) * h;
+				double qy = -Math.cos(angle / 2) * h;
+				double px = -qx;
+				double py =  qy;
+				
+				for (int i = 0; i < signalCount; i++) {
+					g.fillTriangle(cx, cy, cx + (int)px, cy + (int)py, cx + (int)qx, cy + (int)qy);
+					px = qx;
+					py = qy;
+					qx = px * Math.cos(angle) - py * Math.sin(angle);
+					qy = px * Math.sin(angle) + py * Math.cos(angle);
+				}
+				
+			}
 		}
 
 		/* (non-Javadoc)
@@ -345,7 +369,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
 				if (showCount) {
 					lines.addElement("");
-					lines.addElement("");
 					lines.addElement(signalCountText);
 				}
 				int mTop = textMarginTop;
@@ -405,6 +428,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 					int marginLeft = barMargin;
 					for (int i = 0; i < intervalList.size(); i++) {
 						int intervalWidth = (int)((double)intervalList.item(i) / (double)intervalList.getTotalIntervalLength() * barWidth);
+						/*
 						if (i == 0) {
 							g.setColor(RgbColor.LIGHT_GRAY);
 						}
@@ -413,6 +437,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 						}
 						else {
 							g.setColor(RgbColor.LIGHT_RED);
+						}
+						*/
+						if (i % 2 == 0) {
+							g.setColor(RgbColor.LIGHT_GRAY);
+						}
+						else {
+							g.setColor(RgbColor.GREEN);
 						}
 						g.fillRect(marginLeft, barMarginTop, intervalWidth, barHeight);
 						marginLeft += intervalWidth;
