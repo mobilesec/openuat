@@ -74,7 +74,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Long Vibration";
-		logger = LogFactory.getLogger(this.getClass().getName());
+		logger = LogFactory.getLogger("org.openuat.channel.oob.LongVibrationToButtonChannel");
 		
 		initInterval		= isPrepareEnabled ? 2500 : 6500;
 		endInterval			= 600;

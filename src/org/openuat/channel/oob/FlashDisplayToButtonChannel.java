@@ -71,7 +71,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Flash Display";
-		logger = LogFactory.getLogger(this.getClass().getName());
+		logger = LogFactory.getLogger("org.openuat.channel.oob.FlashDisplayToButtonChannel");
 		
 		initInterval		= 2500;
 		textDelay			= 5000;

@@ -32,6 +32,11 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 	/* The first interval in ms (will be painted in gray). */
 	private int initInterval;
 	
+	/* The last interval. From this last interval (which is a hold-key-down-interval)
+	 * only the press event is needed.
+	 */
+	private int endInterval;
+	
 	/* Wait some time (in ms) to let the user read the 'transmitDisplayText' first. */
 	private int textDelay;
 	
@@ -59,9 +64,10 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Progress Bar";
-		logger = LogFactory.getLogger(this.getClass().getName());
+		logger = LogFactory.getLogger("org.openuat.channel.oob.ProgressBarToButtonChannel");
 		
 		initInterval	= 2000;
+		endInterval		= 1000;
 		textDelay		= 5000;
 		deltaT			= 40;
 		timer			= null; // Note: For every transmission, a new Timer instance is created.
@@ -71,8 +77,8 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		if (endl == null) {
 			endl = "\n";
 		}
-		captureDisplayText	= "Please press and hold the button during the bright "
-							+ "intervals, release it on dark intervals." + endl
+		captureDisplayText	= "Please press and hold the button during the green "
+							+ "intervals, release it during gray intervals." + endl
 							+ "This device is ready.";
 		
 		transmitDisplayText	= "This device will display the progress bar. Please press "
@@ -94,6 +100,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
 		}
 		intervals.addFirst(initInterval);
+		intervals.add(endInterval);
 		impl.setInterval(intervals);
 		impl.setShowCount(showFeedback);
 		

@@ -70,7 +70,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Short Vibration";
-		logger = LogFactory.getLogger(this.getClass().getName());
+		logger = LogFactory.getLogger("org.openuat.channel.oob.ShortVibrationToButtonChannel");
 		
 		initInterval = isPrepareEnabled ? 2500 : 6500;
 		textDelay			= 5000;

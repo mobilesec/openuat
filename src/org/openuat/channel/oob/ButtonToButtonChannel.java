@@ -40,7 +40,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		messageHandler	= null;
 		shortDescription	= "Input";
 		transmitDisplayText = "";
-		logger = LogFactory.getLogger(this.getClass().getName());
+		logger = LogFactory.getLogger("org.openuat.channel.oob.ButtonToButtonChannel");
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {
