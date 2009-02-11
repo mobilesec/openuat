@@ -229,7 +229,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				String eventCount = "Button events processed: " 
 					+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
 				lines.addElement("");
-				lines.addElement("");
 				lines.addElement(eventCount);
 			}
 			int mTop = marginTop;
@@ -239,9 +238,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				mTop += defaultFont.getHeight();
 			}
 			if (showCount) {
-				g.setColor(RgbColor.DARK_RED);
+				g.setColor(RgbColor.BLUE);
 				// draw progress wheel
-				int h = defaultFont.getHeight() * 2;
+				int h = defaultFont.getHeight();
 				int xRef = this.getWidth() / 2 - h;
 				int yRef = mTop + defaultFont.getHeight();
 				
@@ -303,14 +302,21 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		private int prepSignalMargin;
 		
 		/* Margin (left and right) when drawing the progress bar. Bar height. */
-		private int barMargin;
-		private int barHeight;
+		private int proBarMargin;
+		private int proBarHeight;
 		
-		/* Some width and margin values that can be precomputed
+		/* Progress bar width and margin values that can be precomputed
 		 * and don't need to be computed every time in the paint method anew */		
-		private int barMarginTop;
-		private int barWidth;
+		private int proBarMarginTop;
+		private int proBarWidth;
+		
+		/* Power bar vertical margin and minimum width */
+		private int powBarMarginTop;
+		private int powBarMaxWidth;
 
+		/* Power bar height, can be precomputed */
+		private int powBarHeight;
+		
 		/* Traffic light images */
 		private Image trafficLightRed;
 		private Image trafficLightYellow;
@@ -326,10 +332,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			textMarginTop		= 10;
 			signalMargin		= 30;
 			prepSignalMargin	= 50;
-			barMargin			= 5;
-			barHeight			= 30;
-			barMarginTop 		= (this.getHeight() - barHeight) / 2;
-			barWidth 			= this.getWidth() - 2 * barMargin;
+			proBarMargin		= 5;
+			proBarHeight		= 30;
+			proBarMarginTop 	= (this.getHeight() - proBarHeight) / 2;
+			proBarWidth 		= this.getWidth() - 2 * proBarMargin;
+			powBarMarginTop		= 15;
+			powBarMaxWidth		= 20;
+			powBarHeight		= this.getHeight() - 2 * powBarMarginTop;
 			
 			// load images
 			try {
@@ -364,94 +373,25 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
 			
 			if (transmissionMode == ButtonChannelImpl.TRANSMIT_PLAIN) {
-				g.setColor(RgbColor.BLACK);
-				g.setFont(defaultFont);
-				Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
-				if (showCount) {
-					lines.addElement("");
-					lines.addElement(signalCountText);
-				}
-				int mTop = textMarginTop;
-				for (int i = 0; i < lines.size(); i++) {
-					String line = (String)lines.elementAt(i);
-					g.drawString(line, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
-					mTop += defaultFont.getHeight();
-				}
+				paintPlain(g, signalCountText);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_SIGNAL) {
-				int marginTop = 0;
-				if (showCount) {
-					marginTop = textMarginTop + defaultFont.getHeight();
-					g.setColor(RgbColor.BLACK);
-					g.setFont(defaultFont);
-					g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
-				}
-				// the 'real' signal has always precedence over the preparatory signal
-				if (showSignal) {
-					// the signal is just a simple rectangle, painted black
-					g.setColor(RgbColor.BLACK);
-					int rectWidth = this.getWidth() - 2 * signalMargin;
-					int rectHeight = this.getHeight() - 2 * signalMargin - marginTop;
-					g.fillRect(signalMargin, signalMargin + marginTop, rectWidth, rectHeight);
-				}
-				else if (prepareSignal) {
-					// the preparatory signal is a smaller rectangle, painted gray
-					g.setColor(RgbColor.LIGHT_GRAY);
-					int rectWidth = this.getWidth() - 2 * prepSignalMargin;
-					int rectHeight = this.getHeight() - 2 * prepSignalMargin - marginTop;
-					g.fillRect(prepSignalMargin, prepSignalMargin + marginTop, rectWidth, rectHeight);
-					
-				}
+				paintSignal(g, signalCountText);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_TRAFFIC_LIGHT) {
-				int marginTop = 0;
-				if (showCount) {
-					marginTop = textMarginTop + defaultFont.getHeight();
-					g.setColor(RgbColor.BLACK);
-					g.setFont(defaultFont);
-					g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
-				}
-				// the 'real' signal has always precedence over the preparatory signal
-				// i.e. green light wins over yellow light
-				Image currentState = trafficLightRed;
-				if (showSignal) {
-					currentState = trafficLightGreen;
-				}
-				else if (prepareSignal) {
-					currentState = trafficLightYellow;
-				}
-				g.drawImage(currentState, this.getWidth() / 2, signalMargin + marginTop,
-							Graphics.TOP|Graphics.HCENTER);
+				paintTrafficLight(g, signalCountText);
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_BAR) {
 				if (intervalList != null) {
-					int marginLeft = barMargin;
-					for (int i = 0; i < intervalList.size(); i++) {
-						int intervalWidth = (int)((double)intervalList.item(i) / (double)intervalList.getTotalIntervalLength() * barWidth);
-						/*
-						if (i == 0) {
-							g.setColor(RgbColor.LIGHT_GRAY);
-						}
-						else if (i % 2 == 0) {
-							g.setColor(RgbColor.DARK_RED);
-						}
-						else {
-							g.setColor(RgbColor.LIGHT_RED);
-						}
-						*/
-						if (i % 2 == 0) {
-							g.setColor(RgbColor.LIGHT_GRAY);
-						}
-						else {
-							g.setColor(RgbColor.GREEN);
-						}
-						g.fillRect(marginLeft, barMarginTop, intervalWidth, barHeight);
-						marginLeft += intervalWidth;
-					}
-					
-					g.setColor(RgbColor.BLACK);
-					int progressWidth = (int)(barWidth / 100.0d * progress);
-					g.fillRect(barMargin, barMarginTop, progressWidth, barHeight);
+					paintBar(g);
+				}
+				else {
+					logger.warn("Method paint(): 'intervalList' is null.");
+				}
+			}
+			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_VERT_BARS) {
+				if (intervalList != null) {
+					paintVertBars(g);
 				}
 				else {
 					logger.warn("Method paint(): 'intervalList' is null.");
@@ -461,6 +401,159 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
 			}
 		}
+		
+		/* Painting method for transmission mode TRANSMIT_PLAIN */
+		private void paintPlain(Graphics g, String signalCountText) {
+			g.setColor(RgbColor.BLACK);
+			g.setFont(defaultFont);
+			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
+			if (showCount) {
+				lines.addElement("");
+				lines.addElement(signalCountText);
+			}
+			int mTop = textMarginTop;
+			for (int i = 0; i < lines.size(); i++) {
+				String line = (String)lines.elementAt(i);
+				g.drawString(line, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
+				mTop += defaultFont.getHeight();
+			}
+		}
+		
+		/* Painting method for transmission mode TRANSMIT_SIGNAL */
+		private void paintSignal(Graphics g, String signalCountText) {
+			int marginTop = 0;
+			if (showCount) {
+				marginTop = textMarginTop + defaultFont.getHeight();
+				g.setColor(RgbColor.BLACK);
+				g.setFont(defaultFont);
+				g.drawString(signalCountText, textMarginLeft, textMarginTop, Graphics.TOP|Graphics.LEFT);
+			}
+			// the 'real' signal has always precedence over the preparatory signal
+			if (showSignal) {
+				// the signal is just a simple rectangle, painted black
+				g.setColor(RgbColor.BLACK);
+				int rectWidth = this.getWidth() - 2 * signalMargin;
+				int rectHeight = this.getHeight() - 2 * signalMargin - marginTop;
+				g.fillRect(signalMargin, signalMargin + marginTop, rectWidth, rectHeight);
+			}
+			else if (prepareSignal) {
+				// the preparatory signal is a smaller rectangle, painted gray
+				g.setColor(RgbColor.LIGHT_GRAY);
+				int rectWidth = this.getWidth() - 2 * prepSignalMargin;
+				int rectHeight = this.getHeight() - 2 * prepSignalMargin - marginTop;
+				g.fillRect(prepSignalMargin, prepSignalMargin + marginTop, rectWidth, rectHeight);
+				
+			}
+		}
+		
+		/* Painting method for transmission mode TRANSMIT_TRAFFIC_LIGHT */
+		private void paintTrafficLight(Graphics g, String signalCountText) {
+			int marginTop = 0;
+			if (showCount) {
+				marginTop = textMarginTop + defaultFont.getHeight();
+				g.setColor(RgbColor.BLACK);
+				g.setFont(defaultFont);
+				g.drawString(signalCountText, textMarginLeft, textMarginTop,
+						Graphics.TOP|Graphics.LEFT);
+			}
+			// the 'real' signal has always precedence over the preparatory signal
+			// i.e. green light wins over yellow light
+			Image currentState = trafficLightRed;
+			if (showSignal) {
+				currentState = trafficLightGreen;
+			}
+			else if (prepareSignal) {
+				currentState = trafficLightYellow;
+			}
+			g.drawImage(currentState, this.getWidth() / 2, signalMargin + marginTop,
+						Graphics.TOP|Graphics.HCENTER);
+		}
+		
+		/* Painting method for transmission mode TRANSMIT_BAR */
+		private void paintBar(Graphics g) {
+			int marginLeft = proBarMargin;
+			for (int i = 0; i < intervalList.size(); i++) {
+				int intervalWidth = (int)((double)intervalList.item(i) 
+							/ intervalList.getTotalIntervalLength() * proBarWidth);
+				if (i % 2 == 0) {
+					g.setColor(RgbColor.LIGHT_GRAY);
+				}
+				else {
+					g.setColor(RgbColor.DARK_GREEN);
+				}
+				g.fillRect(marginLeft, proBarMarginTop, intervalWidth, proBarHeight);
+				marginLeft += intervalWidth;
+			}
+			g.setColor(RgbColor.BLACK);
+			int progressWidth = (int)(proBarWidth / 100.0d * progress);
+			g.fillRect(proBarMargin, proBarMarginTop, progressWidth, proBarHeight);
+		}
+		
+		/* Painting method for transmission mode TRANSMIT_VERT_BARS */
+		private void paintVertBars(Graphics g) {
+			int barCount = (intervalList.size() + 1) / 2;
+			int powBarWidth = Math.min(powBarMaxWidth, this.getWidth() / (2*barCount + 1));
+			int powBarMargin = Math.max(powBarWidth, 
+						(this.getWidth() - (2*barCount - 1) * powBarWidth) / 2);
+			int maxDblInterval = 0;
+			
+			for (int i = 0; i < intervalList.size(); i += 2){
+				int interval1 = intervalList.item(i);
+				int interval2 = i < intervalList.size() ? intervalList.item(i) : 0;
+				if (interval1 + interval2 > maxDblInterval) {
+					maxDblInterval = interval1 + interval2;
+				}
+			}
+			
+			// draw the different bars
+			int marginLeft = powBarMargin;
+			for (int i = 0; i < intervalList.size(); i += 2) {
+				int intervalLength = (int)((double)intervalList.item(i) / maxDblInterval * powBarHeight);
+				int marginTop = this.getHeight() - powBarMarginTop - intervalLength;
+				g.setColor(RgbColor.LIGHT_GRAY);
+				g.fillRect(marginLeft, marginTop, powBarWidth, intervalLength);
+				
+				if (i + 1 < intervalList.size()) {
+					intervalLength = (int)((double)intervalList.item(i+1) / maxDblInterval * powBarHeight);
+					marginTop -= intervalLength;
+					g.setColor(RgbColor.DARK_GREEN);
+					g.fillRect(marginLeft, marginTop, powBarWidth, intervalLength);
+				}
+				
+				marginLeft += 2 * powBarWidth;
+			}
+			
+			// draw progress
+			marginLeft = powBarMargin;
+			g.setColor(RgbColor.BLACK);
+			double spacialProgress = 0.0d;
+			for (int i = 0; i < intervalList.size(); i += 2) {
+				if (progress < spacialProgress) {
+					break;
+				}
+				
+				int dblInterval = intervalList.item(i);
+				if (i + 1 < intervalList.size()) {
+					dblInterval += intervalList.item(i + 1);
+				}
+				
+				int intervalWidth = 0;
+				double intervalProgress = (double)dblInterval / intervalList.getTotalIntervalLength() * 100.0d;
+				if (spacialProgress + intervalProgress < progress) {
+					intervalWidth = (int)((double)dblInterval / maxDblInterval * powBarHeight);
+				}
+				else if (spacialProgress < progress) {
+					double tempInterval = intervalList.getTotalIntervalLength() / 100.d * (progress - spacialProgress); 
+					intervalWidth = (int)(tempInterval / maxDblInterval * powBarHeight);
+				}
+				
+				g.fillRect(marginLeft, this.getHeight() - powBarMarginTop - intervalWidth, powBarWidth, intervalWidth);
+				
+				spacialProgress += intervalProgress;
+				marginLeft += 2 * powBarWidth;
+			}
+		}
+			
 	}
 	
 }

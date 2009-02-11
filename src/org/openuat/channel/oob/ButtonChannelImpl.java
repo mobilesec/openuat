@@ -51,9 +51,13 @@ public abstract class ButtonChannelImpl {
 	public static final int TRANSMIT_BAR			= 4;
 	
 	/**
-	 * <code>transmissionMode</code> is one of:<br/>
-	 * <code>TRANSMIT_PLAIN</code>, <code>TRANSMIT_SIGNAL</code>,
-	 * <code>TRANSMIT_BAR</code>
+	 * Transmission mode: Power bar.
+	 */
+	public static final int TRANSMIT_VERT_BARS		= 5;
+	
+	/**
+	 * <code>transmissionMode</code> is one of the
+	 * <code>TRANSMIT_*</code> constants defined in this class.
 	 */
 	protected int transmissionMode;
 	
