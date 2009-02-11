@@ -94,24 +94,28 @@ public class RgbColor {
 	 */
 	public static final int MAGENTA		= 0xff00ff;
 	/**
-	 * The color gray (<code>0x777777</code>).
+	 * The color gray (<code>0x808080</code>).
 	 */
-	public static final int GRAY		= 0x777777;
+	public static final int GRAY		= 0x808080;
 	/**
-	 * The color dark gray (<code>0x333333</code>).
+	 * The color dark gray (<code>0x404040</code>).
 	 */
-	public static final int DARK_GRAY	= 0x333333;
+	public static final int DARK_GRAY	= 0x404040;
 	/**
-	 * The color light gray (<code>0xcccccc</code>).
+	 * The color light gray (<code>0xc0c0c0</code>).
 	 */	
-	public static final int LIGHT_GRAY	= 0xcccccc;
+	public static final int LIGHT_GRAY	= 0xc0c0c0;
 	/**
-	 * The color dark red (<code>0xbb0000</code>).
+	 * The color dark red (<code>0x800000</code>).
 	 */
-	public static final int DARK_RED	= 0xbb0000;
+	public static final int DARK_RED	= 0x800000;
 	/**
 	 * The color light red (<code>0xff3333</code>).
 	 */
 	public static final int LIGHT_RED	= 0xff3333;
+	/**
+	 * The color dark red (<code>0x008000</code>).
+	 */
+	public static final int DARK_GREEN	= 0x008000;
 
 }
