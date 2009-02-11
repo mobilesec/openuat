@@ -65,6 +65,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		messageHandler	= null;
 		shortDescription = "Progress Bar";
 		logger = LogFactory.getLogger("org.openuat.channel.oob.ProgressBarToButtonChannel");
+		statisticsLogger = LogFactory.getLogger("statistics");
 		
 		initInterval	= 2000;
 		endInterval		= 1000;
@@ -96,11 +97,14 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 	public void transmit(byte[] message) {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
-		if (logger.isTraceEnabled()) {
-			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
+		if (statisticsLogger.isTraceEnabled()) {
+			statisticsLogger.trace("[STAT] transmitted intervals: " + intervals.toString());
 		}
 		intervals.addFirst(initInterval);
-		intervals.add(endInterval);
+		// the very last interval should be a keep-pressed-interval, so add one if necessary
+		if (intervals.size() % 2 != 0) {
+			intervals.add(endInterval);
+		}
 		impl.setInterval(intervals);
 		impl.setShowCount(showFeedback);
 		

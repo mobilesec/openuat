@@ -15,7 +15,7 @@ import org.openuat.log.LogFactory;
  * <code>capture</code> method and doesn't support the <code>transmit</code>
  * method (it just does nothing).<br/>
  * This channel only records button presses and ignores button releases.<br/>
- * The smallest considered time unit is set to 300 milliseconds
+ * The smallest considered time unit is set to 350 milliseconds
  * (See C. Soriente, G. Tsudik: 'BEDA: Button-Enabled Device Association' for more
  * details).
  * 
@@ -32,7 +32,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 	 */
 	public ButtonToButtonChannel(ButtonChannelImpl impl) {
 		this.impl		= impl;
-		minTimeUnit		= 300;
+		minTimeUnit		= 350;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
 		useCarry		= false;
@@ -41,6 +41,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		shortDescription	= "Input";
 		transmitDisplayText = "";
 		logger = LogFactory.getLogger("org.openuat.channel.oob.ButtonToButtonChannel");
+		statisticsLogger = LogFactory.getLogger("statistics");
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {

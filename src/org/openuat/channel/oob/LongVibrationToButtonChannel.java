@@ -46,13 +46,13 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 	/**
 	 * Creates a new instance of this channel.<br/>
 	 * This constructor is equivalent to
-	 * <code>LongVibrationToButtonChannel(impl, true)</code>.
+	 * <code>LongVibrationToButtonChannel(impl, false)</code>.
 	 * 
 	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
 	 * to handle platform dependent method calls.
 	 */
 	public LongVibrationToButtonChannel(ButtonChannelImpl impl) {
-		this(impl, true);
+		this(impl, false);
 	}
 	
 	/**
@@ -75,6 +75,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 		messageHandler	= null;
 		shortDescription = "Long Vibration";
 		logger = LogFactory.getLogger("org.openuat.channel.oob.LongVibrationToButtonChannel");
+		statisticsLogger = LogFactory.getLogger("statistics");
 		
 		initInterval		= isPrepareEnabled ? 2500 : 6500;
 		endInterval			= 600;
@@ -104,8 +105,8 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 	public void transmit(byte[] message) {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
-		if (logger.isTraceEnabled()) {
-			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
+		if (statisticsLogger.isTraceEnabled()) {
+			statisticsLogger.trace("[STAT] transmitted intervals: " + intervals.toString());
 		}
 		intervals.addFirst(initInterval);
 		if (intervalCount % 2 == 0) {

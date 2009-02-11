@@ -72,6 +72,7 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 		messageHandler	= null;
 		shortDescription = "Flash Display";
 		logger = LogFactory.getLogger("org.openuat.channel.oob.FlashDisplayToButtonChannel");
+		statisticsLogger = LogFactory.getLogger("statistics");
 		
 		initInterval		= 2500;
 		textDelay			= 5000;
@@ -102,8 +103,8 @@ public class FlashDisplayToButtonChannel extends ButtonChannel {
 	public void transmit(byte[] message) {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
-		if (logger.isTraceEnabled()) {
-			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
+		if (statisticsLogger.isTraceEnabled()) {
+			statisticsLogger.trace("[STAT] transmitted intervals: " + intervals.toString());
 		}
 		intervals.addFirst(initInterval);
 		

@@ -42,13 +42,13 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 	/**
 	 * Creates a new instance of this channel.<br/>
 	 * This constructor is equivalent to
-	 * <code>ShortVibrationToButtonChannel(impl, true)</code>.
+	 * <code>ShortVibrationToButtonChannel(impl, false)</code>.
 	 * 
 	 * @param impl A suitable <code>ButtonChannelImpl</code> instance
 	 * to handle platform dependent method calls.
 	 */
 	public ShortVibrationToButtonChannel(ButtonChannelImpl impl) {
-		this(impl, true);
+		this(impl, false);
 	}
 	
 	/**
@@ -71,6 +71,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 		messageHandler	= null;
 		shortDescription = "Short Vibration";
 		logger = LogFactory.getLogger("org.openuat.channel.oob.ShortVibrationToButtonChannel");
+		statisticsLogger = LogFactory.getLogger("statistics");
 		
 		initInterval = isPrepareEnabled ? 2500 : 6500;
 		textDelay			= 5000;
@@ -100,8 +101,8 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 	public void transmit(byte[] message) {
 		int intervalCount = MESSAGE_LENGTH / BITS_PER_INTERVAL;
 		final IntervalList intervals = bytesToIntervals(message, minTimeUnit, BITS_PER_INTERVAL, intervalCount);
-		if (logger.isTraceEnabled()) {
-			logger.trace("[STAT] transmitted intervals: " + intervals.toString());
+		if (statisticsLogger.isTraceEnabled()) {
+			statisticsLogger.trace("[STAT] transmitted intervals: " + intervals.toString());
 		}
 		intervals.addFirst(initInterval);
 		
