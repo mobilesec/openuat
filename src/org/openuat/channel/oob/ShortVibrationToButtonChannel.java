@@ -131,6 +131,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 							Thread.sleep(interval);
 							signalCount++;
 							impl.setSignalCount(signalCount);
+							impl.repaint();
 							impl.vibrate(signalDuration);
 							Thread.sleep(signalDuration);
 						} catch (InterruptedException e) {
