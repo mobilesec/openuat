@@ -141,6 +141,12 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	 *  Logger instance. It will be used by this class and its subclasses as well.
 	 */
 	protected Log logger;
+
+	/**
+	 *  Logger instance for statistics data. It will be used by this
+	 *  class and its subclasses as well.
+	 */
+	protected Log statisticsLogger;
 	
 	/*
 	 * How many button events (presses/releases) are still to process?
@@ -201,9 +207,9 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 			impl.setSignalCount(ButtonChannel.TOTAL_SIGNAL_COUNT - buttonEventsLeft);
 			impl.repaint();
 			if (buttonEventsLeft <= 0) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("[STAT] channel: " + this.toString());
-					logger.trace("[STAT] captured intervals: " + oobInput.toString());
+				if (statisticsLogger.isTraceEnabled()) {
+					statisticsLogger.trace("[STAT] channel: " + this.toString());
+					statisticsLogger.trace("[STAT] captured intervals: " + oobInput.toString());
 				}
 				// massage has been transmitted, pass it on
 				if (messageHandler != null) {
