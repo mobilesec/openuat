@@ -33,7 +33,9 @@ import javax.microedition.lcdui.List;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
 
+import net.sf.microlog.Level;
 import net.sf.microlog.appender.FileAppender;
+import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
@@ -46,6 +48,7 @@ import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
 import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
+import org.openuat.channel.oob.PowerBarToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.TrafficLightToButtonChannel;
@@ -151,6 +154,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	/* Logger instance */
 	private Log logger;
 	
+	/* Logger instance to log statistics data */
+	private Log statisticsLogger;
+	
 	
 	/**
 	 * Creates a new MIDlet. Used for one-time initializations.
@@ -197,16 +203,22 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		// Initialize the logger. Use a wrapper around the microlog framework.
 		LogFactory.init(new MicrologFactory());
 		logger = LogFactory.getLogger("org.openuat.apps.j2me.BedaMIDlet");
+		statisticsLogger = LogFactory.getLogger("statistics");
+		
 		// TODO: should configure microlog in its properties file
-		net.sf.microlog.Logger nativeLogger = ((MicrologLogger)logger).getNativeLogger();
-		nativeLogger.setLogLevel(net.sf.microlog.Level.TRACE);
 		FileAppender fileAppender = new FileAppender();
 		fileAppender.setDirectory("Memory card/Others/");
-		nativeLogger.addAppender(fileAppender);
 		logForm = new LogForm();
 		logForm.setDisplay(display);
 		logForm.setPreviousScreen(welcomeScreen);
-		nativeLogger.addAppender(new net.sf.microlog.appender.FormAppender(logForm));
+		FormAppender formAppender = new FormAppender(logForm);
+		net.sf.microlog.Logger nativeLogger = ((MicrologLogger)logger).getNativeLogger();
+		nativeLogger.addAppender(fileAppender);
+		nativeLogger.addAppender(formAppender);
+		nativeLogger = ((MicrologLogger)statisticsLogger).getNativeLogger();
+		nativeLogger.addAppender(fileAppender);
+		nativeLogger.addAppender(formAppender);
+		nativeLogger.setLogLevel(Level.TRACE);
 		
 		// create icon images
 		try {
@@ -258,6 +270,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		c = new TrafficLightToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new ProgressBarToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
+		c = new PowerBarToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new ShortVibrationToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
@@ -388,8 +402,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	/* Helper method to initialize the channelList */
 	private void buildChannelList(boolean isTest) {
 		// TODO: get channels from existing map
-		String[] listItems = {"Input", "Flash Display", "Traffic Light", "Progress Bar", "Short Vibration", "Long Vibration"};
-		Image[] imageItems = {listIcon, listIcon, listIcon, listIcon, listIcon, listIcon};
+		String[] listItems = {"Input", "Flash Display", "Traffic Light", "Progress Bar", "Power Bar", "Short Vibration", "Long Vibration"};
+		Image[] imageItems = {listIcon, listIcon, listIcon, listIcon, listIcon, listIcon, listIcon};
 		channelList = new List(CHANNEL_LIST_TITLE, Choice.IMPLICIT, listItems, imageItems);
 		channelList.addCommand(backCommand);
 		final Command transmitCommand = new Command("Transmit", Command.ITEM, 2);
@@ -675,18 +689,18 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	
 	/* Log statistics info: start of a protocol run */
 	private void statisticsStart(String desc) {
-		if (logger.isTraceEnabled()) {
+		if (statisticsLogger.isTraceEnabled()) {
 			startTime = System.currentTimeMillis();
-			logger.trace("[STAT] START " + desc);
+			statisticsLogger.trace("[STAT] START " + desc);
 		}
 	}
 	
 	/* Log statistics info: end of a protocol run */
 	private void statisticsEnd(String desc, boolean success) {
-    	if (logger.isTraceEnabled() && startTime != 0L) {
+    	if (statisticsLogger.isTraceEnabled() && startTime != 0L) {
     		long duration = System.currentTimeMillis() - startTime;
     		String result = success ? "success" : "failure";
-    		logger.trace("[STAT] END: " + result + " " +
+    		statisticsLogger.trace("[STAT] END: " + result + " " +
     					desc + " - authentication duration in ms: " + duration);
     		startTime = 0L;
     	}

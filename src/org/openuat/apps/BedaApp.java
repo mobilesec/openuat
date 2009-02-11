@@ -52,6 +52,7 @@ import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
 import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
+import org.openuat.channel.oob.PowerBarToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.TrafficLightToButtonChannel;
@@ -208,6 +209,8 @@ public class BedaApp implements AuthenticationProgressHandler {
 		buttonChannels.put(c.toString(), c);
 		c = new ProgressBarToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
+		c = new PowerBarToButtonChannel(impl);
+		buttonChannels.put(c.toString(), c);
 		c = new ShortVibrationToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
 		c = new LongVibrationToButtonChannel(impl);
@@ -245,6 +248,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 			new FlashDisplayToButtonChannel(impl),
 			new TrafficLightToButtonChannel(impl),
 			new ProgressBarToButtonChannel(impl),
+			new PowerBarToButtonChannel(impl),
 			new ShortVibrationToButtonChannel(impl),
 			new LongVibrationToButtonChannel(impl)
 		};
@@ -267,50 +271,14 @@ public class BedaApp implements AuthenticationProgressHandler {
 				if (event.getButton() == MouseEvent.BUTTON1 && event.getClickCount() == 2) {
 					JList source = (JList)event.getSource();
 					if (source == channelList && channelList.isEnabled()) {
-						try {
-							currentChannel = (OOBChannel)channelList.getSelectedValue();
-							if (currentChannel != null) {
-								statusLabel.setText("Please wait... Prepare authentication");
-								isInitiator = true;
-								BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
-								btChannel.open();
-								if (channelList.getSelectedIndex() == 0) {
-									// input case
-									String hello = LineReaderWriter.readLine(btChannel.getInputStream());
-									if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
-										logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
-									}
-									LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
-									inputProtocol(true, btChannel, currentChannel);
-								}
-								else {
-									// transfer case
-									boolean keepConnected = true; // since the key has to be authenticated after key agreement
-									HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, -1, keepConnected, TRANSFER_AUTH, false);
-								}
-							}
-						} catch (IOException e) {
-							logger.error("Failed to start authentication.", e);
-						}
+						currentChannel = (OOBChannel)channelList.getSelectedValue();
+						startAuthentication();
 					}
 					else if (source == deviceList) {
 						int index = deviceList.getSelectedIndex();
 						if (index > -1) {
 							String peerAddress = devices[index].getBluetoothAddress();
-							currentPeerUrl = null;
-							try {
-								currentPeerUrl = BluetoothPeerManager.getRemoteServiceURL(
-										peerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
-							} catch (IOException e) {
-								currentPeerUrl = null;
-							}
-							if (currentPeerUrl != null) {
-								channelList.setEnabled(true);
-							}
-							else {
-								channelList.setEnabled(false);
-								statusLabel.setText("Sorry, but the service " + SERVICE_NAME + " is not running on the selected device");
-							}
+							searchForService(peerAddress);
 						}
 					}
 				}
@@ -536,6 +504,55 @@ public class BedaApp implements AuthenticationProgressHandler {
 			}
 		}
 		deviceList.setModel(listModel);
+	}
+	
+	/* Initiates the authentication protocol */
+	private void startAuthentication() {
+		try {
+			if (currentChannel != null) {
+				statusLabel.setText("Please wait... Prepare authentication");
+				isInitiator = true;
+				BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
+				btChannel.open();
+				if (channelList.getSelectedIndex() == 0) {
+					// input case
+					String hello = LineReaderWriter.readLine(btChannel.getInputStream());
+					if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
+						logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
+					}
+					LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
+					inputProtocol(true, btChannel, currentChannel);
+				}
+				else {
+					// transfer case
+					boolean keepConnected = true; // since the key has to be authenticated after key agreement
+					HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, -1, keepConnected, TRANSFER_AUTH, false);
+				}
+			}
+		} catch (IOException e) {
+			logger.error("Failed to start authentication.", e);
+		}
+	}
+	
+	/* 
+	 * Searches for the Beda service on peerAddress, sets the currentPeerURL
+	 * and enables the channel list if the service is available.
+	 */
+	private void searchForService(String peerAddress) {
+		currentPeerUrl = null;
+		try {
+			currentPeerUrl = BluetoothPeerManager.getRemoteServiceURL(
+					peerAddress, SERVICE_UUID, ServiceRecord.NOAUTHENTICATE_NOENCRYPT, 10000);
+		} catch (IOException e) {
+			currentPeerUrl = null;
+		}
+		if (currentPeerUrl != null) {
+			channelList.setEnabled(true);
+		}
+		else {
+			channelList.setEnabled(false);
+			statusLabel.setText("Sorry, but the service " + SERVICE_NAME + " is not running on the selected device");
+		}
 	}
 	
 	/* Test the capture functionality (offline) */
@@ -843,4 +860,5 @@ public class BedaApp implements AuthenticationProgressHandler {
 			}
 		}
 	}
+	
 }
