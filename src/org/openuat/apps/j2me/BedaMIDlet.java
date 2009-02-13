@@ -881,7 +881,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
 					// @Override
 					public void handleOOBMessage(int channelType, byte[] data) {
-						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						if (statisticsLogger.isTraceEnabled()) {
+							statisticsLogger.trace("[STAT] Data captured: " + new String(Hex.encodeHex(data)));
+						}
 						try {
 							LineReaderWriter.println(out, DONE);
 							String line = LineReaderWriter.readLine(in);
@@ -921,7 +923,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
 					// @Override
 					public void handleOOBMessage(int channelType, byte[] data) {
-						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						if (statisticsLogger.isTraceEnabled()) {
+							statisticsLogger.trace("[STAT] Data captured: " + new String(Hex.encodeHex(data)));
+						}
 						try {
 							String line = LineReaderWriter.readLine(in);
 							if (!line.equals(DONE)) {
