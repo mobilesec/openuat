@@ -396,6 +396,8 @@
 			<fileset dir="${bin-apache-bzip2}" />
 			<fileset dir="${bin-google-zxing}" />
 			<fileset dir="resources" includes="printer.png"/>
+			<fileset dir="resources" includes="Button_Icon_Blue_beda.png"/>
+			<fileset dir="resources" includes="Traffic_lights_dark_*.png"/>
 			<fileset dir="${src}" includes="*.properties" />
 			<!-- Merge library jars into final jar file -->
 			<zipgroupfileset refid="lib.bundleinclude-jars" />
@@ -572,6 +574,8 @@
 					<fileset dir="${resources}/qrcode_data" includes="qrvfr3.dat" />
 					<fileset dir="${resources}/qrcode_data" includes="rsc26.dat" />
 					<fileset dir="${resources}/hapadep" includes="**" />
+					<fileset dir="${resources}" includes="Button_Icon_*.png" />
+					<fileset dir="${resources}" includes="Traffic_lights_dark_*.png" />
 				</resources>
 				<!-- user defined JAD attributes can also be used: -->
 <!--				<jad>
