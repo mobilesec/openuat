@@ -26,6 +26,7 @@ import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
+import javax.microedition.lcdui.Gauge;
 import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.ImageItem;
 import javax.microedition.lcdui.Item;
@@ -384,6 +385,9 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	        		statisticsEnd(currentChannel.toString(), true);
 	        	}
 	        	btServer.setPresharedShortSecret(null);
+        		if (connectionToRemote != null) {
+        			connectionToRemote.close();
+        		}
 	        	logger.info("Authentication through input successful!");
 	        	Alert successAlert = new Alert("Success", 
 						"Authentication successful!", successIcon, AlertType.CONFIRMATION);
@@ -663,6 +667,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	private void alertWait(String msg, boolean returnToHome) {
 		Alert a = new Alert("Please wait...", msg, warnIcon, AlertType.INFO);
 		a.setTimeout(Alert.FOREVER);
+		Gauge gauge = new Gauge(null, false, Gauge.INDEFINITE, Gauge.CONTINUOUS_RUNNING);
+		a.setIndicator(gauge);
 		if (returnToHome) {
 			display.setCurrent(a, welcomeScreen);
 		}
@@ -935,7 +941,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							// prepare server to handle incoming request
 							btServer.setPresharedShortSecret(data);
 							LineReaderWriter.println(out, DONE);
-							//connection.close();
 							alertWait("Authentication in progress...", true);
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
