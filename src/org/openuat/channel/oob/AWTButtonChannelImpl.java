@@ -479,7 +479,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 			int maxDblInterval = 0;
 			for (int i = 0; i < intervalList.size(); i += 2){
 				int interval1 = intervalList.item(i);
-				int interval2 = i < intervalList.size() ? intervalList.item(i) : 0;
+				int interval2 = (i+1 < intervalList.size()) ? intervalList.item(i+1) : 0;
 				if (interval1 + interval2 > maxDblInterval) {
 					maxDblInterval = interval1 + interval2;
 				}
