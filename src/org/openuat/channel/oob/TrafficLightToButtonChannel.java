@@ -17,7 +17,8 @@ import org.openuat.util.IntervalList;
  * between devices with the help of visual signals, which are represented
  * as a traffic light. There are three states: red - do nothing,
  * yellow - prepare, green - act (press button on other device)<br/>
- * The yellow and green signals will be displayed for 500 ms each.<br/>
+ * The yellow signal will be displayed for 350 ms and the green signal
+ * will be displayed for 500 ms.<br/>
  * The smallest considered time unit for this channel is set to 1000 ms.
  * 
  * @author Lukas Huser
@@ -59,7 +60,7 @@ public class TrafficLightToButtonChannel extends ButtonChannel {
 		initInterval		= 2500;
 		textDelay			= 5000;
 		signalDuration		= 500;
-		prepSignalDuration	= 500;
+		prepSignalDuration	= 350;
 		
 		String endl = System.getProperty("line.separator");
 		if (endl == null) {
