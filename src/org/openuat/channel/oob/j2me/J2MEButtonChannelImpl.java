@@ -87,7 +87,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		this.abortHandler	= abortHandler;
 		logger 			= LogFactory.getLogger("org.openuat.channel.oob.j2me.J2MEButtonChannelImpl");
 		abortCommand	= new Command("Abort", Command.STOP, 1);
-		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_MEDIUM);
+		defaultFont 	= Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL);
 	}
 	
 	/* (non-Javadoc)
@@ -203,6 +203,13 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			this.inputHandler	= handler;
 			marginLeft	= 10;
 			marginTop	= 10;
+			
+			try {
+				phoneInput = Image.createImage("/phone_input.png");
+			} catch (IOException ioe) {
+				phoneInput = null;
+				logger.warn("Could not create image: input phone", ioe);
+			}
 		}
 		
 		/* Text to display on gui */
@@ -214,6 +221,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		/* Margin values when drawing text on the screen */
 		private int marginLeft;
 		private int marginTop;
+		
+		/* An image to visualize the input functionality */
+		private Image phoneInput;
 
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(Graphics)
@@ -240,7 +250,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			if (showCount) {
 				g.setColor(RgbColor.BLUE);
 				// draw progress wheel
-				int h = defaultFont.getHeight();
+				int h = defaultFont.getHeight() * 2;
 				int xRef = this.getWidth() / 2 - h;
 				int yRef = mTop + defaultFont.getHeight();
 				
@@ -260,6 +270,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 					qy = px * Math.sin(angle) + py * Math.cos(angle);
 				}
 				
+			}
+			if (!showCount || signalCount <= 0) {
+				int imgHeight = phoneInput != null ? phoneInput.getHeight() : 0;
+				int imgMarginTop = (this.getHeight() - mTop - imgHeight) / 2 + mTop;
+				g.drawImage(phoneInput, this.getWidth() / 2, imgMarginTop, Graphics.TOP|Graphics.HCENTER);
 			}
 		}
 
@@ -322,6 +337,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		private Image trafficLightYellow;
 		private Image trafficLightGreen;
 		
+		/* Transmit image */
+		private Image phoneTransmit;
+		
 		/*
 		 * Constructor for this class.
 		 */
@@ -358,6 +376,12 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			} catch (IOException ioe) {
 				trafficLightGreen = null;
 				logger.warn("Could not create image: green traffic light", ioe);
+			}
+			try {
+				phoneTransmit = Image.createImage("/phone_sending.png");
+			} catch (IOException ioe) {
+				phoneTransmit = null;
+				logger.warn("Could not create image: sending phone", ioe);
 			}
 		}
 		
@@ -417,6 +441,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				g.drawString(line, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
 				mTop += defaultFont.getHeight();
 			}
+			int imgHeight = phoneTransmit != null ? phoneTransmit.getHeight() : 0;
+			int imgMarginTop = (this.getHeight() - mTop - imgHeight) / 2 + mTop;
+			g.drawImage(phoneTransmit, this.getWidth() / 2, imgMarginTop, Graphics.TOP|Graphics.HCENTER);
 		}
 		
 		/* Painting method for transmission mode TRANSMIT_SIGNAL */
@@ -499,7 +526,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			
 			for (int i = 0; i < intervalList.size(); i += 2){
 				int interval1 = intervalList.item(i);
-				int interval2 = i < intervalList.size() ? intervalList.item(i) : 0;
+				int interval2 = (i+1 < intervalList.size()) ? intervalList.item(i+1) : 0;
 				if (interval1 + interval2 > maxDblInterval) {
 					maxDblInterval = interval1 + interval2;
 				}
