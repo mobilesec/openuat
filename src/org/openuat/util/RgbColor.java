@@ -114,8 +114,11 @@ public class RgbColor {
 	 */
 	public static final int LIGHT_RED	= 0xff3333;
 	/**
-	 * The color dark red (<code>0x008000</code>).
+	 * The color dark green (<code>0x008000</code>).
 	 */
 	public static final int DARK_GREEN	= 0x008000;
-
+	/**
+	 * The color dark blue (<code>0x0000a0</code>).
+	 */
+	public static final int DARK_BLUE	= 0x0000a0;
 }
