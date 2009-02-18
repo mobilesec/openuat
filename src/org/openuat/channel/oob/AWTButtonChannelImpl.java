@@ -240,7 +240,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 		paintableComponent = null;
 		currentText = text;
 		if (showCount) {
-			currentText += "\n\n" + "Button events Processed: ";
+			currentText += "\n\n" + "Button events: ";
 		}
 		textComponent = captureGui;
 		captureGui.addKeyListener(keyListener);
