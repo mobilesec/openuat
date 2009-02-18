@@ -411,8 +411,10 @@ public class BedaApp implements AuthenticationProgressHandler {
 	        if (param.equals(INPUT)) {
 	        	// for input: authentication successfully finished!
 	        	btServer.setPresharedShortSecret(null);
+	        	if (connectionToRemote != null) {
+	        		connectionToRemote.close();
+	        	}
 	        	logger.info("Authentication through input successful!");
-	        	statusLabel.setText("");
 	        	informSuccess();
 	        }
 	        else if (param.equals(TRANSFER_AUTH)) {
@@ -619,6 +621,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	
 	/* Informs the user about the successfully completed authentication process */
 	private void informSuccess() {
+		statusLabel.setText("Successfully paired with other device!");
 		JOptionPane.showMessageDialog(mainWindow, "Successfully paired with other device!",
 				"Success", JOptionPane.INFORMATION_MESSAGE);
 		showHomeScreen();
