@@ -205,10 +205,10 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			marginTop	= 10;
 			
 			try {
-				phoneInput = Image.createImage("/phone_input.png");
+				buttonPress = Image.createImage("/button_press.png");
 			} catch (IOException ioe) {
-				phoneInput = null;
-				logger.warn("Could not create image: input phone", ioe);
+				buttonPress = null;
+				logger.warn("Could not create image: button press", ioe);
 			}
 		}
 		
@@ -223,7 +223,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 		private int marginTop;
 		
 		/* An image to visualize the input functionality */
-		private Image phoneInput;
+		private Image buttonPress;
 
 		/* (non-Javadoc)
 		 * @see javax.microedition.lcdui.Canvas#paint(Graphics)
@@ -235,12 +235,6 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			g.setColor(RgbColor.BLACK);
 			g.setFont(defaultFont);
 			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*marginLeft);
-			if (showCount) {
-				String eventCount = "Button events processed: " 
-					+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
-				lines.addElement("");
-				lines.addElement(eventCount);
-			}
 			int mTop = marginTop;
 			for (int i = 0; i < lines.size(); i++) {
 				String line = (String)lines.elementAt(i);
@@ -248,8 +242,16 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				mTop += defaultFont.getHeight();
 			}
 			if (showCount) {
-				g.setColor(RgbColor.BLUE);
+				// draw signal count
+				String eventCount = "Button events: " 
+					+ signalCount + "/" + ButtonChannel.TOTAL_SIGNAL_COUNT;
+				g.setFont(Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_MEDIUM));
+				mTop += defaultFont.getHeight();
+				g.drawString(eventCount, marginLeft, mTop, Graphics.TOP|Graphics.LEFT);
+				mTop += g.getFont().getHeight();
+				
 				// draw progress wheel
+				g.setColor(RgbColor.BLUE);
 				int h = defaultFont.getHeight() * 2;
 				int xRef = this.getWidth() / 2 - h;
 				int yRef = mTop + defaultFont.getHeight();
@@ -272,9 +274,9 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				
 			}
 			if (!showCount || signalCount <= 0) {
-				int imgHeight = phoneInput != null ? phoneInput.getHeight() : 0;
+				int imgHeight = buttonPress != null ? buttonPress.getHeight() : 0;
 				int imgMarginTop = (this.getHeight() - mTop - imgHeight) / 2 + mTop;
-				g.drawImage(phoneInput, this.getWidth() / 2, imgMarginTop, Graphics.TOP|Graphics.HCENTER);
+				g.drawImage(buttonPress, this.getWidth() / 2, imgMarginTop, Graphics.TOP|Graphics.HCENTER);
 			}
 		}
 
@@ -431,15 +433,17 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			g.setColor(RgbColor.BLACK);
 			g.setFont(defaultFont);
 			Vector lines = splitStringByFont(displayText, defaultFont, this.getWidth()- 2*textMarginLeft);
-			if (showCount) {
-				lines.addElement("");
-				lines.addElement(signalCountText);
-			}
 			int mTop = textMarginTop;
 			for (int i = 0; i < lines.size(); i++) {
 				String line = (String)lines.elementAt(i);
 				g.drawString(line, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
 				mTop += defaultFont.getHeight();
+			}
+			if (showCount) {
+				mTop += defaultFont.getHeight();
+				g.setFont(Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_MEDIUM));
+				g.drawString(signalCountText, textMarginLeft, mTop, Graphics.TOP|Graphics.LEFT);
+				mTop += g.getFont().getHeight();
 			}
 			int imgHeight = phoneTransmit != null ? phoneTransmit.getHeight() : 0;
 			int imgMarginTop = (this.getHeight() - mTop - imgHeight) / 2 + mTop;
