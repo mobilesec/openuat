@@ -266,7 +266,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		buttonChannels = new Hashtable(10);
 		OOBChannel c = new ButtonToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
-		c = new FlashDisplayToButtonChannel(impl);
+		c = new FlashDisplayToButtonChannel(impl, false);
 		buttonChannels.put(c.toString(), c);
 		c = new TrafficLightToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
@@ -283,10 +283,10 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		setUpBluetooth();
 		
 		// build welcome screen: create menu
-		final Command exitCommand	= new Command("Exit", Command.EXIT, 1);
-		final Command searchCommand = new Command("Search", "Search devices", Command.ITEM, 2);
-		final Command testCommand	= new Command("Test", "Test channels", Command.ITEM, 3);
-		final Command logCommand	= new Command("Log", "Show log", Command.ITEM, 3);
+		final Command searchCommand = new Command("Start", "Start authentication", Command.ITEM, 1);
+		final Command testCommand	= new Command("Test", "Test channels", Command.ITEM, 2);
+		final Command logCommand	= new Command("Log", "Show log", Command.ITEM, 2);
+		final Command exitCommand	= new Command("Exit", Command.EXIT, 3);
 		
 		CommandListener listener = new CommandListener() {
 			public void commandAction(Command cmd, Displayable d) {
@@ -303,7 +303,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				}
 				else if (cmd == testCommand) {
 					buildChannelList(true);
-					logger.debug("Test channels...");
 					display.setCurrent(channelList);
 				}
 				else if (cmd == exitCommand) {
