@@ -203,7 +203,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		ButtonChannelImpl impl = new AWTButtonChannelImpl(mainWindow.getContentPane(), abortHandler);
 		OOBChannel c = new ButtonToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
-		c = new FlashDisplayToButtonChannel(impl);
+		c = new FlashDisplayToButtonChannel(impl, false);
 		buttonChannels.put(c.toString(), c);
 		c = new TrafficLightToButtonChannel(impl);
 		buttonChannels.put(c.toString(), c);
@@ -245,7 +245,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		// set up channel list
 		OOBChannel[] channels = {
 			new ButtonToButtonChannel(impl),
-			new FlashDisplayToButtonChannel(impl),
+			new FlashDisplayToButtonChannel(impl, false),
 			new TrafficLightToButtonChannel(impl),
 			new ProgressBarToButtonChannel(impl),
 			new PowerBarToButtonChannel(impl),
