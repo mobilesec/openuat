@@ -80,8 +80,17 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	/**
 	 * The smallest considered time unit in ms.<br/>
 	 * Needed to cope with reaction delays by the user.
+	 * For <i>transfer</i> channels <code>minTimeUnit / 2</code>
+	 * corresponds to the maximum reaction delay.
 	 */
 	protected int minTimeUnit;
+	
+	/**
+	 * The smallest considered time unit for a second verification run.
+	 * Only used for the <i>input</i> channel. If it is set to 0 (default),
+	 * there won't be a second verification run.
+	 */
+	protected int minTimeUnit2 = 0;
 	
 	/**
 	 * The current input mode. Can be either
@@ -214,6 +223,15 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 				// massage has been transmitted, pass it on
 				if (messageHandler != null) {
 					byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarry);
+					if (minTimeUnit2 != 0) {
+						// generate a second candidate shared secret
+						// the returned message consists of the concatenation of both candidates
+						byte[] cand2 = intervalsToBytes(oobInput, minTimeUnit2, BITS_PER_INTERVAL, doRoundDown, useCarry);
+						byte[] concat = new byte[message.length + cand2.length];
+						System.arraycopy(message, 0, concat, 0, message.length);
+						System.arraycopy(cand2, 0, concat, message.length, cand2.length);
+						message = concat;
+					}
 					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
 				}
 				else {

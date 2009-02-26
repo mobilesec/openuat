@@ -15,9 +15,10 @@ import org.openuat.log.LogFactory;
  * <code>capture</code> method and doesn't support the <code>transmit</code>
  * method (it just does nothing).<br/>
  * This channel only records button presses and ignores button releases.<br/>
- * The smallest considered time unit is set to 400 milliseconds
- * (See C. Soriente, G. Tsudik: 'BEDA: Button-Enabled Device Association' for more
- * details).
+ * This channel has two different smallest time units: 400 ms and 300 ms.
+ * This means that from one list of captured intervals, two different candidate
+ * shared secrets will be generated. The <code>byte[]</code> returned by the capture
+ * method contains the concatenation of both candidates.
  * 
  * @author Lukas Huser
  * @version 1.0
@@ -33,6 +34,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 	public ButtonToButtonChannel(ButtonChannelImpl impl) {
 		this.impl		= impl;
 		minTimeUnit		= 400;
+		minTimeUnit2	= 300;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
 		useCarry		= false;
