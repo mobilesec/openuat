@@ -11,8 +11,8 @@ package org.openuat.apps.j2me;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.SecureRandom;
 import java.util.Hashtable;
-import java.util.Random;
 import java.util.Vector;
 
 import javax.bluetooth.RemoteDevice;
@@ -45,6 +45,7 @@ import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.oob.ButtonChannel;
 import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
 import org.openuat.channel.oob.FlashDisplayToButtonChannel;
@@ -147,7 +148,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	private Hashtable buttonChannels;
 	
 	/* Random number generator to build random messages (for testing) */
-	private Random random;
+	private SecureRandom random;
 	
 	/* Remember the start time of a pairing attempt. Used for statistics logging. */
 	private long startTime;
@@ -198,7 +199,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		isInitiator		= false;
 		currentChannel	= null;
 		currentPeerUrl	= "";
-		random			= new Random(System.currentTimeMillis());
+		random			= new SecureRandom();
 		startTime		= 0L;
 		
 		// Initialize the logger. Use a wrapper around the microlog framework.
@@ -254,7 +255,11 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 					// TODO: cleanly stop protocol runs, channels etc.
 					logger.warn("Protocol run aborted by user.");
 					statisticsEnd(currentChannel.toString(), false);
-					BluetoothRFCOMMChannel.shutdownAllChannels();
+					try {
+						BluetoothRFCOMMChannel.shutdownAllChannels();
+					} catch (Exception e) {
+						logger.error("Unable to close bluetooth connections", e);
+					}
 					alertError("Protocol run aborted.");
 				}
 				else {
@@ -336,14 +341,14 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	// @Override
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 		// in the input case, reset the shared key
-		btServer.setPresharedShortSecret(null);
+		btServer.setPresharedShortSecrets(null);
 		logger.error(msg, e);
     	if (currentChannel != null) {
     		// log session duration only on initiator
     		// on responder, currentChannel is null
     		statisticsEnd(currentChannel.toString(), false);
     	}
-		alertError(msg);
+		alertError("Authentication failed!");
 	}
 	
 	// @Override
@@ -383,7 +388,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	        		// on responder, currentChannel is null
 	        		statisticsEnd(currentChannel.toString(), true);
 	        	}
-	        	btServer.setPresharedShortSecret(null);
+	        	btServer.setPresharedShortSecrets(null);
         		if (connectionToRemote != null) {
         			connectionToRemote.close();
         		}
@@ -613,8 +618,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	
 	/* Test the transmit functionality (offline) */
 	private void testTransmit(OOBChannel channel) {
-		int r = random.nextInt();
-		final byte[] randomMessage = {(byte)r, (byte)(r >>> 8), (byte)(r >>> 16)};
+		final byte[] randomMessage = new byte[3];
+		random.nextBytes(randomMessage);
 		final String hexString = new String(Hex.encodeHex(randomMessage));
 		
 		OOBMessageHandler handler = new OOBMessageHandler() {
@@ -886,8 +891,15 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
 					// @Override
 					public void handleOOBMessage(int channelType, byte[] data) {
-						if (statisticsLogger.isTraceEnabled()) {
-							statisticsLogger.trace("[STAT] Data captured: " + new String(Hex.encodeHex(data)));
+						int length = (ButtonChannel.MESSAGE_LENGTH + 7) / 8;
+						Vector sharedSecrets = new Vector();
+						for (int i = 0; i < data.length; i += length) {
+							byte[] temp = new byte[length];
+							System.arraycopy(data, i, temp, 0, length);
+							sharedSecrets.addElement(temp);
+							if (statisticsLogger.isTraceEnabled()) {
+								statisticsLogger.trace("[STAT] Candidate secret: " + new String(Hex.encodeHex(temp)));
+							}
 						}
 						try {
 							LineReaderWriter.println(out, DONE);
@@ -901,7 +913,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							BluetoothRFCOMMChannel btChannel = new BluetoothRFCOMMChannel(currentPeerUrl);
 							btChannel.open();
 							HostProtocolHandler.startAuthenticationWith(
-									btChannel, BedaMIDlet.this, null, data, null, 20000, false, "INPUT", false);
+									btChannel, BedaMIDlet.this, null, sharedSecrets, null, 20000, false, "INPUT", false);
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
 						}
@@ -928,8 +940,15 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
 					// @Override
 					public void handleOOBMessage(int channelType, byte[] data) {
-						if (statisticsLogger.isTraceEnabled()) {
-							statisticsLogger.trace("[STAT] Data captured: " + new String(Hex.encodeHex(data)));
+						int length = (ButtonChannel.MESSAGE_LENGTH + 7) / 8;
+						Vector sharedSecrets = new Vector();
+						for (int i = 0; i < data.length; i += length) {
+							byte[] temp = new byte[length];
+							System.arraycopy(data, i, temp, 0, length);
+							sharedSecrets.addElement(temp);
+							if (statisticsLogger.isTraceEnabled()) {
+								statisticsLogger.trace("[STAT] Candidate secret: " + new String(Hex.encodeHex(temp)));
+							}
 						}
 						try {
 							String line = LineReaderWriter.readLine(in);
@@ -938,7 +957,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 								return;
 							}
 							// prepare server to handle incoming request
-							btServer.setPresharedShortSecret(data);
+							btServer.setPresharedShortSecrets(sharedSecrets);
 							LineReaderWriter.println(out, DONE);
 							alertWait("Authentication in progress...", true);
 						} catch (IOException e) {
