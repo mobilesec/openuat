@@ -18,9 +18,9 @@ import java.awt.event.MouseListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Random;
 import java.util.Vector;
 
 import javax.bluetooth.RemoteDevice;
@@ -48,6 +48,7 @@ import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.oob.AWTButtonChannelImpl;
+import org.openuat.channel.oob.ButtonChannel;
 import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
 import org.openuat.channel.oob.FlashDisplayToButtonChannel;
@@ -149,7 +150,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	private boolean isInitiator;
 	
 	/* Random number generator */
-	private Random random;
+	private SecureRandom random;
 	
 	/* Logger instance */
 	private Log logger;
@@ -169,7 +170,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	 * actual application.
 	 */
 	public BedaApp() {
-		random			= new Random(System.currentTimeMillis());
+		random			= new SecureRandom();
 		devices			= new RemoteDevice[0];
 		currentPeerUrl	= null;
 		currentChannel	= null;
@@ -372,9 +373,9 @@ public class BedaApp implements AuthenticationProgressHandler {
 	@Override
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 		// in the input case, reset the shared key
-		btServer.setPresharedShortSecret(null);
+		btServer.setPresharedShortSecrets(null);
 		logger.error(msg, e);
-		alertError(msg);
+		alertError("Authentication failed!");
 	}
 
 	@Override
@@ -410,7 +411,7 @@ public class BedaApp implements AuthenticationProgressHandler {
         if (param != null) {
 	        if (param.equals(INPUT)) {
 	        	// for input: authentication successfully finished!
-	        	btServer.setPresharedShortSecret(null);
+	        	btServer.setPresharedShortSecrets(null);
 	        	if (connectionToRemote != null) {
 	        		connectionToRemote.close();
 	        	}
@@ -787,7 +788,16 @@ public class BedaApp implements AuthenticationProgressHandler {
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
 					@Override
 					public void handleOOBMessage(int channelType, byte[] data) {
-						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						int length = (ButtonChannel.MESSAGE_LENGTH + 7) / 8;
+						Vector sharedSecrets = new Vector();
+						for (int i = 0; i < data.length; i += length) {
+							byte[] temp = new byte[length];
+							System.arraycopy(data, i, temp, 0, length);
+							sharedSecrets.add(temp);
+							if (logger.isDebugEnabled()) {
+								logger.debug("Candidate secret: " + new String(Hex.encodeHex(temp)));
+							}
+						}
 						try {
 							LineReaderWriter.println(out, DONE);
 							String line = LineReaderWriter.readLine(in);
@@ -810,7 +820,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 								}
 							}
 							
-							HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, null, data, null, 20000, false, "INPUT", false);
+							HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, null, sharedSecrets, null, 20000, false, "INPUT", false);
 							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
 							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
@@ -838,7 +848,16 @@ public class BedaApp implements AuthenticationProgressHandler {
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
 					@Override
 					public void handleOOBMessage(int channelType, byte[] data) {
-						logger.debug("Data captured: " + new String(Hex.encodeHex(data)));
+						int length = (ButtonChannel.MESSAGE_LENGTH + 7) / 8;
+						Vector sharedSecrets = new Vector();
+						for (int i = 0; i < data.length; i += length) {
+							byte[] temp = new byte[length];
+							System.arraycopy(data, i, temp, 0, length);
+							sharedSecrets.add(temp);
+							if (logger.isDebugEnabled()) {
+								logger.debug("Candidate secret: " + new String(Hex.encodeHex(temp)));
+							}
+						}
 						try {
 							String line = LineReaderWriter.readLine(in);
 							if (!line.equals(DONE)) {
@@ -846,7 +865,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 								return;
 							}
 							// prepare server to handle incoming request
-							btServer.setPresharedShortSecret(data);
+							btServer.setPresharedShortSecrets(sharedSecrets);
 							LineReaderWriter.println(out, DONE);
 							//connection.close();
 							statusLabel.setText("Please wait... Authentication in progress...");
