@@ -9,6 +9,7 @@
 package org.openuat.authentication.test;
 
 import java.net.*;
+import java.util.Vector;
 import java.io.*;
 
 import org.openuat.authentication.*;
@@ -109,6 +110,8 @@ public class HostProtocolHandlerTest extends TestCase {
     public void testCompleteAuthentication_SecretPreInputMode() throws UnknownHostException, IOException, InterruptedException
     {
     	byte[] presharedShortSecret = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    	Vector presharedShortSecrets = new Vector();
+    	presharedShortSecrets.addElement(presharedShortSecret);
     	
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
@@ -116,7 +119,7 @@ public class HostProtocolHandlerTest extends TestCase {
         server.setPresharedShortSecret(presharedShortSecret);
         Socket socket = new Socket("127.0.0.1", PORT);
         HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
-        		null, presharedShortSecret, null,
+        		null, presharedShortSecrets, null,
         		10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
