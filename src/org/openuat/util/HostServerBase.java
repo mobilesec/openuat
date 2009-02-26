@@ -10,6 +10,7 @@ package org.openuat.util;
 
 import java.io.IOException;
 import java.util.Hashtable;
+import java.util.Vector;
 
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
@@ -49,9 +50,11 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	
     /** If this is set, then we have some form of user input that has been
      * created _before_ starting a specific protocol instance and is assumed to be
-     * secret.
+     * secret. This <code>Vector<byte[]></code> may contain multiple entries,
+     * in this case each entry is assumed to be a 'candidate secret'.<br/>
+     * Note: all entries have to be of the same length!
      */
-    protected byte[] presharedShortSecret = null;
+    protected Vector presharedShortSecrets = null;
 
     /** If this is set, then we have received a (long) pre-authentication
      * message from the client and will use it to verify its public key.
@@ -120,14 +123,29 @@ public abstract class HostServerBase extends AuthenticationEventSender
      * again for another protocol run!
      */
     public void setPresharedShortSecret(byte[] presharedShortSecret) {
-    	this.presharedShortSecret = presharedShortSecret;
+    	if (presharedShortSecret == null) {
+    		this.presharedShortSecrets = null;
+    	}
+    	else {
+    		this.presharedShortSecrets = new Vector();
+    		this.presharedShortSecrets.addElement(presharedShortSecret);
+    	}
+    }
+    
+    /** Sets a list of preshared short secrets as entered by the user. 
+     * Each entry represents a 'candidate secret'. This <b>must</b>
+     * remain secret until the protocol finished and <b>must not</b> be re-used 
+     * again for another protocol run!
+     */
+    public void setPresharedShortSecrets(Vector presharedShortSecrets) {
+    	this.presharedShortSecrets = presharedShortSecrets;
     }
     
     /** Returns the user-input preshared short secret.
     * May be null when not used. 
     */
-    public byte[] getPresharedShortSecret() {
-    	return presharedShortSecret;
+    public Vector getPresharedShortSecrets() {
+    	return presharedShortSecrets;
     }
 
     /** Sets a pre-authentication message received from the client and
@@ -176,7 +194,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
     		return null;
     	}
     	return new HostProtocolHandler(null, 
-				presharedShortSecret, permanentKeyAgreementInstance, 
+				presharedShortSecrets, permanentKeyAgreementInstance, 
 				protocolTimeoutMs, keepConnected, useJSSE).getPreAuthenticationMessage();
     }
 
@@ -225,7 +243,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 */
 	protected void startProtocol(RemoteConnection remote) {
 		HostProtocolHandler h = new HostProtocolHandler(remote, 
-				presharedShortSecret, permanentKeyAgreementInstance, 
+				presharedShortSecrets, permanentKeyAgreementInstance, 
 				protocolTimeoutMs, keepConnected, useJSSE);
 		// before starting the background thread, register all our own listeners with this new event sender
 		h.setAuthenticationProgressHandlers(eventsHandlers);
