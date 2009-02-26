@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.security.SecureRandom;
 import java.util.Hashtable;
+import java.util.Vector;
 
 import net.mypapit.java.StringTokenizer;
 
@@ -214,9 +215,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
     /** If this is set, then we have some form of user input that has been
      * created _before_ starting the protocol instance and is assumed to be
-     * secret.
+     * secret. This <code>Vector<byte[]></code> may contain multiple entries,
+     * in this case each entry is assumed to be a 'candidate secret'.<br/>
+     * Note: all entries have to be of the same length!
      */
-    protected byte[] presharedShortSecret = null;
+    protected Vector presharedShortSecrets = null;
 
     
 	protected byte[] remotePreAuthenticationMessage = null;
@@ -296,10 +299,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * Diffie-Hellman keys with a fresh keyAgreement object for each protocol
 	 * run still add another layer of defense.
 	 * 
-	 * @param presharedShortSecret The secret, shared key entered by the user
+	 * @param presharedShortSecrets A list of secret, shared keys entered by the user
 	 *        on both sides before any interaction takes place on the wireless
 	 *        channel. This <b>must</b> remain secret until the protocol finishes
-	 *        and <b>must not</b> be re-used.
+	 *        and <b>must not</b> be re-used.<br/>
+	 *        If the vector contains more than one entry, each 'candidate secret'
+	 *        will be tried in turn.<br/>
 	 *        May be null, in which case no pre-shared short secret will be used.
 	 * @param permanentKeyAgreement The key agreement instance (i.e. private
 	 *        and public Diffie-Hellman key pair) to be used. If set, it will
@@ -308,10 +313,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *        instance will be created during the protocol run.
 	 */
     public HostProtocolHandler(RemoteConnection con, 
-    		byte[] presharedShortSecret, SimpleKeyAgreement permanentKeyAgreement, 
+    		Vector presharedShortSecrets, SimpleKeyAgreement permanentKeyAgreement, 
     		int timeoutMs, boolean keepConnected, boolean useJSSE) {
     	this(con, timeoutMs, keepConnected, useJSSE);
-    	this.presharedShortSecret = presharedShortSecret;
+    	this.presharedShortSecrets = presharedShortSecrets;
     	this.keyAgreement = permanentKeyAgreement;
     	if (permanentKeyAgreement != null)
     		this.dontWipeKeyAgreement = true;
@@ -854,11 +859,12 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // step 3, part 3: Alice and Bob compute the out-of-band message
            	timestamp = System.currentTimeMillis();
            	// TODO: might want to add local and remote addresses
-            byte[] oobInput = new byte[2*NonceByteLength +
-                                       (presharedShortSecret != null ? 
-                                               presharedShortSecret.length : 0)]; 
+           	int shortSecretLength = (presharedShortSecrets != null && presharedShortSecrets.size() > 0)
+           							? ((byte[])presharedShortSecrets.firstElement()).length
+           							: 0;
+            byte[] oobInput = new byte[2*NonceByteLength + shortSecretLength]; 
             byte[] oobKey = new byte[myPublicKey.length + remotePubKey.length +
-                                     (presharedShortSecret != null ?
+                                     (presharedShortSecrets != null ?
                                     		 NonceByteLength : 0)];
             // order: first client, then server
             if (!serverSide) {
@@ -883,7 +889,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // a) *short* *secret* message that can be pre-entered
             // b) *short* non-secret message that needs to be input after the protocol has started!
             // c) long non-secret but authentic message that can be used for pre-authentication
-            if (presharedShortSecret != null) {
+            if (presharedShortSecrets != null && presharedShortSecrets.size() > 0) {
             	logger.info("Preshared short secret is available, entering this protocol path on " 
             			+ (serverSide ? "server" : "client"));
             	/* Case 1: MANA III assuming the user input to be secret, but it
@@ -891,95 +897,114 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	 * Instead of transmitting/comparing oobMsg, add the short secret to it 
             	 * and make it a commitment scheme.
             	 */
-            	/* A generates random K1, computes M1 = HMAC_(DH-key | K1) (Ia | R) where
- * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
- * assumption: R remains secret */
-            	System.arraycopy(presharedShortSecret, 0, oobInput, 
-            			NonceByteLength*2, presharedShortSecret.length);
-
-            	// another two-round commitment scheme, but now using a HMAC keyed with a random key
-            	// 1. send HMAC_K1(oobInput)
-                byte[] myK = new byte[NonceByteLength];
-                r.nextBytes(myK);
-                System.arraycopy(myK, 0, oobKey, 
-                		myPublicKey.length + remotePubKey.length, myK.length);
-                byte[] myM = keyedHash(oobInput, oobKey, useJSSE);
-                totalCryptoTime += System.currentTimeMillis()-timestamp;
-               	timestamp = System.currentTimeMillis();
-
-                String myMStr = new String(Hex.encodeHex(myM));
-                println(Protocol_AuthenticationInputCommit + myMStr);
-
-                // 2. receive M2
-            	String line = getLine(Protocol_AuthenticationInputCommit, connection, false);
-            	Object[] parms = parseLine(line, Protocol_AuthenticationInputCommit, 
-            			new boolean[] {true}, null, 1, connection);
-            	if (parms == null) {
-                    logger.warn("Protocol error: remote did not send commitment for short shared secret.");
-                    println("Protocol error: remote did not send input commitment for short shared secret.");
-                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: no remote commitment");
-            		shutdownConnectionCleanly();
-                    return;
-            	}
-            	byte[] remoteM = (byte[]) parms[0];
-                if (remoteM.length < 16) {
-                    logger.warn("Protocol error: could not parse commitment for short shared secret, expected 128 Bits hex-encoded.");
-                    println("Protocol error: could not parse input commitment for short shared secret, expected 128 Bits hex-encoded.");
-                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment too short (only " + remotePubKey.length + " bytes instead of 16)");
-                    shutdownConnectionCleanly();
-                    return;
-                }
-                
-                /* If we have an input case and R1/2 are _not_ secret, then they must 
-                 * be input to the respective other sides exactly here in the protocol, not
-                 * earlier and not later.
-                 * It is important that R1/2 is not made available to an attacker 
-                 * before the commitments M1/M2 have been exchanged because
-                 * otherwise it could create valid commitments with different
-                 * public keys (and different K1/K2, as long as R is known).
-                 * Need to block at this stage until both devices received R!
-                 */
-               	
-               	// TODO for non-secret short input (i.e. user-generated keys):
-                // this case will only work in Hollywood mode
-               	// byte[] remoteShortSecret = oobChannel.receive();
-
-                // 3. send K1
-                String myKStr = new String(Hex.encodeHex(myK));
-                println(Protocol_AuthenticationInputOpen + myKStr);
-
-                // 4. receive K2
-            	line = getLine(Protocol_AuthenticationInputOpen, connection, false);
-            	parms = parseLine(line, Protocol_AuthenticationInputOpen, 
-            			new boolean[] {true}, null, 1, connection);
-            	if (parms == null) {
-                    return;
-            	}
-            	byte[] remoteK = (byte[]) parms[0];
-                if (remoteK.length < 16) {
-                    logger.warn("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
-                    println("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
-                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote K too short (only " + remotePubKey.length + " bytes instead of 16)");
-                    shutdownConnectionCleanly();
-                    return;
-                }
-                totalTransferTime += System.currentTimeMillis()-timestamp;
-               	timestamp = System.currentTimeMillis();
-
-                // 5. compare M1 and M2
-                System.arraycopy(remoteK, 0, oobKey, 
-                		myPublicKey.length + remotePubKey.length, remoteK.length);
-                byte[] remoteMExpected = keyedHash(oobInput, oobKey, useJSSE);
-               	// grml, no java.util.Arrays class in J2ME - this simply sucks
-               	for (int i=0; i<remoteM.length && i<remoteMExpected.length; i++) {
-                    if (remoteM[i] != remoteMExpected[i]) {
-                        logger.warn("Protocol error: remote input commitment does not match");
-                        println("Protocol error: remote input commitment does not match");
-                        raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote input commitment does not match");
+            	
+            	byte[] presharedShortSecret;
+            	/*
+            	 * Try all candidate secrets in turn
+            	 */
+            	for (int j = 0; j < presharedShortSecrets.size(); j++) {
+            		presharedShortSecret = (byte[])presharedShortSecrets.elementAt(j);
+            	
+	            	/* A generates random K1, computes M1 = HMAC_(DH-key | K1) (Ia | R) where
+	            	 * R is the user input data. B does the same, they swap M1 and M2 and _then_ swap K1 and K2
+	            	 * assumption: R remains secret */
+	            	System.arraycopy(presharedShortSecret, 0, oobInput, 
+	            			NonceByteLength*2, presharedShortSecret.length);
+	
+	            	// another two-round commitment scheme, but now using a HMAC keyed with a random key
+	            	// 1. send HMAC_K1(oobInput)
+	                byte[] myK = new byte[NonceByteLength];
+	                r.nextBytes(myK);
+	                System.arraycopy(myK, 0, oobKey, 
+	                		myPublicKey.length + remotePubKey.length, myK.length);
+	                byte[] myM = keyedHash(oobInput, oobKey, useJSSE);
+	                totalCryptoTime += System.currentTimeMillis()-timestamp;
+	               	timestamp = System.currentTimeMillis();
+	
+	                String myMStr = new String(Hex.encodeHex(myM));
+	                println(Protocol_AuthenticationInputCommit + myMStr);
+	
+	                // 2. receive M2
+	            	String line = getLine(Protocol_AuthenticationInputCommit, connection, false);
+	            	Object[] parms = parseLine(line, Protocol_AuthenticationInputCommit, 
+	            			new boolean[] {true}, null, 1, connection);
+	            	if (parms == null) {
+	                    logger.warn("Protocol error: remote did not send commitment for short shared secret.");
+	                    println("Protocol error: remote did not send input commitment for short shared secret.");
+	                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: no remote commitment");
+	            		shutdownConnectionCleanly();
+	                    return;
+	            	}
+	            	byte[] remoteM = (byte[]) parms[0];
+	                if (remoteM.length < 16) {
+	                    logger.warn("Protocol error: could not parse commitment for short shared secret, expected 128 Bits hex-encoded.");
+	                    println("Protocol error: could not parse input commitment for short shared secret, expected 128 Bits hex-encoded.");
+	                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment too short (only " + remotePubKey.length + " bytes instead of 16)");
+	                    shutdownConnectionCleanly();
+	                    return;
+	                }
+	                
+	                /* If we have an input case and R1/2 are _not_ secret, then they must 
+	                 * be input to the respective other sides exactly here in the protocol, not
+	                 * earlier and not later.
+	                 * It is important that R1/2 is not made available to an attacker 
+	                 * before the commitments M1/M2 have been exchanged because
+	                 * otherwise it could create valid commitments with different
+	                 * public keys (and different K1/K2, as long as R is known).
+	                 * Need to block at this stage until both devices received R!
+	                 */
+	               	
+	               	// TODO for non-secret short input (i.e. user-generated keys):
+	                // this case will only work in Hollywood mode
+	               	// byte[] remoteShortSecret = oobChannel.receive();
+	
+	                // 3. send K1
+	                String myKStr = new String(Hex.encodeHex(myK));
+	                println(Protocol_AuthenticationInputOpen + myKStr);
+	
+	                // 4. receive K2
+	            	line = getLine(Protocol_AuthenticationInputOpen, connection, false);
+	            	parms = parseLine(line, Protocol_AuthenticationInputOpen, 
+	            			new boolean[] {true}, null, 1, connection);
+	            	if (parms == null) {
+	                    return;
+	            	}
+	            	byte[] remoteK = (byte[]) parms[0];
+	                if (remoteK.length < 16) {
+	                    logger.warn("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
+	                    println("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
+	                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote K too short (only " + remotePubKey.length + " bytes instead of 16)");
+	                    shutdownConnectionCleanly();
+	                    return;
+	                }
+	                totalTransferTime += System.currentTimeMillis()-timestamp;
+	               	timestamp = System.currentTimeMillis();
+	
+	                // 5. compare M1 and M2
+	                System.arraycopy(remoteK, 0, oobKey, 
+	                		myPublicKey.length + remotePubKey.length, remoteK.length);
+	                byte[] remoteMExpected = keyedHash(oobInput, oobKey, useJSSE);
+	               	// grml, no java.util.Arrays class in J2ME - this simply sucks
+	                boolean equal = true;
+	               	for (int i=0; i<remoteM.length && i<remoteMExpected.length; i++) {
+	                    if (remoteM[i] != remoteMExpected[i]) {
+	                    	equal = false;
+	                    	logger.warn("Remote input commitment does not match for current candidate secret.");
+	                    	break;
+	                    }
+	               	}
+	               	if (equal) {
+	               		// a candidate secret was sucessful, not necessary to try the others
+	               		break;
+	               	}
+	               	else if (j >= presharedShortSecrets.size() - 1) {
+	               		// all candidate secrets failed
+                        println("Protocol error: remote input commitment did not match for any candidate secret");
+                        raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote input commitment did not match for any candidate secret");
                         shutdownConnectionCleanly();
                         return;
-                    }
-               	}
+                	}
+            	}
                 totalCryptoTime += System.currentTimeMillis()-timestamp;
 
                 // already authenticated!
@@ -1278,7 +1303,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     static public void startAuthenticationWith(RemoteConnection remote,
 			AuthenticationProgressHandler eventHandler,
 			SimpleKeyAgreement permanentKeyAgreementInstance,
-			byte[] presharedShortSecret,
+			Vector presharedShortSecrets,
 			byte[] remotePreAuthenticationMessage,
 			int timeoutMs,
 			boolean keepConnected, 
@@ -1289,7 +1314,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 
 		HostProtocolHandler tmpProtocolHandler = new HostProtocolHandler(
-				remote, presharedShortSecret, permanentKeyAgreementInstance,
+				remote, presharedShortSecrets, permanentKeyAgreementInstance,
 				timeoutMs, keepConnected, useJSSE);
 		tmpProtocolHandler.optionalParameter = optionalParameter;
 		
