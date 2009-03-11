@@ -49,7 +49,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		if (endl == null) {
 			endl = "\n";
 		}
-		captureDisplayText	= "Please press the button simultanously on both devices"
+		captureDisplayText	= "Please press the button simultaneously on both devices"
 							+ " for a total of " + ButtonChannel.TOTAL_SIGNAL_COUNT 
 							+ " times." + endl
 							+ "This device is ready.";
