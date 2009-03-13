@@ -2,8 +2,8 @@
  *  Project: Gibraltar-Webinterface
  *  Description: webinterface for the firewall gibraltar
  *  Filename: $RCSfile$
- *  Author: Andreas W�ckl
- *  Copyright: Andreas W�ckl 2001
+ *  Author: Andreas Wöckl
+ *  Copyright: Andreas Wöckl 2001
  *  Project version tag: $Name$
  *  File version: $Revision: 1016 $
  *  Last changed at: $Date: 2003-07-25 11:44:01 +0200 (Fre, 25 Jul 2003) $
