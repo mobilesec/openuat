@@ -193,7 +193,6 @@ public class BedaApp implements AuthenticationProgressHandler {
 		ActionListener abortHandler = new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (e.getID() == ActionEvent.ACTION_PERFORMED) {
-					// TODO: cleanly stop protocol runs, channels etc.
 					logger.warn("Protocol run aborted by user");
 					BluetoothRFCOMMChannel.shutdownAllChannels();
 					alertError("Protocol run aborted.");

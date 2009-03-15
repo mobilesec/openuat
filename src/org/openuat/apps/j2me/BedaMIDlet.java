@@ -252,7 +252,6 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		CommandListener abortHandler = new CommandListener() {
 			public void commandAction(Command command, Displayable displayable) {
 				if (command.getCommandType() == Command.STOP) {
-					// TODO: cleanly stop protocol runs, channels etc.
 					logger.warn("Protocol run aborted by user.");
 					statisticsEnd(currentChannel.toString(), false);
 					try {
@@ -409,7 +408,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 
 	/* Helper method to initialize the channelList */
 	private void buildChannelList(boolean isTest) {
-		// TODO: get channels from existing map
+		// we should get the channels from the existing map instead of hardcoding their names...
 		String[] listItems = {"Input", "Flash Display", "Traffic Light", "Progress Bar", "Power Bar", "Short Vibration", "Long Vibration"};
 		Image[] imageItems = {listIcon, listIcon, listIcon, listIcon, listIcon, listIcon, listIcon};
 		channelList = new List(CHANNEL_LIST_TITLE, Choice.IMPLICIT, listItems, imageItems);
