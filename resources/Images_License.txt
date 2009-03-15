@@ -10,10 +10,33 @@ source: http://commons.wikimedia.org
 
 
 
-Licence of all Traffic_lights_dark_* images is
+License of all Traffic_lights_dark_* images is
 
 Creative Commons Attribution ShareAlike 2.5
 
 by Maix
 
-source http://commons.wikimedia.org
+source: http://commons.wikimedia.org
+
+
+
+License of the phone_sending image is
+
+Creative Commons Attribution 3.0
+
+by Lukas Huser
+based on the image Cell_phone_icon released in the
+
+Public Domain
+
+by MaxSem
+
+source: http://commons.wikimedia.org
+
+
+
+License of the button_press image is
+
+Creative Commons Attribution 3.0
+
+by Lukas Huser
