@@ -11,7 +11,9 @@ package org.openuat.channel.oob;
 import org.openuat.log.LogFactory;
 
 /**
- * This channel is an <b>input channel</b>, it only implements the
+ * This channel is an <b>input</b> channel. It implements the button input
+ * channel which listens to synchronous button presses on both devices.
+ * It therefore only implements the
  * <code>capture</code> method and doesn't support the <code>transmit</code>
  * method (it just does nothing).<br/>
  * This channel only records button presses and ignores button releases.<br/>

@@ -13,7 +13,7 @@ import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 
 /**
- *  * This channel is a <b>transfer</b> channel. It transmits data
+ * This channel is a <b>transfer</b> channel. It transmits data
  * between devices with the help of visual signals, which are represented
  * as a traffic light. There are three states: red - do nothing,
  * yellow - prepare, green - act (press button on other device)<br/>

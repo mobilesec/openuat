@@ -51,7 +51,7 @@ public abstract class ButtonChannelImpl {
 	public static final int TRANSMIT_BAR			= 4;
 	
 	/**
-	 * Transmission mode: Power bar.
+	 * Transmission mode: power bar.
 	 */
 	public static final int TRANSMIT_VERT_BARS		= 5;
 	
@@ -67,7 +67,7 @@ public abstract class ButtonChannelImpl {
 	protected int signalCount;
 	
 	/**
-	 * Should the <code>signalCount</count> be displayed on screen? It's more
+	 * Should the <code>signalCount</code> be displayed on screen? It's more
 	 * convenient for the user, but use with care: it may leak information to
 	 * an attacker (a <i>secure</i> channel should not display this information
 	 * on screen).
@@ -136,7 +136,7 @@ public abstract class ButtonChannelImpl {
 	 * Sets the number of already processed signals.<br/>
 	 * When transmitting, it represents the number of already sent
 	 * signals. When capturing, it represents the number of
-	 * processes button events.<br/>
+	 * processed button events.<br/>
 	 * If <code>signalCount</code> is not within the boundaries
 	 * <code>0 <= signalCount <= TOTAL_SIGNAL_COUNT</code> its
 	 * value will be automatically truncated to the respective
@@ -157,7 +157,7 @@ public abstract class ButtonChannelImpl {
 	}
 	
 	/**
-	 * Should the signalCount be displayed on screen?
+	 * Should the <code>signalCount</code> be displayed on screen?
 	 * 
 	 * @param enabled Enable or disable the signal count on screen.
 	 */
@@ -195,8 +195,9 @@ public abstract class ButtonChannelImpl {
 	}
 	
 	/**
-	 * Before transmitting with the help of a progress
-	 * bar, an <code>IntervalList</code> must be set.
+	 * Before transmitting in the modes <code>TRANSMIT_BAR</code>
+	 * or <code>TRANSMIT_VERT_BARS</code>, an <code>IntervalList</code> 
+	 * must be set.
 	 * 
 	 * @param list An <code>IntervalList</code>.
 	 */
