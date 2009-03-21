@@ -576,6 +576,7 @@
 					<fileset dir="${resources}/hapadep" includes="**" />
 					<fileset dir="${resources}" includes="Button_Icon_*.png" />
 					<fileset dir="${resources}" includes="Traffic_lights_dark_*.png" />
+					<fileset dir="${resources}" includes="phone_*.png" />
 				</resources>
 				<!-- user defined JAD attributes can also be used: -->
 <!--				<jad>
