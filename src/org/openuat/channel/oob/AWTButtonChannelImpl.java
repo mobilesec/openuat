@@ -20,6 +20,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.net.URL;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -355,9 +356,18 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 			powBarHeight		= 400;
 			
 			// load the traffic light images
-			trafficLightRed = Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_red.png");
-			trafficLightYellow = Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_yellow.png");
-			trafficLightGreen = Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_green.png");
+			URL imgURL = getClass().getResource("/resources/Traffic_lights_dark_red.png");
+			trafficLightRed = imgURL != null
+					? Toolkit.getDefaultToolkit().getImage(imgURL)
+					: Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_red.png");
+			imgURL = getClass().getResource("/resources/Traffic_lights_dark_yellow.png");
+			trafficLightYellow = imgURL != null
+					? Toolkit.getDefaultToolkit().getImage(imgURL)
+					: Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_yellow.png");
+			imgURL = getClass().getResource("/resources/Traffic_lights_dark_green.png");
+			trafficLightGreen = imgURL != null
+					? Toolkit.getDefaultToolkit().getImage(imgURL)
+					: Toolkit.getDefaultToolkit().getImage("resources/Traffic_lights_dark_green.png");
 		}
 
 		// @Override

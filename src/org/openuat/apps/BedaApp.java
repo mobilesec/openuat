@@ -18,6 +18,7 @@ import java.awt.event.MouseListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -186,7 +187,8 @@ public class BedaApp implements AuthenticationProgressHandler {
 		mainWindow.setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
 		mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainWindow.getContentPane().setLayout(new FlowLayout());
-		ImageIcon icon = new ImageIcon("resources/Button_Icon_Blue_beda.png");
+		URL imgURL = getClass().getResource("/resources/Button_Icon_Blue_beda.png");
+		ImageIcon icon = imgURL != null ? new ImageIcon(imgURL) : new ImageIcon("resources/Button_Icon_Blue_beda.png");
 		mainWindow.setIconImage(icon.getImage());
 		
 		// prepare the button channels
