@@ -102,6 +102,9 @@
 	<property name="java5-files3" value="com/bleugris/io/*.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
+	<!-- And these classes are currently broken and of no use... -->
+	<property name="broken-files1" value="org/openuat/apps/groupkey/*tgdh*.java" />
+	<property name="broken-files2" value="org/openuat/util/Tgdh.java" />
 	
 	<!-- this can be used in a refid for filesets -->
 	<fileset id="lib.alljars" dir="${lib}">
@@ -266,6 +269,8 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
+			<exclude name="${broken-files1}" />
+			<exclude name="${broken-files2}" />
 		</javac>		
 		<echo message="    * Compiling OpenUAT core: authentication protocols"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
@@ -276,6 +281,8 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
+			<exclude name="${broken-files1}" />
+			<exclude name="${broken-files2}" />
 		</javac>		
 		<echo message="    * Compiling OpenUAT core: secure communication channels"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
@@ -286,6 +293,8 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
+			<exclude name="${broken-files1}" />
+			<exclude name="${broken-files2}" />
 		</javac>		
 		<echo message="    * Compiling OpenUAT example applications"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
@@ -296,6 +305,8 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
+			<exclude name="${broken-files1}" />
+			<exclude name="${broken-files2}" />
 		</javac>
 		
 		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
@@ -443,7 +454,8 @@
 				org/openuat/util/Pair.java
 				org/openuat/channel/ifComm.java
 				org/openuat/channel/http/*.java
-				org/openuat/apps/groupkey/*
+				org/openuat/apps/groupkey/appPair*.java
+				org/openuat/apps/groupkey/appStub*.java
 				net/mypapit/java/StringTokenizer.java
 				org/openuat/util/IntervalList.java org/openuat/util/RgbColor.java
 				org/openuat/channel/oob/Button*.java org/openuat/channel/oob/*ToButtonChannel.java
