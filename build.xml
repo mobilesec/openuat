@@ -947,7 +947,7 @@
 	<target name="dist-source" description="Create source distribution">
 		<zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 			<fileset dir="." 
-		    	     includes="build.xml build.properties Changelog README FAQ METHODS TODO .classpath .project 
+		    	     includes="build.xml build.properties Changelog README FAQ .classpath .project 
 						src/**/* pythonsrc/**/* phpsrc/**/* resources/**/* lib/**/* dist/*.jnlp 
 						tests/**/*
 						thirdparty/bouncycastle-*-deps/**/* thirdparty/ipsec2k.1.1/**/*.h 
