@@ -728,8 +728,17 @@
        		<!-- can add as many as necessary -->
 		  	<!-- <arg line="-p ${build}/HelloProperty.jar"/> -->
 			<!--<arg line="-p ${dist}/Generic-multi-bt_dh-demo.jar"/>-->
-			<arg line="-p ${dist}/Nokia-N95-shakeme-DEMOSET1.jar"/>
-			<!--<arg line="-p ${dist}/Nokia-N95-auth.jar"/>-->
+			<!--<arg line="-p ${dist}/Nokia-N95-shakeme-DEMOSET1.jar"/>-->
+			<arg line="-p ${dist}/OpenUAT-MIDlets.jar"/>
+		</exec>
+		<exec executable="obexftp"> <!-- Samsung Omnia i900 -->
+			<arg line="-b 00:21:D2:F9:AC:15"/>
+			<arg line="-U NONE -H -S"/> <!-- needs special options, see http://www.mayrhofer.eu.org/Default.aspx?pageid=80 -->
+			<arg line="-p ${dist}/OpenUAT-MIDlets.jar"/>
+		</exec>
+		<exec executable="obexftp"> <!-- HTC Touch Diamond -->
+			<arg line="-b 00:17:E8:3A:22:E1"/>
+			<arg line="-p ${dist}/OpenUAT-MIDlets.jar"/>
 		</exec>
 		<exec executable="obexftp"> <!-- 5500 Shakeme 1 -->
 			<arg line="-b 00:18:0F:A4:C9:97"/>
