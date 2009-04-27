@@ -1,3 +1,58 @@
+Version 0.11, releases 2009-04-27
+
+  This is again a major new feature release, this time adding support for
+  audio, video, manual text, and synchronized button press channels. A demo
+  MIDlet combines most of these methods to study their user interface on 
+  mobile phones.
+  The major new component is org.openuat.authentication.HostProtocolHandler
+  which now implements UACAP, the Unified Auxiliary Channel Authentication
+  Protocol. UACAP is based on the MANA IV family of protocols and supports all
+  currently known interaction (input, transfer, and verify) types and auxiliary
+  channel properties (authenticity and confidentiality, among others).
+
+  Bluetooth support on J2SE is now based around BlueCove instead of the 
+  earlier avetanaBT library, which brings support for Windows, Linux, and
+  MacOS/X.
+  Additionally, a new logging framework wrapper now distinguishes between e.g.
+  log4j on J2SE and bandy on J2ME.
+
+  New interfaces:
+  * org.openuat.authentication.OOBChannel, which in turn requires
+    org.openuat.authentication.OOBMessageHandler
+
+  New sensor data classes:
+  * org.openuat.sensors.j2me.NokiaAccelerometerReader with corresponding Nokia
+    sensor adapter written in python under pythonsrc/nokiaaccelserver.py
+
+  New input/transfer/verify out-of-band channels:
+  * org.openuat.channel.oob.AudioChannel and 
+    org.openuat.channel.oob.J2MEAudioChannel
+  * org.openuat.channel.oob.VisualChannel and
+    org.openuat.channel.oob.J2MEVisualChannel
+  * org.openuat.channel.oob.ButtonChannel with various specific implementations
+
+  New utility classes:
+  * org.openuat.util.LoggingHelper
+
+  New classes for authentication:
+  * org.openuat.authentication.HostProtocolHandler now implements UACAP
+
+  New applications:
+  * org.openuat.apps.BedaApp and org.openuat.apps.j2me.BedaMIDlet
+  * org.openuat.apps.OpenUATtoolkit and org.openuat.apps.j2me.OpenUATmidlet
+
+  Preliminary code aiming at group key agreement and communication over 
+  blackboard-style HTTP server code is included, but not supported in this
+  release.
+
+  Contributors:
+  * Audio and video channels were implemented by Iulia Ion
+  * Synchronized button press channel was implemented by Lukas Huser
+  Iulia Ion joined the core development team.
+
+--- Rene Mayrhofer <rene@mayrhofer.eu.org>
+
+
 Version 0.10, released 2007-12-04
 
   This is a major new feature release, adding support for new accelerometer
