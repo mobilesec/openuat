@@ -376,7 +376,7 @@
 			<fileset dir="${bin}"
 				 includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class 
 				 org/openuat/features/**/*.class org/openuat/util/**/*.class
-				 org/codec/**/*.class
+				 org/codec/**/*.class org/openuat/channel/UACAPProtocolConstants.class
 				 net/mypapit/java/*.class com/swetake/util/**/*.class" />
 			<fileset dir="${bin-BC-core}" />
 			<fileset dir="${bin-apache-bzip2}" />
@@ -406,7 +406,7 @@
 			<fileset dir="${bin-BC-openssl}" />
 			<fileset dir="${bin-apache-bzip2}" />
 			<fileset dir="${bin-google-zxing}" />
-			<fileset dir="resources" includes="printer.png"/>
+			<fileset dir="resources" includes="*_bg.png"/>
 			<zipfileset dir="resources" 
 				includes="Button_Icon_Blue_beda.png Traffic_lights_dark_*.png" prefix="resources/"/>
 			<fileset dir="${src}" includes="*.properties" />
@@ -452,6 +452,7 @@
 				org/openuat/util/ifPair.java
 				org/openuat/util/ifListener.java
 				org/openuat/util/Pair.java
+				org/openuat/channel/UACAPProtocolConstants.class
 				org/openuat/channel/ifComm.java
 				org/openuat/channel/http/*.java
 				org/openuat/apps/groupkey/appPair*.java
@@ -470,6 +471,7 @@
 		<copy todir="${build.midp.temp}" failonerror="true">
 			<fileset dir="${src}" includes="org/openuat/apps/j2me/ShakeMIDlet.java
 				org/openuat/apps/j2me/HapadepMIDlet.java
+				org/openuat/channel/UACAPProtocolConstants.class
 				org/openuat/sensors/SamplesSource.java org/openuat/sensors/SamplesSink.java
 				org/openuat/sensors/SamplesSink_Int.java org/openuat/sensors/SegmentsSink_Int.java
 				org/openuat/sensors/SegmentsSink.java org/openuat/sensors/VectorSamplesSink.java
