@@ -9,20 +9,15 @@
 
 package org.openuat.apps.groupkey;
 
-import java.io.NotSerializableException;
-
-import sun.security.provider.DSAPrivateKey;
-
-import tgdh.*;
-import tgdh.comm.*;
-
-
-import org.openuat.channel.ifComm;
-import org.openuat.channel.http.*;
+import org.openuat.channel.http.CommPlain;
 import org.openuat.util.ifListener;
 
-import tgdh.crypto.*;
-import tgdh.tree.*;
+import tgdh.TgdhException;
+import tgdh.comm.JoinMessage;
+import tgdh.tree.BasicTree;
+import tgdh.tree.LeafNode;
+import tgdh.tree.Node;
+import tgdh.tree.TreeInfo;
  
 /**
  * @author Martijn Sack
