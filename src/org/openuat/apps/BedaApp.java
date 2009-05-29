@@ -48,6 +48,7 @@ import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.UACAPProtocolConstants;
 import org.openuat.channel.oob.AWTButtonChannelImpl;
 import org.openuat.channel.oob.ButtonChannel;
 import org.openuat.channel.oob.ButtonChannelImpl;
@@ -85,15 +86,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	
 	/* ...and it's name */
 	private static final String SERVICE_NAME = "UACAP - Beda";
-	
-	/* An identifier used to register a command handler with the RFCOMMServer */
-	private static final String PRE_AUTH = "PRE_AUTH";
-	
-	/* Authentication method supported by BEDA: authentic transfer */
-	private static final String TRANSFER_AUTH = "TRANSFER_AUTH";
-	
-	/* Authentication method supported by BEDA: input */
-	private static final String INPUT = "INPUT";
+
 	
 	/*
 	 * GUI related constants
@@ -350,14 +343,14 @@ public class BedaApp implements AuthenticationProgressHandler {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Handle protocol command: " + firstLine);
 				}
-				if (firstLine.equals(PRE_AUTH)) {
+				if (firstLine.equals(UACAPProtocolConstants.PRE_AUTH)) {
 					inputProtocol(false, remote, null);
 					return true;
 				}
 				return false;
 			}
 		};
-		btServer.addProtocolCommandHandler(PRE_AUTH, inputProtocolHandler);
+		btServer.addProtocolCommandHandler(UACAPProtocolConstants.PRE_AUTH, inputProtocolHandler);
 		
 		// build staus bar
 		statusLabel = new JLabel("");
@@ -410,7 +403,7 @@ public class BedaApp implements AuthenticationProgressHandler {
         	connectionToRemote = (RemoteConnection) res[3];	
         }
         if (param != null) {
-	        if (param.equals(INPUT)) {
+	        if (param.equals(UACAPProtocolConstants.INPUT)) {
 	        	// for input: authentication successfully finished!
 	        	btServer.setPresharedShortSecrets(null);
 	        	if (connectionToRemote != null) {
@@ -419,7 +412,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	        	logger.info("Authentication through input successful!");
 	        	informSuccess();
 	        }
-	        else if (param.equals(TRANSFER_AUTH)) {
+	        else if (param.equals(UACAPProtocolConstants.TRANSFER_AUTH)) {
 	        	byte[] oobMsg = getShortHash(authKey);
 	        	if (oobMsg != null) {
 	        		transferProtocol(isInitiator, connectionToRemote, currentChannel, oobMsg);
@@ -524,13 +517,13 @@ public class BedaApp implements AuthenticationProgressHandler {
 					if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
 						logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
 					}
-					LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
+					LineReaderWriter.println(btChannel.getOutputStream(), UACAPProtocolConstants.PRE_AUTH);
 					inputProtocol(true, btChannel, currentChannel);
 				}
 				else {
 					// transfer case
 					boolean keepConnected = true; // since the key has to be authenticated after key agreement
-					HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, -1, keepConnected, TRANSFER_AUTH, false);
+					HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, -1, keepConnected, UACAPProtocolConstants.TRANSFER_AUTH, false);
 				}
 			}
 		} catch (IOException e) {
@@ -665,7 +658,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		if (isInitiator) {
 			logger.debug("Running transfer as initiator");
 			try {
-				String initString = TRANSFER_AUTH + ":" + channel.toString();
+				String initString = UACAPProtocolConstants.TRANSFER_AUTH + ":" + channel.toString();
 				LineReaderWriter.println(out, initString);
 				String lineIn = LineReaderWriter.readLine(in);
 				if (!lineIn.equals(READY)) {
@@ -699,7 +692,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				String lineIn = LineReaderWriter.readLine(in);
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
 				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
-				if (!protocolDesc.equals(TRANSFER_AUTH)) {
+				if (!protocolDesc.equals(UACAPProtocolConstants.TRANSFER_AUTH)) {
 					logger.error("Wrong protocol descriptor from remote device. Abort transfer protocol.");
 					return;
 				}
@@ -779,7 +772,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 		if (isInitiator) {
 			logger.debug("Running input as initiator");
 			try {
-				String initString = INPUT + ":" + channel.toString();
+				String initString = UACAPProtocolConstants.INPUT + ":" + channel.toString();
 				LineReaderWriter.println(out, initString);
 				String lineIn = LineReaderWriter.readLine(in);
 				if (!lineIn.equals(READY)) {
@@ -840,7 +833,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				String lineIn = LineReaderWriter.readLine(in);
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
 				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
-				if (!protocolDesc.equals(INPUT)) {
+				if (!protocolDesc.equals(UACAPProtocolConstants.INPUT)) {
 					logger.error("Wrong protocol descriptor from remote device. Abort input protocol.");
 					return;
 				}

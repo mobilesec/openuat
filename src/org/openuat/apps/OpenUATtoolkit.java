@@ -9,7 +9,6 @@
 package org.openuat.apps;
 
 import java.awt.Font;
-import java.awt.Label;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,16 +17,13 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 
 import javax.bluetooth.UUID;
-import javax.microedition.lcdui.Alert;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
-import javax.swing.border.Border;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
@@ -35,8 +31,8 @@ import org.codec.audio.AudioUtils;
 import org.codec.audio.PlayerPiano;
 import org.codec.audio.WavPlayer;
 import org.codec.mad.MadLib;
-import org.eclipse.swt.graphics.Image;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.UACAPProtocolConstants;
 import org.openuat.channel.oob.VisualChannel;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
@@ -52,47 +48,7 @@ import org.openuat.util.RemoteConnection;
  */
 public class OpenUATtoolkit {
 	
-	/** Specify which key verification methods are available */
-	/** QR code - take picture and decode */
-	public static final String VISUAL = "VISUAL";
-	/** Use HAPADEP to transmit the hash of the key over the audio channel */
-	public static final String AUDIO = "AUDIO";
-	/** The user compares two piano songs coming from the two devices */
-	public static final String SLOWCODEC = "SLOWCODEC";
-	/** The user compares two sentences displayed by the devices */
-	public static final String MADLIB = "MADLIB";
 
-	/** how many bytes of the key are used for the Audio method */	
-	private static final int AUDIO_KEYHASH_LENGTH = 7;
-	
-	/** how many bytes of the key are used for the QR code method */	
-	private static final int VIDEO_KEYHASH_LENGTH = 7;
-	
-	/** with how many bits to pad the hash before sending */
-	private static final int AUDIO_PADDING = 6;
-	
-	/** Synchronization commands between the two devices transmitted during the verification phase via Bluetooth.*/
-	public static final String VERIFY = "VERIFY";
-	public static final String ACK = "OK";
-
-	/** prepares to transmit the code on the previously selected channel */
-	public static final String PREPARE = "PREPARE";
-
-	/** tells to start transmitting */
-	public static final String START = "START";
-
-	/** informs that transmission was completed */
-	public static final String DONE = "DONE";
-
-	/** informs that verification was successful */
-	public static final String SUCCESS = "SUCCESS";
-
-	/** informs that verification was NOT successful */
-	public static final String FAILURE = "FAILURE";
-
-	/** Replay the slow codec tune */
-	public static final String REPLAY = "REPLAY";
-	
 	private static Logger logger = Logger.getLogger("org.openuat.apps.OpenUATtoolkit");
 	
 	//UI components
@@ -200,7 +156,7 @@ public class OpenUATtoolkit {
 			/** wait for the command from the other party to start the verification process */
 			String verify = readLine(connectionToRemote);
 			/** check to see which out-of-band channel should be used for verification */
-			if (verify.equals(VERIFY)){
+			if (verify.equals(UACAPProtocolConstants.VERIFY)){
 				String method = readLine(connectionToRemote);
 				if (logger.isDebugEnabled()) {
 					logger.debug("method: " + method);
@@ -211,16 +167,16 @@ public class OpenUATtoolkit {
 				} catch (InternalApplicationException e) {
 					logger.debug("Error while creating hash: " + e);
 				}
-				if (method.equals(VISUAL)){//generate QR code and display
-					send (ACK, connectionToRemote);
+				if (method.equals(UACAPProtocolConstants.VISUAL)){//generate QR code and display
+					send (UACAPProtocolConstants.ACK, connectionToRemote);
 					
 					String start = readLine(connectionToRemote);
-					if(start.equals(START)){
+					if(start.equals(UACAPProtocolConstants.START)){
 						status.setText("Take a picture of the code!");
 
 						//we trim the hash to cope with the limited capacity of the video channel
-						byte [] trimmedHash = new byte[VIDEO_KEYHASH_LENGTH];
-						System.arraycopy(hash, 0, trimmedHash, 0, VIDEO_KEYHASH_LENGTH);
+						byte [] trimmedHash = new byte[UACAPProtocolConstants.VIDEO_KEYHASH_LENGTH];
+						System.arraycopy(hash, 0, trimmedHash, 0, UACAPProtocolConstants.VIDEO_KEYHASH_LENGTH);
 						
 						// the trimmed hash is encoded in hexadecimal because otherwise the QR decoder cannot cope with it
 						String toSend = new String(Hex.encodeHex(trimmedHash));
@@ -239,17 +195,17 @@ public class OpenUATtoolkit {
 						readSuccess(success);
 						channel.close();
 					}
-				}else if (method.equals(AUDIO)){ //encode hash key in audio format and play
-					method = AUDIO;
-					send (ACK, connectionToRemote);
-					byte [] trimmedHash = new byte[AUDIO_KEYHASH_LENGTH];
+				}else if (method.equals(UACAPProtocolConstants.AUDIO)){ //encode hash key in audio format and play
+					method = UACAPProtocolConstants.AUDIO;
+					send (UACAPProtocolConstants.ACK, connectionToRemote);
+					byte [] trimmedHash = new byte[UACAPProtocolConstants.AUDIO_KEYHASH_LENGTH];
 					status.setText("Audio transmission");
 					try {
 						hash = Hash.doubleSHA256(authKey, false);
-						System.arraycopy(hash, 0, trimmedHash, 0, AUDIO_KEYHASH_LENGTH);
+						System.arraycopy(hash, 0, trimmedHash, 0, UACAPProtocolConstants.AUDIO_KEYHASH_LENGTH);
 						byte[] toSend = new String(Hex.encodeHex(trimmedHash)).getBytes();
 						//the audio codec works best if we add some padding after the hash 
-						byte [] padded = new byte[toSend.length + AUDIO_PADDING];
+						byte [] padded = new byte[toSend.length + UACAPProtocolConstants.AUDIO_PADDING];
 						System.arraycopy(toSend, 0, padded, 0, toSend.length);
 						if (logger.isDebugEnabled()) {
 							logger.debug("hash: "+toSend);
@@ -266,8 +222,8 @@ public class OpenUATtoolkit {
 						ioex.printStackTrace();
 					}
 
-				}else if (method.equals(MADLIB)){//Generate a sentence out of the hash and display
-					send (ACK, connectionToRemote);
+				}else if (method.equals(UACAPProtocolConstants.MADLIB)){//Generate a sentence out of the hash and display
+					send (UACAPProtocolConstants.ACK, connectionToRemote);
 					progress.removeAll();
 					MadLib madLib = new MadLib();
 					try {
@@ -282,13 +238,13 @@ public class OpenUATtoolkit {
 					} catch (UnsupportedEncodingException e) {
 						logger.error("UnsupportedEncodingException", e);
 					}
-					send (DONE, connectionToRemote);
+					send (UACAPProtocolConstants.DONE, connectionToRemote);
 					String done = readLine(connectionToRemote);
 
 					readSuccess(done);
-				}else if (method.equals(SLOWCODEC)){//generate a melodic tune from the hash and play
+				}else if (method.equals(UACAPProtocolConstants.SLOWCODEC)){//generate a melodic tune from the hash and play
 					status.setText("Listen to the tune.");
-					send (ACK, connectionToRemote);
+					send (UACAPProtocolConstants.ACK, connectionToRemote);
 					progress.removeAll();
 					java.net.URL imageURL = getClass().getResource("/slowcodec_bg.png");
 					ImageIcon icon = new ImageIcon(imageURL);
@@ -296,9 +252,36 @@ public class OpenUATtoolkit {
 					frame.repaint();
 					String score = PlayerPiano.MakeInput(hash);
 					playSlowCodec(connectionToRemote, score);
+				} else if (method.equals(UACAPProtocolConstants.HASH_COMP)){
+					
+					status.setText("Is the number the same?");
+					send (UACAPProtocolConstants.ACK, connectionToRemote);
+					progress.removeAll();
+					try {
+						String text = Hash.getHexString(Hash.doubleSHA256(authKey, false));
+						text = text.substring(0, UACAPProtocolConstants.HASH_STRING_LENGTH);
+						if (logger.isDebugEnabled()) logger.debug("hash: "+text);
+//						java.net.URL imageURL = getClass().getResource("/madlib_bg.png");
+//						ImageIcon icon = new ImageIcon(imageURL);
+//						progress.add(new JLabel(text, icon, JLabel.CENTER));
+						status.setText("Is the hash the same?" +text);
+						status.setFont(new Font("Serif",Font.BOLD, 24));
+						frame.repaint();
+						System.out.println("done updating frame");
+					} catch (InternalApplicationException e) {
+						logger.error("Failed to build hash.", e);
+						System.out.println("error"+e);
+						return;
+					}
+					send (UACAPProtocolConstants.DONE, connectionToRemote);
+					System.out.println("done updating frame");
+					String done = readLine(connectionToRemote);
+
+					readSuccess(done);
 				}
 			}
 		}
+
 
 		/**
 		 * Plays the melodic tune representing used for the key verification. It synchronizes with the other party via Bluetooth to know when to start playing.
@@ -308,7 +291,7 @@ public class OpenUATtoolkit {
 		private void playSlowCodec(RemoteConnection connectionToRemote,
 				String score) {
 			String done = readLine(connectionToRemote);
-			if(done.equals(DONE)){
+			if(done.equals(UACAPProtocolConstants.DONE)){
 				try{
 
 					PlayerPiano.PlayerPiano(score);
@@ -323,14 +306,14 @@ public class OpenUATtoolkit {
 			progress.removeAll();
 			frame.repaint();
 			
-			if(success.equals(SUCCESS)){
+			if(success.equals(UACAPProtocolConstants.SUCCESS)){
 				status.setText("Congratulations! Authentication was successful.");
 				if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
-			}else if (success.equals(FAILURE)){
+			}else if (success.equals(UACAPProtocolConstants.FAILURE)){
 				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
 				status.setText("Error! Authentication failed.");
 			
-			}else if (success.equals(REPLAY)){
+			}else if (success.equals(UACAPProtocolConstants.REPLAY)){
 				playSlowCodec(connectionToRemote, score);
 			}
 			progress.repaint();
@@ -344,16 +327,16 @@ public class OpenUATtoolkit {
 		 */
 		private void tryAudio(RemoteConnection connectionToRemote, byte[] sound) {
 			String start = readLine(connectionToRemote);
-			if(start.equals(START)){
+			if(start.equals(UACAPProtocolConstants.START)){
 				if (logger.isDebugEnabled()) logger.debug("Playing...");
 				WavPlayer.PlayWav(new ByteArrayInputStream(sound));
 				if (logger.isDebugEnabled()) logger.debug("Done.");
-				send(DONE, connectionToRemote);
+				send(UACAPProtocolConstants.DONE, connectionToRemote);
 				String outcome = readLine(connectionToRemote);
 				status.setText("");
 				progress.removeAll();
 				frame.repaint();
-				if(outcome.equals(SUCCESS)){
+				if(outcome.equals(UACAPProtocolConstants.SUCCESS)){
 
 					//					java.net.URL imageURL = getClass().getResource("/secure_sm.png");
 					//					ImageIcon icon = new ImageIcon(imageURL);
@@ -364,7 +347,7 @@ public class OpenUATtoolkit {
 					
 					//for demo purposes
 					connectionToRemote.close();
-				}else if (outcome.equals(FAILURE)){
+				}else if (outcome.equals(UACAPProtocolConstants.FAILURE)){
 					if(logger.isInfoEnabled()) logger.info("Authentication failed.");
 
 					//					java.net.URL imageURL = getClass().getResource("/error_bg.png");
@@ -373,7 +356,7 @@ public class OpenUATtoolkit {
 					status.setText("Error! Authentication failed.");
 					//for demo purposes
 					connectionToRemote.close();
-				} else if (outcome.equals(REPLAY)){
+				} else if (outcome.equals(UACAPProtocolConstants.REPLAY)){
 					tryAudio(connectionToRemote, sound);
 				}
 			}
@@ -392,7 +375,7 @@ public class OpenUATtoolkit {
 			progress.removeAll();
 			frame.repaint();
 			
-			if(success.equals(SUCCESS)){
+			if(success.equals(UACAPProtocolConstants.SUCCESS)){
 				
 //				java.net.URL imageURL = getClass().getResource("/secure_sm.png");
 //				ImageIcon icon = new ImageIcon(imageURL);
@@ -400,7 +383,7 @@ public class OpenUATtoolkit {
 				status.setText("Congratulations! Authentication was successful.");
 					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
 				
-			}else if (success.equals(FAILURE)){
+			}else if (success.equals(UACAPProtocolConstants.FAILURE)){
 				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
 				
 //				java.net.URL imageURL = getClass().getResource("/error_bg.png");
@@ -488,16 +471,18 @@ public class OpenUATtoolkit {
 
 	private  void initUI() {
 		
-		 frame = new JFrame("OpenUAT Toolkit");
-		frame.setSize(600, 600);
-		frame.setLocation(200, 300);
+		frame = new JFrame("OpenUAT Toolkit");
+		frame.setSize(1000, 1000);
+		frame.setLocation(100, 100);
 		JPanel pane = new JPanel();
 		pane.setLayout(new BoxLayout(pane, BoxLayout.Y_AXIS));
 
-		java.net.URL imageURL = getClass().getResource("/printer_bg.png");
+		java.net.URL printerImage = getClass().getResource("/printer_bg.png");
 
-		ImageIcon icon = new ImageIcon(imageURL);
-		pane.add(new JLabel("Print service started", icon, SwingConstants.CENTER));
+		ImageIcon printerIcon = new ImageIcon(printerImage);
+		pane.add(new JLabel("Print service started", printerIcon, SwingConstants.CENTER));
+//		pane.add(new JLabel("Available input/output methods: button, small display, audio", null, SwingConstants.CENTER));
+		
 		pane.add(status);
 		pane.add(progress);
 		pane.setBorder(BorderFactory.createRaisedBevelBorder());
