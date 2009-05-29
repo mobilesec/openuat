@@ -139,4 +139,17 @@ public class Hash {
 		// and hash
 		return SHA256(opadAndHash, useJSSE);
 	}
+	
+	/** 
+	 * Convenience method to convert a byte[] to a hex string
+	 * (since J2ME does not support the String.format() method) 
+	 */
+	public static String getHexString(byte[] b) {
+		String result = "";
+		for (int i = 0; i < b.length; i++) {
+			result += Integer.toString((b[i] & 0xff) + 0x100, 16).substring(1);
+		}
+		return result;
+	}
+	
 }
