@@ -11,7 +11,9 @@ package org.openuat.apps.j2me;
 import java.io.IOException;
 import java.util.Vector;
 
+import javax.bluetooth.BluetoothStateException;
 import javax.bluetooth.DataElement;
+import javax.bluetooth.LocalDevice;
 import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
@@ -28,10 +30,19 @@ import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.List;
 import javax.microedition.midlet.MIDlet;
 
+import net.sf.microlog.Level;
+import net.sf.microlog.appender.FileAppender;
+import net.sf.microlog.appender.FormAppender;
+import net.sf.microlog.ui.LogForm;
+
 import org.openbandy.service.LogService;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.log.Log;
+import org.openuat.log.LogFactory;
+import org.openuat.log.j2me.MicrologFactory;
+import org.openuat.log.j2me.MicrologLogger;
 import org.openuat.util.BluetoothPeerManager;
 import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
@@ -62,9 +73,14 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 	
 	//authentication options
 	protected Image visual = null;
+	/**Hapadep */
 	protected Image audio = null;
+	/** melodic sound */
 	protected Image slowcodec = null;
+	/** Compare sentence */
 	protected Image madlib = null;
+	/**Hash comparison, manual*/
+	protected Image manualcom = null;
 	
 	protected Image running = null;
 	
@@ -100,6 +116,8 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 	protected Command increaseVolume;
 	protected Command decreaseVolume;
 	
+	private Image warnIcon;
+	
 	protected Display display;
 
 	protected BluetoothRFCOMMServer rfcommServer;
@@ -108,9 +126,18 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 	/** Discovered Bluetooth services */
 	protected Vector services;
 	
+	/* The microlog LogForm */
+	private LogForm logForm;
+	
+	/* Logger instance to log statistics data */
+	private Log statisticsLogger;
+	
 	/** Play volume, how loud the phone should play the tunes */
-	public int volume = 45;
+	public int volume = 75;
 
+	
+
+	private Log logger;
 	
 	protected Gauge bluetoothProgressGauge;
 	protected ProgressScreen progressScreen;
@@ -171,6 +198,12 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			LogService.warn(this, "could not load image /madlib_sm.png");
 		}
 		try {
+			manualcom = Image.createImage("/madlib_sm.png");
+
+		} catch (IOException e) {
+			LogService.warn(this, "could not load image /madlib_sm.png");
+		}
+		try {
 			running = Image.createImage("/running_sm.png");
 
 		} catch (IOException e) {
@@ -202,11 +235,37 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			LogService.warn(this, "could not load image error_sm.png");
 		}
 	}
-	// our logger
-//	Logger logger = Logger.getLogger("");
 
+	
 	public OpenUATmidlet() {
-		LogService.info(this, "--------");
+		initLogger();
+		initGui();
+		initBluetooth();
+		
+	}
+
+	private void initLogger() {
+		// Initialize the logger. Use a wrapper around the microlog framework.
+		LogFactory.init(new MicrologFactory());
+		logger = LogFactory.getLogger("org.openuat.apps.j2me.BedaMIDlet");
+		statisticsLogger = LogFactory.getLogger("statistics");
+		
+		// TODO: should configure microlog in its properties file
+		FileAppender fileAppender = new FileAppender();
+		fileAppender.setDirectory("Memory card/Others/");
+		logForm = new LogForm();
+		logForm.setDisplay(display);
+		logForm.setPreviousScreen(previousScreen);
+		FormAppender formAppender = new FormAppender(logForm);
+		net.sf.microlog.Logger nativeLogger = ((MicrologLogger)logger).getNativeLogger();
+		nativeLogger.addAppender(fileAppender);
+		nativeLogger.addAppender(formAppender);
+		nativeLogger = ((MicrologLogger)statisticsLogger).getNativeLogger();
+		nativeLogger.addAppender(fileAppender);
+		nativeLogger.addAppender(formAppender);
+		nativeLogger.setLogLevel(Level.TRACE);
+	}
+	private void initBluetooth() {
 		if (! BluetoothSupport.init()) {
 			do_alert("Could not initialize Bluetooth API", Alert.FOREVER);
 			return;
@@ -218,6 +277,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 					-1, true, false);
 			rfcommServer.addAuthenticationProgressHandler(this);
 			rfcommServer.start();
+
 //			LogService.debug(this, "Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
 			LogService.error(this, "Error initializing BlutoothRFCOMMServer: ", e);
@@ -228,17 +288,25 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			peerManager.addListener(this);
 		} catch (IOException e) {
 			LogService.error(this, "Error initializing BlutoothPeerManager",  e);
-			return;
+			
 		}
-
-		initGui();
 	}
 
 	protected void initGui() {
 		loadImages();
+		LocalDevice local_device;
+		String deviceName= "";
+		try {
+			local_device = LocalDevice.getLocalDevice();
+			deviceName = local_device.getFriendlyName();
+			
+		} catch (BluetoothStateException e) {
+			// TODO Auto-generated catch block
+			//e.printStackTrace();
+		}
 		
 		//initialize screens
-		home_screen = new List("OpenUAT", Choice.IMPLICIT); //the main menu
+		home_screen = new List("OpenUAT: "+deviceName, Choice.IMPLICIT); //the main menu
 		dev_list = new List("Select Device", Choice.IMPLICIT); //the list of devices
 		serv_list = new List("Available Services", Choice.IMPLICIT); //the list of services
 		
@@ -254,7 +322,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		decreaseVolume = new Command("Decrease volume", Command.SCREEN, 2);
 		
 		home_screen.append("Find devices", search);
-		home_screen.append("Send vCard", vCard);
+		//home_screen.append("Send vCard", vCard);
 		home_screen.append("Print document", print);
 		
 		home_screen.addCommand(exit);
@@ -262,7 +330,13 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		home_screen.addCommand(increaseVolume);
 		home_screen.addCommand(decreaseVolume);
 		
-		
+
+		try {
+			warnIcon = Image.createImage("/Button_Icon_Yellow_32.png");
+		} catch (IOException ioe) {
+			warnIcon = null;
+			logger.warn("Could not create warn icon", ioe);
+		}
 		dev_list.addCommand(exit);
 		dev_list.addCommand(log);
 		dev_list.addCommand(back);
@@ -274,7 +348,11 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		logScreen = LogService.getLog();
 		logScreen.addCommand(back);
 		
+		//Image[]	images = new Image[]{visual, audio, slowcodec, madlib, manualcom};
 		Image[]	images = new Image[]{visual, audio, slowcodec, madlib};
+		
+		//verify_method = new List("Method", Choice.IMPLICIT, new String[]{"Visual channel","Audio channel","Compare tunes","Compare text", "Compare numbers"}, images);
+		
 		verify_method = new List("Method", Choice.IMPLICIT, new String[]{"Visual channel","Audio channel","Compare tunes","Compare text"}, images);
 		verify_method.addCommand(back);
 		verify_method.addCommand(log);
@@ -337,25 +415,31 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		else if (com == List.SELECT_COMMAND) {
 			if (dis == getHomeScreen()) { //select triggered from the main from
 				if (home_screen.getSelectedIndex() == 0) { //find devices
+					//show the cached devices and search again option
+					if(dev_list!=null && dev_list.size()>0){
+						display.setCurrent(dev_list);
+						previousScreen = currentScreen;
+						currentScreen = dev_list;
+						return;
+					} 
+
 					if (!peerManager.startInquiry(false)) {
 						this.do_alert("Error in initiating search", 4000);
 					}
-					progressScreen = new ProgressScreen("/bluetooth_icon_sm.png", 10);
-					progressScreen.showActionAtStartupGauge("Searching for devices...");
-					display.setCurrent(progressScreen);
-					currentScreen = progressScreen;
-					previousScreen = home_screen; 
+					alertWait("Searching for authenticaton service...", false);
 					
 //				}if (getMain_list().getSelectedIndex() == 1) { //demo - N95
 //					String btAdd = "001C9AF755EB";
 //					connectTo(btAdd, 5);
-				}else if (getHomeScreen().getSelectedIndex() == 1) { //demo N82
-					String btAdd = "001DFD71C3C3";
-					connectTo(btAdd, 5);
-				}else if(getHomeScreen().getSelectedIndex() == 2) { //demo computer
-					//mycomp
-					String btAdd = "001F5B7B16F7";
-					connectTo(btAdd, 2);
+//				}else if (getHomeScreen().getSelectedIndex() == 1) { //demo N82
+//					String btAdd = "001DFD71C3C3";
+//					connectTo(btAdd, 5);
+				}else if(getHomeScreen().getSelectedIndex() == 1) { //demo computer
+					//print document 
+					//String btAdd = "001F5B7B16F7";
+					String btAdd = "001EC28E3024"; //iulias laptop
+					
+					connectTo(btAdd, 1);
 					
 
 				}
@@ -455,11 +539,11 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			initiator = true;
 			BluetoothRFCOMMChannel chanel = new BluetoothRFCOMMChannel(connectionURL);
 			chanel.open();
-			HostProtocolHandler.startAuthenticationWith(chanel, this, 200000, keepConnected, optionalParam, true);
+			HostProtocolHandler.startAuthenticationWith(chanel, this, -1, keepConnected, optionalParam, true);
 
 		} catch (IOException e) {
 			LogService.error(this, "could not connect to "+connectionURL, e);
-			do_alert("error", Alert.FOREVER);
+			do_alert("Try again", Alert.FOREVER);
 		}
 	}
 
@@ -477,6 +561,20 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			alert.setString(msg);
 			alert.setTimeout(time_out);
 			display.setCurrent(alert);
+		}
+	}
+	/* Places a "Please wait..." message on screen.
+	 * Launch it while some background processing is done. */
+	private void alertWait(String msg, boolean returnToHome) {
+		Alert a = new Alert("Please wait...", msg, warnIcon, AlertType.INFO);
+		a.setTimeout(Alert.FOREVER);
+		Gauge gauge = new Gauge(null, false, Gauge.INDEFINITE, Gauge.CONTINUOUS_RUNNING);
+		a.setIndicator(gauge);
+		if (returnToHome) {
+			display.setCurrent(a, currentScreen);
+		}
+		else {
+			display.setCurrent(a);
 		}
 	}
 
@@ -559,7 +657,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 		// and extract the shared authentication key for phase 2
 		authKey = (byte[]) res[1];
 		// then extract the optional parameter
-		//String param = (String) res[2];
+		String param = (String) res[2];
 //		LogService.debug(this, "Extracted session key of length " + sharedKey.length +
 //				", authentication key of length " + authKey.length + 
 //				" and optional parameter '" + param + "'");
@@ -646,7 +744,12 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			currentScreen = failure_form;
 			LogService.info(this, "FAILURE");
 		}
-		c.close();
+		try {
+			c.close();
+		} catch (Exception e) {
+			LogService.error(this,"could not close con", e);
+		}
+		
 	}
 
 	public List getHomeScreen() {

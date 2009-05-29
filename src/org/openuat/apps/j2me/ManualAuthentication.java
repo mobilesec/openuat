@@ -79,7 +79,9 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 	
 	private String currentPeerAddress;
 	
+	/* The microlog LogForm */
 	private LogForm logForm;
+	
 
 	// our logger
 	private Log logger;

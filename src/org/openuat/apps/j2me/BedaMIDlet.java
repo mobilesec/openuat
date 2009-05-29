@@ -15,6 +15,8 @@ import java.security.SecureRandom;
 import java.util.Hashtable;
 import java.util.Vector;
 
+import javax.bluetooth.BluetoothStateException;
+import javax.bluetooth.LocalDevice;
 import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
@@ -330,7 +332,19 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		} catch (IOException e) {
 			logger.warn("Could not create beda logo", e);
 		}
-		welcomeScreen.append("\nButton Enabled Device Association");
+		welcomeScreen.append("\nButton Enabled Device Association\n");
+		
+		LocalDevice local_device;
+		String deviceName= "";
+		try {
+			local_device = LocalDevice.getLocalDevice();
+			deviceName = local_device.getFriendlyName();
+			welcomeScreen.append("Device: "+deviceName+"\n");
+			
+		} catch (BluetoothStateException e) {
+			// TODO Auto-generated catch block
+			//e.printStackTrace();
+		}
 		
 		// launch gui
 		display.setCurrent(welcomeScreen);

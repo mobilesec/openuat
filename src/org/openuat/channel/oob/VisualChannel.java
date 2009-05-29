@@ -28,6 +28,13 @@ public class VisualChannel implements OOBChannel {
 	private OOBMessageHandler handler;
 	private JPanel pane;
 	
+	/**
+	 * A short description (one to two words) of the channel,
+	 * suitable to print on a gui element
+	 * e.g. to list several channels to choose from.<br/>
+	 * The <code>toString</code> method is overridden and will output this value.
+	 */
+	protected String shortDescription = "Visual channel";
 	
 	public VisualChannel() {
 
@@ -47,6 +54,10 @@ public class VisualChannel implements OOBChannel {
 	public void setOOBMessageHandler(OOBMessageHandler handler) {
 		this.handler = handler;
 
+	}
+	
+	public String toString() {
+		return shortDescription;
 	}
 
 /**

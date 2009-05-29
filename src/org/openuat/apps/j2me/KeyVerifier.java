@@ -6,17 +6,17 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
+import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
-import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.ImageItem;
 import javax.microedition.lcdui.Item;
 import javax.microedition.lcdui.ItemCommandListener;
 import javax.microedition.lcdui.List;
-import javax.microedition.lcdui.StringItem;
 import javax.microedition.media.Manager;
 import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
@@ -26,7 +26,6 @@ import javax.microedition.media.control.VolumeControl;
 import org.apache.commons.codec.binary.Hex;
 import org.codec.audio.j2me.AudioUtils;
 import org.codec.audio.j2me.PlayerPianoJ2ME;
-import org.codec.audio.j2me.WavCodec;
 import org.codec.mad.MadLib;
 import org.openbandy.service.LogService;
 import org.openuat.authentication.OOBChannel;
@@ -34,26 +33,53 @@ import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.oob.j2me.J2MEAudioChannel;
 import org.openuat.channel.oob.j2me.J2MEVisualChannel;
-import org.openuat.util.BluetoothRFCOMMChannel;
+import org.openuat.log.Log;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
 public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMessageHandler  {
 
-	/** how many bytes of the key are used for the Audio method */	
-	private static final int AUDIO_KEY_LENGTH = 7;
 
-	/** with how many bits to pad the hash before sending */
-	private static final int AUDIO_PADDING = 6;
-
-	/** verification methods */
+	/** Specify which key verification methods are available */
+	/** QR code - take picture and decode */
 	public static final String VISUAL = "VISUAL";
+	/** Use HAPADEP to transmit the hash of the key over the audio channel */
 	public static final String AUDIO = "AUDIO";
+	/** The user compares two piano songs coming from the two devices */
 	public static final String SLOWCODEC = "SLOWCODEC";
+	/** The user compares two sentences displayed by the devices */
 	public static final String MADLIB = "MADLIB";
+	/** The length of the hash to be manually compared by the user */
+	public static final String HASH_COMP = "MANUAL_COMP";
 
+	/** how many bytes of the key are used for the Audio method */	
+	public static final int AUDIO_KEYHASH_LENGTH = 7;
+	
+	/** how many bytes of the key are used for the QR code method */	
+	public static final int VIDEO_KEYHASH_LENGTH = 7;
+	
+	/** with how many bits to pad the hash before sending */
+	public static final int AUDIO_PADDING = 6;
+	
+	/* 
+	 * Number of characters of the hash string (hex) that will be shown to the user.
+	 * Used by the 'Hash Comparison' authentication method.
+	 */
+	public static final int HASH_STRING_LENGTH		= 12;
+	
+	/** how many bytes of the key are used for the Audio method */	
+	public static final int AUDIO_KEY_LENGTH = 7;
 
+	/** An identifier used to register a command handler with the RFCOMMServer */
+	public static final String PRE_AUTH = "PRE_AUTH";
+	
+	/** Authentication method supported by BEDA: authentic transfer */
+	public static final String TRANSFER_AUTH = "TRANSFER_AUTH";
+	
+	/** Authentication method supported by BEDA: input */
+	public static final String INPUT = "INPUT";
+	
 	/** synchronization commands */
 	public static final String VERIFY = "VERIFY";
 	public static final String ACK = "OK";
@@ -76,7 +102,12 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 	/** Replay the slow codec tune */
 	public static final String REPLAY = "REPLAY";
 	
+	
+	
 	private int method ;
+	
+	// our logger
+	private Log logger;
 
 	//	Logger logger = Logger.getLogger("");
 	byte [] authKey;
@@ -194,11 +225,67 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 				verifySlowCodec();
 			}else if (option.getSelectedIndex() == 3){
 				verifyMadLib();
+			}else if (option.getSelectedIndex() == 4){
+				verifyManualComparison();
 			}
 		}else {
 			mainProgram.commandAction(com, arg1);
 		}
 	}
+	
+	private void verifyManualComparison() {
+		LogService.info(this, HASH_COMP);
+		method = 5;
+		mainProgram.startTime = System.currentTimeMillis();
+
+		send(VERIFY);
+		send(HASH_COMP);
+		verifyHashComparison(authKey);
+	}
+
+//	/*
+//	 * Verifies that the two devices agreed on the same public data string by
+//	 * showing a hash of it to the user. The user will then compare the displayed
+//	 * strings on both devices and gives appropriate feedback.
+//	 */
+//	private void verifyHashComparison(byte[] authKey) {
+//		logger.debug("Start key verification: Hash comparison");
+//		String hashString;
+//        try {
+//			hashString = getHexString(Hash.doubleSHA256(authKey, false));
+//			hashString = hashString.substring(0, HASH_STRING_LENGTH);
+//		} catch (InternalApplicationException e) {
+//			logger.error("Failed to build hash.", e);
+//			return;
+//		}
+//		Form userFeedback = new Form ("Hash Comparison");
+//		userFeedback.append(hashString + "\n\n");
+//		userFeedback.append("Please compare the above string with the other device.\nAre they the same?");
+//		final Command equalsCommand 	= new Command("Yes", Command.OK, 1);
+//		final Command notEqualsCommand	= new Command("No", Command.CANCEL, 1);
+//		userFeedback.addCommand(equalsCommand);
+//		userFeedback.addCommand(notEqualsCommand);
+//		CommandListener feedbackListener = new CommandListener() {
+//			//@Override
+//			public void commandAction(Command command, Displayable d) {
+//				if (command == equalsCommand) {
+//					Alert a = new Alert("Hash comparison",
+//							"Authentication successful!", null, AlertType.CONFIRMATION);
+//					a.setTimeout(Alert.FOREVER);
+//					display.setCurrent(a, main_list);
+//				}
+//				else if (command == notEqualsCommand) {
+//					Alert a = new Alert("Hash comparison",
+//							"Authentication failed!", null, AlertType.ERROR);
+//					a.setTimeout(Alert.FOREVER);
+//					display.setCurrent(a, main_list);
+//				}
+//			}
+//		};
+//		userFeedback.setCommandListener(feedbackListener);
+//		display.setCurrent(userFeedback);
+//	}
+	
 	J2MEAudioChannel verifier;
 
 	public void verifyAudio() {
@@ -421,8 +508,6 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 
 		String verify = readLine();
 		if (verify.equals(VERIFY)){
-
-
 			
 			verification.append("Verifying the key transfer");
 			verification.append(mainProgram.running);
@@ -547,13 +632,87 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 				outcome.setCommandListener(this);
 				mainProgram.display.setCurrent(outcome);
 				return slowCodecSlave();
+			} else {
+				
+				if (method.equals(HASH_COMP)){
+					verifyHashComparison(authKey);
+				}
 			}
 		}
 		return false;
 	}
+	
+
 	//	boolean authentic = true;
 
+	/*
+	 * Verifies that the two devices agreed on the same public data string by
+	 * showing a hash of it to the user. The user will then compare the displayed
+	 * strings on both devices and gives appropriate feedback.
+	 */
+	private void verifyHashComparison(byte[] authKey) {
+		method = 5;
+		send(VERIFY);
+		send(HASH_COMP);
+		LogService.info(this, HASH_COMP);
+		String response = readLine();
+		mainProgram.startTime = System.currentTimeMillis();
+		//System.out.println("response "+response);
+		if (response.equals(ACK)){
+			MadLib madLib = new MadLib();
+			try {
+				
+				String hashString = null;
+					try {
+						hashString = Hash.getHexString(Hash.doubleSHA256(authKey, false));
+						hashString = hashString.substring(0, HASH_STRING_LENGTH);
+					} catch (InternalApplicationException e) {
+						logger.error("Failed to build hash.", e);
+						return;
+					}madLib.GenerateMadLib(Hash.doubleSHA256(authKey, false), 0, 5);
+				Form outcome = new Form("OpenUAT");
+				outcome.append("Verify the following hash:\n");
+				//change the picture here
+				outcome.append(mainProgram.madlib);
+				outcome.append(hashString);
 
+				ImageItem yes_btn = new ImageItem("YES", mainProgram.buttonok,ImageItem.LAYOUT_CENTER, "");
+				//				StringItem yes_btn = new StringItem(" YES ", null, Item.BUTTON);
+
+
+				ImageItem no_btn = new ImageItem("NO", mainProgram.buttoncancel, ImageItem.LAYOUT_CENTER, "");
+				//				StringItem no_btn = new StringItem("  NO ", null, Item.BUTTON);
+				
+				yes_btn.addCommand(mainProgram.successCmd);
+				no_btn.addCommand(mainProgram.failureCmd);
+				
+				no_btn.setItemCommandListener(this);
+				yes_btn.setItemCommandListener(this);
+
+
+
+				outcome.append(no_btn);
+				outcome.append(yes_btn);
+
+//				LogService.debug(this, ": "+text);
+				outcome.addCommand(mainProgram.log);
+				outcome.addCommand(mainProgram.exit);
+				//				outcome.addCommand(successCmd);
+				//				outcome.addCommand(failure);
+
+				outcome.setCommandListener(this);
+				mainProgram.display.setCurrent(outcome);
+				
+				mainProgram.startTimeMadLib = System.currentTimeMillis();
+
+			} catch (UnsupportedEncodingException e) {
+				LogService.error(this, "", e);
+			} catch (InternalApplicationException e) {
+				LogService.error(this, "", e);
+			}
+		}
+		
+	}
 	private boolean audioSendSlave(Form verification, Player player)
 			throws MediaException, InterruptedException {
 		String start = readLine();
