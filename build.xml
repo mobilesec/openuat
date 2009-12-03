@@ -435,7 +435,7 @@
         <mkdir dir="${build.midp.temp}"/>
 		<copy todir="${build.midp.temp}" failonerror="true">
 			<fileset dir="${src}" includes="org/openuat/apps/j2me/BluetoothDemo.java
-				org/openuat/apps/j2me/ManualAuthentication.java
+				org/openuat/apps/j2me/ManualAuthentication.java org/openuat/apps/j2me/SimpleWallet.java
 				org/openuat/util/Bluetooth*.java org/openuat/util/RemoteConnection.java
 				org/openuat/util/HostServerBase.java org/openuat/authentication/HostProtocolHandler.java 
 				org/openuat/util/MessageListener.java org/openuat/util/LoggingHelper.java
@@ -540,6 +540,8 @@
 				<!--change for win -->
 				<!-- midlets definition -->
 				<midlet class="org.openuat.apps.j2me.BluetoothDemo" name="Bluetooth connections demo"/>
+
+				<midlet class="org.openuat.apps.j2me.SimpleWallet" name="Simple password wallet"/>
 
 				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe demo"/>
 

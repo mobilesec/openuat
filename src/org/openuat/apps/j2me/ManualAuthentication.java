@@ -31,7 +31,6 @@ import org.openuat.util.BluetoothRFCOMMChannel;
 import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.BluetoothSupport;
 import org.openuat.util.Hash;
-import org.openuat.util.LineReaderWriter;
 import org.openuat.util.RemoteConnection;
 
 /** This MIDlet demonstrates all three possible options for out-of-band peer
@@ -69,8 +68,6 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 
 	private Command log;
 	
-	private Command auth;
-
 	private Display display;
 	
 	private BluetoothPeerManager peerManager;
