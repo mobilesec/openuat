@@ -180,8 +180,10 @@ public class SimpleWallet extends MIDlet implements CommandListener {
 		// pressed login - check password
 		else if (com == login) {
 			byte[] mainPwBytes = mainPw.getString().getBytes();
+			byte[] pwCheckValue = null;
 			try {
 				mainPwHash = Hash.doubleSHA256(mainPwBytes, false);
+				pwCheckValue = Hash.doubleSHA256(mainPwHash, false);
 			} catch (InternalApplicationException e) {
 				error(null, e, loginForm);
 				return;
@@ -194,19 +196,18 @@ public class SimpleWallet extends MIDlet implements CommandListener {
 				if (! re.hasNextElement()) {
 					// no password yet, setting the entered one
 					// TODO: ask for password twice
-					mainPwRs.addRecord(mainPwHash, 0, mainPwHash.length);
+					mainPwRs.addRecord(pwCheckValue, 0, pwCheckValue.length);
 				}
 				else {
 					// we already stored a password, so compare now
-					// Note: in contrast to _any_ other API, the records start counting at 1....
 					byte[] storedHash = re.nextRecord();
-					if (storedHash.length != mainPwHash.length)
+					if (storedHash.length != pwCheckValue.length)
 						logger.warn("Expected to read " + mainPwHash.length + " bytes password hash, but got " +
 								storedHash.length);
 						
 					boolean equals = true;
-					for (int i=0; i<storedHash.length && i<mainPwHash.length && equals; i++)
-						if (storedHash[i] != mainPwHash[i]) equals=false;
+					for (int i=0; i<storedHash.length && i<pwCheckValue.length && equals; i++)
+						if (storedHash[i] != pwCheckValue[i]) equals=false;
 					if (equals) {
 						// yes - load and decrypt
 						loadPasswords();
