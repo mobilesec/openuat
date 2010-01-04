@@ -57,8 +57,11 @@ public class HostProtocolHandlerTest extends TestCase {
 	public void tearDown() throws InterruptedException, IOException, InternalApplicationException
     {
         if (client != null) {
-            client.shutdownInput();
-            client.shutdownOutput();
+        	if (!client.isInputShutdown() && !client.isClosed())
+        		client.shutdownInput();
+        	if (!client.isOutputShutdown() && !client.isClosed())
+        		client.shutdownOutput();
+        	if (!client.isClosed())
             client.close();
         }
         client = null;
@@ -87,8 +90,8 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 10000, false, "", useJSSEClient);
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -117,8 +120,8 @@ public class HostProtocolHandlerTest extends TestCase {
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
         server.setPresharedShortSecret(presharedShortSecret);
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 
         		null, presharedShortSecrets, null,
         		10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
@@ -147,8 +150,8 @@ public class HostProtocolHandlerTest extends TestCase {
 		SimpleKeyAgreement serverKa = new SimpleKeyAgreement(useJSSEServer, true);
 		server.setPermanentKeyAgreementInstance(serverKa);
         byte[] serverPreAuthentication = server.getPermanentPreAuthenticationMessage();
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 
         		null, null, serverPreAuthentication,
         		10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
@@ -180,8 +183,8 @@ public class HostProtocolHandlerTest extends TestCase {
 		// this is a bit of catch here: getting the commitment is not easy via public methods from HostProtocolHandler
 		// just do it "manually"
 		server.setPreAuthenticationMessageFromClient(HostProtocolHandler.commitment(clientKa.getPublicKey(), useJSSEClient));
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 
         		clientKa, null, null,
         		10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
@@ -216,8 +219,8 @@ public class HostProtocolHandlerTest extends TestCase {
 		// this is a bit of catch here: getting the commitment is not easy via public methods from HostProtocolHandler
 		// just do it "manually"
 		server.setPreAuthenticationMessageFromClient(HostProtocolHandler.commitment(clientKa.getPublicKey(), useJSSEClient));
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 
         		clientKa, null, serverPreAuthentication,
         		10000, false, "", useJSSEClient);
         // this should be enough time for the authentication to complete
@@ -317,8 +320,8 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 10000, false, "TEST_PARAMETER", useJSSEClient);
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 10000, false, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
@@ -345,8 +348,8 @@ public class HostProtocolHandlerTest extends TestCase {
         EventHelper h = new EventHelper();
         // need to listen for both the server and the client authentication events
         server.addAuthenticationProgressHandler(h);
-        Socket socket = new Socket("127.0.0.1", PORT);
-        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(socket), h, 10000, true, "TEST_PARAMETER", useJSSEClient);
+        client = new Socket("127.0.0.1", PORT);
+        HostProtocolHandler.startAuthenticationWith(new RemoteTCPConnection(client), h, 10000, true, "TEST_PARAMETER", useJSSEClient);
         // this should be enough time for the authentication to complete
         // localhost authentication within the same process, therefore we should receive 2 success messages
         int i = 0;
