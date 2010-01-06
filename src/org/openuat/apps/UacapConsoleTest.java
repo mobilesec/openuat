@@ -31,10 +31,11 @@ import org.openuat.util.TCPPortServer;
  * 
  * @author Rene Mayrhofer
  */
-public class UacapConsoleTest implements AuthenticationProgressHandler {
+public class UacapConsoleTest implements AuthenticationProgressHandler, Runnable {
     public static final int PORT = 23457;
 
     private RemoteTCPConnection socketToRemote;
+    private byte[] sharedSessionKey;
 
     private HostServerBase server;
     private Socket client;
@@ -113,7 +114,7 @@ public class UacapConsoleTest implements AuthenticationProgressHandler {
 		System.out.println("Authentication SUCCESS with remote " + remote);
 
     	Object[] res = (Object[]) result;
-    	byte[] sharedSessionKey = (byte[]) res[0];
+    	sharedSessionKey = (byte[]) res[0];
         byte[] sharedOObMsg = (byte[]) res[1];
 		
 		socketToRemote = (RemoteTCPConnection) remote;
@@ -129,21 +130,39 @@ public class UacapConsoleTest implements AuthenticationProgressHandler {
 				return;
 			}
 			
-			System.out.println("Starting chat ...");
-			SimpleBlockCipher c = new SimpleBlockCipher(true);
-			OutputStream remoteW = socketToRemote.getOutputStream();
+			// the chat is started in another thread so as not to block this event handler
+			new Thread(this).start();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+//	@Override
+	public void run() {
+		System.out.println("Starting chat with " + sharedSessionKey.length +
+				" Bytes shared secret key ...");
+		SimpleBlockCipher c = new SimpleBlockCipher(true);
+		BufferedReader localR = new BufferedReader(new InputStreamReader(System.in));
+		OutputStream remoteW;
+		
+		try {
+			remoteW = socketToRemote.getOutputStream();
 			InputStream remoteR = socketToRemote.getInputStream();
 			
 			while (true) {
-				String line = localR.readLine();
+				// dummy padding to always have at least 16 Bytes
+				System.out.print("> ");
+				String line = localR.readLine() + "                ";
 				byte[] sendMsg = c.encrypt(line.getBytes(), line.getBytes().length * 8, 
 						sharedSessionKey);
+				remoteW.write(line.getBytes().length);
 				remoteW.write(sendMsg);
 				
 				byte[] recvMsg = new byte[1024];
-				int receivedBytes = remoteR.read(recvMsg);
-				String remoteLine = new String(c.decrypt(recvMsg, (receivedBytes-1)*8, sharedSessionKey));
-				System.out.println(remoteLine);
+				int plainTextBytes = remoteR.read();
+				remoteR.read(recvMsg);
+				String remoteLine = new String(c.decrypt(recvMsg, plainTextBytes*8, sharedSessionKey));
+				System.out.println("< " + remoteLine);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
