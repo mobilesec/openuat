@@ -193,19 +193,13 @@
 			<available classname="javax.microedition.pki.Certificate" classpathref="lib.path.midp"/>
 			<available classname="javax.microedition.lcdui.Display" classpathref="lib.path.midp"/>
 			<available classname="com.sun.cldc.io.ConsoleOutputStream" classpathref="lib.path.midp"/>
+			<available classname="de.enough.polish.ant.PolishTask" classpath="${polish.home}/lib/enough-j2mepolish-build.jar:${polish.home}/lib/jdom.jar"/>
 		</and>
 	</condition>
 	<condition property="haveWTK.echo" value="true" else="false">
 		<isset property="haveWTK"/>
 	</condition>
 
-	<!-- Include the J2ME Polish tasks for building J2ME packages (but will only use it when haveWTK is set) -->
-	<!--change for win -->
-	<taskdef name="j2mepolish" 
-		classname="de.enough.polish.ant.PolishTask" 
-		classpath="${polish.home}/lib/enough-j2mepolish-build.jar:${polish.home}/lib/jdom.jar"
-	/>
-	
 	<!-- And a task for creating installer packages for Windows -->
 	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
 	<!-- This is a task for checkstyle -->
@@ -426,7 +420,13 @@
 		<delete dir="${bin.midp}"/>
         <mkdir dir="${build.midp.work}"/>
         <mkdir dir="${bin.midp}"/>
-		
+
+		<!-- Include the J2ME Polish tasks for building J2ME packages -->
+		<taskdef name="j2mepolish" 
+			classname="de.enough.polish.ant.PolishTask" 
+			classpath="${polish.home}/lib/enough-j2mepolish-build.jar:${polish.home}/lib/jdom.jar">
+		</taskdef>
+
 		<!-- bad, ugly, evil, unmaintainable, and should-be-completely-unnecessary hack begins here -->
 		<!-- I can't get the dumb j2mepolish build/compiler part to only use the classes 
 		     the MIDlet depends on (the includes attribute obviously doesn't work, so just copy
