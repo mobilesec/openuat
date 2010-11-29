@@ -8,14 +8,20 @@
  */
 package org.openuat.util.test;
 
+import org.apache.commons.codec.binary.Hex;
+import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.test.SimpleKeyAgreementTest;
+import org.openuat.util.Hash;
 import org.openuat.util.SimpleBlockCipher;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
 public class SimpleBlockCipherTest extends TestCase {
+	/** Our log4j logger. */
+	private static Logger logger = Logger.getLogger("org.openuat.util.test.SimpleBlockCipherTest" /*SimpleBlockCipher.class*/);
+
 	protected boolean useJSSE = true;
 	protected boolean useJSSE2 = true;
 
@@ -99,5 +105,27 @@ public class SimpleBlockCipherTest extends TestCase {
 		byte[] plainText2 = p2.decrypt(cipherText, plainText.length*8, sharedKey);
 		Assert.assertTrue("decrypted plain text has invalid length", plainText2.length == plainText.length);
 		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plainText, plainText2));
+	}
+	
+	public void testEncryptDecrypt_MultipleBlocks_String() throws InternalApplicationException {
+		String plaintext = "The answer is 42.";
+		String password = "MC.SMS5";
+		
+		byte[] sharedKey = Hash.SHA256(password.getBytes(), useJSSE);
+		logger.info("Hashed key from password '" + password + "' is '" + new String(Hex.encodeHex(sharedKey)) + "'");
+		
+		SimpleBlockCipher cbcEncrypt = new SimpleBlockCipher(useJSSE); 
+		SimpleBlockCipher cbcDecrypt = new SimpleBlockCipher(useJSSE2);
+		logger.info("Encrypting plain text '" + plaintext + "' in binary form '" + new String(Hex.encodeHex(plaintext.getBytes())) + "'");
+		
+		byte[] cipherText = cbcEncrypt.encrypt(plaintext.getBytes(), plaintext.getBytes().length*8, sharedKey);
+		logger.info("Encrypted with CBC: '" + new String(Hex.encodeHex(cipherText)) + "'");
+		byte[] plainBytes2 = cbcDecrypt.decrypt(cipherText, plaintext.getBytes().length*8, sharedKey);
+		String plaintext2 = new String(plainBytes2);
+		logger.info("Decrypted with CBC: '" + new String(Hex.encodeHex(plainBytes2)) + "' in text form '" + plaintext2 + "'");
+
+		Assert.assertTrue("decrypted plain text has invalid length", plainBytes2.length == plaintext.getBytes().length);
+		Assert.assertTrue("decrypted plain text does not match original", SimpleKeyAgreementTest.compareByteArray(plaintext.getBytes(), plainBytes2));
+		Assert.assertEquals("decrypted and decoded plain text does not match original", plaintext, plaintext2);
 	}
 }

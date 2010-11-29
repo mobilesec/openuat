@@ -27,7 +27,7 @@ public class Hash {
 	private static final byte OPAD_BYTE = 0x36;
 	
 	/** This is only a helper function to select JSSE or Bouncycastle implementation. */
-	private static byte[] SHA256(byte[] text, boolean useJSSE) 
+	public static byte[] SHA256(byte[] text, boolean useJSSE) 
 			throws InternalApplicationException {
 //#if cfg.includeJSSESupport
 		if (useJSSE)
