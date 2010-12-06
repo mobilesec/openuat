@@ -35,6 +35,21 @@ public class TimeSeries implements SamplesSink {
 		public float getOffset();
 	}
 
+	/** If debugging is enabled, then estimate the sample rate every N 
+	 * samples, where N is this number.
+	 */
+	private static final int estimateSampleRateWidth = 100;
+	
+	/** If debugging is enabled, then report the estimated sample rate every
+	 * N seconds, where N is this number.
+	 */
+	private static final int reportSampleRateSeconds = 10;
+	
+	/** If this is set to true, then the sample rate will be estimated even 
+	 * when not logging on level debug.
+	 */
+	public static boolean forceSampleRateEstimation = false;
+
 	/** This is the internal circular buffer used to hold the values inside the time window.
 	 * These values are already normalized. */
 	private double[] circularBuffer;
@@ -97,7 +112,19 @@ public class TimeSeries implements SamplesSink {
 	 * previously detected to be quiescent.
 	 */
 	private boolean isActive = false;
+
+	/** If debugging is enabled, then this holds the last timestamp when the
+	 * sample rate was estimated (i.e. estimateSampleRateWidth number of 
+	 * samples ago).
+	 */
+	private long lastSampleRateEstimated = -1;
 	
+	/** If debugging is enabled, then this holds the last timestamp when the
+	 * sample rate was reported (i.e. reportSampleRateSeconds number of 
+	 * samples ago).
+	 */
+	private long lastSampleRateReported = -1;
+
 	/** Initializes the time series circular buffer with the specified window size.
 	 * 
 	 * @param windowSize Specifies the number of past samples kept in memory and used for
@@ -218,6 +245,29 @@ public class TimeSeries implements SamplesSink {
         			// and to end at the beginning of a quiescent window
         			s.segmentEnd(sampleNum-circularBuffer.length+1);
         		}
+    	}
+
+    	// enable the sample rate
+    	if (logger.isDebugEnabled() || forceSampleRateEstimation) {
+    		if (totalNum % estimateSampleRateWidth == 0) {
+				long curTime = System.currentTimeMillis();
+    			if (lastSampleRateEstimated >= 0) {
+    				// only print at a maximum rate
+    				if (lastSampleRateReported < 0 || 
+    					curTime - lastSampleRateReported >= reportSampleRateSeconds) {
+    					lastSampleRateReported = curTime;
+    					float sampleRate = (curTime - lastSampleRateEstimated) / (float) estimateSampleRateWidth;
+        				lastSampleRateEstimated = curTime;
+    					if (forceSampleRateEstimation)
+    						logger.warn("Current sample rate: " + sampleRate + " Hz");
+    					else
+    						logger.debug("Current sample rate: " + sampleRate + " Hz");
+    				}
+    			}
+    			else
+    				// first time, initialization
+    				lastSampleRateEstimated = curTime;
+    		}
     	}
 	}
 	
