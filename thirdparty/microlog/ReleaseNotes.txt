@@ -1,0 +1,89 @@
+Release Notes
+=============
+
+Version 1.0.0
+
+* Added checks for illegal arguments on all the methods that is used for setup.
+  The methods now throws an IllegalArgumentException.
+* Improved the performance in the AscendingComparator & DescendingComparator classes.
+  This improves the startup time for the RecordStoreAppender.
+  On one platform it is reported that the startup time has been reduced from
+  ~10 seconds to 100-150 ms.
+* The close method() of the Logger now throws an IOException if something goes wrong.
+  This makes this version incompatible with the previous version.
+* The open()/close() handling of the different appenders is now made consistent,
+  that is that the IOException thrown from the underlying connection is now
+  thrown to the user, instead of just catching it and printing it.
+* Improved performance in the Logger class.
+* The storing/saving of the log file in the SMSAppender, MMSAppender,
+  S3FileAppender & S3Buffer appender is now made in a separate thread.
+* Renamed SMSAppender to SMSBufferAppender.
+* Renamed MMSAppender to MMSBufferAppender.
+* Added the possibility to create named appenders, just like in Log4j.
+
+Version 0.9.0.1
+
+* Improved the documentation.
+
+Version 0.9.0.0
+
+* Added the PatternFormatter which is equal to the famous PatternLayout found in Log4j.
+* Added DatagramAppender which makes it possible to log via a network using Datagram (UDP).
+* Added MmsAppender which logs to a buffer which is sent as an MMS or e-mail when triggered by a certain level.
+* Added SmsAppender which logs to a buffer which is sent as an SMS when triggered by a certain level.
+* Added the SyslogAppender which logs to a syslog daemon ( http://www.faqs.org/rfcs/rfc3164.html ).
+* Added the S3FileAppender which logs to a file which is sent to your 
+  Amazon S3 account when triggered ( http://www.amazon.com/gp/browse.html?node=16427261 ).
+* Added the CanvasAppender class that appends to a Canvas.
+* Improved javadocs with overview & package documentation.
+* Removed the GlobalProperties class, since it was an experiment that never 
+  was successful. The Properties class should be used instead. 
+  Now it should be less confusing to configure Microlog.
+* The ConfigurableFormatter is now possible to configure the same way as the Appenders.
+* Removed the AppProperty & NumberedAppProperty classes.
+  The functionality for AppProperty is now moved to the Properties class.
+  The functionality for NumberedAppProperty is no longer existing.
+* The default recordstore name for RecordStoreAppender is now the name of the
+  midlet suite (i.e. "MIDlet-Name") plus the suffix "-ml". 
+* The parsing of the pattern in the PatternFormatter is postponed until necessary.
+* The initialization of properties in the Properties class is postponed until necessary.
+* Added a lot of example midlets.
+* Added the CyclicBuffer class that should be used for all buffered message appenders.
+* Added the S3BufferAppender. It works as the S3FileAppender, excepts that the log is stored in a buffer.
+* Added the BluetoothSerialAppender that log using a btspp connection.
+* Added the SerialAppender that log using a serial port (CommConnection).
+
+Version 0.5.0.2
+* The same as v0.5, but with javadocs.
+
+Version 0.5
+* FileAppender can be configured to use a filename.
+* RecordStoreAppender can be configured to use a given record store name
+* manual configuration is possible for appenders 
+
+Version 0.4.3 - Not backward compatible!
+* Renamed the root package from org.microlog to net.sf.microlog.
+* Added example file "microlog.properties". Contributed by Darius.
+* Completely new properties functionality. This replaces the old Configurator.
+  Multiple appenders is now possible. Thanks Darius! 
+
+Version 0.3
+* Added support for more than one appender.
+* Added an example midlet that show how to do manual configuration.
+* RecordStoreAppender now saves 20 log entries. Older ones are discarded.
+
+Version 0.2
+
+Some minor additions
+
+* Added examples of a property and application descriptor file. These could be found
+in docs/examples.
+* Added an example midlet. It can be found in org.microlog.example.
+* Improved RecordStoreLogViewer with the ability to sort the log items 
+according to the timestamps. (Thanks to Darius)
+* Improved RecordStoreAppender. A timestamp is now saved along with the log 
+items. (Thanks to Darius)
+
+Version 0.1
+
+First official release.

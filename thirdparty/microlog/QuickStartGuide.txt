@@ -1,0 +1,89 @@
+Quickstart Guide for MicroLog
+==============================
+
+This is the quickstart guide for the impatient programmer. It assumes that you 
+already have downloaded and extracted the zip delivery, since you are reading 
+this document. Lets get going!
+
+1. First you must ensure that the microlog-X.jar file is accessible to your 
+   favorite IDE. The X is the version of your Microlog jar file.
+
+a) This is done in Eclipse this way:
+Right click on the project in the "Package Explorer". Select "Build Path -> Add External Archives". You get prompted to select a zip/jar file.
+In this case you should select the microlog-X.jar file.
+
+b) If you have a Maven based project you can also fetch all dependencies from our Maven repository.
+
+Specify the following repository in your Maven pom.xml:
+
+<repository>
+	<id>microlog.sourceforge.repo</id>
+	<url> http://microlog.sourceforge.net/repo/m2-repository </url>
+	<snapshots>
+		<enabled>true</enabled>
+	</snapshots>
+	<releases>
+		<enabled>true</enabled>
+	</releases>
+</repository>
+
+Instead of http://microlog.sourceforge.net/repo/m2-repository you can use http://microlog.sourceforge.net/repo/m2-snapshot-repository 
+for the snapshot versions.
+
+Now specify the dependency to Microlog:
+
+<dependency>
+	<groupId>net.sf</groupId>
+	<artifactId>microlog</artifactId>
+	<version>X</version>
+</dependency>
+
+where X is the version you want to use.
+
+2. Start programming!
+
+a) You must create a instance of a Logger for each class that you should log. Start with the main class. In our example we use a MIDlet.
+This looks like this:
+
+private final static Logger log = Logger.getLogger();
+
+b) The 2nd step is to configure the logger. This could be done either in your application, using a property file or using dependency 
+injection. In our case we do it in the application directly. This is of course very static, but the simplest way to get going.
+When you got this working, you could replace your configuration with a more flexible solution like using a property file.
+
+This looks like this
+
+public void SuperMIDlet(){
+  Appender appender = new ConsoleAppender();
+  log.addAppender(appender);
+}
+
+The log level is set by default to DEBUG and the default formatter is the SimpleFormatter.
+
+c) Do the actual logging. This looks like this:
+log.debug("Microlog is working!");
+
+4) Compile and run your application (from your IDE). You should probably see your logged message.
+
+
+5) Use Properties to configure Microlog (optional step) 
+
+Microlog has support for configuring using properties.
+The properties are fetched from the following sources in the specified order:
+1. The JAD file.
+2. A property file, e.g. microlog.properties.
+3. The DefaultValues class.
+
+To configure using properties, just add the following to our source code:
+
+Properties properties = new Properties(this, "/myprops.properties");
+log.configure(properties);
+
+The first argument is a reference to your MIDlet and the second is the 
+filename of your property file. There are several overloaded constructors
+in the Properties class. If you omit the property file, the default 
+property file is used; microlog.properties. If your property file is not
+found Microlog issues a warning in your console output.
+
+Happy logging!
+

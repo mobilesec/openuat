@@ -1,0 +1,9 @@
+*~
+.~lock.*#
+*.backup
+*.old
+build.number
+build
+bin
+reports
+dist/*.jar
