@@ -31,7 +31,7 @@ import org.openuat.util.TCPPortServer;
  * 
  * @author Rene Mayrhofer
  */
-public class UacapConsoleTest implements AuthenticationProgressHandler, Runnable {
+public class UacapConsoleDemo implements AuthenticationProgressHandler, Runnable {
     public static final int PORT = 23457;
 
     private RemoteTCPConnection socketToRemote;
@@ -41,7 +41,7 @@ public class UacapConsoleTest implements AuthenticationProgressHandler, Runnable
     private Socket client;
 
     // initialize as server
-    private UacapConsoleTest() throws IOException {
+    private UacapConsoleDemo() throws IOException {
         server = new TCPPortServer(PORT, 10000, true, true);
 	    server.start();
 	    server.addAuthenticationProgressHandler(this);
@@ -49,7 +49,7 @@ public class UacapConsoleTest implements AuthenticationProgressHandler, Runnable
     }
     
     // initialize as client
-    private UacapConsoleTest(String connectTo) throws IOException {
+    private UacapConsoleDemo(String connectTo) throws IOException {
 		System.out.println("Connecting to remote " + connectTo);
         client = new Socket(connectTo, PORT);
         HostProtocolHandler.startAuthenticationWith(
@@ -78,10 +78,10 @@ public class UacapConsoleTest implements AuthenticationProgressHandler, Runnable
     
 	public static void main(String[] args) throws IOException, InterruptedException {
 		if (args.length == 1) {
-			UacapConsoleTest testClient = new UacapConsoleTest(args[0]);
+			UacapConsoleDemo testClient = new UacapConsoleDemo(args[0]);
 		}
 		else {
-			UacapConsoleTest testServer = new UacapConsoleTest();
+			UacapConsoleDemo testServer = new UacapConsoleDemo();
 		}
 		
 		while (true)

@@ -5,5 +5,8 @@
 build.number
 build
 bin
+src/android/bin
+src/android/gen
+src/android/local.properties
 reports
 dist/*.jar
