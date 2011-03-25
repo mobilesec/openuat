@@ -101,7 +101,8 @@
 	<property name="java5-files2" value="org/codec/**/test/*.java" />
 	<property name="java5-files3" value="com/**/test/*.java" />
 	<property name="java5-files4" value="org/openuat/apps/BedaApp.java" />
-	<property name="java5-files5" value="com/bleugris/io/*.java" />
+	<property name="java5-files5" value="org/openuat/util/ip/IPv6AddressesHelper.java" />
+	<property name="java5-files6" value="com/bleugris/io/*.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
 	<!-- And these classes are currently broken and of no use... -->
@@ -265,6 +266,7 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java5-files4}" />
 			<exclude name="${java5-files5}" />
+			<exclude name="${java5-files6}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 			<exclude name="${broken-files1}" />
@@ -279,6 +281,7 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java5-files4}" />
 			<exclude name="${java5-files5}" />
+			<exclude name="${java5-files6}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 			<exclude name="${broken-files1}" />
@@ -293,6 +296,7 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java5-files4}" />
 			<exclude name="${java5-files5}" />
+			<exclude name="${java5-files6}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 			<exclude name="${broken-files1}" />
@@ -307,6 +311,7 @@
 			<exclude name="${java5-files3}" />
 			<exclude name="${java5-files4}" />
 			<exclude name="${java5-files5}" />
+			<exclude name="${java5-files6}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
 			<exclude name="${broken-files1}" />
@@ -328,6 +333,7 @@
 			<include name="${java5-files3}" />
 			<include name="${java5-files4}" />
 			<include name="${java5-files5}" />
+			<include name="${java5-files6}" />
 		</javac>
 	</target>
 
