@@ -1,4 +1,17 @@
-Version 0.11, releases 2009-04-27
+Version 0.12, released 2011-05-
+
+  This is the first release to bring support for Android. Not all items 
+  supported on J2ME/MIDP are currently included, but the following parts have
+  already been ported to Android:
+  
+  * Bluetooth communication
+  * Accelerometer data access
+  * Example application using shaking motions
+
+--- Rene Mayrhofer <rene@mayrhofer.eu.org>
+
+
+Version 0.11, released 2009-04-27
 
   This is again a major new feature release, this time adding support for
   audio, video, manual text, and synchronized button press channels. A demo

@@ -84,7 +84,7 @@
 	<!-- The polish.home property needs to point to the directory -->
 	<!-- containing the J2ME Polish installation.                 -->
 	
-	<property file="build.properties" />
+	<property file="${src}/build.properties" />
 	
 	<!-- import global properties                                 -->
 	<property file="${polish.home}/global.properties" />
@@ -884,6 +884,14 @@
 			<scriptcmd cmd="CRCcheck on"/>
 		</nsis>
 	</target>
+
+    <target name="android" depends="jar-standard" description="Create Android libraries and applications in debug mode">
+    	<ant antfile="src-android/build.xml" target="debug" />
+    </target>
+    
+    <target name="dist-android" depends="jar-standard" description="Create Android libraries and applications in release mode">
+    	<ant antfile="src-android/build.xml" target="release" />
+    </target>
 	
 	<target name="dist-webstart" depends="jar-standard" description="Create distribution for Java webstart">
 		<mkdir dir="${dist.webstart}"/>
@@ -982,8 +990,8 @@
 		</zip>
 	</target>
     
-	<target name="dist" depends="junit,dist-webstart,dist-javadoc,dist-source"
-		description="Create a complete distribution, including webstart, source, and docs"/>
+	<target name="dist" depends="junit,dist-webstart,dist-android,dist-javadoc,dist-source"
+		description="Create a complete distribution, including webstart, applications, source, and docs"/>
     
 	<target name="dist-checkbuild" depends="dist"
 		description="Test building the complete source distribution. This checks if a 'ant dist' as run from a clean tree creates a source ZIP that equals the source tree it was created with. It should be executed before publishing a release.">
