@@ -389,7 +389,8 @@
 				 includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class 
 				 org/openuat/features/**/*.class org/openuat/util/**/*.class
 				 org/codec/**/*.class org/openuat/channel/UACAPProtocolConstants.class
-				 net/mypapit/java/*.class com/swetake/util/**/*.class" />
+				 net/mypapit/java/*.class com/swetake/util/**/*.class" 
+				 excludes="**/j2me/**/*.class" />
 			<fileset dir="${bin-BC-core}" />
 			<fileset dir="${bin-apache-bzip2}" />
 			<fileset dir="${bin-google-zxing}" />

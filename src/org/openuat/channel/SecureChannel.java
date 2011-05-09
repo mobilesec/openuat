@@ -49,7 +49,7 @@ public interface SecureChannel {
 	public boolean start(byte[] sharedSecret, boolean persistent);
 	
 	/** Stop a previously established secure channel. If that channel was made
-	 * persistant, then it will be deleted completely.
+	 * persistent, then it will be deleted completely.
 	 * init() needs to be called once before this method.
 	 * @see #init
 	 * @return true if the channel could be stopped, false otherwise.
