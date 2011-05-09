@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.openuat.apps.android;
+package org.openuat.sensors.android;
 
 import org.openuat.sensors.SamplesSource;
 import org.openuat.sensors.TimeSeries_Int;
@@ -21,7 +21,7 @@ import android.os.Handler;
  * @author Michael
  * 
  */
-public class SampleSourceAndroid extends SamplesSource implements
+public class AndroidAccelerometerSource extends SamplesSource implements
 		SensorEventListener {
 
 	private SensorManager sensorManager;
@@ -40,7 +40,7 @@ public class SampleSourceAndroid extends SamplesSource implements
 	 * @param activity
 	 *            needed to get an instance of the sensor manager
 	 */
-	protected SampleSourceAndroid(int maxNumLines, int sleepBetweenReads,
+	public AndroidAccelerometerSource(int maxNumLines, int sleepBetweenReads,
 			Activity activity) {
 		super(maxNumLines, sleepBetweenReads);
 		// TODO Auto-generated constructor stub
@@ -118,7 +118,7 @@ public class SampleSourceAndroid extends SamplesSource implements
 	}
 
 	@Override
-	protected void finalize() {
+	public void finalize() {
 		sensorManager.unregisterListener(this);
 		try {
 			super.finalize();

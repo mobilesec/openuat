@@ -6,6 +6,7 @@ package org.openuat.apps.android;
 import java.util.Vector;
 
 import org.openuat.sensors.VectorSamplesSink;
+import org.openuat.sensors.android.AndroidAccelerometerSource;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -23,7 +24,7 @@ public class SampleSinkAndroid extends Activity implements VectorSamplesSink {
 	private double[] curValues = new double[3];
 	private Vector<double[]> samples;
 	private TextView x, y, z;
-	private SampleSourceAndroid sampleSourceAndroid;
+	private AndroidAccelerometerSource sampleSourceAndroid;
 
 	/**
 	 * Called when the activity is first created.
@@ -39,7 +40,7 @@ public class SampleSinkAndroid extends Activity implements VectorSamplesSink {
 		y = (TextView) findViewById(R.id.TextView02);
 		z = (TextView) findViewById(R.id.TextView03);
 
-		sampleSourceAndroid = new SampleSourceAndroid(3, 0, this);
+		sampleSourceAndroid = new AndroidAccelerometerSource(3, 0, this);
 		sampleSourceAndroid.addSink(this);
 
 		Log.i(this.getClass().toString(), "onCreate");

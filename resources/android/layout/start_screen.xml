@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
+
+
+
+
+	
+	<TextView android:layout_height="wrap_content" android:id="@+id/TextView01" android:layout_width="wrap_content" android:paddingBottom="5px" android:text="1. Select bluetooth device to connect to"/><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/TextView02" android:paddingBottom="5px" android:text="2. Take both phones into one hand."></TextView>
+	<TextView android:id="@+id/TextView03" android:layout_width="wrap_content"
+		android:layout_height="wrap_content" android:paddingBottom="10px" android:text="3. Shake until phone vibrates."></TextView>
+	<ImageView android:id="@+id/ImageView01"
+		android:layout_width="wrap_content" android:layout_height="wrap_content"
+		android:layout_gravity="center" android:paddingBottom="10px"></ImageView>
+	<Button android:id="@+id/Button01" android:layout_height="wrap_content"
+		android:text="start" android:layout_width="fill_parent" android:paddingTop="10px"></Button>
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+<ListView android:id="@+id/ListView01" android:layout_width="wrap_content" android:layout_height="wrap_content"></ListView>
+<Button android:id="@+id/Button02" android:layout_height="wrap_content" android:text="scan" android:layout_width="fill_parent"></Button>
+</LinearLayout>

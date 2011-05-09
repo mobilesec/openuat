@@ -1,10 +1,10 @@
-package at.fhooe.mc;
+package org.openuat.channel.main.bluetooth.android;
 
 import java.io.IOException;
 import java.util.UUID;
 
 import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.util.*;
+import org.openuat.channel.main.*;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
@@ -18,7 +18,7 @@ import android.util.Log;
  * connection, the HostProtocolHandler.startIncomingAuthenticationThread is
  * invoked with the connected RFCOMM stream connection.
  * 
- * @author Michael
+ * @author Michael Schöllhammer
  * 
  */
 public class AndroidRFCOMMServer extends HostServerBase {

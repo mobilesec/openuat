@@ -1,11 +1,11 @@
-package org.openuat;
+package org.openuat.channel.main.bluetooth.android;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Vector;
 
-import org.openuat.util.RemoteConnection;
+import org.openuat.channel.main.RemoteConnection;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -15,7 +15,7 @@ import android.util.Log;
 /**
  * class which is used to open an RFCOMM channel to a Bluetooth device.
  * 
- * @author Michael
+ * @author Michael Schöllhammer
  * 
  */
 public class AndroidRFCOMMChannel implements RemoteConnection {

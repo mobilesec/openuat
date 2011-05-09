@@ -2,10 +2,10 @@ package org.openuat.apps.android;
 
 import java.io.IOException;
 
-import org.openuat.AndroidRFCOMMChannel;
-import org.openuat.AndroidRFCOMMServer;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
+import org.openuat.channel.main.bluetooth.android.AndroidRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.android.AndroidRFCOMMServer;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -27,10 +27,10 @@ import android.widget.TextView;
 import android.widget.AdapterView.OnItemClickListener;
 
 /**
- * Starting Point of the Application. contains GUI, provides near bluetooth
+ * Starting Point of the Application. contains GUI, provides near Bluetooth
  * devices, starts an AndroidRFCOMMServer and AndroidRFCOMMChannel
  * 
- * @author Michael
+ * @author Michael Schöllhammer
  * 
  */
 public class StartActivity extends Activity implements OnClickListener,
