@@ -15,10 +15,10 @@ import javax.bluetooth.UUID;
 
 import junit.framework.Assert;
 
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothRFCOMMServer;
-import org.openuat.util.BluetoothSupport;
-import org.openuat.util.HostServerBase;
+import org.openuat.channel.main.HostServerBase;
+import org.openuat.channel.main.bluetooth.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
 
 public class BluetoothRFCOMMServerTest extends BluetoothEmulatorBase {
 	private static final int CHANNEL = 9;

@@ -215,6 +215,6 @@ public class IPv6AddressesHelper {
     	String outboundIPv6Addr = getOutboundIPv6Address();
     	System.out.println("Found outbound (externally visible) IPv6 address: " + outboundIPv6Addr);
     	System.out.println("Address is MAC-derived: " + 
-    			isIPv6GlobalMacDerivedAddress(Inet6Address.getByName(outboundIPv6Addr)));
+    			isIPv6GlobalMacDerivedAddress(InetAddress.getByName(outboundIPv6Addr)));
     }
 }

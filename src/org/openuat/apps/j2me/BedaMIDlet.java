@@ -47,8 +47,12 @@ import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.main.ProtocolCommandHandler;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
 import org.openuat.channel.oob.ButtonChannel;
-import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
 import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
@@ -56,18 +60,14 @@ import org.openuat.channel.oob.PowerBarToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.TrafficLightToButtonChannel;
+import org.openuat.channel.oob.desktop.ButtonChannelImpl;
 import org.openuat.channel.oob.j2me.J2MEButtonChannelImpl;
 import org.openuat.log.Log;
 import org.openuat.log.LogFactory;
 import org.openuat.log.j2me.MicrologFactory;
 import org.openuat.log.j2me.MicrologLogger;
-import org.openuat.util.BluetoothPeerManager;
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothRFCOMMServer;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.ProtocolCommandHandler;
-import org.openuat.util.RemoteConnection;
 
 /**
  * This MIDlet demonstrates the different button channels within the OpenUAT

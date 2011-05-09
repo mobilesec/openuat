@@ -9,10 +9,8 @@
 package org.openuat.channel.oob;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import org.apache.log4j.Logger;
 import org.codec.audio.AudioUtils;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
@@ -24,7 +22,6 @@ import org.openuat.authentication.OOBMessageHandler;
  */
 public class AudioChannel implements OOBChannel {
 	private OOBMessageHandler messageHandler;
-	private Logger logger = Logger.getLogger(AudioChannel.class);
 	
 /*	private Display display;
 	private Displayable appHomescreen;
@@ -36,7 +33,7 @@ public class AudioChannel implements OOBChannel {
 	 
 		private Player captureAudioPlayer;
 		private RecordControl rc;
-*/		private ByteArrayOutputStream output;
+		private ByteArrayOutputStream output;*/
 
 		/** The last recorded sequence */
 		 byte [] recorded = null ;
@@ -234,7 +231,7 @@ public class AudioChannel implements OOBChannel {
 	 */
 	public void transmit(byte[] message) {
 		try {
-			byte[]encodedtoSend = AudioUtils.encodeFileToWav(new ByteArrayInputStream(message));
+/*			byte[]encodedtoSend =*/ AudioUtils.encodeFileToWav(new ByteArrayInputStream(message));
 			
 /*			Alert play = new Alert ("Encoded", "Play?", null, AlertType.CONFIRMATION);
 			play.setTimeout(Alert.FOREVER);

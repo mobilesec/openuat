@@ -14,9 +14,9 @@ fi
 
 mkdir /tmp/$1
 
-java -cp `dirname $0`/../dist/openuat-distbundle.jar org.openuat.util.BluetoothRFCOMMChannel $ADDR1 2 stream | /srv/debian-unstable-i386/usr/bin/tai64n | /srv/debian-unstable-i386/usr/bin/tai64nlocal > /tmp/$1/1 &
+java -cp `dirname $0`/../dist/openuat-distbundle.jar org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel $ADDR1 2 stream | /srv/debian-unstable-i386/usr/bin/tai64n | /srv/debian-unstable-i386/usr/bin/tai64nlocal > /tmp/$1/1 &
 
-java -cp `dirname $0`/../dist/openuat-distbundle.jar org.openuat.util.BluetoothRFCOMMChannel $ADDR2 2 stream | /srv/debian-unstable-i386/usr/bin/tai64n | /srv/debian-unstable-i386/usr/bin/tai64nlocal > /tmp/$1/2 &
+java -cp `dirname $0`/../dist/openuat-distbundle.jar org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel $ADDR2 2 stream | /srv/debian-unstable-i386/usr/bin/tai64n | /srv/debian-unstable-i386/usr/bin/tai64nlocal > /tmp/$1/2 &
 
 echo "Press enter to terminate"
 read

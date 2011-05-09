@@ -9,6 +9,7 @@
 package org.openuat.channel.oob;
 
 import org.openuat.authentication.OOBChannel;
+import org.openuat.channel.oob.desktop.ButtonChannelImpl;
 import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 
@@ -50,7 +51,7 @@ public class TrafficLightToButtonChannel extends ButtonChannel {
 		minTimeUnit		= 1000;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
-		useCarry		= true;
+		useCarryM		= true;
 		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Traffic Light";

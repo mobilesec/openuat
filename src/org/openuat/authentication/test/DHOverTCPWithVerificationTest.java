@@ -16,9 +16,9 @@ import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.openuat.authentication.DHWithVerification;
-import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
-import org.openuat.util.TCPPortServer;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
+import org.openuat.channel.main.ip.TCPPortServer;
 
 /** There are no _BCAPI and _Mixed variants because DHOverTCPWithVerification only uses the crypto embedded into
  * SimpleKeyAgreement and InterlockProtocol, and those are tested with _BCAPI and _Mixed.

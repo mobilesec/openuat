@@ -22,16 +22,16 @@ import net.sf.microlog.ui.LogForm;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.bluetooth.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
 import org.openuat.log.Log;
 import org.openuat.log.LogFactory;
 import org.openuat.log.j2me.MicrologFactory;
 import org.openuat.log.j2me.MicrologLogger;
-import org.openuat.util.BluetoothPeerManager;
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothRFCOMMServer;
-import org.openuat.util.BluetoothSupport;
 import org.openuat.util.Hash;
-import org.openuat.util.RemoteConnection;
 
 /** This MIDlet demonstrates all three possible options for out-of-band peer
  * verification when using the UACAP protocol and "manual" authentication.

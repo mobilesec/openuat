@@ -22,12 +22,12 @@ import net.sf.microlog.ui.LogForm;
 import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.util.BluetoothPeerManager;
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothRFCOMMServer;
-import org.openuat.util.BluetoothSupport;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.bluetooth.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.RemoteConnection;
 
 /** This MIDlet demonstrates Bluetooth functionality of OpenUAT by using mainly 
  * BluetoothPeerManager to inquire for devices and search for services.

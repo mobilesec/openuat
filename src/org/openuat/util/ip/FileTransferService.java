@@ -113,9 +113,6 @@ public class FileTransferService {
 		
 	}
 
-	private FileTransferService() {
-	};
-
 	class FileTransferHandler implements FileTransferListener {
 		public FileTransferHandler() {
 		}

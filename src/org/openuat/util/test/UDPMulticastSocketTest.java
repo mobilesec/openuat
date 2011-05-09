@@ -19,8 +19,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.openuat.authentication.test.SimpleKeyAgreementTest;
-import org.openuat.util.MessageListener;
-import org.openuat.util.UDPMulticastSocket;
+import org.openuat.channel.main.MessageListener;
+import org.openuat.channel.main.ip.UDPMulticastSocket;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;

@@ -33,13 +33,13 @@ import org.codec.audio.WavPlayer;
 import org.codec.mad.MadLib;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.UACAPProtocolConstants;
-import org.openuat.channel.oob.VisualChannel;
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothRFCOMMServer;
-import org.openuat.util.BluetoothSupport;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.bluetooth.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
+import org.openuat.channel.oob.desktop.VisualChannel;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.RemoteConnection;
 
 /**
  * Implements the OpenUAT toolkit for J2SE.

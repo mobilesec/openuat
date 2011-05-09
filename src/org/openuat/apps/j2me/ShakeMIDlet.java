@@ -36,19 +36,19 @@ import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
+import org.openuat.channel.main.HostAuthenticationServer;
+import org.openuat.channel.main.ProtocolCommandHandler;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.bluetooth.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothOpportunisticConnector;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
 import org.openuat.sensors.SamplesSink_Int;
 import org.openuat.sensors.SamplesSource;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.j2me.NokiaAccelerometerReader;
-import org.openuat.util.BluetoothOpportunisticConnector;
-import org.openuat.util.BluetoothPeerManager;
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothRFCOMMServer;
-import org.openuat.util.BluetoothSupport;
-import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.ProtocolCommandHandler;
-import org.openuat.util.RemoteConnection;
 
 public class ShakeMIDlet extends MIDlet implements CommandListener {
 	private final static String IMAGE_GOOD = "/button_ok.png";

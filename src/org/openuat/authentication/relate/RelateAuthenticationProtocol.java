@@ -14,9 +14,9 @@ import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
-import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
-import org.openuat.util.TCPPortServer;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
+import org.openuat.channel.main.ip.TCPPortServer;
 
 import java.io.*;
 import java.net.Socket;

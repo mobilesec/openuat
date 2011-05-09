@@ -9,8 +9,8 @@
 package org.openuat.util.test;
 
 import org.openuat.authentication.exceptions.*;
-import org.openuat.util.HostServerBase;
-import org.openuat.util.TCPPortServer;
+import org.openuat.channel.main.HostServerBase;
+import org.openuat.channel.main.ip.TCPPortServer;
 
 import java.net.*;
 import java.io.*;

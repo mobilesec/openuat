@@ -13,9 +13,9 @@ import java.net.Socket;
 
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
-import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
-import org.openuat.util.TCPPortServer;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
+import org.openuat.channel.main.ip.TCPPortServer;
 
 public class ShakeWellBeforeUseProtocol1Test extends ShakeWellBeforeUseProtocolTestBase {
 	private Protocol1Hooks prot1_a, prot1_b;

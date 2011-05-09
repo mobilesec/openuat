@@ -14,15 +14,14 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.security.SecureRandom;
 import java.util.Hashtable;
+import java.util.StringTokenizer;
 import java.util.Vector;
 
-import net.mypapit.java.StringTokenizer;
-
 import org.openuat.authentication.exceptions.*;
+import org.openuat.channel.main.ProtocolCommandHandler;
+import org.openuat.channel.main.RemoteConnection;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.ProtocolCommandHandler;
-import org.openuat.util.RemoteConnection;
 import org.openuat.util.SafetyBeltTimer;
 
 import org.apache.commons.codec.DecoderException;

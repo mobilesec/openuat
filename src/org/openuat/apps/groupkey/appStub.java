@@ -7,9 +7,6 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.StringItem;
 
-import org.openuat.channel.ifComm;
-import org.openuat.channel.http.CommHex;
-import org.openuat.util.ifListener;
 
 /**
  * @author Christoph Egger

@@ -18,11 +18,11 @@ import java.net.Socket;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.main.HostServerBase;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
+import org.openuat.channel.main.ip.TCPPortServer;
 import org.openuat.util.Hash;
-import org.openuat.util.HostServerBase;
-import org.openuat.util.RemoteTCPConnection;
 import org.openuat.util.SimpleBlockCipher;
-import org.openuat.util.TCPPortServer;
 
 /** This class implements a very simple demo application for the
  * main authentication and key agreement protocol. It uses UACAP in

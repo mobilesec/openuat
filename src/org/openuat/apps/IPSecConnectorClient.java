@@ -26,10 +26,10 @@ import org.apache.log4j.Logger;
 import org.openuat.apps.BinaryBlockStreamer;
 import org.openuat.apps.IPSecConfigHandler;
 
-import org.openuat.channel.IPSecConnection;
-import org.openuat.channel.IPSecConnection_Factory;
 import org.openuat.channel.X509CertificateGenerator;
-import org.openuat.util.RemoteConnection;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.vpn.IPSecConnection;
+import org.openuat.channel.vpn.IPSecConnection_Factory;
 
 import uk.ac.lancs.relate.apps.RelateGridDemo;
 import uk.ac.lancs.relate.core.Configuration;

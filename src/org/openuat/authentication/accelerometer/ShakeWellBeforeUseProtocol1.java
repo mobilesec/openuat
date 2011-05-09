@@ -23,15 +23,15 @@ import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.main.HostAuthenticationServer;
+import org.openuat.channel.main.ProtocolCommandHandler;
+import org.openuat.channel.main.RemoteConnection;
 import org.openuat.features.Coherence;
 import org.openuat.features.TimeSeriesUtil;
 import org.openuat.sensors.SegmentsSink;
 import org.openuat.sensors.SegmentsSink_Int;
 import org.openuat.sensors.TimeSeriesAggregator;
-import org.openuat.util.HostAuthenticationServer;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.ProtocolCommandHandler;
-import org.openuat.util.RemoteConnection;
 
 /** This is the first variant of the motion authentication protocol. It
  * uses Diffie-Hellman key agreement with verification that the shared keys
@@ -853,9 +853,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		
 		boolean keepConnected = false;
 		HostAuthenticationServer s1, s2;
-		s1 = new org.openuat.util.TCPPortServer(TcpPort, KeyAgreementProtocolTimeout, keepConnected, true);
+		s1 = new org.openuat.channel.main.ip.TCPPortServer(TcpPort, KeyAgreementProtocolTimeout, keepConnected, true);
 		// this will not be started
-		s2 = new org.openuat.util.TCPPortServer(0, KeyAgreementProtocolTimeout, keepConnected, true); 
+		s2 = new org.openuat.channel.main.ip.TCPPortServer(0, KeyAgreementProtocolTimeout, keepConnected, true); 
 		ShakeWellBeforeUseProtocol1 ma1 = new ShakeWellBeforeUseProtocol1(s1, keepConnected, keepConnected, false,
 				0.82, 0.2, ShakeWellBeforeUseParameters.coherenceWindowSize, true); 
 		ShakeWellBeforeUseProtocol1 ma2 = new ShakeWellBeforeUseProtocol1(s2, keepConnected, keepConnected, false,
@@ -863,7 +863,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		aggr_a.addNextStageSegmentsSink(ma1);
 		aggr_b.addNextStageSegmentsSink(ma2);
 		ma1.startListening();
-		ma2.startAuthentication(new org.openuat.util.RemoteTCPConnection(
+		ma2.startAuthentication(new org.openuat.channel.main.ip.RemoteTCPConnection(
 				new java.net.Socket("localhost", TcpPort)), KeyAgreementProtocolTimeout, null);
 		
 		r.simulateSampling();

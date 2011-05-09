@@ -51,7 +51,7 @@ desktop/laptop type OS) periodic Bluetooth inquiry and service search. It can
 be used to verify that this system is supported using the built-in Bluecove
 JSR-82 implementation. Executing
 
-    java -cp dist/openuat-distbundle.jar org.openuat.util.BluetoothPeerManager
+    java -cp dist/openuat-distbundle.jar org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager
 
 should start a main loop and print all discovered devices as well as the
 Bluetooth services they offer. Pressing Enter will terminate this loop.
@@ -89,7 +89,7 @@ Any computer with a supported Bluetooth chipset can act as the counterpart for
 the second variant by executing
 
     java -cp dist/openuat-distbundle \
-    	org.openuat.util.BluetoothOpportunisticConnector [mirror]
+    	org.openuat.channel.main.bluetooth.jsr82.BluetoothOpportunisticConnector [mirror]
 
 Because most computers won't have accelerometers or will not be too easy to
 shake together with the phone, a real test will not be possible. However, by

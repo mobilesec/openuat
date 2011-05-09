@@ -17,24 +17,13 @@ import javax.microedition.lcdui.StringItem;
 
 import net.mypapit.java.StringTokenizer;
 
-import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.openuat.authentication.SimpleKeyAgreement;
-import org.openuat.authentication.exceptions.InternalApplicationException;
-import org.openuat.authentication.exceptions.KeyAgreementProtocolException;
-import org.openuat.channel.ifComm;
-import org.openuat.channel.http.CommPlain;
-import org.openuat.util.ifListener;
 
-/**
- * @author Lukas
- *
- */
 public class appPairStub implements ifListener,CommandListener {
 
 	private ifComm comm;
 	private String message;
-	//Midlet Sachen
 	private Display display;
 	private Form mainForm,resultForm;
 	private Command sendCommand1 = new Command("SendKey1", Command.OK, 1);
@@ -73,7 +62,6 @@ public class appPairStub implements ifListener,CommandListener {
 				ka2.addRemotePublicKey(Hex.decodeHex(tempStringTokenizer.nextToken().toCharArray()));
 				message=message+"Session Key2:"+ new String(Hex.encodeHex((ka2.getSessionKey())));
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				message=message+e.toString();
 			}
 		}
@@ -85,7 +73,6 @@ public class appPairStub implements ifListener,CommandListener {
 				ka1.addRemotePublicKey(Hex.decodeHex(tempStringTokenizer.nextToken().toCharArray()));
 				message=message+"Session Key1:"+ new String(Hex.encodeHex((ka1.getSessionKey())));
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				message=message+e.toString();
 			}
 		}
@@ -126,7 +113,6 @@ public class appPairStub implements ifListener,CommandListener {
 				sendMsg("Key1","pubkey1-" + new String(Hex.encodeHex(ka1.getPublicKey())));
 				
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
@@ -140,7 +126,6 @@ public class appPairStub implements ifListener,CommandListener {
 				sendMsg("Key2","pubkey2-" + new String(Hex.encodeHex(ka2.getPublicKey())));
 				
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			

@@ -14,9 +14,9 @@ import java.io.*;
 
 import org.openuat.authentication.*;
 import org.openuat.authentication.exceptions.*;
-import org.openuat.util.HostServerBase;
-import org.openuat.util.RemoteTCPConnection;
-import org.openuat.util.TCPPortServer;
+import org.openuat.channel.main.HostServerBase;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
+import org.openuat.channel.main.ip.TCPPortServer;
 
 import junit.framework.*;
 

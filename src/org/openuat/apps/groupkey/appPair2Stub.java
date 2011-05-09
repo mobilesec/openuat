@@ -23,9 +23,6 @@ import org.apache.commons.codec.binary.Hex;
 import org.openuat.authentication.SimpleKeyAgreement;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.exceptions.KeyAgreementProtocolException;
-import org.openuat.util.Pair;
-import org.openuat.util.ifListener;
-import org.openuat.util.ifPair;
 
 /**
  * @author Lukas

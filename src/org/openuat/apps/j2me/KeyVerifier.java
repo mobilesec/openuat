@@ -31,12 +31,12 @@ import org.openbandy.service.LogService;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
+import org.openuat.channel.main.RemoteConnection;
 import org.openuat.channel.oob.j2me.J2MEAudioChannel;
 import org.openuat.channel.oob.j2me.J2MEVisualChannel;
 import org.openuat.log.Log;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
-import org.openuat.util.RemoteConnection;
 
 public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMessageHandler  {
 

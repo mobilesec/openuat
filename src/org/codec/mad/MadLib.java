@@ -8,7 +8,7 @@
 package org.codec.mad;
 
 import java.io.UnsupportedEncodingException;
-import net.mypapit.java.StringTokenizer;
+import java.util.StringTokenizer;
 import java.util.Vector;
 
 public class MadLib

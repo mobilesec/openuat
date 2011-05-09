@@ -9,8 +9,6 @@
 
 package org.openuat.apps.groupkey;
 
-import org.openuat.channel.http.CommPlain;
-import org.openuat.util.ifListener;
 
 import tgdh.TgdhException;
 import tgdh.comm.JoinMessage;

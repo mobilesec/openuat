@@ -108,7 +108,7 @@ public class J2MEVisualChannel implements OOBChannel{
 		}
 	}
 
-	public void close(boolean unconditional) {
+	public void close(@SuppressWarnings("unused") boolean unconditional) {
 		if (player != null) {
 			videoControl = null;
 			try {

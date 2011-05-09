@@ -14,7 +14,7 @@ import java.util.Vector;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.log4j.Logger;
-import org.openuat.util.RemoteConnection;
+import org.openuat.channel.main.RemoteConnection;
 
 /** This class manages shared secret keys. It assumes that up to two keys are
  * shared with a remote host, an authentication key and a session key for 

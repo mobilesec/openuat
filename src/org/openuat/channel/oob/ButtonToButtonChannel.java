@@ -8,6 +8,7 @@
  */
 package org.openuat.channel.oob;
 
+import org.openuat.channel.oob.desktop.ButtonChannelImpl;
 import org.openuat.log.LogFactory;
 
 /**
@@ -39,7 +40,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 		minTimeUnit2	= 300;
 		inputMode		= MODE_PRESS;
 		doRoundDown		= false;
-		useCarry		= false;
+		useCarryM		= false;
 		showFeedback	= false;
 		messageHandler	= null;
 		shortDescription	= "Input";

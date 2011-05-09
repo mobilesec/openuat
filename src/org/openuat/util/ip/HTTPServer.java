@@ -20,20 +20,17 @@ import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
 
-import simple.http.connect.Connection;
-import simple.http.connect.ConnectionFactory;
 import simple.http.load.MapperEngine;
 import simple.http.serve.CacheContext;
-import simple.http.serve.ProtocolHandlerFactory;
 
 /**
- * This class starts a http server based on the implementation
+ * This class starts a HTTP server based on the implementation
  * of the simple server (http://www.simpleframework.org/)
  * To make make it run, you need to include the simple.jar (containing
  * the implementation) and the kxml lib (http://kxml.objectweb.org/)
  * you need as well to configure the server over a xml file (called 
  * mapper.xml)
- * There you specify which service is mapped to wich request. at the 
+ * There you specify which service is mapped to which request. at the 
  * moment all the request are mapped to the same service class. if
  * the request is a filetransfer over post, the file will be extracted
  * by the PostFileTransfer.class otherwise this class gives a simple 

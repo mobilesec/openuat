@@ -12,6 +12,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.openuat.authentication.OOBChannel;
+import org.openuat.channel.oob.desktop.ButtonChannelImpl;
 import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 
@@ -60,7 +61,7 @@ public class ProgressBarToButtonChannel extends ButtonChannel {
 		minTimeUnit		= 600;
 		inputMode		= MODE_PRESS_RELEASE;
 		doRoundDown		= false;
-		useCarry		= false;
+		useCarryM		= false;
 		showFeedback	= true;
 		messageHandler	= null;
 		shortDescription = "Progress Bar";

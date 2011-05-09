@@ -220,10 +220,7 @@ public class MDNSDiscovery {
 		//TODO not urgent but some of this is duplicate code and could be cleaned up a bit
 		//possibly make the main class implement ServiceListener rather than use a helper class
 		//FIXME check that this is thread safe, are 2 methods of the same listener ever run concurrently ?
-		MDNSDiscovery jmdns;
 		int deviceId;
-		InetAddress ipAddress;
-		String hostname;
 		boolean isRelateType;
 		ServiceInfo info;
 		
@@ -236,18 +233,17 @@ public class MDNSDiscovery {
 				deviceId = parseService(e.getName()).intValue();
 				info = e.getInfo();
 				if(info != null) {
-					ipAddress = info.getInetAddress();
-					hostname = info.getServer();
+					InetAddress ipAddress = info.getInetAddress();
+					String hostname = info.getServer();
 				} else {
 					logger.warn("No info about service.");
 				}
 				//TODO should we use the other available info ? username for instance ?
 				try {
-					jmdns = MDNSDiscovery.getMDNSDiscovery();
+					MDNSDiscovery.getMDNSDiscovery();
 				} catch(IOException ex) {
 					//doesn't matter, the source for the event will just be null
 					logger.error("Unable to access mdns resolver.");
-					jmdns = null;
 				}
 				
 			}

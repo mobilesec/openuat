@@ -33,8 +33,8 @@ import org.apache.log4j.PropertyConfigurator;
 import org.openuat.apps.BinaryBlockStreamer;
 import org.openuat.apps.IPSecConfigHandler;
 import org.openuat.channel.X509CertificateGenerator;
-import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
 
 import uk.ac.lancs.relate.apps.RelateGridDemo;
 import uk.ac.lancs.relate.core.Configuration;

@@ -10,6 +10,7 @@ package org.openuat.channel.oob;
 
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
+import org.openuat.channel.oob.desktop.ButtonChannelImpl;
 import org.openuat.log.Log;
 import org.openuat.util.IntervalList;
 
@@ -108,7 +109,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 	/**
 	 * Used for {@link #intervalsToBytes}.
 	 */
-	protected boolean useCarry;
+	protected boolean useCarryM;
 	
 	/**
 	 * Should additional user feedback be output? As for example
@@ -222,11 +223,11 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 				}
 				// massage has been transmitted, pass it on
 				if (messageHandler != null) {
-					byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarry);
+					byte[] message = intervalsToBytes(oobInput, minTimeUnit, BITS_PER_INTERVAL, doRoundDown, useCarryM);
 					if (minTimeUnit2 != 0) {
 						// generate a second candidate shared secret
 						// the returned message consists of the concatenation of both candidates
-						byte[] cand2 = intervalsToBytes(oobInput, minTimeUnit2, BITS_PER_INTERVAL, doRoundDown, useCarry);
+						byte[] cand2 = intervalsToBytes(oobInput, minTimeUnit2, BITS_PER_INTERVAL, doRoundDown, useCarryM);
 						byte[] concat = new byte[message.length + cand2.length];
 						System.arraycopy(message, 0, concat, 0, message.length);
 						System.arraycopy(cand2, 0, concat, message.length, cand2.length);
@@ -354,7 +355,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 		long temp = 0L;
 		int shiftIndex = 0;
 		for (int i = 0; i < byteCount; i++) {
-			temp = (long)bytes[i] & 0xffL;
+			temp = bytes[i] & 0xffL;
 			temp = temp << shiftIndex;
 			bits = bits | temp;
 			shiftIndex += 8;

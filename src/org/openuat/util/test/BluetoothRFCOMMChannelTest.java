@@ -10,8 +10,8 @@ package org.openuat.util.test;
 
 import java.io.IOException;
 
-import org.openuat.util.BluetoothRFCOMMChannel;
-import org.openuat.util.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.BluetoothSupport;
+import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;

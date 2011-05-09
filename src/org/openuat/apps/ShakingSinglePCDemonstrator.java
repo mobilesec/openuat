@@ -25,14 +25,14 @@ import org.eclipse.swt.graphics.Font;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2;
+import org.openuat.channel.main.RemoteConnection;
+import org.openuat.channel.main.ip.RemoteTCPConnection;
+import org.openuat.channel.main.ip.TCPPortServer;
 import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
 import org.openuat.sensors.SamplesSink;
 import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.WiTiltRawReader;
-import org.openuat.util.RemoteConnection;
-import org.openuat.util.RemoteTCPConnection;
-import org.openuat.util.TCPPortServer;
 
 /** This is a simple demonstrator for the shaking authentication. It
  * shows both protocol variants with a simple GUI.
