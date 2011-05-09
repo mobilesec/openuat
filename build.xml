@@ -43,9 +43,7 @@
 	<property name="thirdparty-bandy" location="${thirdparty}/bandy"/>
 	<property name="bin-bandy" location="${build}/bin-bandy"/>
 	<property name="thirdparty-microlog-wrapper" location="${thirdparty}/log4jNoop"/>
-	<property name="thirdparty-avetanaNoop" location="${thirdparty}/avetanaNoop"/>
 	<property name="findbugs.home" value="${thirdparty}/findbugs-1.3.6" />
-	<property name="bin-avetanaNoop" location="${build}/bin-avetanaNoop"/>
 	<property name="build.midp.work" location="${build}/midp-work"/>
 	<property name="build.midp.temp" location="${build}/midp-tmp"/>
 	<property name="bin.midp" location="${build}/midp-bin"/>
@@ -118,7 +116,6 @@
 		<include name="log4j-1.2.jar"/>
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
-		<!--<include name="avetanaBT.jar"/>-->
 		<include name="bluecove-2.1.0.jar"/>
 		<include name="bluecove-gpl-2.1.0.jar"/>
 		<include name="jsapi.jar"/>
@@ -351,7 +348,6 @@
 	<target name="compile-midp" description="Compile special classes for MIDP2.0" if="haveWTK">
 		<mkdir dir="${bin-microlog}"/>
 		<mkdir dir="${bin-bandy}"/>
-		<mkdir dir="${bin-avetanaNoop}"/>
 
 		<echo message="    * Compiling OpenUAT J2ME thirdparty code: logging"/>
 		<!-- Compile the MicroLog dependencies -->
@@ -366,11 +362,6 @@
 		<javac srcdir="${thirdparty-bandy}" destdir="${bin-bandy}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
 		
-		<echo message="    * Compiling OpenUAT J2ME thirdparty code: JSR82 dummy wrappers"/>
-		<!-- This is just a no-op avenata class when we can't use the JAR -->
-		<javac srcdir="${thirdparty-avetanaNoop}" destdir="${bin-avetanaNoop}" includeAntRuntime="no"
-		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
-
 		<echo message="    * Compiling OpenUAT J2ME core and example MIDlets"/>
 		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
@@ -554,7 +545,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}${separator}${bin-microlog}${separator}${bin-bandy}${separator}${bin-BC-core}"
+				binaryLibraries="${bin-microlog}${separator}${bin-bandy}${separator}${bin-BC-core}"
 				>
 				<!--change for win -->
 				<!-- midlets definition -->
@@ -655,7 +646,7 @@
 				sourceDir="${build.midp.temp}"
 				destDir="${dist}"
 				compilerDestDir="${bin.midp}"
-				binaryLibraries="${bin-avetanaNoop}${separator}${bin-microlog}${separator}${bin-bandy}${separator}${bin-BC-core}">
+				binaryLibraries="${bin-microlog}${separator}${bin-bandy}${separator}${bin-BC-core}">
 				<midlet class="org.openuat.apps.j2me.ShakeMIDlet" name="ShakeMe"/>
 				<variables includeAntProperties="true">
 					<variable file="${src}/configuration.midp.properties" />
@@ -698,7 +689,6 @@
 				org/openuat/authentication/SimpleKeyAgreement.class org/openuat/util/Hash.class
 				org/openuat/authentication/AuthenticationEventSender.class 
 				org/openuat/authentication/AuthenticationProgressHandler.class org/openuat/authentication/exceptions/*.class"/>
-			<fileset dir="${thirdparty}/avetanaNoop" includes="de/avetana/bluetooth/stack/**/*.class"/>
 			 need the apache commons files 
 			<fileset dir="${bin-BC-core}" includes="org/apache/commons/codec/**/*.class"/>
 			 and MicroLog as log4j replacement 
@@ -979,14 +969,15 @@
 		<zip zipfile="${zipfile.source}" update="true" duplicate="fail">
 			<fileset dir="." 
 		    	     includes="build.xml build.properties Changelog README FAQ .classpath .project 
-						src/**/* pythonsrc/**/* phpsrc/**/* resources/**/* lib/**/* dist/*.jnlp 
+						src/**/* src-python/**/* src-php/**/* src-android/**/* 
+						resources/**/* lib/**/* dist/*.jnlp 
 						tests/**/*
 						thirdparty/bouncycastle-*-deps/**/* thirdparty/ipsec2k.1.1/**/*.h 
 						thirdparty/ipsec2k.1.1/**/*.cpp thirdparty/ipsec2k.1.1/**/wstring 
 						thirdparty/ipsec2k.1.1/**/buffer thirdparty/ipsec2k.1.1/**/*.vcproj 
 						thirdparty/ipsec2k.1.1/**/*.sln thirdparty/ipsec2k.1.1/**/*.txt 
 						thirdparty/apache-bzip2/**/* thirdparty/microlog/**/* thirdparty/log4jNoop/**/* 
-						thirdparty/avetanaNoop/**/* thirdparty/zxing/**/* thirdparty/bandy/**/* nativelib/**/* 
+						thirdparty/zxing/**/* thirdparty/bandy/**/* nativelib/**/* 
 						thirdparty/findbugs-*/**/*"/>
 		</zip>
 	</target>

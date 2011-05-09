@@ -7,6 +7,12 @@ Version 0.12, released 2011-05-
   * Bluetooth communication
   * Accelerometer data access
   * Example application using shaking motions
+  
+  Additionally some refactoring of packages was done for better modularization.
+  This was required to remove the dependeny on MIDP/J2ME for many mobile parts
+  and to add support for the Android API. The result is a (hopefully) more
+  intuitive package naming as well as smaller and more modular JAR files for 
+  including only the required parts of OpenUAT in applications.
 
 --- Rene Mayrhofer <rene@mayrhofer.eu.org>
 
