@@ -1,4 +1,4 @@
-package org.openuat;
+package org.openuat.apps.android;
 
 import android.app.Activity;
 import android.os.Bundle;
