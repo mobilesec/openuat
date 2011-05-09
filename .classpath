@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="android/**" kind="src" path="src"/>
+	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="thirdparty/bandy"/>
 	<classpathentry kind="src" path="thirdparty/zxing"/>
 	<classpathentry kind="src" path="thirdparty/microlog"/>

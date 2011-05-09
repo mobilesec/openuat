@@ -13,7 +13,10 @@
 	<property name="src" location="src"/>
 	<property name="resources" location="resources"/>
 	<property name="build" location="build"/>
-	<property name="bin" location="${build}/bin"/>
+	<property name="bin-core" location="${build}/bin-core"/>
+	<property name="bin-auxchannels" location="${build}/bin-auxchannels"/>
+	<property name="bin-apps" location="${build}/bin-apps"/>
+	<property name="bin-test" location="${build}/bin-test"/>
 	<property name="lib" location="lib"/>
 	<property name="nativelib" location="nativelib"/>
 	<property name="dist" location="dist"/>
@@ -95,17 +98,15 @@
 	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
-	<property name="java5-files1" value="org/openuat/**/test/*.java" />
-	<property name="java5-files2" value="org/codec/**/test/*.java" />
-	<property name="java5-files3" value="com/**/test/*.java" />
-	<property name="java5-files4" value="org/openuat/apps/BedaApp.java" />
-	<property name="java5-files5" value="org/openuat/util/ip/IPv6AddressesHelper.java" />
-	<property name="java5-files6" value="com/bleugris/io/*.java" />
+	<property name="test-files1" value="org/openuat/**/test/*.java" />
+	<property name="test-files2" value="org/codec/**/test/*.java" />
+	<property name="test-files3" value="com/**/test/*.java" />
+	<property name="java5-app-files1" value="org/openuat/apps/BedaApp.java" />
+	<property name="java5-core-files1" value="org/openuat/util/ip/IPv6AddressesHelper.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
 	<!-- And these classes are currently broken and of no use... -->
-	<property name="broken-files1" value="org/openuat/apps/groupkey/*tgdh*.java" />
-	<property name="broken-files2" value="org/openuat/util/Tgdh.java" />
+	<property name="broken-files1" value="org/openuat/apps/groupkey/*.java" />
 	
 	<!-- this can be used in a refid for filesets -->
 	<fileset id="lib.alljars" dir="${lib}">
@@ -138,6 +139,10 @@
 	</path>
 	<path id="lib.path.all">
 		<fileset refid="lib.alljars"/>
+		<pathelement location="${bin-core}"/>
+		<pathelement location="${bin-auxchannels}"/>
+		<pathelement location="${bin-apps}"/>
+		<pathelement location="${bin-test}"/>
 		<pathelement location="${bin-BC-core}"/>
 		<pathelement location="${bin-BC-x509}"/>
 		<pathelement location="${bin-BC-openssl}"/>
@@ -215,7 +220,10 @@
 	</target>
 	
 	<target name="compile" description="Compile code">
-        <mkdir dir="${bin}"/>
+        <mkdir dir="${bin-core}"/>
+        <mkdir dir="${bin-auxchannels}"/>
+        <mkdir dir="${bin-apps}"/>
+        <mkdir dir="${bin-test}"/>
 		<mkdir dir="${bin-BC-core}"/>
 		<mkdir dir="${bin-BC-x509}"/>
 		<mkdir dir="${bin-BC-openssl}"/>
@@ -255,64 +263,55 @@
 
 		<echo message="    * Compiling OpenUAT core: sensor data and utility"/>
 		<!-- Compile our own classes... -->
-		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<javac srcdir="${src}" destdir="${bin-core}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
-		       includes="org/openuat/util/ org/openuat/sensors/ org/openuat/features/">
-			<exclude name="${java5-files1}" />
-			<exclude name="${java5-files2}" />
-			<exclude name="${java5-files3}" />
-			<exclude name="${java5-files4}" />
-			<exclude name="${java5-files5}" />
-			<exclude name="${java5-files6}" />
+		       includes="org/openuat/channel/main org/openuat/util/ org/openuat/sensors/ org/openuat/features/" 
+			   excludes="org/openuat/channel/main/bluetooth/jsr82/">
+			<exclude name="${test-files1}" />
+			<exclude name="${test-files2}" />
+			<exclude name="${test-files3}" />
+			<exclude name="${java5-core-files1}" />
+			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
-			<exclude name="${broken-files1}" />
-			<exclude name="${broken-files2}" />
 		</javac>		
 		<echo message="    * Compiling OpenUAT core: authentication protocols"/>
-		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<javac srcdir="${src}" destdir="${bin-core}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
 		       includes="org/openuat/authentication/">
-			<exclude name="${java5-files1}" />
-			<exclude name="${java5-files2}" />
-			<exclude name="${java5-files3}" />
-			<exclude name="${java5-files4}" />
-			<exclude name="${java5-files5}" />
-			<exclude name="${java5-files6}" />
+			<exclude name="${test-files1}" />
+			<exclude name="${test-files2}" />
+			<exclude name="${test-files3}" />
+			<exclude name="${java5-core-files1}" />
+			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
-			<exclude name="${broken-files1}" />
-			<exclude name="${broken-files2}" />
-		</javac>		
+		</javac>
+		
 		<echo message="    * Compiling OpenUAT core: secure communication channels"/>
-		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<javac srcdir="${src}" destdir="${bin-auxchannels}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
-		       includes="org/openuat/channel/ org/openuat/roles/">
-			<exclude name="${java5-files1}" />
-			<exclude name="${java5-files2}" />
-			<exclude name="${java5-files3}" />
-			<exclude name="${java5-files4}" />
-			<exclude name="${java5-files5}" />
-			<exclude name="${java5-files6}" />
+		       includes="org/openuat/channel/oob/ org/openuat/channel/vpn/ org/openuat/channel/bluetooth/jsr82/ org/openuat/roles/">
+			<exclude name="${test-files1}" />
+			<exclude name="${test-files2}" />
+			<exclude name="${test-files3}" />
+			<exclude name="${java5-core-files1}" />
+			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
-			<exclude name="${broken-files1}" />
-			<exclude name="${broken-files2}" />
-		</javac>		
+		</javac>
+		
 		<echo message="    * Compiling OpenUAT example applications"/>
-		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<javac srcdir="${src}" destdir="${bin-apps}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
 		       includes="org/openuat/apps/">
-			<exclude name="${java5-files1}" />
-			<exclude name="${java5-files2}" />
-			<exclude name="${java5-files3}" />
-			<exclude name="${java5-files4}" />
-			<exclude name="${java5-files5}" />
-			<exclude name="${java5-files6}" />
+			<exclude name="${test-files1}" />
+			<exclude name="${test-files2}" />
+			<exclude name="${test-files3}" />
+			<exclude name="${java5-core-files1}" />
+			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
 			<exclude name="${midp-only-files}" />
-			<exclude name="${broken-files1}" />
-			<exclude name="${broken-files2}" />
 		</javac>
 		
 		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
@@ -321,22 +320,27 @@
 		<antcall target="compile-midp"/>
 	</target>
 	
-	<target name="compile-java5" description="Compile code that needs Java5" if="haveJava5">
-		<echo message="    * Compiling OpenUAT additional code: JUnit tests"/>
-		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+	<target name="compile-java5" description="Compile code that needs Java5 (including JUnit tests)" if="haveJava5">
+		<echo message="    * Compiling OpenUAT additional code: JUnit tests and auxiliary classes"/>
+		<javac srcdir="${src}" destdir="${bin-test}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
-			<include name="${java5-files1}" />
-			<include name="${java5-files2}" />
-			<include name="${java5-files3}" />
-			<include name="${java5-files4}" />
-			<include name="${java5-files5}" />
-			<include name="${java5-files6}" />
+			<include name="${test-files1}" />
+			<include name="${test-files2}" />
+			<include name="${test-files3}" />
+		</javac>
+		<javac srcdir="${src}" destdir="${bin-core}" includeAntRuntime="no"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
+			<include name="${java5-core-files1}" />
+		</javac>
+		<javac srcdir="${src}" destdir="${bin-apps}" includeAntRuntime="no"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
+			<include name="${java5-app-files1}" />
 		</javac>
 	</target>
 
 	<target name="compile-java6" description="Compile code that needs Java6" if="haveJava6">
 		<echo message="    * Compiling OpenUAT additional code: desktop integration"/>
-	    	<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+	    	<javac srcdir="${src}" destdir="${bin-apps}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="1.5" source="1.5">
 			<include name="${java6-files}" />
      	</javac>
@@ -363,7 +367,7 @@
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2" />
 		
 		<echo message="    * Compiling OpenUAT J2ME core and example MIDlets"/>
-		<javac srcdir="${src}" destdir="${bin}" includeAntRuntime="no"
+		<javac srcdir="${src}" destdir="${bin.midp}" includeAntRuntime="no"
 		       classpathref="lib.path.midp" debug="${compile.debug}" target="1.2" source="1.2"
 		       includeJavaRuntime="no">
 			<include name="${midp-only-files}" />
@@ -376,35 +380,31 @@
 		<mkdir dir="${dist}"/>
 		<jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
-			<fileset dir="${bin}"
-				 includes="org/openuat/authentication/**/*.class org/openuat/sensors/**/*.class 
-				 org/openuat/features/**/*.class org/openuat/util/**/*.class
-				 org/codec/**/*.class org/openuat/channel/UACAPProtocolConstants.class
-				 net/mypapit/java/*.class com/swetake/util/**/*.class" 
-				 excludes="**/j2me/**/*.class" />
+			<fileset dir="${bin-core}" />
 			<fileset dir="${bin-BC-core}" />
 			<fileset dir="${bin-apache-bzip2}" />
-			<fileset dir="${bin-google-zxing}" />
 			<fileset dir="${src}" includes="*.properties" />
 		</jar>
     
 		<jar jarfile="${jarfile.channels}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
-			<fileset dir="${bin}"
-				 includes="org/openuat/channel/**/*.class" />
+			<fileset dir="${bin-auxchannels}" />
 			<fileset dir="${bin-BC-x509}" />
+			<fileset dir="${bin-google-zxing}" />
 		</jar>
 
 		<jar jarfile="${jarfile.apps}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
-			<fileset dir="${bin}"
-				 includes="org/openuat/apps/**/*.class" />
+			<fileset dir="${bin-apps}" />
 			<fileset dir="${bin-BC-openssl}" />
 		</jar>
 
 		<jar jarfile="${jarfile.distbundle}" manifest="${src}/Manifest"
-		     update="false" duplicate="fail" index="true">
-			<fileset dir="${bin}" />
+		     update="false" duplicate="preserve" index="true">
+			<fileset dir="${bin-core}" />
+			<fileset dir="${bin-auxchannels}" />
+			<fileset dir="${bin-apps}" />
+			<fileset dir="${bin-test}" />
 			<fileset dir="${bin-BC-core}" />
 			<fileset dir="${bin-BC-x509}" />
 			<fileset dir="${bin-BC-openssl}" />
@@ -779,6 +779,7 @@
 				<pathelement location="${jarfile.core}"/>
 				<pathelement location="${jarfile.channels}"/>
 				<pathelement location="${jarfile.apps}"/>
+				<pathelement location="${bin-test}"/>
 				<!-- to also use the log4.properties file -->
 				<pathelement location="${src}"/>
 				<!-- for Bluetooth loopback (emulator) tests -->
@@ -850,6 +851,7 @@
 			<class location="${jarfile.core}" />
 			<class location="${jarfile.channels}" />
 			<class location="${jarfile.apps}" />
+			<class location="${bin-test}" />
 		</findbugs>
 	</target>
 
