@@ -1,9 +1,17 @@
+/* Copyright Michael Schöllhammer
+ * Extended/cleaned up by Rene Mayrhofer
+ * File created 2010-05
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.channel.main.bluetooth.android;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Vector;
 
 import org.openuat.channel.main.RemoteConnection;
 
@@ -15,7 +23,7 @@ import android.util.Log;
 /**
  * class which is used to open an RFCOMM channel to a Bluetooth device.
  * 
- * @author Michael Schöllhammer
+ * @author Michael Schöllhammer, Rene Mayrhofer
  * 
  */
 public class AndroidRFCOMMChannel implements RemoteConnection {
@@ -23,8 +31,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	private BluetoothAdapter adapter;
 	private BluetoothSocket socket;
 	private BluetoothDevice device;
-	private static Vector openChannels;
-	private String remoteDeviceAddress;
 
 	private InputStream fromRemote = null;
 	private OutputStream toRemote = null;
@@ -36,17 +42,14 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 *            device to connect to
 	 */
 	public AndroidRFCOMMChannel(BluetoothDevice device) {
-		openChannels = new Vector();
 		this.device = device;
 
 		try {
 			socket = device
 					.createRfcommSocketToServiceRecord(AndroidRFCOMMServer.serviceUUID);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(this.getClass().toString(), "Unable to create Bluetooth RFCOMM socket to device " + device, e);
 		}
-		remoteDeviceAddress = device.getAddress();
 		adapter = BluetoothAdapter.getDefaultAdapter();
 
 		Log.i(this.getClass().toString(), "constructor: channel by device");
@@ -60,9 +63,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	public AndroidRFCOMMChannel(BluetoothSocket s) {
 		socket = s;
-		openChannels = new Vector();
-		device = socket.getRemoteDevice();
-		remoteDeviceAddress = device.getAddress();
 		adapter = BluetoothAdapter.getDefaultAdapter();
 
 		Log.i(this.getClass().toString(), "constructor: channel by socket");
@@ -73,7 +73,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	@Override
 	public InputStream getInputStream() throws IOException {
-		// TODO Auto-generated method stub
 		return socket.getInputStream();
 	}
 
@@ -82,7 +81,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	@Override
 	public OutputStream getOutputStream() throws IOException {
-		// TODO Auto-generated method stub
 		return socket.getOutputStream();
 	}
 
@@ -91,7 +89,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	@Override
 	public Object getRemoteAddress() throws IOException {
-		// TODO Auto-generated method stub
 		return socket.getRemoteDevice().getAddress();
 	}
 
@@ -100,7 +97,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	@Override
 	public String getRemoteName() {
-		// TODO Auto-generated method stub
 		return socket.getRemoteDevice().getName();
 	}
 
@@ -116,8 +112,7 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 		try {
 			socket.connect();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(this.getClass().toString(), "Unable to open socket to device " + device, e);
 			return false;
 		}
 
@@ -131,12 +126,10 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	@Override
 	public void close() {
-		// TODO Auto-generated method stub
 		Log.i(this.getClass().toString(), "close");
 		try {
 			socket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			Log.i(this.getClass().toString(), e.getMessage());
 		}
 		try {
@@ -159,8 +152,6 @@ public class AndroidRFCOMMChannel implements RemoteConnection {
 	 */
 	@Override
 	public boolean isOpen() {
-		// TODO Auto-generated method stub
 		return socket != null;
 	}
-
 }

@@ -1,3 +1,12 @@
+/* Copyright Michael Schöllhammer
+ * Extended/cleaned up by Rene Mayrhofer
+ * File created 2010-05
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.apps.android;
 
 import java.io.IOException;
@@ -21,7 +30,6 @@ import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -30,14 +38,11 @@ import android.widget.AdapterView.OnItemClickListener;
  * Starting Point of the Application. contains GUI, provides near Bluetooth
  * devices, starts an AndroidRFCOMMServer and AndroidRFCOMMChannel
  * 
- * @author Michael Schöllhammer
+ * @author Michael Schöllhammer, Rene Mayrhofer
  * 
  */
 public class StartActivity extends Activity implements OnClickListener,
 		AuthenticationProgressHandler {
-
-	private TextView headline;
-	private ImageView image;
 
 	private BluetoothAdapter adapter;
 
@@ -69,10 +74,6 @@ public class StartActivity extends Activity implements OnClickListener,
 			}
 		});
 
-		headline = (TextView) findViewById(R.id.TextView01);
-
-		image = (ImageView) findViewById(R.id.ImageView01);
-
 		adapter = BluetoothAdapter.getDefaultAdapter();
 
 		initDeviceClickListener();
@@ -91,7 +92,6 @@ public class StartActivity extends Activity implements OnClickListener,
 
 	@Override
 	protected void onStart() {
-		// TODO Auto-generated method stub
 		super.onStart();
 		Log.i(this.getClass().toString(), "onStart");
 
@@ -102,7 +102,6 @@ public class StartActivity extends Activity implements OnClickListener,
 
 	@Override
 	protected void onResume() {
-		// TODO Auto-generated method stub
 		super.onResume();
 
 		arrayAdapter.clear();
@@ -112,28 +111,11 @@ public class StartActivity extends Activity implements OnClickListener,
 
 	}
 
-	@Override
-	protected void onPause() {
-		// TODO Auto-generated method stub
-		super.onPause();
-
-		Log.i(this.getClass().toString(), "onPause");
-	}
-
-	@Override
-	protected void onStop() {
-		super.onStop();
-
-		Log.i(this.getClass().toString(), "onStop");
-	}
-
 	/**
 	 * closes AndroidRFCOMMServer and AndroidRFCOMMChannel
 	 */
 	@Override
 	protected void onDestroy() {
-		// TODO Auto-generated method stub
-
 		unregisterReceiver(Receiver);
 		if (server != null || firstChannel != null) {
 			server.dispose();
@@ -152,7 +134,6 @@ public class StartActivity extends Activity implements OnClickListener,
 	 */
 	@Override
 	public void onClick(View v) {
-		// TODO Auto-generated method stub
 		int id = v.getId();
 
 		if (id == R.id.Button01) {
@@ -293,7 +274,6 @@ public class StartActivity extends Activity implements OnClickListener,
 			HostProtocolHandler.startAuthenticationWith(firstChannel, this,
 					30000, true, null, false);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -308,7 +288,6 @@ public class StartActivity extends Activity implements OnClickListener,
 		try {
 			server.start();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -319,14 +298,12 @@ public class StartActivity extends Activity implements OnClickListener,
 	@Override
 	public void AuthenticationFailure(Object sender, Object remote,
 			Exception e, String msg) {
-		// TODO Auto-generated method stub
 		Log.i(this.getClass().toString(), "AuthenticationFailure");
 	}
 
 	@Override
 	public void AuthenticationProgress(Object sender, Object remote, int cur,
 			int max, String msg) {
-		// TODO Auto-generated method stub
 		Log.i(this.getClass().toString(), "AuthenticationProgress");
 	}
 
@@ -335,7 +312,6 @@ public class StartActivity extends Activity implements OnClickListener,
 	 */
 	@Override
 	public boolean AuthenticationStarted(Object sender, Object remote) {
-		// TODO Auto-generated method stub
 		Log.i(this.getClass().toString(), "AuthenticationStarted");
 		return false;
 	}
@@ -346,7 +322,6 @@ public class StartActivity extends Activity implements OnClickListener,
 	@Override
 	public void AuthenticationSuccess(Object sender, Object remote,
 			Object result) {
-		// TODO Auto-generated method stub
 		Log.i(this.getClass().toString(), "AuthenticationSuccess");
 	}
 }

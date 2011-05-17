@@ -1,9 +1,13 @@
-/**
+/* Copyright Michael Schöllhammer
+ * Extended/cleaned up by Rene Mayrhofer
+ * File created 2010-05
  * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  */
 package org.openuat.apps.android;
-
-import java.util.Vector;
 
 import org.openuat.sensors.VectorSamplesSink;
 import org.openuat.sensors.android.AndroidAccelerometerSource;
@@ -18,11 +22,10 @@ import android.widget.TextView;
 /**
  * simply shows the accelerator values from the AndroidSampleSource
  * 
- * @author Michael
+ * @author Michael Schöllhammer
  */
 public class SampleSinkAndroid extends Activity implements VectorSamplesSink {
 	private double[] curValues = new double[3];
-	private Vector<double[]> samples;
 	private TextView x, y, z;
 	private AndroidAccelerometerSource sampleSourceAndroid;
 
@@ -34,53 +37,18 @@ public class SampleSinkAndroid extends Activity implements VectorSamplesSink {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.sample_sink_android);
 
-		samples = new Vector<double[]>();
-
 		x = (TextView) findViewById(R.id.TextView01);
 		y = (TextView) findViewById(R.id.TextView02);
 		z = (TextView) findViewById(R.id.TextView03);
 
-		sampleSourceAndroid = new AndroidAccelerometerSource(3, 0, this);
+		sampleSourceAndroid = new AndroidAccelerometerSource(this);
 		sampleSourceAndroid.addSink(this);
 
 		Log.i(this.getClass().toString(), "onCreate");
 	}
 
 	@Override
-	protected void onStart() {
-		// TODO Auto-generated method stub
-		super.onStart();
-
-		Log.i(this.getClass().toString(), "onStart");
-	}
-
-	@Override
-	protected void onResume() {
-		// TODO Auto-generated method stub
-		super.onResume();
-
-		Log.i(this.getClass().toString(), "onResume");
-
-	}
-
-	@Override
-	protected void onPause() {
-		// TODO Auto-generated method stub
-		super.onPause();
-
-		Log.i(this.getClass().toString(), "onPause");
-	}
-
-	@Override
-	protected void onStop() {
-		super.onStop();
-
-		Log.i(this.getClass().toString(), "onStop");
-	}
-
-	@Override
 	protected void onDestroy() {
-		// TODO Auto-generated method stub
 		Log.i(this.getClass().toString(), "onDestroy");
 		sampleSourceAndroid.finalize();
 		super.onDestroy();
@@ -98,14 +66,10 @@ public class SampleSinkAndroid extends Activity implements VectorSamplesSink {
 
 	@Override
 	public void segmentStart(int index) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void segmentEnd(int index) {
-		// TODO Auto-generated method stub
-
 	}
 
 	/**

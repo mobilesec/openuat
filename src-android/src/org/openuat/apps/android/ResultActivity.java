@@ -1,3 +1,12 @@
+/* Copyright Michael Schöllhammer
+ * Extended/cleaned up by Rene Mayrhofer
+ * File created 2010-05
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.apps.android;
 
 import android.app.Activity;
@@ -6,7 +15,7 @@ import android.widget.ImageView;
 
 /**
  * Activity that shows the success or failure of the authentication by traffic light
- * @author Michael
+ * @author Michael Schöllhammer
  *
  */
 public class ResultActivity extends Activity {
@@ -16,7 +25,6 @@ public class ResultActivity extends Activity {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.result_screen);
 		
@@ -29,32 +37,7 @@ public class ResultActivity extends Activity {
 		}
 	}
 
-	@Override
-	protected void onPause() {
-		// TODO Auto-generated method stub
-		super.onPause();
-	}
-
-	@Override
-	protected void onResume() {
-		// TODO Auto-generated method stub
-		super.onResume();
-	}
-
-	@Override
-	protected void onStart() {
-		// TODO Auto-generated method stub
-		super.onStart();
-	}
-
-	@Override
-	protected void onStop() {
-		// TODO Auto-generated method stub
-		super.onStop();
-	}
-
 	public void setIsConnected(boolean isConnected) {
 		this.isConnected = isConnected;
 	}
-
 }

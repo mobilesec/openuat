@@ -1,3 +1,12 @@
+/* Copyright Michael Schöllhammer
+ * Extended/cleaned up by Rene Mayrhofer
+ * File created 2010-05
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
 package org.openuat.channel.main.bluetooth.android;
 
 import java.io.IOException;
@@ -29,9 +38,6 @@ public class AndroidRFCOMMServer extends HostServerBase {
 	public static UUID serviceUUID = UUID
 			.fromString("550e8400-e29b-11d4-a716-446655440000");
 	private String serviceName;
-	private int protocolTimeoutMs;
-	private boolean keepConnected;
-	private boolean useJSSE;
 	private AndroidRFCOMMChannel androidRFCOMMChannel;
 
 	/**
@@ -79,8 +85,8 @@ public class AndroidRFCOMMServer extends HostServerBase {
 			serverSocket = adapter.listenUsingRfcommWithServiceRecord(
 					serviceName, serviceUUID);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(this.getClass().toString(), "Unable to register RFCOMM socket with name '" +
+					serviceName + "' and UUID " + serviceUUID, e);
 		}
 		Log.i(this.getClass().toString(), "getBTServerSocket");
 	}
@@ -139,21 +145,19 @@ public class AndroidRFCOMMServer extends HostServerBase {
 			cancel();
 			stop();
 		} catch (InternalApplicationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(this.getClass().toString(), "Unable to close RFCOMM socket", e);
 		}
 		Log.i(this.getClass().toString(), "dispose");
 	}
 
 	/**
-	 * close the server bluetooth socket
+	 * close the server Bluetooth socket
 	 */
 	public void cancel() {
 		try {
 			serverSocket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(this.getClass().toString(), "Unable to close RFCOMM socket", e);
 		}
 		androidRFCOMMChannel.close();
 		Log.i(this.getClass().toString(), "cancel");

@@ -80,10 +80,20 @@ public class Correlation {
 		return (sumAB - sumA*sumB/n) / Math.sqrt((sum2A - sumA+sumA/n) * (sum2B - sumB*sumB/n));
 	}
 
+	/** Not yet implemented.
+	 * @param a
+	 * @param b
+	 * @param maxOffsetSearch  
+	 */
 	public int maxCorrelationCoefficient(int[] a, int[] b, int maxOffsetSearch) {
 		return 0;
 	}
 
+	/** Not yet implemented.
+	 * @param a
+	 * @param b
+	 * @param maxOffsetSearch  
+	 */
 	public double maxCorrelationCoefficient(double[] a, double[] b, int maxOffsetSearch) {
 		return 0;
 	}

@@ -52,8 +52,10 @@
 	<property name="bin.midp" location="${build}/midp-bin"/>
 	<property name="build.distcheck" location="${build}/dist-check"/>
 	
-	<property name="compile.debug" value="true"/>
-	<property name="debug" value="false"/>
+	<!-- Language level to compile for -->
+	<property name="compile.level" value="1.5" />
+	<property name="compile.debug" value="true" />
+	<property name="debug" value="false" />
 
 	<!-- these are the target JARs -->
 	<property name="dist.mainclass" value="no-main-class-at-the-moment"/>
@@ -105,8 +107,6 @@
 	<property name="java5-core-files1" value="org/openuat/util/ip/IPv6AddressesHelper.java" />
 	<!-- These classes need at least Java 6 to compile -->
 	<property name="java6-files" value="org/openuat/apps/util/TrayIconHelper.java" />
-	<!-- And these classes are currently broken and of no use... -->
-	<property name="broken-files1" value="org/openuat/apps/groupkey/*.java" />
 	
 	<!-- this can be used in a refid for filesets -->
 	<fileset id="lib.alljars" dir="${lib}">
@@ -240,31 +240,31 @@
 		<echo message="    * Compiling thirdparty crypto core"/>
 		<!-- Compile the BC core dependencies -->
 		<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
-		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
+		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
 	
 		<!-- Compile the BC X.509 dependencies -->
 		<javac srcdir="${thirdparty-BC-x509}" destdir="${bin-BC-x509}" includeAntRuntime="no"
-		       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="1.2" source="1.2" />
+		       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
 	
 		<!-- Compile the BC openssl interoperability dependencies -->
 		<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
-		       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="1.2" source="1.2" />
+		       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
 
 		<echo message="    * Compiling other thirdparty helper code"/>
 		<!-- Compile the Apache BZIP2 stream dependencies -->
 		<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
-		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2" />
+		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
 		       
 	        <!-- And the Google Zxing QR codes -->
 		<javac srcdir="${thirdparty-google-zxing}" destdir="${bin-google-zxing}" includeAntRuntime="no"
-		       classpathref="lib.path.jars" debug="${compile.debug}" target="1.2" source="1.2">
+		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}">
 			<exclude name="${midp-only-files}" />
 		</javac>		       
 
 		<echo message="    * Compiling OpenUAT core: sensor data and utility"/>
 		<!-- Compile our own classes... -->
 		<javac srcdir="${src}" destdir="${bin-core}" includeAntRuntime="no"
-		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="${compile.level}" source="${compile.level}"
 		       includes="org/openuat/channel/main org/openuat/util/ org/openuat/sensors/ org/openuat/features/" 
 			   excludes="org/openuat/channel/main/bluetooth/jsr82/">
 			<exclude name="${test-files1}" />
@@ -277,7 +277,7 @@
 		</javac>		
 		<echo message="    * Compiling OpenUAT core: authentication protocols"/>
 		<javac srcdir="${src}" destdir="${bin-core}" includeAntRuntime="no"
-		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="${compile.level}" source="${compile.level}"
 		       includes="org/openuat/authentication/">
 			<exclude name="${test-files1}" />
 			<exclude name="${test-files2}" />
@@ -290,7 +290,7 @@
 		
 		<echo message="    * Compiling OpenUAT core: secure communication channels"/>
 		<javac srcdir="${src}" destdir="${bin-auxchannels}" includeAntRuntime="no"
-		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="${compile.level}" source="${compile.level}"
 		       includes="org/openuat/channel/oob/ org/openuat/channel/vpn/ org/openuat/channel/bluetooth/jsr82/ org/openuat/roles/">
 			<exclude name="${test-files1}" />
 			<exclude name="${test-files2}" />
@@ -303,7 +303,7 @@
 		
 		<echo message="    * Compiling OpenUAT example applications"/>
 		<javac srcdir="${src}" destdir="${bin-apps}" includeAntRuntime="no"
-		       classpathref="lib.path.all" debug="${compile.debug}" target="1.2" source="1.2"
+		       classpathref="lib.path.all" debug="${compile.debug}" target="${compile.level}" source="${compile.level}"
 		       includes="org/openuat/apps/">
 			<exclude name="${test-files1}" />
 			<exclude name="${test-files2}" />
