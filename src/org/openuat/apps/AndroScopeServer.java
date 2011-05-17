@@ -1,8 +1,5 @@
 package org.openuat.apps;
 
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -12,15 +9,13 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import javax.swing.JFrame;
-
 import org.openuat.features.Coherence;
 
 /** This Class implements a socket server which can open up multiple Socket Connections
  * by starting multiple "SocketConnection" Threads.
  * @author Martin Kuttner, Rene Mayrhofer
  */
-public class AndroScopeServer extends JFrame {
+public class AndroScopeServer {
 	private static final long 	serialVersionUID = 3230091649879540810L;
 
 	/** Whether log4j should pop debugging messages */
@@ -476,26 +471,14 @@ public class AndroScopeServer extends JFrame {
 	 */
 	public static void main(String[] args)
 	{
-		AndroScopeServer frame = new AndroScopeServer();
-		for (int i = 0; i < frame.done.length; i++)
+		AndroScopeServer server = new AndroScopeServer();
+		for (int i = 0; i < server.done.length; i++)
 		{
-			for (int j = 0; j < frame.done[i].length; j++)
+			for (int j = 0; j < server.done[i].length; j++)
 			{
-				frame.done[i][j] = false;
+				server.done[i][j] = false;
 			}
 		}
-		frame.setTitle("Server Program");
-		frame.setSize(200, 100);
-		WindowListener l = new WindowAdapter()
-		{
-			public void windowClosing(WindowEvent e)
-			{
-				System.exit(0);
-			}
-		};
-		frame.addWindowListener(l);
-		frame.pack();
-		frame.setVisible(true);
-		frame.listenSocket();
+		server.listenSocket();
 	}
 }
