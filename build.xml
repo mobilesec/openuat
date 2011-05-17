@@ -776,6 +776,7 @@
 			<classpath>
 				<pathelement location="${lib}/bluecove-emu-2.1.0.jar"/>
 				<fileset refid="lib.alljars"/>
+				<path refid="lib.path.midp"/>
 				<pathelement location="${jarfile.core}"/>
 				<pathelement location="${jarfile.channels}"/>
 				<pathelement location="${jarfile.apps}"/>

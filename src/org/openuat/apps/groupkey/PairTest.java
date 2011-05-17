@@ -58,8 +58,4 @@ public class PairTest extends TestCase {
 		Assert.assertTrue(Arrays.equals(key1,target.getKey("ni")));
 		Assert.assertFalse(Arrays.equals(key1,target.getKey("foo")));
 	}
-
-
-
-
 }
