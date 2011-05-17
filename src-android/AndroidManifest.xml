@@ -1,31 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+	<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	package="org.openuat.apps.android" android:versionCode="1" android:versionName="1.0">
 
-	<application android:icon="@drawable/icon" android:label="@string/app_name_shake">
-		<activity android:label="@string/app_name_shake" android:name=".StartActivity">
+	<application android:icon="@drawable/icon" android:label="@string/app_name_openuat">
+		<activity android:label="@string/launcher_name_shake" 
+				  android:name=".StartActivity"
+				  android:taskAffinity=".StartActvity">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+		<activity android:name="ResultActivity" android:label="@string/launcher_name_shake"></activity>
+		<activity android:name="SampleSinkAndroid" android:label="@string/launcher_name_shake"></activity>
 
-		<activity android:name="ResultActivity" android:label="@string/app_name_shake"></activity>
-		
-		<activity android:name="SampleSinkAndroid" android:label="@string/app_name_shake"></activity>
-
-		<uses-permission android:name="android.permission.BLUETOOTH"></uses-permission>
-		<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"></uses-permission>
-	</application>
-
-    <application android:icon="@drawable/icon" android:label="@string/app_name_scope">
-        <activity android:name=".ReadSensor"
-                  android:label="@string/app_name_scope">
+        <activity android:label="@string/launcher_name_scope" 
+        		  android:name=".ReadSensor"
+        		  android:taskAffinity=".ReadSensor">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-		<uses-permission android:name="android.permission.INTERNET"></uses-permission>
-    </application>
+	</application>
+
+	<uses-permission android:name="android.permission.INTERNET"></uses-permission>
+	<uses-permission android:name="android.permission.BLUETOOTH"></uses-permission>
+	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"></uses-permission>
 </manifest> 

@@ -15,7 +15,7 @@ public class Globals
 	/** Name (Tag) of our Application for Debug Output */
 	public static final String 	name		= "Androscope";
 	/** Enable Debug Output of the SensorValues */
-	public static final boolean debug 		= false;
+	public static final boolean debug 		= true;
 	/** How many Values are read before they get transmitted. */
 	public static final int 	n_values	= 512;
 	/** How the Values are separated for transmission on the Socket. */
@@ -25,7 +25,7 @@ public class Globals
 	/** How fast the Sensor gives us the next set of data. */
 	public static final int 	delay 		= SensorManager.SENSOR_DELAY_FASTEST;
 	/** IP Address of the Socket-Server */
-	public static 		String 	server_addr = "192.168.1.36";
+	public static 		String 	server_addr = "10.21.99.32";
 	/** Port for the Socket Connection */
 	public static final int 	server_port = 4444;
 }

@@ -8,6 +8,7 @@ bin
 src-android/local.properties
 src-android/gen
 src-android/bin
+src-android/build
 local.properties
 reports
 dist/*.jar
