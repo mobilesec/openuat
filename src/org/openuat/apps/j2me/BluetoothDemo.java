@@ -19,7 +19,7 @@ import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.RemoteConnection;
@@ -94,14 +94,14 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
 			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
+			logger.severe("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 
 		try {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(this);
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothPeerManager: " + e);
+			logger.severe("Error initializing BlutoothPeerManager: " + e);
 			return;
 		}
 
@@ -283,7 +283,7 @@ public class BluetoothDemo extends MIDlet implements CommandListener,
         	LineReaderWriter.println(connectionToRemote.getOutputStream(), 
         			"Finished DH key agreement - now start to verify");
 		} catch (IOException e) {
-			logger.debug("Unable to open stream to remote: " + e);
+			logger.finer("Unable to open stream to remote: " + e);
 		}
 	}
 }

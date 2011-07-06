@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.SimpleKeyAgreement;
@@ -27,7 +27,7 @@ import org.openuat.authentication.exceptions.*;
  */
 public abstract class HostServerBase extends AuthenticationEventSender 
 		implements HostAuthenticationServer, Runnable {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.HostServerBase" /*HostServerBase.class*/);
 
 	/** this is a private thread object instead of the whole class being derived
@@ -190,7 +190,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
     	 * agreement instance.
     	 */
     	if (permanentKeyAgreementInstance == null) {
-    		logger.warn("Can not derive permanent pre-authentication commitment when no permanent key agreement instance has been set");
+    		logger.warning("Can not derive permanent pre-authentication commitment when no permanent key agreement instance has been set");
     		return null;
     	}
     	return new HostProtocolHandler(null, 
@@ -203,10 +203,10 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	public void start() throws IOException {
 		if (!running) {
 			running = true;
-			logger.debug("Starting listening thread for server socket");
+			logger.finer("Starting listening thread for server socket");
 			listenerThread = new Thread(this);
 			listenerThread.start();
-			logger.debug("Started listening thread for server socket");
+			logger.finer("Started listening thread for server socket");
 		}
 	}
 
@@ -215,7 +215,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 */
 	public void stop() throws InternalApplicationException {
 		if (listenerThread != null) {
-			logger.debug("Stopping listening thread for server socket");
+			logger.finer("Stopping listening thread for server socket");
 			running = false;
 			// this is not nice, but will throw an exception in the listener thread
 			// and thus allow it to exit by itself
@@ -227,7 +227,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 						"HostServerSocket listening thread got interrupted while waiting for it to finish. This should not happen.",
 						e);
 			}
-			logger.debug("Stopped listening thread for server socket");
+			logger.finer("Stopped listening thread for server socket");
 		}
 	}
 	
@@ -250,7 +250,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 		h.setProtocolCommandHandlers(protocolCommandHandlers);
 		h.setPreAuthenticationMessage(preAuthenticationMessageFromClient);
 		// call the protocol asynchronously
-		logger.debug("Accepted incoming channel, now starting host protocol");
+		logger.finer("Accepted incoming channel, now starting host protocol");
 		h.startIncomingAuthenticationThread(true);
 	}
 }

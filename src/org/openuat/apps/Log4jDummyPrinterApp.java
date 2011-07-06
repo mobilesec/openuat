@@ -1,10 +1,10 @@
 package org.openuat.apps;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
 public class Log4jDummyPrinterApp {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(Log4jDummyPrinterApp.class);
 
 	/**
@@ -16,10 +16,10 @@ public class Log4jDummyPrinterApp {
 			PropertyConfigurator.configure("log4j.properties");
 		}
 
-		logger.debug("TEST 1");
+		logger.finer("TEST 1");
 		logger.info("TEST 2");
-		logger.warn("TEST 3");
-		logger.error("TEST 4");
+		logger.warning("TEST 3");
+		logger.severe("TEST 4");
 		logger.fatal("TEST 5");
 	}
 

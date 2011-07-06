@@ -136,7 +136,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 							impl.vibrate(signalDuration);
 							Thread.sleep(signalDuration);
 						} catch (InterruptedException e) {
-							logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+							logger.warning("Method transmit(byte[]): transmission thread interrupted.", e);
 						}
 					}
 				}
@@ -160,7 +160,7 @@ public class ShortVibrationToButtonChannel extends ButtonChannel {
 							Thread.sleep(signalDuration);
 						}
 					} catch (InterruptedException e) {
-						logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+						logger.warning("Method transmit(byte[]): transmission thread interrupted.", e);
 					}
 				}
 				if (messageHandler != null) {

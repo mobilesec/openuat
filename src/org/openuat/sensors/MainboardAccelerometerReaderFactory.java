@@ -3,10 +3,10 @@ package org.openuat.sensors;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 public class MainboardAccelerometerReaderFactory {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(MainboardAccelerometerReaderFactory.class);
 
 	public static AsciiLineReaderBase createInstance(int sampleRate) throws FileNotFoundException {
@@ -15,7 +15,7 @@ public class MainboardAccelerometerReaderFactory {
 			return new MainboardAccelerometerReader_Linux(sampleRate);
 		}
 		else {
-			logger.error("Reading mainboard accelerometers not (yet) supported with os.name='" + 
+			logger.severe("Reading mainboard accelerometers not (yet) supported with os.name='" + 
 					System.getProperty("os.name") + "'");
 			return null;
 		}

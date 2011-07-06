@@ -10,7 +10,7 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This class implements an aggregation of multiple time series into one. To do so,
  * it calculates the magnitude of the multi-dimensional vector for each sample and uses
@@ -32,7 +32,7 @@ import org.apache.log4j.Logger;
  * @version 1.1, changes to 1.0: now based on the new base class TimeSeriesBundle
  */
 public class TimeSeriesAggregator extends TimeSeriesBundle {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeriesAggregator" /*TimeSeriesAggregator.class*/);
 	
 	/** This holds the current, aggregated segment when currently in active state. If
@@ -80,12 +80,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 	}
 
 	protected void toQuiescentLastLine(int numSample) {
-	  if (logger.isDebugEnabled() && (
+	  if (logger.isLoggable(Level.FINER) && (
 //#if cfg.haveFloatSupport
 			(aggregatedSeries != null && aggregatedSeries.size() > windowSize) ||
 //#endif					
 			(aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && aggregatedSeriesIndex_Int > windowSize))) {
-				logger.debug("Unexpected index of segment end, got " + numSample 
+				logger.finer("Unexpected index of segment end, got " + numSample 
 						+ ", expected either " + curSampleIndex
 						+ " or " +  + (curSampleIndex+1));
 	  }
@@ -97,12 +97,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 				for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
 					segment[i] = ((Double) aggregatedSeries.elementAt(i)).doubleValue();
 				if (segmentsSinks != null) {
-					logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
+					logger.finer("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
 					for (int i=0; i<segmentsSinks.size(); i++) {
 						SegmentsSink s = (SegmentsSink) segmentsSinks.elementAt(i);
 						s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
 					}			
-					logger.debug("Finished forwarding segment to sinks");
+					logger.finer("Finished forwarding segment to sinks");
 				}
 			}
 			else
@@ -123,12 +123,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 				int[] segment = new int[aggregatedSeriesIndex_Int-windowSize];
 				System.arraycopy(aggregatedSeries_Int, 0, segment, 0, aggregatedSeriesIndex_Int-windowSize);
 				if (segmentsSinks_Int != null) {
-					logger.debug("Forwarding segment to " + segmentsSinks_Int.size() + " registered sinks");
+					logger.finer("Forwarding segment to " + segmentsSinks_Int.size() + " registered sinks");
 					for (int i=0; i<segmentsSinks_Int.size(); i++) {
 						SegmentsSink_Int s = (SegmentsSink_Int) segmentsSinks_Int.elementAt(i);
 						s.addSegment(segment, curSampleIndex-aggregatedSeriesIndex_Int);
 					}			
-					logger.debug("Finished forwarding segment to sinks");
+					logger.finer("Finished forwarding segment to sinks");
 				}
 			}
 			else
@@ -158,7 +158,7 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 			 * immediately to all registered listeners
 			 */
 			if (samplesSinks != null) {
-				logger.debug("Forwarding single sample to " + samplesSinks.size() + " registered sinks");
+				logger.finer("Forwarding single sample to " + samplesSinks.size() + " registered sinks");
 				for (int i=0; i<samplesSinks.size(); i++) {
 					SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
 					s.addSample(magnitude, numSample);
@@ -178,13 +178,13 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 			if (aggregatedSeriesIndex_Int < maxSegmentSize+windowSize)
 				aggregatedSeries_Int[aggregatedSeriesIndex_Int++] = magnitude;
 			else
-				logger.warn("Want to write more active samples than segment size. This should not happen!");
+				logger.warning("Want to write more active samples than segment size. This should not happen!");
 
 			/* this is inside an active segment, so also forward the aggregated samples 
 			 * immediately to all registered listeners
 			 */
 			if (samplesSinks_Int != null) {
-				logger.debug("Forwarding single sample to " + samplesSinks_Int.size() + " registered sinks");
+				logger.finer("Forwarding single sample to " + samplesSinks_Int.size() + " registered sinks");
 				for (int i=0; i<samplesSinks_Int.size(); i++) {
 					SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
 					s.addSample(magnitude, numSample);

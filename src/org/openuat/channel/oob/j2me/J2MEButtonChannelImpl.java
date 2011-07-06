@@ -99,7 +99,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 			currentScreen.repaint();
 		}
 		else {
-			logger.warn("Method repaint(): currentScreen is null.");
+			logger.warning("Method repaint(): currentScreen is null.");
 		}
 	}
 
@@ -208,7 +208,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				buttonPress = Image.createImage("/button_press.png");
 			} catch (IOException ioe) {
 				buttonPress = null;
-				logger.warn("Could not create image: button press", ioe);
+				logger.warning("Could not create image: button press", ioe);
 			}
 		}
 		
@@ -365,25 +365,25 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 				trafficLightRed = Image.createImage("/Traffic_lights_dark_red.png");
 			} catch (IOException ioe) {
 				trafficLightRed = null;
-				logger.warn("Could not create image: red traffic light", ioe);
+				logger.warning("Could not create image: red traffic light", ioe);
 			}
 			try {
 				trafficLightYellow = Image.createImage("/Traffic_lights_dark_yellow.png");
 			} catch (IOException ioe) {
 				trafficLightYellow = null;
-				logger.warn("Could not create image: yellow traffic light", ioe);
+				logger.warning("Could not create image: yellow traffic light", ioe);
 			}
 			try {
 				trafficLightGreen = Image.createImage("/Traffic_lights_dark_green.png");
 			} catch (IOException ioe) {
 				trafficLightGreen = null;
-				logger.warn("Could not create image: green traffic light", ioe);
+				logger.warning("Could not create image: green traffic light", ioe);
 			}
 			try {
 				phoneTransmit = Image.createImage("/phone_sending.png");
 			} catch (IOException ioe) {
 				phoneTransmit = null;
-				logger.warn("Could not create image: sending phone", ioe);
+				logger.warning("Could not create image: sending phone", ioe);
 			}
 		}
 		
@@ -412,7 +412,7 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 					paintBar(g);
 				}
 				else {
-					logger.warn("Method paint(): 'intervalList' is null.");
+					logger.warning("Method paint(): 'intervalList' is null.");
 				}
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_VERT_BARS) {
@@ -420,11 +420,11 @@ public class J2MEButtonChannelImpl extends ButtonChannelImpl {
 					paintVertBars(g);
 				}
 				else {
-					logger.warn("Method paint(): 'intervalList' is null.");
+					logger.warning("Method paint(): 'intervalList' is null.");
 				}
 			}
 			else {
-				logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
+				logger.warning("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
 			}
 		}
 		

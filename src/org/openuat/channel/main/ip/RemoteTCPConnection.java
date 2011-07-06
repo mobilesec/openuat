@@ -13,14 +13,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.channel.main.RemoteConnection;
 import org.openuat.util.DebugInputStream;
 import org.openuat.util.DebugOutputStream;
 
 /** This is a private implementation of RemoteConnection for TCP. */
 public class RemoteTCPConnection implements RemoteConnection {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.RemoteTCPConnection" /*BluetoothRFCOMMChannel.class*/);
 
 	/** Just a reference to the Socket object wrapped by this class. */
@@ -36,7 +36,7 @@ public class RemoteTCPConnection implements RemoteConnection {
 	 */
 	public InputStream getInputStream() throws IOException {
 		// maybe apply decorator
-		if (logger.isTraceEnabled())
+		if (logger.isLoggable(Level.FINEST))
 			return new DebugInputStream(socket.getInputStream(), "org.openuat.util.RemoteTCPConnection_IN");
 			
 		return socket.getInputStream();
@@ -47,7 +47,7 @@ public class RemoteTCPConnection implements RemoteConnection {
 	 */
 	public OutputStream getOutputStream() throws IOException {
 		// maybe apply decorator
-		if (logger.isTraceEnabled())
+		if (logger.isLoggable(Level.FINEST))
 			return new DebugOutputStream(socket.getOutputStream(), "org.openuat.util.RemoteTCPConnection_OUT");
 			
 		return socket.getOutputStream();
@@ -91,7 +91,7 @@ public class RemoteTCPConnection implements RemoteConnection {
 		}
 		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
-   			logger.error("Unable to close streams cleanly", e);
+   			logger.severe("Unable to close streams cleanly", e);
 		}
 	}
 
@@ -115,16 +115,16 @@ public class RemoteTCPConnection implements RemoteConnection {
 	//@Override
 	public boolean equals(Object other) {
 		if (other == null || !(other instanceof RemoteTCPConnection)) {
-			if (logger.isDebugEnabled())
-				logger.debug("equals called with object of wrong type");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("equals called with object of wrong type");
 			return false;
 		}
 		RemoteTCPConnection o = (RemoteTCPConnection) other;
 		boolean ret = o.socket != null && socket != null &&
 			o.socket.getInetAddress().equals(socket.getInetAddress()) &&
 			o.socket.getPort() == socket.getPort(); 
-		if (logger.isDebugEnabled())
-			logger.debug("socket=" + socket + ", o.socket=" + o.socket +
+		if (logger.isLoggable(Level.FINER))
+			logger.finer("socket=" + socket + ", o.socket=" + o.socket +
 					", socket.InetAddress=" + socket.getInetAddress() + 
 					", o.socket.InetAddress=" + o.socket.getInetAddress() + 
 					", socket.port=" + socket.getPort() + ", o.socket.port=" + o.socket.getPort() +

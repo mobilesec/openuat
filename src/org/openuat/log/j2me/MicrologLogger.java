@@ -63,22 +63,22 @@ public class MicrologLogger implements Log {
 	
 	// @Override
 	public void debug(Object message) {
-		logger.debug(message);
+		logger.finer(message);
 	}
 
 	// @Override
 	public void debug(Object message, Throwable t) {
-		logger.debug(message, t);
+		logger.finer(message, t);
 	}
 
 	// @Override
 	public void error(Object message) {
-		logger.error(message);
+		logger.severe(message);
 	}
 
 	// @Override
 	public void error(Object message, Throwable t) {
-		logger.error(message, t);
+		logger.severe(message, t);
 	}
 
 	// @Override
@@ -103,7 +103,7 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public boolean isDebugEnabled() {
-		return logger.isDebugEnabled();
+		return logger.isLoggable(Level.FINER);
 	}
 
 	// @Override
@@ -123,7 +123,7 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public boolean isTraceEnabled() {
-		return logger.isTraceEnabled();
+		return logger.isLoggable(Level.FINEST);
 	}
 
 	// @Override
@@ -143,12 +143,12 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public void warn(Object message) {
-		logger.warn(message);
+		logger.warning(message);
 	}
 
 	// @Override
 	public void warn(Object message, Throwable t) {
-		logger.warn(message, t);
+		logger.warning(message, t);
 	}
 
 }

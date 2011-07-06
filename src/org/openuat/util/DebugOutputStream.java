@@ -11,7 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This is a decorator for an OutputStream that will log every character
  * written to the underlying stream at log4j trace level.
@@ -23,7 +23,7 @@ public class DebugOutputStream extends OutputStream {
 	/** The underlying output stream to read from. */
 	private OutputStream realStream;
 	
-	/** Our log4j logger */
+	/** Our logger */
 	private Logger logger;
 	
 	/** Initializes the decorator with the real stream. 

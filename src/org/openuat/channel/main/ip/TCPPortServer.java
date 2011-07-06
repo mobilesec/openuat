@@ -13,7 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostServerBase;
 
@@ -29,7 +29,7 @@ import org.openuat.channel.main.HostServerBase;
  *               changes to 1.0: The TCP server socket is now opened in startListening instead of the constructor.
  */
 public class TCPPortServer extends HostServerBase {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(TCPPortServer.class);
 
 	/** This is the (bound but unconnected) TCP socket for listening for incoming connections. */
@@ -70,7 +70,7 @@ public class TCPPortServer extends HostServerBase {
 			super.start();
 		}
 		else
-			logger.error("Could not start TCP server because one is already running.");
+			logger.severe("Could not start TCP server because one is already running.");
 	}
 
 	/** Need to override the stopListening method to properly close the TCP server socket. 
@@ -94,7 +94,7 @@ public class TCPPortServer extends HostServerBase {
 	 * used to start a thread that handles the new connection.
 	 */
 	public void run() {
-		logger.debug("Listening thread for server socket now running port " + listener.getLocalPort());
+		logger.finer("Listening thread for server socket now running port " + listener.getLocalPort());
 		try {
 			while (running) {
 				Socket s = listener.accept();
@@ -103,11 +103,11 @@ public class TCPPortServer extends HostServerBase {
 		} catch(SocketException e) {
 			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 
 			if (running)
-				logger.error("Error in listening thread: " + e);
+				logger.severe("Error in listening thread: " + e);
 			else
-				logger.debug("Listening socket was forcibly closed, exiting listening thread now.");
+				logger.finer("Listening socket was forcibly closed, exiting listening thread now.");
 		} catch (IOException e) {
-			logger.error("Error in listening thread: " + e);
+			logger.severe("Error in listening thread: " + e);
 		}
 	}
 }

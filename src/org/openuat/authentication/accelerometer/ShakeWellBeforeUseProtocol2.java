@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.CKPOverUDP;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.features.QuantizedFFTCoefficients;
@@ -33,9 +33,9 @@ import org.openuat.sensors.TimeSeriesAggregator;
  * @version 1.0
  */
 public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSink  {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2" /*ShakeWellBeforeUseProtocol2.class*/);
-	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
 	private static Logger statisticsLogger = Logger.getLogger("statistics.shake2");
@@ -138,7 +138,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	 */
 	public void addSample(double sample, int numSample) {
 		if (curSegment == null) {
-			logger.warn("Received sample while not in active state, ignoring it" +
+			logger.warning("Received sample while not in active state, ignoring it" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
@@ -180,10 +180,10 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 			try {
 				addCandidates(candBytes, 0);
 			} catch (InternalApplicationException e) {
-				logger.error("Could not add candidates: " + e +
+				logger.severe("Could not add candidates: " + e +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			} catch (IOException e) {
-				logger.error("Could not add candidates: " + e +
+				logger.severe("Could not add candidates: " + e +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 			
@@ -199,7 +199,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	
 	public void segmentStart(int numSample) {
 		if (curSegment != null) {
-			logger.warn("Received segment start event while still in active phase, ignoring" +
+			logger.warning("Received segment start event while still in active phase, ignoring" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
@@ -210,7 +210,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	
 	public void segmentEnd(int numSample) {
 		if (curSegment == null) {
-			logger.warn("Received segment end event while no in active phase, ignoring" +
+			logger.warning("Received segment end event while no in active phase, ignoring" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
@@ -238,7 +238,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
-		logger.error("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
+		logger.severe("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds: " + message + "/" + e +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
@@ -246,7 +246,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
-		logger.debug("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message +
+		logger.finer("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 

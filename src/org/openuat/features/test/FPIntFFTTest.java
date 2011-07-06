@@ -8,14 +8,14 @@
  */
 package org.openuat.features.test;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.features.FPIntFFT;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
 public class FPIntFFTTest extends TestCase {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.features.test.FPIntFFTTest" /*FPIntFFTTest.class*/);
 
 	private short x[];
@@ -36,7 +36,7 @@ public class FPIntFFTTest extends TestCase {
 			for (int freq=1; freq<=512; freq++) {
 				for (int ampl=64; ampl<=32768; ampl*=2) {
 					logger.info("Using test signal with " + freq + "Hz and amplitude " + ampl);
-					logger.debug("Signal: ");
+					logger.finer("Signal: ");
 					for (int i=0; i<N; i++) {
 						x[i] = (short) (ampl*Math.cos(i*freq*(2*Math.PI)/N));
 						// a particular way of populating the array is required...
@@ -44,19 +44,19 @@ public class FPIntFFTTest extends TestCase {
 							fx[(N+i)>>1] = x[i];
 						else
 							fx[i>>1] = x[i];
-						logger.debug(i + " " + x[i]);
+						logger.finer(i + " " + x[i]);
 					}
 
 					FPIntFFT.fix_fftr(fx, log2N, false);
-					if (logger.isDebugEnabled()) {
-						logger.debug("Spectrum: ");
+					if (logger.isLoggable(Level.FINER)) {
+						logger.finer("Spectrum: ");
 						for (int i=0; i<N/2; i++)
-							logger.debug(i + " " + fx[i]);
+							logger.finer(i + " " + fx[i]);
 					}
 
 					int scale = FPIntFFT.fix_fftr(fx, log2N, true);
-					logger.debug("scale=" + scale);
-					logger.debug("Regenerated signal : ");
+					logger.finer("scale=" + scale);
+					logger.finer("Regenerated signal : ");
 					int diff = 0;
 					for (int i=0; i<N; i++) {
 						int sample;
@@ -64,7 +64,7 @@ public class FPIntFFTTest extends TestCase {
 							sample = fx[(N+i)>>1] << scale;
 						else
 							sample = fx[i>>1] << scale;
-						logger.debug(i + " " + sample);
+						logger.finer(i + " " + sample);
 						diff += Math.abs(x[i]-sample);
 						// that difference really is a lot, but some signals are not reproduced well...
 						if (!(ampl<=128 && FFT_SIZE==64 && i==2) &&

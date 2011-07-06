@@ -236,7 +236,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
 				}
 				else {
-					logger.warn("Method buttonPressed(): Message received, but 'messageHandler' is null");
+					logger.warning("Method buttonPressed(): Message received, but 'messageHandler' is null");
 				}
 			}
 		}

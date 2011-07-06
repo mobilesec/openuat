@@ -18,7 +18,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 import simple.http.load.MapperEngine;
 import simple.http.serve.CacheContext;
@@ -89,9 +89,9 @@ public class HTTPServer {
 			}
 			outstream.close();
 		} catch (FileNotFoundException e1) {
-			logger.warn("File not found Exception.");
+			logger.warning("File not found Exception.");
 		} catch (IOException e) {
-			logger.warn("IO Exception.");
+			logger.warning("IO Exception.");
 		}
 
 		CacheContext context = new CacheContext(file);
@@ -107,9 +107,9 @@ public class HTTPServer {
 			server = new ServerSocket();
 			server = new ServerSocket(port, 50, ia);
 			connection.connect(server);*/
-			logger.debug("server is listening to "
+			logger.finer("server is listening to "
 					+ server.getInetAddress().getHostName());
-			logger.debug("server is listening to "
+			logger.finer("server is listening to "
 					+ server.getInetAddress().getHostAddress());
 			logger
 					.debug("server is listening on port "
@@ -119,9 +119,9 @@ public class HTTPServer {
 			}
 
 		} catch (IOException e) {
-			logger.debug("Http Server throw a IOException");
+			logger.finer("Http Server throw a IOException");
 		} catch (Exception e) {
-			logger.debug("other exception: ");
+			logger.finer("other exception: ");
 		}
 	}
 
@@ -129,7 +129,7 @@ public class HTTPServer {
 		try {
 			new HTTPServer();
 		} catch (UnknownHostException e) {
-			logger.debug("unknown host exception");
+			logger.finer("unknown host exception");
 		}
 	}
 
@@ -138,7 +138,7 @@ public class HTTPServer {
 			if (server != null)
 				server.close();
 		} catch (IOException e) {
-			logger.debug(" IOException");
+			logger.finer(" IOException");
 		}
 	}
 

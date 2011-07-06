@@ -23,7 +23,7 @@ import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.VideoControl;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 
@@ -168,9 +168,9 @@ public class J2MEVisualChannel implements OOBChannel{
 			player.start();
 			display.setCurrent(canvas);
 		}catch(MediaException e){
-			logger.error(e);
+			logger.severe(e);
 		} catch (IOException e) {
-			logger.error(e);
+			logger.severe(e);
 		}
 
 	}
@@ -195,7 +195,7 @@ public class J2MEVisualChannel implements OOBChannel{
 		}else if (message.length <43){
 			version = 3;
 		}else{
-			logger.error("Visual channel - transmit- Message length is too big");
+			logger.severe("Visual channel - transmit- Message length is too big");
 			showError("QR code too big");
 			return;
 		}
@@ -211,7 +211,7 @@ public class J2MEVisualChannel implements OOBChannel{
 		logger.info("computing code - lenght:"+ message.length);
 		boolean[][] s = x.calQrcode(message);
 		logger.info("done computing");
-		if(s==null){logger.warn("qr encode is null");
+		if(s==null){logger.warning("qr encode is null");
 		
 		}else {
 			logger.info("computed code");
@@ -227,7 +227,7 @@ public class J2MEVisualChannel implements OOBChannel{
 		qrcanvas.setCommandListener(appListener);
 		display.setCurrent ( qrcanvas );
 		}catch(Exception e){
-			logger.error(e);
+			logger.severe(e);
 		}
 
 	}

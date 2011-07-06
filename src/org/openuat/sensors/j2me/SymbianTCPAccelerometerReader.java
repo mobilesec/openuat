@@ -16,7 +16,7 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.ServerSocketConnection;
 import javax.microedition.io.StreamConnection;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.sensors.SamplesSource;
 import org.openuat.sensors.TimeSeries;
 import org.openuat.sensors.TimeSeries_Int;
@@ -31,7 +31,7 @@ import org.openuat.sensors.TimeSeries_Int;
  *               now the Python wrapper implementation.
  */
 public class SymbianTCPAccelerometerReader extends SamplesSource {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.j2me.SymbianTCPAccelerometerReader" /*SymbianTCPAccelerometerReader.class*/);
 	
 	private final static int controlPort = 8100;
@@ -105,7 +105,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	//@Override
 	public void start() {
 		if (sensorDataIn != null || dataConnector != null || controlConnector != null) {
-			logger.warn("Connection seems to be already open: sensorDataIn="
+			logger.warning("Connection seems to be already open: sensorDataIn="
 					+ sensorDataIn + ", dataConnector=" + dataConnector +
 					", controlConnector=" + controlConnector + 
 					", not starting again");
@@ -124,7 +124,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 			sensorControlOut.write('s');
 			sensorControlOut.flush();
 		} catch (IOException e) {
-			logger.error("Unable to connect to Symbian sensor API wrapper, can not continue");
+			logger.severe("Unable to connect to Symbian sensor API wrapper, can not continue");
 			return;
 		}
 		
@@ -174,10 +174,10 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	 */
 	//@Override
 	public void stop() {
-		logger.warn("11111111111");
+		logger.warning("11111111111");
 		try {
 			// properly close all resources
-			logger.warn("22222222");
+			logger.warning("22222222");
 			if (sensorControlOut != null) {
 				// signal the Symbian sensor API wrapper that we are closing
 				sensorControlOut.write('e');
@@ -185,24 +185,24 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 				sensorControlOut.close();
 				sensorControlOut = null;
 			}
-			logger.warn("3333333333");
+			logger.warning("3333333333");
 			if (sensorDataIn != null) {
 				sensorDataIn.close();
 				sensorDataIn = null;
 			}
-			logger.warn("444444444444");
+			logger.warning("444444444444");
 			if (dataConnector != null) {
 				dataConnector.close();
 				dataConnector = null;
 			}
 			// this should also interrupt the thread
-			logger.warn("55555555555");
+			logger.warning("55555555555");
 			if (dataServer != null)
 				dataServer.close();
 		} catch (IOException e) {
-			logger.error("Error closing server socket or connection to sensor source: " + e);
+			logger.severe("Error closing server socket or connection to sensor source: " + e);
 		}
-		logger.warn("66666666666");
+		logger.warning("66666666666");
 		super.stop();
 	}
 
@@ -215,13 +215,13 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 	//@Override
 	protected boolean handleSample() {
 		if (dataConnector == null) {
-			logger.debug("Waiting for sensor to connect...");
+			logger.finer("Waiting for sensor to connect...");
 			try {
 				dataConnector = dataServer.acceptAndOpen();
 				logger.info("Connection from " + dataConnector);
 				sensorDataIn = dataConnector.openDataInputStream();
 			} catch (IOException e) {
-				logger.error("Unable to accept connection, aborting listening: " + e);
+				logger.severe("Unable to accept connection, aborting listening: " + e);
 				return false;
 			}
 		}
@@ -229,7 +229,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 		try {
 			byte x = (byte) sensorDataIn.read();
 			if (x == -1) {
-				logger.error("Symbian sensor wrapper terminated connection, aborting reading");
+				logger.severe("Symbian sensor wrapper terminated connection, aborting reading");
 				return false;
 			}
 
@@ -249,7 +249,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 
 			emitSample(bytes);
 		} catch (IOException e) {
-			logger.warn("Unable to read from socket, closing and waiting for next connection: " + e);
+			logger.warning("Unable to read from socket, closing and waiting for next connection: " + e);
 			try {
 				// properly close all data connection resources, but don't close control connection
 				if (sensorDataIn != null) { 
@@ -261,7 +261,7 @@ public class SymbianTCPAccelerometerReader extends SamplesSource {
 					dataConnector = null;
 				}
 			} catch (IOException ee) {
-				logger.error("Error closing server socket or connection to sensor source: " + ee);
+				logger.severe("Error closing server socket or connection to sensor source: " + ee);
 			}
 		}
 

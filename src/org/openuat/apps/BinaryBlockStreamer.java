@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.util.LineReaderWriter;
 
 /** This is a helper class for streaming binary blocks over some (byte-safe) connection.
@@ -27,7 +27,7 @@ import org.openuat.util.LineReaderWriter;
  * @version 1.0
  */
 public class BinaryBlockStreamer {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(BinaryBlockStreamer.class);
 	
 	private final static String BinaryStreamCommand = "PUSH";
@@ -55,7 +55,7 @@ public class BinaryBlockStreamer {
 		this.input = input;
 		this.output = output;
 		if (input == null && output == null) {
-			logger.error("Need at least either input or output to be set");
+			logger.severe("Need at least either input or output to be set");
 			throw new IllegalArgumentException("Need either input or output (or both) to be set");
 		}
 	}
@@ -70,7 +70,7 @@ public class BinaryBlockStreamer {
 	 */
 	public void sendBinaryBlock(String blockName, InputStream block, int size) throws IOException {
 		if (output == null) {
-			logger.error("Can't send binary block as no output has been defined");
+			logger.severe("Can't send binary block as no output has been defined");
 			throw new IOException("Output has not been defined, can not send");
 		}
 		if (blockName == null || block == null || size <= 0) {
@@ -105,7 +105,7 @@ public class BinaryBlockStreamer {
 	 */
 	public int receiveBinaryBlock(StringBuffer blockName, OutputStream block) throws IOException {
 		if (input == null) {
-			logger.error("Can't receive binary block as no input has been defined");
+			logger.severe("Can't receive binary block as no input has been defined");
 			throw new IOException("Input has not been defined, can not receive");
 		}
 		if (blockName == null || block == null) {
@@ -113,16 +113,16 @@ public class BinaryBlockStreamer {
 		}
 		
 		// we can only go on if we actually get a proper start line
-		logger.debug("Trying to get prefix line");
+		logger.finer("Trying to get prefix line");
 		/* do not use a BufferedReader here because that would potentially mess up
 		 * the stream for other users of the socket (by consuming too many bytes)
 		 */
 		String prefixLine = LineReaderWriter.readLine(input);
 		if (prefixLine == null || ! prefixLine.startsWith(BinaryStreamCommand)) {
-			logger.error("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
+			logger.severe("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
 			return -1;
 		}
-		logger.debug("Received prefix line '" + prefixLine + "'");
+		logger.finer("Received prefix line '" + prefixLine + "'");
 		// try to decode the two parameters: first the size, then the name
 		int offset = prefixLine.indexOf(' ', BinaryStreamCommand.length()+1);
 		int intendedSize = Integer.parseInt(prefixLine.substring(BinaryStreamCommand.length()+1, offset));
@@ -138,7 +138,7 @@ public class BinaryBlockStreamer {
 		if (i == intendedSize)
 			logger.info("Successfully finished receiving binary block");
 		else
-			logger.error("Could not receive all requested " + intendedSize + "B, only got " + i + "B before end of file or read error");
+			logger.severe("Could not receive all requested " + intendedSize + "B, only got " + i + "B before end of file or read error");
 		return i;
 	}
 }

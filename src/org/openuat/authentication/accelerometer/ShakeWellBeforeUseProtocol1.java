@@ -18,7 +18,7 @@ import java.util.BitSet;
 import java.util.Hashtable;
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.authentication.KeyManager;
@@ -45,9 +45,9 @@ import org.openuat.util.LineReaderWriter;
  */
 public class ShakeWellBeforeUseProtocol1 extends DHWithVerification 
 		implements SegmentsSink, SegmentsSink_Int {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1" /*ShakeWellBeforeUseProtocol1.class*/);
-	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
 	private static Logger statisticsLogger = Logger.getLogger("statistics.shake1");
@@ -186,7 +186,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 			String optionalParameterFromRemote,	byte[] sharedSessionKey) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.debug("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
+		logger.finer("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
 		System.out.println("SUCCESS");
 	}
 	
@@ -196,7 +196,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.debug("protocolFailedHook called");
+		logger.finer("protocolFailedHook called");
 		System.out.println("FAILURE");
 	}
 	
@@ -206,12 +206,12 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected void protocolProgressHook(RemoteConnection remote,  
 			int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.debug("protocolProgressHook called");
+		logger.finer("protocolProgressHook called");
 	}
 
 	protected void protocolStartedHook(RemoteConnection remote) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.debug("protocolStartedHook called");
+		logger.finer("protocolStartedHook called");
 	}
 
 	/** Called by the base class when the whole authentication protocol is reset. 
@@ -241,7 +241,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				runner.start();
 			}
 			else {
-				logger.warn("Interlock thread already running, can not process two interlock " +
+				logger.warning("Interlock thread already running, can not process two interlock " +
 					"protocol runs concurrently. Terminating second request.");
 			}
 		}
@@ -263,13 +263,13 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				// sanity check
 				for (int i=0; i<toRemotes.length; i++) {
 					if (keyManager.getState(toRemotes[i]) != KeyManager.STATE_VERIFICATION) {
-						logger.error("Remote " + toRemotes[i] + " is not in verifying state, not starting key verification with it");
+						logger.severe("Remote " + toRemotes[i] + " is not in verifying state, not starting key verification with it");
 						toRemotes[i] = null;
 						groupSize--;
 					}
 				}
 				if (groupSize < 2) {
-					logger.debug("Although called for multiple concurrent modifications, only " +
+					logger.finer("Although called for multiple concurrent modifications, only " +
 							groupSize + " will actually bs started, thus not using any locking");
 					interlockGroup = null;
 				}
@@ -285,7 +285,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 			else {
-				logger.warn("Interlock thread already running, can not process two interlock " +
+				logger.warning("Interlock thread already running, can not process two interlock " +
 					"protocol runs concurrently. Terminating second request.");
 			}
 		}
@@ -300,7 +300,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, 
 				(int) (ShakeWellBeforeUseParameters.coherenceWindowOverlapFactor * windowSize));
 		if (coherence == null) {
-			logger.warn("Coherence not computed, no match");
+			logger.warning("Coherence not computed, no match");
 			return -1;
 		}
 
@@ -371,7 +371,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		if (coherenceThreshold < 0 || coherenceThreshold > 1)
 			throw new IllegalArgumentException("Coherence threshold must be in [0;1].");
 		
-		logger.debug("Setting coherence threshold to " + coherenceThreshold);
+		logger.finer("Setting coherence threshold to " + coherenceThreshold);
 		this.coherenceThresholdSucceed = coherenceThreshold;
 	}
 	
@@ -391,7 +391,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 */
 	public void setContinuousChecking(boolean continuousChecking) {
 		if (continuousChecking) {
-			logger.warn("Enabling continuous checking mode! This should only be used for debugging, and not in production");
+			logger.warning("Enabling continuous checking mode! This should only be used for debugging, and not in production");
 		}
 		this.continuousChecking = continuousChecking;
 	}
@@ -445,20 +445,20 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			}
 		}
 		
-		if (logger.isDebugEnabled())
-			logger.debug("Starting keyVerification with remote " + remote.toString());
+		if (logger.isLoggable(Level.FINER))
+			logger.finer("Starting keyVerification with remote " + remote.toString());
 
 		try {
 			byte[] localPlainText = null;
 			synchronized (localSegmentLock) {
 				// sanity checks
 				if (localSegment == null) {
-					logger.error("keyVerification called without localSegment being set. This should not happen!");
+					logger.severe("keyVerification called without localSegment being set. This should not happen!");
 					return false;
 				}
 /*				for (int i=0; i<localSegment.length; i++) {
 					if (localSegment[i] < 0 || localSegment[i] > 2) {
-						logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
+						logger.severe("Sample value out of expected range: " + localSegment[i] + ", aborting");
 						protocolRunFinished(myThread);
 						return false;
 					}
@@ -471,8 +471,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				verificationFailure(true, remote, null, null, null, "Interlock exchange aborted: encoding segment to a string failed");
 				return false;
 			}
-			if (logger.isDebugEnabled())
-				logger.debug("My segment is " + localPlainText.length + " bytes long");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("My segment is " + localPlainText.length + " bytes long");
 
 			// exchange with the remote host
 			timestamp = System.currentTimeMillis();
@@ -487,23 +487,23 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 
 			totalInterlockTime += System.currentTimeMillis()-timestamp;
 			if (remotePlainText == null) {
-				logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
+				logger.warning("Interlock protocol failed, can not continue to compare with remote segment");
 				verificationFailure(true, remote, null, null, null, "Interlock protocol failed");
 				return false;
 			}
 
 			boolean decision = false;
 			// and check the received remote segment, compare it with our local segment
-			if (logger.isDebugEnabled())
-				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Remote segment is " + remotePlainText.length + " bytes long");
 			// count the tokens
 			timestamp = System.currentTimeMillis();
 			double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
 			totalCodingTime += System.currentTimeMillis()-timestamp;
 
 			if (remoteSegment != null) {
-				if (logger.isDebugEnabled())
-					logger.debug("remote segment is " + remoteSegment.length + " elements long");
+				if (logger.isLoggable(Level.FINER))
+					logger.finer("remote segment is " + remoteSegment.length + " elements long");
 				timestamp = System.currentTimeMillis();
 				decision = checkCoherence(remoteSegment);
 				totalComparisonTime += System.currentTimeMillis()-timestamp;
@@ -571,9 +571,9 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			this.groupSize = groupSize;
 			this.instanceNum = instanceNum;
 			this.openChannel = openChannel;
-			
-			if (logger.isDebugEnabled())
-				logger.debug("Creating AsyncInterlockHelper for " + 
+
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Creating AsyncInterlockHelper for " + 
 					remote.toString() + " with auth key " + authKey +
 					", instance " + instanceNum + " out of " + groupSize +
 					(openChannel ? ", about to open channel" : ", re-using already opened channel"));
@@ -582,14 +582,14 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		public void run() {
 			boolean cleanup = false;
 			
-			if (logger.isDebugEnabled())
-				logger.debug("AsyncInterlockHelper thread " + instanceNum + 
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("AsyncInterlockHelper thread " + instanceNum + 
 					"/" + groupSize + " starting for remote " + remote.toString());
 			
 			try {
 				outer: do {
 					// first wait for the local segment to be received to start the interlock protocol
-					logger.debug("Waiting for local segment");
+					logger.finer("Waiting for local segment");
 					synchronized(localSegmentLock) {
 						while (localSegment == null) {
 							try {
@@ -618,7 +618,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 								if (numRetries == 0) {
 									int holdoff = holdOutgoingVerificationRequestHook(remote);
 									if (holdoff < 0) {
-										logger.warn("Aborting outgoing key verification as requested, not establishing a connection");
+										logger.warning("Aborting outgoing key verification as requested, not establishing a connection");
 										break outer;
 									}
 									do {
@@ -661,7 +661,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						} while (!opened && 
 								System.currentTimeMillis()-startTime < VerificationConnectionEstablishmentTimeout);
 						if (!opened) {
-							logger.error("Unable to establish channel for key verification to " +
+							logger.severe("Unable to establish channel for key verification to " +
 									remote + ", aborting now");
 							break outer;
 						}
@@ -689,15 +689,15 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				} while (continuousChecking);
 			} catch (IOException e) {
-				logger.error("Background verification thread aborted with: " + e);
+				logger.severe("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
 			} catch (InternalApplicationException e) {
-				logger.error("Background verification thread aborted with: " + e);
+				logger.severe("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted");
 			} catch (Exception e) {
-				logger.error("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
+				logger.severe("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted");
 			}
@@ -705,7 +705,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			// thread finished, so remove ourselves from the list of threads
 			synchronized (interlockRunners) {
 				if (!interlockRunners.removeElement(this)) 
-					logger.error("Error: tried to remove runner object " + this +
+					logger.severe("Error: tried to remove runner object " + this +
 						" but could not find it in list. This should not happen!");
 				if (interlockRunners.isEmpty()) {
 					// removed the last one now, clean up - this allows startVerification to be called again
@@ -729,13 +729,13 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			// sanity check
 			if (! firstLine.startsWith(MotionVerificationCommand)) {
-				logger.error("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
+				logger.severe("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
 						MotionVerificationCommand + "'. This should not happen!");
 				return false;
 			}
 
 			if (!incomingVerificationRequestHook(remote)) {
-				logger.error("incomingVerificationRequestHook returned false, aborting verification");
+				logger.severe("incomingVerificationRequestHook returned false, aborting verification");
 				return true;
 			}
 
@@ -754,7 +754,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				}
 				if (localSegment == null && !continuousChecking) {
-					logger.error("Incoming motion key verification request from " +
+					logger.severe("Incoming motion key verification request from " +
 							remote + ", but no local segment available after "+
 							IncomingConnectionWaitForLocalSegmentTimeout + "ms, aborting");
 					// not transmitted any sensor data yet, thus can fail soft
@@ -775,7 +775,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				else {
 					byte[] authKey;
 					if (staticAuthenticationKey != null) {
-						logger.warn("Using static authentication key for continuous checking mode");
+						logger.warning("Using static authentication key for continuous checking mode");
 						authKey = staticAuthenticationKey;
 					}
 					else {
@@ -793,10 +793,10 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				
 				return true;
 			} catch (IOException e) {
-				logger.error("IOException while running incoming key verification: " + e);
+				logger.severe("IOException while running incoming key verification: " + e);
 				return false;
 			} catch (InternalApplicationException e) {
-				logger.error("InternalApplicationException while running incoming key verification: " + e);
+				logger.severe("InternalApplicationException while running incoming key verification: " + e);
 				return false;
 			}
 		}

@@ -23,7 +23,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.channel.main.MessageListener;
 
 /** This class offers unicast and multicast UDP communication. It binds one
@@ -35,7 +35,7 @@ import org.openuat.channel.main.MessageListener;
  * @version 1.0
  */
 public class UDPMulticastSocket {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(UDPMulticastSocket.class);
 
 	/** A list of network interface names <b>not</b> to use for communication.
@@ -112,7 +112,7 @@ public class UDPMulticastSocket {
      * @param multicastGroup The multicast group to use.
      */
 	public UDPMulticastSocket(int receivePort, int sendPort, String multicastGroup) throws IOException {
-		logger.debug("Constructing UDPMulticastSocket with receive port " + receivePort + 
+		logger.finer("Constructing UDPMulticastSocket with receive port " + receivePort + 
 				", send port " + sendPort + ", multicast group " + multicastGroup);
 		this.receivePort = receivePort;
 		this.sendPort = sendPort;
@@ -131,7 +131,7 @@ public class UDPMulticastSocket {
 			usingMulticast = true;
 		}
 		else {
-			logger.warn("Address " + multicastGroup + " is not a multicast address, not joining group");
+			logger.warning("Address " + multicastGroup + " is not a multicast address, not joining group");
 			usingMulticast = false;
 		}
 		
@@ -141,7 +141,7 @@ public class UDPMulticastSocket {
 		int addressIndex = 0;
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
-			logger.debug("Found local interface " + iface.getName());
+			logger.finer("Found local interface " + iface.getName());
 			// check if that interface name is blacklisted
 			boolean blacklisted = false;
 			for (int i=0; i<Interface_Names_Blacklist.length; i++) {
@@ -156,9 +156,9 @@ public class UDPMulticastSocket {
 				while (addrs.hasMoreElements()) {
 					InetAddress addr = (InetAddress) addrs.nextElement();
 					if (addr instanceof Inet6Address) {
-						logger.debug("Ignoring IPv6 address " + addr + " for now");
+						logger.finer("Ignoring IPv6 address " + addr + " for now");
 					} else {
-						logger.debug("Found address " + addr);
+						logger.finer("Found address " + addr);
 						allAddrs.add(addr);
 						// if this is not the first address on the interface, mark it as alias
 						if (alreadyAddedAddr)
@@ -168,13 +168,13 @@ public class UDPMulticastSocket {
 					}
 				}
 			} else {
-				logger.debug("Ignoring interface because it is blacklisted");
+				logger.finer("Ignoring interface because it is blacklisted");
 			}
 		}
 		
 		// start the responders
 		if (usingMulticast) {
-			logger.debug("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
+			logger.finer("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
 
 			multicastSendSockets = new MulticastSocket[allAddrs.size()];
 			Iterator iter = allAddrs.iterator();
@@ -188,12 +188,12 @@ public class UDPMulticastSocket {
 				/*if (loopbackToLocalhost) {
 					multicastSendSockets[i].setLoopbackMode(true);
 					if (!multicastSendSockets[i].getLoopbackMode())
-						logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
+						logger.warning("Could not set loopback mode, own packets will not be seen by localhost");
 				 }*/
 			}
 		}
 		else {
-			logger.warn("Not using multicast group to send to, therefore not binding to specific local addresses");
+			logger.warning("Not using multicast group to send to, therefore not binding to specific local addresses");
 			
 			multicastSendSockets = new MulticastSocket[1];
 			multicastSendSockets[0] = new MulticastSocket();
@@ -212,13 +212,13 @@ public class UDPMulticastSocket {
 		packet.setPort(sendPort);
 		for (int i=0; i<multicastSendSockets.length; i++) {
 			if (! addressIsAlias.get(i)) {
-				logger.debug("Sending packet with " + message.length + " bytes to multicast group " + 
+				logger.finer("Sending packet with " + message.length + " bytes to multicast group " + 
 						groupAddress + ", port " + sendPort + " on multicast socket bound to address " + 
 						multicastSendSockets[i].getLocalAddress());
 				multicastSendSockets[i].send(packet);
 			}
 			else {
-				logger.debug("Not using multicast socket bound to alias address " + 
+				logger.finer("Not using multicast socket bound to alias address " + 
 						multicastSendSockets[i].getLocalAddress());
 			}
 		}
@@ -233,7 +233,7 @@ public class UDPMulticastSocket {
         DatagramPacket packet = new DatagramPacket(message, 0, message.length);
 		packet.setAddress(target);
 		packet.setPort(sendPort);
-		logger.debug("Sending packet with " + message.length + " bytes to address " + 
+		logger.finer("Sending packet with " + message.length + " bytes to address " + 
 				target + ", port " + sendPort);
 		unicastSendSocket.send(packet);
 	}
@@ -258,7 +258,7 @@ public class UDPMulticastSocket {
 			}
 		}
 		catch (IOException e) {
-			logger.warn("Could not properly leave multicast group " + groupAddress + ": " + e);
+			logger.warning("Could not properly leave multicast group " + groupAddress + ": " + e);
 		}
 	}
 	
@@ -292,7 +292,7 @@ public class UDPMulticastSocket {
 	
 	private class RunHelper implements Runnable {
 		public void run() {
-			logger.debug("Listener thread starting");
+			logger.finer("Listener thread starting");
 			// to allow up to the maximum UDP packet size
 			byte[] buffer = new byte[65535];
 			while (! shouldExit) {
@@ -300,7 +300,7 @@ public class UDPMulticastSocket {
 	            
 				try {
 					multicastReceiveSocket.receive(packet);
-		            logger.debug("Received packet of length " + packet.getLength() + " from " + 
+		            logger.finer("Received packet of length " + packet.getLength() + " from " + 
 		            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress() +
 		            		", port " + receivePort);
 					
@@ -313,11 +313,11 @@ public class UDPMulticastSocket {
 			    			}
 			    			catch (Exception e) {
 			    				String stackTrace = "";
-			    				if (logger.isDebugEnabled()) {
+			    				if (logger.isLoggable(Level.FINER)) {
 			    					for (int j=0; j<e.getStackTrace().length; j++)
 			    						stackTrace += e.getStackTrace()[j].toString() + "\n";
 			    				}
-			    				logger.error("Incoming message handler '" + l + 
+			    				logger.severe("Incoming message handler '" + l + 
 			    						"' caused exception '" + e + "\n" + stackTrace + "', ignoring it here");
 			    			}
 			    		}
@@ -326,10 +326,10 @@ public class UDPMulticastSocket {
 				} catch (SocketTimeoutException e) {
 					// just ignore
 				} catch (IOException e) {
-					logger.error("Could not receive from UDP socket: " + e);
+					logger.severe("Could not receive from UDP socket: " + e);
 				}
 			}
-			logger.debug("Listener thread stopping");
+			logger.finer("Listener thread stopping");
 		}
 	}
 }

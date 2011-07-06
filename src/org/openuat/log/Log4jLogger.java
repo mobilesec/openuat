@@ -9,12 +9,12 @@
 package org.openuat.log;
 
 import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
- * This class is a thin wrapper around a log4j logger. Configuration of the
+ * This class is a thin wrapper around a logger. Configuration of the
  * log4j framework should be done through its properties file (log4j.properties).
- * However, you can get access to the native log4j logger through the
+ * However, you can get access to the native logger through the
  * {@link #getNativeLogger} method.
  * 
  * @see Log
@@ -23,11 +23,11 @@ import org.apache.log4j.Logger;
  */
 public class Log4jLogger implements Log {
 	
-	/* The internal log4j logger */
+	/* The internal logger */
 	private Logger logger;
 	
 	/**
-	 * Creates a new instance which will wrap a new named log4j logger.
+	 * Creates a new instance which will wrap a new named logger.
 	 * 
 	 * @param name The name of the new logger.
 	 */
@@ -36,18 +36,18 @@ public class Log4jLogger implements Log {
 	}
 	
 	/**
-	 * Creates a new instance which wraps an existing log4j logger.
+	 * Creates a new instance which wraps an existing logger.
 	 * 
-	 * @param logger The wrapped log4j logger.
+	 * @param logger The wrapped logger.
 	 */
 	public Log4jLogger(Logger logger) {
 		this.logger = logger;
 	}
 	
 	/**
-	 * Returns the native log4j logger.
+	 * Returns the native logger.
 	 * 
-	 * @return The native log4j logger.
+	 * @return The native logger.
 	 */
 	public Logger getNativeLogger() {
 		return logger;
@@ -55,22 +55,22 @@ public class Log4jLogger implements Log {
 	
 	// @Override
 	public void debug(Object message) {
-		logger.debug(message);
+		logger.finer(message);
 	}
 
 	// @Override
 	public void debug(Object message, Throwable t) {
-		logger.debug(message, t);
+		logger.finer(message, t);
 	}
 
 	// @Override
 	public void error(Object message) {
-		logger.error(message);
+		logger.severe(message);
 	}
 
 	// @Override
 	public void error(Object message, Throwable t) {
-		logger.error(message, t);
+		logger.severe(message, t);
 	}
 
 	// @Override
@@ -95,7 +95,7 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public boolean isDebugEnabled() {
-		return logger.isDebugEnabled();
+		return logger.isLoggable(Level.FINER);
 	}
 
 	// @Override
@@ -115,7 +115,7 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public boolean isTraceEnabled() {
-		return logger.isTraceEnabled();
+		return logger.isLoggable(Level.FINEST);
 	}
 
 	// @Override
@@ -135,11 +135,11 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public void warn(Object message) {
-		logger.warn(message);
+		logger.warning(message);
 	}
 
 	// @Override
 	public void warn(Object message, Throwable t) {
-		logger.warn(message, t);
+		logger.warning(message, t);
 	}
 }

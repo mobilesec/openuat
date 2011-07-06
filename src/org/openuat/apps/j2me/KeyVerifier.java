@@ -249,13 +249,13 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 //	 * strings on both devices and gives appropriate feedback.
 //	 */
 //	private void verifyHashComparison(byte[] authKey) {
-//		logger.debug("Start key verification: Hash comparison");
+//		logger.finer("Start key verification: Hash comparison");
 //		String hashString;
 //        try {
 //			hashString = getHexString(Hash.doubleSHA256(authKey, false));
 //			hashString = hashString.substring(0, HASH_STRING_LENGTH);
 //		} catch (InternalApplicationException e) {
-//			logger.error("Failed to build hash.", e);
+//			logger.severe("Failed to build hash.", e);
 //			return;
 //		}
 //		Form userFeedback = new Form ("Hash Comparison");
@@ -667,7 +667,7 @@ public class KeyVerifier implements CommandListener, ItemCommandListener, OOBMes
 						hashString = Hash.getHexString(Hash.doubleSHA256(authKey, false));
 						hashString = hashString.substring(0, HASH_STRING_LENGTH);
 					} catch (InternalApplicationException e) {
-						logger.error("Failed to build hash.", e);
+						logger.severe("Failed to build hash.", e);
 						return;
 					}madLib.GenerateMadLib(Hash.doubleSHA256(authKey, false), 0, 5);
 				Form outcome = new Form("OpenUAT");

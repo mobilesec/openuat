@@ -9,7 +9,7 @@
 package org.openuat.log;
 
 /**
- * This is a <code>LogFactory</code> that is able to create log4j loggers.<br/>
+ * This is a <code>LogFactory</code> that is able to create loggers.<br/>
  * For a usage example, see {@link LogFactory}.
  * 
  * @author Lukas Huser

@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Composite;
@@ -40,7 +40,7 @@ import org.openuat.sensors.WiTiltRawReader;
  * @version 1.0
  */
 public class ShakingSinglePCDemonstrator {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(ShakingSinglePCDemonstrator.class);
 	
 	/** The displayed text when a device is active. */
@@ -248,13 +248,13 @@ public class ShakingSinglePCDemonstrator {
 									reader1.simulateSampling();
 								}
 								catch (IOException e) {
-									logger.warn("Could not read from remote host " + sock.getRemoteSocketAddress() + 
+									logger.warning("Could not read from remote host " + sock.getRemoteSocketAddress() + 
 										", most probably client terminated connection. Disconnecting.");
 								}
 							}
 						}	
 						catch (IOException e) {
-							logger.error("Could not accept connection from socket: " + e);
+							logger.severe("Could not accept connection from socket: " + e);
 						}
 					}
 				}).start();
@@ -389,7 +389,7 @@ public class ShakingSinglePCDemonstrator {
 		//@Override
 		protected void protocolProgressHook(RemoteConnection remote, 
 				int cur, int max, String message) {
-			logger.debug("Protocol variant 1 progress with " + remote +
+			logger.finer("Protocol variant 1 progress with " + remote +
 					" " + cur + " of " + max + ": " + message); 
 		}		
 	}
@@ -434,7 +434,7 @@ public class ShakingSinglePCDemonstrator {
 		// TODO: activate me again when J2ME polish can deal with Java5 sources!
 		//@Override
 		protected void protocolProgressHook(String remote, int cur, int max, String message) {
-			logger.debug("Protocol variant 2 progress with " + remote +
+			logger.finer("Protocol variant 2 progress with " + remote +
 					" " + cur + " of " + max + ": " + message); 
 		}
 	}
@@ -449,7 +449,7 @@ public class ShakingSinglePCDemonstrator {
 		
 		/** This implementation changes the display state of the respective device to active. */
 		public void segmentStart(int numSample) {
-			logger.debug("Device " + deviceIndex + " became active at sample " + numSample);
+			logger.finer("Device " + deviceIndex + " became active at sample " + numSample);
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
 					deviceStates[deviceIndex].setText(DEVICE_STATE_ACTIVE);
@@ -459,7 +459,7 @@ public class ShakingSinglePCDemonstrator {
 		
 		/** This implementation changes the display state of the respective device to quiescent. */
 		public void segmentEnd(int numSample) {
-			logger.debug("Device " + deviceIndex + " became qiescent at sample " + numSample);
+			logger.finer("Device " + deviceIndex + " became qiescent at sample " + numSample);
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
 					deviceStates[deviceIndex].setText(DEVICE_STATE_QUIESCENT);

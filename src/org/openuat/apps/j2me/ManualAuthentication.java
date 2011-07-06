@@ -117,14 +117,14 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
+			logger.severe("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 
 		try {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(this);
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothPeerManager: " + e);
+			logger.severe("Error initializing BlutoothPeerManager: " + e);
 			return;
 		}
 
@@ -183,8 +183,8 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 				if (dev_list.getSelectedIndex() >= 0) { //find services
 					RemoteDevice[] devices = peerManager.getPeers();
 					currentPeerAddress = devices[dev_list.getSelectedIndex()].getBluetoothAddress();
-					if (logger.isDebugEnabled()) {
-						logger.debug("currentPeerAddress set to " + currentPeerAddress);
+					if (logger.isLoggable(Level.FINER)) {
+						logger.finer("currentPeerAddress set to " + currentPeerAddress);
 					}
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
 					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], SERVICE_UUID)) {
@@ -205,10 +205,10 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 					try {
 						BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(currentPeerAddress, BLUETOOTH_CHANNEL_NR);
 						channel.open();
-						logger.debug("Bluetooth channel opened, start DH key agreement.");
+						logger.finer("Bluetooth channel opened, start DH key agreement.");
 						HostProtocolHandler.startAuthenticationWith(channel, this, 10000, keepConnected, optionalParam, false);
 					} catch (IOException e) {
-						logger.error("Failed to open connection to peer.", e);
+						logger.severe("Failed to open connection to peer.", e);
 					}
 				}
 			}
@@ -324,7 +324,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
         	LineReaderWriter.println(connectionToRemote.getOutputStream(), 
         			"Finished DH key agreement - now start to verify");
 		} catch (IOException e) {
-			logger.debug("Unable to open stream to remote: " + e);
+			logger.finer("Unable to open stream to remote: " + e);
 		}
 		
 		do_alert("Authentication with " + remote + " successful", Alert.FOREVER);
@@ -337,13 +337,13 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 	 * strings on both devices and gives appropriate feedback.
 	 */
 	private void verifyHashComparison(byte[] authKey) {
-		logger.debug("Start key verification: Hash comparison");
+		logger.finer("Start key verification: Hash comparison");
 		String hashString;
         try {
 			hashString = getHexString(Hash.doubleSHA256(authKey, false));
 			hashString = hashString.substring(0, HASH_STRING_LENGTH);
 		} catch (InternalApplicationException e) {
-			logger.error("Failed to build hash.", e);
+			logger.severe("Failed to build hash.", e);
 			return;
 		}
 		Form userFeedback = new Form ("Hash Comparison");

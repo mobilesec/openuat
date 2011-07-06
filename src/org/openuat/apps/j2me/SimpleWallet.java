@@ -24,7 +24,7 @@ import net.sf.microlog.Level;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.Hash;
 import org.openuat.util.SimpleBlockCipher;
@@ -69,7 +69,7 @@ public class SimpleWallet extends MIDlet implements CommandListener {
 	Logger logger = Logger.getLogger("org.openuat.apps.j2me.SimpleWallet");
 	
 	private void error(String e, Throwable t, Displayable returnTo) {
-		logger.error(e, t);
+		logger.severe(e, t);
 		
 		Alert a = new Alert(
 				"Error ",
@@ -202,7 +202,7 @@ public class SimpleWallet extends MIDlet implements CommandListener {
 					// we already stored a password, so compare now
 					byte[] storedHash = re.nextRecord();
 					if (storedHash.length != pwCheckValue.length)
-						logger.warn("Expected to read " + mainPwHash.length + " bytes password hash, but got " +
+						logger.warning("Expected to read " + mainPwHash.length + " bytes password hash, but got " +
 								storedHash.length);
 						
 					boolean equals = true;

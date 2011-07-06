@@ -11,7 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This class implements a "grenade timer" that will let any loop bail out 
  * with a timeout when it is stuck for too long waiting for something. To use
@@ -61,7 +61,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public class SafetyBeltTimer implements Runnable {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.SafetyBeltTimer" /*SafetyBeltTimer.class*/);
 
 	/** This signals the event loop to exit gracefully. */
@@ -95,7 +95,7 @@ public class SafetyBeltTimer implements Runnable {
 	
 	/** Implements the timer background thread. */
 	public void run() {
-		logger.debug("Starting safety belt timer with " + msCountdown + "ms");
+		logger.finer("Starting safety belt timer with " + msCountdown + "ms");
 		
 		while (!timeout && !gracefulStop) {
 			try {
@@ -106,27 +106,27 @@ public class SafetyBeltTimer implements Runnable {
 			catch (InterruptedException e) {
 				// ok. this is a heartbeat, just restart the timer waiting
 				// timeout will not have been set to true in that case
-				logger.debug("Safety belt timer reset to " + msCountdown + "ms");
+				logger.finer("Safety belt timer reset to " + msCountdown + "ms");
 			}
 		}
 		/* Need to check gracefulStop too - it seems that J2ME implementations
 		 * don't necessarily support thread interruption and thus timeout might
 		 * be set to true even if stop() was called!. */
 		if (timeout && !gracefulStop) {
-			if (logger.isDebugEnabled())
-				logger.debug("Safety belt timer triggered");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Safety belt timer triggered");
 			if (abortStream != null) {
-				logger.warn("Forcefully closing input stream to abort reads: " + abortStream);
+				logger.warning("Forcefully closing input stream to abort reads: " + abortStream);
 				try {
 					abortStream.close();
 				} catch (IOException e) {
-					logger.error("Could not forcefully close input stream: " + e);
+					logger.severe("Could not forcefully close input stream: " + e);
 				}
 			}
 		}
 		else
-			if (logger.isDebugEnabled())
-				logger.debug("Safety belt timer exited gracefully");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Safety belt timer exited gracefully");
 	}
 	
 	/** Returns true when the timer has triggered and the task should terminate. */

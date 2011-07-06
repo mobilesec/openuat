@@ -10,7 +10,7 @@ package org.openuat.apps;
 
 import java.io.IOException;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.relate.RelateAuthenticationProtocol;
@@ -30,7 +30,7 @@ import uk.ac.lancs.relate.core.MeasurementManager;
  * @version 1.0
  */
 public abstract class IPSecConnectorCommon implements AuthenticationProgressHandler {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(IPSecConnectorCommon.class);
 	
 	/** This name is used as a prefix for transmitting the XML-encoded
@@ -80,7 +80,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 		}
 
 		if (relateConf != null) {
-			logger.debug("Registering MeasuementManager with SerialConnector");
+			logger.finer("Registering MeasuementManager with SerialConnector");
         	//SerialConnector connector = SerialConnector.getSerialConnector(relateConf.getDevicePortName(), relateConf.getDeviceType());
         	//connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
@@ -91,12 +91,12 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			manager = null;
 			RelateAuthenticationProtocol.setSimulationMode(true);
 		}
-		logger.debug("Creating RelateAuthenticationProtocol");
+		logger.finer("Creating RelateAuthenticationProtocol");
 		authp = new RelateAuthenticationProtocol((relateConf != null ? relateConf.getPort() : null), manager, !adminEnd, true, null);
 		authp.addAuthenticationProgressHandler(this);
 		
 		if (! adminEnd) {
-			logger.debug("Client end, starting authentication server");
+			logger.finer("Client end, starting authentication server");
 			authp.startListening();
 		}
 	}
@@ -117,7 +117,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 
 	/** This is an implementation of the AuthenticationProgressHandler interface. */
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg){
-		logger.debug("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+		logger.finer("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
 	}
 }
 

@@ -131,7 +131,7 @@ public class PowerBarToButtonChannel extends ButtonChannel {
 				try {
 					Thread.sleep(textDelay);
 				} catch (InterruptedException e) {
-					logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+					logger.warning("Method transmit(byte[]): transmission thread interrupted.", e);
 				}
 				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_VERT_BARS);
 				// transmit the data (given from 'intervals')

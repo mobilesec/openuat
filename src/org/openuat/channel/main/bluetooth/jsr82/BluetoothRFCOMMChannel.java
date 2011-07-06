@@ -20,7 +20,7 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.channel.main.RemoteConnection;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
 import org.openuat.util.DebugInputStream;
@@ -43,7 +43,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 	}
 	
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMChannel" /*BluetoothRFCOMMChannel.class*/);
 	
 	/** This is used to hold the list of all concurrently open (or trying to
@@ -100,7 +100,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		
 		if (openChannels.size() > 0)
-			logger.error("Unable to close all Bluetooth RFCOMM channels, some are left open. This should not happen!");
+			logger.severe("Unable to close all Bluetooth RFCOMM channels, some are left open. This should not happen!");
 	}
 	
 	/** Construct a Bluetooth RFCOMM channel object with a specific remote endpoint.
@@ -125,13 +125,13 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			this.remoteDeviceAddress = serviceURL.substring(8, 20);
 			int end = serviceURL.indexOf(';') > 0 ? serviceURL.indexOf(';') : serviceURL.length(); 
 			this.remoteChannelNumber = Integer.parseInt(serviceURL.substring(21, end));
-			if (logger.isDebugEnabled())
-				logger.debug("Parsed remote device address '" + remoteDeviceAddress + 
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Parsed remote device address '" + remoteDeviceAddress + 
 					"' and channel " + remoteChannelNumber + " from URL '" +
 					serviceURL + "'");
 		}
 		else
-			logger.warn("Could not parse URL '" + serviceURL + 
+			logger.warning("Could not parse URL '" + serviceURL + 
 					"', getRemoteAddress and getRemoteName will not work until a connection is established");
 	}
 	
@@ -154,7 +154,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		// just remember the parameters
 		this.remoteDeviceAddress = remoteDeviceAddress;
 		this.remoteChannelNumber = remoteChannelNumber;
-		logger.debug("Created RFCOMM channel object to remote device '" + this.remoteDeviceAddress +
+		logger.finer("Created RFCOMM channel object to remote device '" + this.remoteDeviceAddress +
 				"' to SDP port "+ this.remoteChannelNumber);
 	}
 
@@ -190,7 +190,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		RemoteDevice remote = RemoteDevice.getRemoteDevice(connection);
 		this.remoteDeviceAddress = remote.getBluetoothAddress();
 		this.remoteChannelNumber = remoteChannelNumberForCallback;
-		logger.debug("Opening streams in already connected RFCOMM channel");
+		logger.finer("Opening streams in already connected RFCOMM channel");
 		
 		this.connection = connection;
 		
@@ -231,7 +231,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		if (serviceURL == null) {
 			throw new IOException("Channel can not be opened, URL has not been set");
 		}
-		logger.debug("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
+		logger.finer("Opening RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber + " with URL '" + serviceURL + "'");
 
 		// before blocking, add to our list
@@ -239,7 +239,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			// sanity check
 			if (openChannels.contains(this)) {
 				openChannels.removeElement(this);
-//				logger.warn("This BluetoothRFCOMMChannel object to " + 
+//				logger.warning("This BluetoothRFCOMMChannel object to " + 
 //						remoteDeviceAddress + 
 //						" does not seem to have an open connection, but is already in openChannels. This should not happen, aborting connection attempt!");
 //				return false;
@@ -273,10 +273,10 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	 */
 	public void close() {
 		if (connection == null) {
-			logger.debug("RFCOMM channel has not been opened properly or been closed already, can not close");
+			logger.finer("RFCOMM channel has not been opened properly or been closed already, can not close");
 			return;
 		}
-		logger.debug("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
+		logger.finer("Closing RFCOMM channel to remote device '" + remoteDeviceAddress + 
 				"' with port " + remoteChannelNumber);
 		
     	try {
@@ -288,13 +288,13 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
-   			logger.error("Unable to close streams cleanly", e);
+   			logger.severe("Unable to close streams cleanly", e);
 		}
 		finally {
 			// remove from the list of open channels again
 			synchronized (openChannels) {
 				if (!openChannels.contains(this)) {
-					logger.error("This BluetoothRFCOMMChannel object to " + 
+					logger.severe("This BluetoothRFCOMMChannel object to " + 
 							remoteDeviceAddress + 
 							" seems to have an open connection, but is not in openChannels. This should not happen!");
 				}
@@ -310,14 +310,14 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	/** Implementation of RemoteConnection.isOpen. */
 	public boolean isOpen() {
 		if (connection == null || fromRemote == null || toRemote == null) {
-			logger.debug(this + " is not open because connection, fromRemote, or toRemote are null: "+connection+"-"+fromRemote+"-"+toRemote);
+			logger.finer(this + " is not open because connection, fromRemote, or toRemote are null: "+connection+"-"+fromRemote+"-"+toRemote);
 			return false;
 		}
 		try {
 			fromRemote.available();
 		}
 		catch (IOException e) {
-			logger.debug(this + " is not open because fromRemote.available threw an exception: " + e);
+			logger.finer(this + " is not open because fromRemote.available threw an exception: " + e);
 			return false;
 		}
 		
@@ -325,7 +325,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			toRemote.flush();
 		}
 		catch (IOException e) {
-			logger.debug(this + " is not open because toRemote.flush threw an exception: " + e);
+			logger.finer(this + " is not open because toRemote.flush threw an exception: " + e);
 			return false;
 		}
 		
@@ -336,17 +336,17 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		try {
 			String reportedAddr = RemoteDevice.getRemoteDevice(connection).getBluetoothAddress();
 			if (reportedAddr.equals("000000000000")) {
-				logger.error(this + " is not open because getBluetoothAddress() from connection returns the 0-address");
+				logger.severe(this + " is not open because getBluetoothAddress() from connection returns the 0-address");
 				return false;
 			}
 			if (!reportedAddr.equals(remoteDeviceAddress)) {
-				logger.error("The reported getBluetoothAddress() from connection (" + 
+				logger.severe("The reported getBluetoothAddress() from connection (" + 
 						reportedAddr + ") differs from the one this BluetoothRFCOMMChannel was constructed with (" +
 						remoteDeviceAddress + "). This is not fatal but should not happen in any case. Please investigate.");
 			}
 			return true;
 		} catch (IOException e) {
-			logger.debug(this + " is not open because getRemoteDevice(connection) threw an exception: " + e);
+			logger.finer(this + " is not open because getRemoteDevice(connection) threw an exception: " + e);
 			return false;
 		}
 	}
@@ -363,7 +363,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		
 		// maybe apply decorator
-		if (logger.isTraceEnabled())
+		if (logger.isLoggable(Level.FINEST))
 			return new DebugInputStream(fromRemote, "org.openuat.util.BluetoothRFCOMMChannel_IN");
 			
 		return fromRemote;
@@ -381,7 +381,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		
 		// maybe apply decorator
-		if (logger.isTraceEnabled())
+		if (logger.isLoggable(Level.FINEST))
 			return new DebugOutputStream(toRemote, "org.openuat.util.BluetoothRFCOMMChannel_OUT");
 			
 		return toRemote;
@@ -453,16 +453,16 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 	//@Override
 	public boolean equals(Object other) {
 		if (other == null || !(other instanceof BluetoothRFCOMMChannel)) {
-			if (logger.isDebugEnabled())
-				logger.debug("equals called with object of wrong type");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("equals called with object of wrong type");
 			return false;
 		}
 		BluetoothRFCOMMChannel o = (BluetoothRFCOMMChannel) other;
 		
 		// already connected? if yes, this has precedence
 		if (connection != null && o.connection != null) {
-			if (logger.isDebugEnabled())
-				logger.debug("Both connection objects set, comparing connection=" + 
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Both connection objects set, comparing connection=" + 
 						connection + ", o.connection=" + connection);
 			return connection.equals(o.connection);
 		}
@@ -472,7 +472,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		// also ignore the parameters in the serviceURL
 		if (serviceURL != null && o.serviceURL != null && 
 				remoteChannelNumber != -1 && o.remoteChannelNumber != -1) {
-			logger.debug("Both serviceURL objects set, comparing serviceURL=" + 
+			logger.finer("Both serviceURL objects set, comparing serviceURL=" + 
 					serviceURL + ", o.serviceURL=" + serviceURL);
 			String s1 = serviceURL.indexOf(';') > 0 ? serviceURL.substring(0, serviceURL.indexOf(';')) : serviceURL;
 			String s2 = o.serviceURL.indexOf(';') > 0 ? o.serviceURL.substring(0, o.serviceURL.indexOf(';')) : o.serviceURL;
@@ -481,13 +481,13 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		
 		// ok, neither connected, nor do we have full serviceURLs, only compare device addresses (if available)
 		if (remoteDeviceAddress != null && o.remoteDeviceAddress != null) {
-			logger.debug("Both remoteDeviceAddress objects set, comparing remoteDeviceAddress=" +
+			logger.finer("Both remoteDeviceAddress objects set, comparing remoteDeviceAddress=" +
 					remoteDeviceAddress + ", o.remoteDeviceAddress=" + o.remoteDeviceAddress);
 			return remoteDeviceAddress.equals(o.remoteDeviceAddress);
 		}
 		
 		// don't know...
-		logger.error("Trying to compare objects where neither both are connected nor both have serviceURL or remoteDeviceAddress set. For what I know, they are different.");
+		logger.severe("Trying to compare objects where neither both are connected nor both have serviceURL or remoteDeviceAddress set. For what I know, they are different.");
 		return false;
 	}
 
@@ -503,7 +503,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 			remoteAddr = (String) getRemoteAddress();
 		}
 		catch (IOException e) {
-			logger.error("Couldn't query remote address of connection while trying to generate hash code, will return 0");
+			logger.severe("Couldn't query remote address of connection while trying to generate hash code, will return 0");
 		}
 		
 		if (remoteAddr == null)

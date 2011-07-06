@@ -24,7 +24,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
 import org.openuat.util.LoggingHelper;
 
@@ -68,7 +68,7 @@ public class BluetoothPeerManager {
 	 */
 	public final static int SCAN_SERVICES_FACTOR = 5;
 	
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(/*BluetoothPeerManager.class*/ "org.openuat.util.BluetoothPeerManager");
 	
 	/** The agent used for actual discovery, initialized in the constructor. */
@@ -223,7 +223,7 @@ public class BluetoothPeerManager {
 	 */
 	public boolean startInquiry(boolean continuousBackground) {
 		if (inquiryThread != null) {
-			logger.warn("Background inquiry already running, can not start another instance.");
+			logger.warning("Background inquiry already running, can not start another instance.");
 			return false;
 		}
 		if (! continuousBackground) {
@@ -366,7 +366,7 @@ public class BluetoothPeerManager {
 		synchronized (dev) {
 			// safety check
 			if (dev.serviceSearchTransId != -1) {
-				logger.warn("Service search for remote device " + 
+				logger.warning("Service search for remote device " + 
 						device.getBluetoothAddress() + 
 						" already in progress, not starting a second time");
 				return false;
@@ -380,7 +380,7 @@ public class BluetoothPeerManager {
 				logger.info("Starting service search on " + device.getBluetoothAddress());
 				dev.serviceSearchTransId = agent.searchServices(attributes, uuids, device, new DiscoveryEventsHandler(device));
 				if (dev.serviceSearchTransId < 0)
-					logger.warn("Started service search for remote device " +
+					logger.warning("Started service search for remote device " +
 							device.getBluetoothAddress() +
 							" but returned transaction id <0 (" +
 							dev.serviceSearchTransId + "). This should not happen!");
@@ -390,14 +390,14 @@ public class BluetoothPeerManager {
 				}
 				return true;
 			} catch (BluetoothStateException e) {
-				logger.warn("Could not initiate service search for remote device " +
+				logger.warning("Could not initiate service search for remote device " +
 						device.getBluetoothAddress() + ": " + e);
 				LoggingHelper.debugWithException(logger, 
 						"BluetoothStateException while starting service search for " +
 						device.getBluetoothAddress(), e);
 				return false;
 			} catch (IllegalArgumentException e) {
-				logger.warn("Could not initiate service search for remote device " +
+				logger.warning("Could not initiate service search for remote device " +
 						device.getBluetoothAddress() + ": " + e);
 				LoggingHelper.debugWithException(logger, 
 						"IllegalArgumentException while starting service search for " +
@@ -439,7 +439,7 @@ public class BluetoothPeerManager {
 		if (dev == null) return null;
 		synchronized (dev) {
 			if (!dev.serviceSearchFinished) {
-				logger.warn("Service search for remote device " + device.getBluetoothAddress() +
+				logger.warning("Service search for remote device " + device.getBluetoothAddress() +
 						" has not finished yet, don't have a service list.");
 				return null;
 			}
@@ -524,7 +524,7 @@ public class BluetoothPeerManager {
 	private class InquiryThread implements Runnable {
 		public void run() {
 			while (inquiryThread != null) {
-				logger.debug("Main inquiry thread: starting next inquiry");
+				logger.finer("Main inquiry thread: starting next inquiry");
 				if (!startInquiry())
 					return;
 				try {
@@ -537,7 +537,7 @@ public class BluetoothPeerManager {
 					synchronized (serviceSearchQueue) {
 						for (int i=0; i<serviceSearchQueue.size(); i++) {
 							RemoteDevice device = (RemoteDevice) serviceSearchQueue.elementAt(i);
-							logger.debug("Main inquiry thread: processing service search queue request for " + 
+							logger.finer("Main inquiry thread: processing service search queue request for " + 
 									device.getBluetoothAddress());
 							startServiceSearch(device, automaticServiceDiscoveryUUID);
 							// wait for the previous service scan to finish before starting the next
@@ -552,13 +552,13 @@ public class BluetoothPeerManager {
 								if (dev.serviceSearchTransId > -1)
 									agent.cancelServiceSearch(dev.serviceSearchTransId);
 								else
-									logger.warn("Tried to cancel service search on " + 
+									logger.warning("Tried to cancel service search on " + 
 											device.getBluetoothAddress() + 
 											", but no transaction ID known, can not cancel");
 							}
 						}
 						serviceSearchQueue.removeAllElements();
-						logger.debug("Main inquiry thread: service search queue processed, emptying now");
+						logger.finer("Main inquiry thread: service search queue processed, emptying now");
 					}
 					// and sleep (but only if not exiting)
 					if (inquiryThread != null)
@@ -617,11 +617,11 @@ public class BluetoothPeerManager {
 
 		public void deviceDiscovered(RemoteDevice remoteDevice, DeviceClass deviceClass) {
 			if (currentRemoteDevice != null) {
-				logger.error("Remote device set, but discovered devices. This should not happen, ignoring devices!");
+				logger.severe("Remote device set, but discovered devices. This should not happen, ignoring devices!");
 				return;
 			}
 
-			logger.debug("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
+			logger.finer("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
 					" named '" + resolveName(remoteDevice) + "' of class " + 
 					deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
 			synchronized(foundDevices) {
@@ -635,7 +635,7 @@ public class BluetoothPeerManager {
 
 		public void inquiryCompleted(int param) {
 			if (currentRemoteDevice != null) {
-				logger.error("Remote device not set, but discovered devices. This should not happen, ignoring devices!");
+				logger.severe("Remote device not set, but discovered devices. This should not happen, ignoring devices!");
 				return;
 			}
 
@@ -676,8 +676,8 @@ public class BluetoothPeerManager {
 				}
 				
 				if (newDevices.size() == 0) {
-					if (logger.isDebugEnabled())
-						logger.debug("Discovery completed, found " + newDevices.size() + 
+					if (logger.isLoggable(Level.FINER))
+						logger.finer("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				else {
@@ -703,16 +703,16 @@ public class BluetoothPeerManager {
 						sleepBetweenInquiries = MINIMUM_SLEEP_TIME;
 					if (sleepBetweenInquiries > MAXIMUM_SLEEP_TIME)
 						sleepBetweenInquiries = MAXIMUM_SLEEP_TIME;
-					logger.debug("Inquiry found " + newDevices.size() + 
+					logger.finer("Inquiry found " + newDevices.size() + 
 							" new, adapting sleep time to " + sleepBetweenInquiries + "ms");
 				}
 				
 				break;
 			case DiscoveryListener.INQUIRY_ERROR:
-				logger.error("Inquiry error");
+				logger.severe("Inquiry error");
 				break;
 			case DiscoveryListener.INQUIRY_TERMINATED: // inquiry terminated by agent.cancelInquiry()
-				logger.error("Inquiry cancelled");
+				logger.severe("Inquiry cancelled");
 				break;
 			}
 			synchronized (this) {
@@ -733,7 +733,7 @@ public class BluetoothPeerManager {
 					currentRemoteDevice.getBluetoothAddress() + 
 					" with transaction id " + transID);
 			if (currentRemoteDevice == null) {
-				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
+				logger.severe("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
 			}
 
@@ -744,13 +744,13 @@ public class BluetoothPeerManager {
 			synchronized (dev) {
 				// sanity check
 				if (dev.serviceSearchFinished) {
-					logger.warn("Service search for remote device " + currentRemoteDevice +
+					logger.warning("Service search for remote device " + currentRemoteDevice +
 							" has already finished, can not append to services list");
 					return;
 				}
 				// and another sanity check
 				if (dev.serviceSearchTransId != transID) {
-					logger.warn("Discovered services with transaction id " + 
+					logger.warning("Discovered services with transaction id " + 
 							transID + ", while starting the search returned id " +
 							dev.serviceSearchTransId + ", not appending to services list");
 					return;
@@ -760,13 +760,13 @@ public class BluetoothPeerManager {
 			}
 			synchronized (services) {	
 				for (int i=0; i<serviceRecord.length; i++) {
-					if (logger.isDebugEnabled())
-						logger.debug("Service " + i + ": " + 
+					if (logger.isLoggable(Level.FINER))
+						logger.finer("Service " + i + ": " + 
 							serviceRecord[i].getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
 					dev.services.addElement(serviceRecord[i]);
 				}
-				if (logger.isDebugEnabled())
-					logger.debug("Total number of services discovered for " + 
+				if (logger.isLoggable(Level.FINER))
+					logger.finer("Total number of services discovered for " + 
 						currentRemoteDevice + " is now " + services.size());
 				// something in dev changed, notify
 				synchronized (dev.notifier) {
@@ -777,7 +777,7 @@ public class BluetoothPeerManager {
 
 		public void serviceSearchCompleted(int transID, int respCode) {
 			if (currentRemoteDevice == null) {
-				logger.error("Remote device not set, but discovered services. This should not happen, ignoring services!");
+				logger.severe("Remote device not set, but discovered services. This should not happen, ignoring services!");
 				return;
 			}
 
@@ -792,13 +792,13 @@ public class BluetoothPeerManager {
 			synchronized (dev) {
 				// sanity check
 				if (dev.serviceSearchFinished) {
-					logger.warn("Service search for remote device " + currentRemoteDevice.getBluetoothAddress() +
+					logger.warning("Service search for remote device " + currentRemoteDevice.getBluetoothAddress() +
 							" has already finished, can not finish twice, ignoring");
 					return;
 				}
 				// and another sanity check
 				if (dev.serviceSearchTransId != transID) {
-					logger.warn("Finished service discovery with transaction id " + 
+					logger.warning("Finished service discovery with transaction id " + 
 							transID + ", while starting the search returned id " +
 							dev.serviceSearchTransId + ", ignoring");
 					return;
@@ -825,10 +825,10 @@ public class BluetoothPeerManager {
 						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
 								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
-					if (logger.isDebugEnabled()) {
+					if (logger.isLoggable(Level.FINER)) {
 						for (int i=0; i<services.size(); i++) {
 							ServiceRecord sr = (ServiceRecord) services.elementAt(i);
-							logger.debug("Service " + i + ": " + sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+							logger.finer("Service " + i + ": " + sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
 						}
 					}
 					for (int i=0; i<listeners.size(); i++)
@@ -905,7 +905,7 @@ public class BluetoothPeerManager {
 				break;
 			}
 			if (!dev.serviceSearchFinished)
-				logger.warn("serviceSearchCompleted handler exiting, but serviceSearchFinished still not true for " +
+				logger.warning("serviceSearchCompleted handler exiting, but serviceSearchFinished still not true for " +
 						currentRemoteDevice.getBluetoothAddress() + 
 						". This should not happen! Please investigate right now!");
 		}
@@ -920,14 +920,14 @@ public class BluetoothPeerManager {
 	private boolean startInquiry() {
 		try {
 			if (eventsHandler.isInquiryRunning()) {
-				logger.error("Inquiry is already running, can not start a second run in parallel");
+				logger.severe("Inquiry is already running, can not start a second run in parallel");
 				return false;
 			}
 			eventsHandler.reset();
 			agent.startInquiry(DiscoveryAgent.GIAC, eventsHandler);
 			return true;
 		} catch (BluetoothStateException e) {
-			logger.error("Could not initiate inquiry: " + e);
+			logger.severe("Could not initiate inquiry: " + e);
 			LoggingHelper.debugWithException(logger, 
 					"BluetoothStateException while starting inquiry", e);
 			return false;
@@ -942,14 +942,14 @@ public class BluetoothPeerManager {
 		RemoteDeviceDetail dev;
 		synchronized(foundDevices) {
 			if (! foundDevices.containsKey(device)) {
-				logger.error("Remote device " + device.getBluetoothAddress() + 
+				logger.severe("Remote device " + device.getBluetoothAddress() + 
 					" has not been discovered before, don't have a service list yet. This is not yet supported!");
 				return null;
 			}
 			dev = (RemoteDeviceDetail) foundDevices.get(device);
 			// sanity check
 			if (dev == null) {
-				logger.error("Internal error: Remote device " + device.getBluetoothAddress() + 
+				logger.severe("Internal error: Remote device " + device.getBluetoothAddress() + 
 				" has been discovered before, service list has not been set correctly. This should not happen!");
 			return null;
 			}
@@ -969,7 +969,7 @@ public class BluetoothPeerManager {
 		synchronized (dev.notifier) {
 			while (!dev.serviceSearchFinished && 
 					System.currentTimeMillis()-startWait <= timeoutMs) {
-				if (logger.isTraceEnabled())
+				if (logger.isLoggable(Level.FINEST))
 					logger.trace("Waiting for service search to finish...");
 				dev.notifier.wait(500);
 			}
@@ -994,7 +994,7 @@ public class BluetoothPeerManager {
 	 */
 	public static String resolveName(RemoteDevice device) {
 		if (device == null) {
-			logger.warn("Can not resolve name for null device");
+			logger.warning("Can not resolve name for null device");
 			return null;
 		}
 		
@@ -1052,7 +1052,7 @@ public class BluetoothPeerManager {
 			}
 		}
 		if (dev == null) {
-			logger.warn("Didn't find device " + remoteAddress + 
+			logger.warning("Didn't find device " + remoteAddress + 
 					" during inquiry, can not browse for services");
 			return null;
 		}*/
@@ -1076,7 +1076,7 @@ public class BluetoothPeerManager {
 		ServiceRecord[] services = serviceSearch.getServices(dev);
 		logger.info("Got " + services.length + " services for remote " + remoteAddress);
 		if (services.length > 1) {
-			logger.error("Unexpected number (" + services.length + 
+			logger.severe("Unexpected number (" + services.length + 
 					") of remote services with the specific UUID (expected only 1 - it should be unique!)");
 			return null;
 		}
@@ -1086,7 +1086,7 @@ public class BluetoothPeerManager {
 		} 
 		else {
 			// no matching service found
-			logger.warn("No matching service found on " + remoteAddress + 
+			logger.warning("No matching service found on " + remoteAddress + 
 				" with UUID " + serviceUuid.toString());
 			return null;
 		}

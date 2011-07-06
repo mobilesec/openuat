@@ -140,7 +140,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 							impl.setSignalCount(signalCount);
 							impl.repaint();
 						} catch (InterruptedException e) {
-							logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+							logger.warning("Method transmit(byte[]): transmission thread interrupted.", e);
 						}
 					}
 				}
@@ -166,7 +166,7 @@ public class LongVibrationToButtonChannel extends ButtonChannel {
 							impl.repaint();
 						}
 					} catch (InterruptedException e) {
-						logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+						logger.warning("Method transmit(byte[]): transmission thread interrupted.", e);
 					}
 				}
 				if (messageHandler != null) {

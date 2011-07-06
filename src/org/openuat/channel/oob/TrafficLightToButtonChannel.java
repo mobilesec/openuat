@@ -102,7 +102,7 @@ public class TrafficLightToButtonChannel extends ButtonChannel {
 				try {
 					Thread.sleep(textDelay);
 				} catch (InterruptedException e) {
-					logger.warn("Method transmit(byte[]): transmission thread interrupted.", e);
+					logger.warning("Method transmit(byte[]): transmission thread interrupted.", e);
 				}
 				impl.showTransmitGui(null, ButtonChannelImpl.TRANSMIT_TRAFFIC_LIGHT);
 				/* transmit the data (given from 'intervals')
@@ -130,7 +130,7 @@ public class TrafficLightToButtonChannel extends ButtonChannel {
 						impl.setPrepareSignal(false);
 						impl.repaint();
 					} catch (InterruptedException e) {
-						logger.warn("Method transmit(byte[]): transmission thread interrupted", e);
+						logger.warning("Method transmit(byte[]): transmission thread interrupted", e);
 					}
 				}
 				if (messageHandler != null) {

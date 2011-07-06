@@ -21,7 +21,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
@@ -71,7 +71,7 @@ import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
  */
 public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		implements HostAuthenticationServer {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(/*BluetoothOpportunisticConnector.class*/ "org.openuat.util.BluetoothOpportunisticConnector");
 
 	/** This is the Bluetooth service UUID used for the opportunistic 
@@ -143,7 +143,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 * @throws IOException If the Bluetooth support could not be initialized.
 	 */
 	protected BluetoothOpportunisticConnector() throws IOException {
-		logger.debug("Creating BluetoothOpportunisticConnector instance, initializing BluetoothPeerManager");
+		logger.finer("Creating BluetoothOpportunisticConnector instance, initializing BluetoothPeerManager");
 		manager = new BluetoothPeerManager();
 		manager.setAutomaticServiceDiscovery(true);
 		manager.setAdaptiveSleepTime(true);
@@ -158,7 +158,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 * @throws IOException */
 	public static BluetoothOpportunisticConnector getInstance() throws IOException {
 		if (singleton == null) {
-			logger.debug("Creating BluetoothOpportunisticConnector singleton");
+			logger.finer("Creating BluetoothOpportunisticConnector singleton");
 			singleton = new BluetoothOpportunisticConnector();
 		}
 		
@@ -231,29 +231,29 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 */
 	public void start() throws IOException {
 		if (!service.isRunning()) {
-			logger.debug("Starting RFCOMM service and background inquiries");
+			logger.finer("Starting RFCOMM service and background inquiries");
 			service.start();
 			optionalParameter = service.getRegisteredServiceURL();
 			manager.startInquiry(true);
 		}
 		else
-			logger.error("Can not start Bluetooth service, because one is already running");
+			logger.severe("Can not start Bluetooth service, because one is already running");
 	}
 	
 	/** Stops the local authentication service and the background inquiry. */
 	public void stop() {
 		if (service.isRunning()) {
-			logger.debug("Stopping RFCOMM service and background inquiries");
+			logger.finer("Stopping RFCOMM service and background inquiries");
 			try {
 				manager.stopInquiry(true);
 				service.stop();
 			} 
 			catch (InternalApplicationException e) {
-				logger.error("Could not properly close RFCOMM service socket: " + e);
+				logger.severe("Could not properly close RFCOMM service socket: " + e);
 			}
 		}
 		else
-			logger.error("Can not stop Bluetooth service, because none is running");
+			logger.severe("Can not stop Bluetooth service, because none is running");
 	}
 	
 	/** Make sure to free resources when destroyed - particularly to remove 
@@ -271,7 +271,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 */
 	private boolean attemptConnection(String connectionURL) {
 		// TODO: debug
-		logger.warn("Attempting to connect to '" + connectionURL + "'");
+		logger.warning("Attempting to connect to '" + connectionURL + "'");
 		BluetoothRFCOMMChannel channel;
 		int numRetries = -1;
 
@@ -280,13 +280,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 				numRetries = ((Integer) connectionsQueue.get(connectionURL)).intValue();
 				if (numRetries < 0) {
 					// this is the sign that a connection attempt is already running in parallel!
-					logger.warn("Connection attempt to '" + connectionURL + 
+					logger.warning("Connection attempt to '" + connectionURL + 
 							"' is currently running, not starting a second one. This should not happen.");
 					return false;
 				}
 			}
 			else {
-				logger.warn("attemptConnection called with '" + connectionURL +
+				logger.warning("attemptConnection called with '" + connectionURL +
 						"' which was not found in connectionsQueue. This should not happen!");
 				// we are about to start a connection attempt, so create the lock
 				connectionsQueue.put(connectionURL, new Integer(-1));
@@ -299,13 +299,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			localAddress = LocalDevice.getLocalDevice().getBluetoothAddress();
 			remoteAddress = (String) channel.getRemoteAddress();
 		} catch (IOException e) {
-			logger.error("Can't initialize Bluetooth subsystem and/or get local address", e);
+			logger.severe("Can't initialize Bluetooth subsystem and/or get local address", e);
 			return false;
 		}
 
 		// sanity check
 		if (localAddress.equals(remoteAddress)) {
-			logger.error("Can't talk to myself - not connecting to Bluetooth address '" + 
+			logger.severe("Can't talk to myself - not connecting to Bluetooth address '" + 
 					remoteAddress + "'");
 			return false;
 		}
@@ -324,12 +324,12 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					return false;
 				}
 			} catch (IOException e) {
-				logger.error("Can't initialize Bluetooth subsystem - this should not happen when we get to here!", e);
+				logger.severe("Can't initialize Bluetooth subsystem - this should not happen when we get to here!", e);
 				return false;
 			}
 		}
 		else
-			logger.warn("Can not check for existing state with remote, as we don't have a valid KeyManager");
+			logger.warning("Can not check for existing state with remote, as we don't have a valid KeyManager");
 
 		/* This is a small but hopefully effective hack to prevent two devices 
 		 * from trying to contact each other at the same time: the higher MAC 
@@ -340,7 +340,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			if (localAddress.compareTo(remoteAddress) > 0) {
 				if (logger.isInfoEnabled())
 					// TODO: debug
-					logger.warn("My Bluetooth address '" + localAddress +
+					logger.warning("My Bluetooth address '" + localAddress +
 						"' is higher than the remote address to connect to '" + 
 						remoteAddress + "', backing off and waiting for remote to connect");
 				// but this counts as a failed attempt, or we would never do it...
@@ -354,12 +354,12 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		if (wasRunning) {
 			if (!manager.stopInquiry(false))
 				// TODO: info
-				logger.warn("Unable to stop background inquiry, connection attempt may fail");
+				logger.warning("Unable to stop background inquiry, connection attempt may fail");
 		}
 		try {
 			if (!manager.waitForBackgroundSearchToFinish(retryConnectionDelay))
 				// TODO: info
-				logger.warn("Unable to wait for background search to finish, connection attempt may fail");
+				logger.warning("Unable to wait for background search to finish, connection attempt may fail");
 		}
 		catch (InterruptedException e) {
 			// just ignore, doesn't matter
@@ -367,19 +367,19 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		
 		boolean success;
 		try {
-			if (logger.isDebugEnabled())
+			if (logger.isLoggable(Level.FINER))
 				// TODO: debug
-				logger.warn("Attempting to connect to '" + connectionURL + "' with " +
+				logger.warning("Attempting to connect to '" + connectionURL + "' with " +
 					numRetries + " failures so far");
 			channel.open();
-			if (logger.isDebugEnabled())
+			if (logger.isLoggable(Level.FINER))
 				// TODO: debug
-				logger.warn("Connection to '" + connectionURL + "' established, starting key agreement");
+				logger.warning("Connection to '" + connectionURL + "' established, starting key agreement");
 			HostProtocolHandler.startAuthenticationWith(channel, 
 					new AuthenticationEventsHandler(false), maximumKeyAgreementRuntime,
 					keepConnected, optionalParameter, useJSSE);
 			// TODO: info
-			logger.warn("Discovered remote device  " + 
+			logger.warning("Discovered remote device  " + 
 					channel.getRemoteAddress() + "/'" + 
 					channel.getRemoteName() + 
 					"' which advertises opportunistic authentication, started key agreement");
@@ -393,7 +393,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			synchronized (connectionsQueue) {
 				if (numRetries >= maxConnectionRetries) {
 					// no more retries for this one
-					logger.warn("Could not connect to '" + connectionURL +
+					logger.warning("Could not connect to '" + connectionURL +
 							"' after " + maxConnectionRetries + " tries, aborting");
 					connectionsQueue.remove(connectionURL);
 					// maybe we can stop the timer now, if there are no more scheduled attempts
@@ -408,7 +408,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					else
 						connectionsQueue.put(connectionURL, new Integer(++numRetries));
 					// TODO: info
-					logger.warn("Could not connect to remote service '" + connectionURL + 
+					logger.warning("Could not connect to remote service '" + connectionURL + 
 							"' after " + (numRetries-1) + " previously failed attempts, will retry in " + 
 							retryConnectionDelay + "ms");
 					// if we get here, we have re-scheduled, so maybe need to start the timer
@@ -428,7 +428,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** Small helper function for starting a regular timer if it isn't running. */
 	private void startTimer(boolean now) {
 		if (connectionRetryTimer == null) {
-			logger.debug("No retry timer task running, starting it now");
+			logger.finer("No retry timer task running, starting it now");
 			connectionRetryTimer = new Timer();
 			connectionRetryTimer.schedule(new ConnectionRetryTask(), now ? 10 : retryConnectionDelay);
 		}
@@ -437,11 +437,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** Small helper function for stopping the timer if it is running. */
 	private void stopTimer() {
 		if (connectionRetryTimer == null) {
-			logger.error("Can not stop timer when no one is running. Ignoring, but this should not happen!");
+			logger.severe("Can not stop timer when no one is running. Ignoring, but this should not happen!");
 			return;
 		}
 		if (connectionsQueue.isEmpty()) {
-			logger.debug("Removed the last scheduled connection, stopping timer task");
+			logger.finer("Removed the last scheduled connection, stopping timer task");
 			connectionRetryTimer.cancel();
 			connectionRetryTimer = null;
 		}
@@ -453,12 +453,12 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		public void run() {
 			synchronized (connectionsQueue) {
 				if (!connectionsQueue.isEmpty()) {
-					logger.debug("Timer task running, (re-)attempting " +
+					logger.finer("Timer task running, (re-)attempting " +
 							connectionsQueue.size() + " connections");
 					Enumeration urls = connectionsQueue.keys();
 					while (urls.hasMoreElements()) {
 						String url = (String) urls.nextElement();
-						logger.debug("(Re-)trying connection to '" + url + "'");
+						logger.finer("(Re-)trying connection to '" + url + "'");
 						attemptConnection(url);
 					}
 				}
@@ -481,7 +481,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
 			if (logger.isInfoEnabled())
 				// TODO: debug
-				logger.warn("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
+				logger.warning("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
 					"/'" + BluetoothPeerManager.resolveName(remoteDevice) + "' with " +
 					services.size() + " matching authentication services");
 			
@@ -517,22 +517,22 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		}
 		
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
-			logger.debug("Could not create shared key with " + remote + ": " + e + "/" + msg);
+			logger.finer("Could not create shared key with " + remote + ": " + e + "/" + msg);
 			raiseAuthenticationFailureEvent(remote, e, msg);
 		}
 
 		public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
-			logger.debug("Authentication progress with " + remote + ": " + cur + "/" + max + ": " + msg);
+			logger.finer("Authentication progress with " + remote + ": " + cur + "/" + max + ": " + msg);
 			raiseAuthenticationProgressEvent(remote, cur, max, msg);
 		}
 
 		public boolean AuthenticationStarted(Object sender, Object remote) {
-			logger.debug("Authentication started with " + remote);
+			logger.finer("Authentication started with " + remote);
 			return raiseAuthenticationStartedEvent(remote);
 		}
 		
 		public void AuthenticationSuccess(Object sender, Object remote, Object result) {
-			logger.debug("Successfully agreed to key with " + remote);
+			logger.finer("Successfully agreed to key with " + remote);
 			raiseAuthenticationSuccessEvent(remote, result);
 		}
 	}
@@ -544,7 +544,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			// sanity check
 			if (! firstLine.startsWith(org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand)) {
-				logger.error("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
+				logger.severe("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
 						org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand + "'. This should not happen!");
 				return false;
 			}

@@ -15,7 +15,7 @@ import java.net.SocketException;
 import java.util.Enumeration;
 import java.util.LinkedList;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This class implements various helper methods that don' really fit elsewhere. 
  *
@@ -23,7 +23,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public class Helper {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(Helper.class);
 
 	public final static String[] Interface_Names_Blacklist = new String[] { "vmnet", "lo" };
@@ -33,7 +33,7 @@ public class Helper {
 		LinkedList allAddrs = new LinkedList();
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
-			logger.debug("Found local interface " + iface.getName());
+			logger.finer("Found local interface " + iface.getName());
 			// check if that interface name is blacklisted
 			boolean blacklisted = false;
 			for (int i=0; i<Interface_Names_Blacklist.length; i++)
@@ -45,15 +45,15 @@ public class Helper {
 				while (addrs.hasMoreElements()) {
 					InetAddress addr = (InetAddress) addrs.nextElement();
 					if (addr instanceof Inet6Address)
-						logger.debug("Ignoring IPv6 address " + addr + " for now");
+						logger.finer("Ignoring IPv6 address " + addr + " for now");
 					else {
-						logger.debug("Found address " + addr);
+						logger.finer("Found address " + addr);
 						allAddrs.add(addr.getHostAddress());
 					}
 				}
 			}
 			else
-				logger.debug("Ignoring interface because it is blacklisted");
+				logger.finer("Ignoring interface because it is blacklisted");
 		}
 		
 		return allAddrs;

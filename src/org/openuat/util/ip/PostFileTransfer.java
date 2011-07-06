@@ -20,7 +20,7 @@ import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 import simple.http.Request;
 import simple.http.Response;
@@ -84,7 +84,7 @@ public class PostFileTransfer extends simple.http.load.Service {
     	 
     	 fireEventToListener(new FileTransferEvent (source, output));
     	 sendAnswer("file transfer was successfull", resp);
-    	 logger.debug("file stored in "+ output.getAbsolutePath());
+    	 logger.finer("file stored in "+ output.getAbsolutePath());
     	
        
      }
@@ -96,7 +96,7 @@ public class PostFileTransfer extends simple.http.load.Service {
     		 String nextToken= token.nextToken();
 			StringTokenizer parameter = new StringTokenizer(nextToken, ": ");
 			if (parameter.nextToken().compareToIgnoreCase(HTTPSocket.RELATE_ATTRIBUTE_FILENAME)==0){
-				logger.debug(" file name found");
+				logger.finer(" file name found");
 				result= parameter.nextToken();
 			}
     	 }
@@ -110,7 +110,7 @@ public class PostFileTransfer extends simple.http.load.Service {
     		 String nextToken= token.nextToken();
 			StringTokenizer parameter = new StringTokenizer(nextToken, ": ");
 			if (parameter.nextToken().compareToIgnoreCase(HTTPSocket.RELATE_ATTRIBUTE_ID)==0){
-				logger.debug("id found");
+				logger.finer("id found");
 				result= parameter.nextToken();
 			}
     	 }
