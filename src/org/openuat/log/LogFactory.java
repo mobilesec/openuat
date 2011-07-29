@@ -99,6 +99,10 @@ public abstract class LogFactory {
 		public void debug(Object message) {
 			// Do nothing
 		}
+		// @Override
+		public void fine(Object message) {
+			// Do nothing
+		}
 
 		// @Override
 		public void error(Object message, Throwable t) {
@@ -107,6 +111,9 @@ public abstract class LogFactory {
 
 		// @Override
 		public void error(Object message) {
+			// Do nothing
+		}
+		public void severe(Object message) {
 			// Do nothing
 		}
 
@@ -169,14 +176,23 @@ public abstract class LogFactory {
 		public void trace(Object message) {
 			// Do nothing
 		}
+		public void finest(Object message) {
+			// Do nothing
+		}
 
 		// @Override
 		public void warn(Object message, Throwable t) {
 			// do nothing
 		}
+		public void warning(Object message, Throwable t) {
+			// do nothing
+		}
 
 		// @Override
 		public void warn(Object message) {
+			// Do nothing
+		}
+		public void warning(Object message) {
 			// Do nothing
 		}
 	}

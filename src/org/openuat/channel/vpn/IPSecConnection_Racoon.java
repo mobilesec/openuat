@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.codec.binary.*;
 
@@ -29,7 +30,7 @@ import org.apache.commons.codec.binary.*;
  */
 class IPSecConnection_Racoon implements IPSecConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class.getName());
 
 	/** To remember the remote host address that was passed in init(). 
 	 * @see #init(String, String, int)
@@ -266,7 +267,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
 			} catch (Exception f) {
-				logger.severe("Can't execure command", f);
+				logger.log(Level.SEVERE, "Can't execure command", f);
 			}
 			return false;
 		}

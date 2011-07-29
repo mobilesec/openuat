@@ -11,6 +11,7 @@
  */
 package org.openuat.features;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class implements a simple linear quantizer to transform double-valued

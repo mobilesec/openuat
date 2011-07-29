@@ -13,6 +13,8 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.channel.main.RemoteConnection;
 
@@ -314,7 +316,7 @@ public class KeyManager extends AuthenticationEventSender {
 	    	if (cur == 2) {
 		    	/* second progress means that we have (on the receiver side) really entered key agreement phase
 		    	   (and not bailed out into a command handler) */
-	    		if (logger.isInfoEnabled())
+	    		if (logger.isLoggable(Level.INFO))
 	    			logger.info("Resetting state for remote " + host + 
 	    					", because key agreement now running" +
 	    	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));

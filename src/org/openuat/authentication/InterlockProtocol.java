@@ -16,6 +16,8 @@ import java.util.BitSet;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.SafetyBeltTimer;
@@ -619,7 +621,7 @@ public class InterlockProtocol {
 		if (interlockGroup != null && (groupSize < 2 || instanceInGroup >= groupSize))
 			throw new IllegalArgumentException("Using interlock group, but either group size is <2 or this instance number is >= group size");
 
-		if (logger.isInfoEnabled())
+		if (logger.isLoggable(Level.INFO))
 			logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
 				timeoutMs + "ms. My message is " + message.length + " bytes long");
 
@@ -778,7 +780,7 @@ public class InterlockProtocol {
 			byte[] ret = remoteIp.decrypt(remoteCiphertext); 
 	       	totalCryptoTime += System.currentTimeMillis()-timestamp;
 
-           	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
+           	statisticsLogger.warning("Key transfers took " + totalTransferTime + 
            			"ms for total " + totalTransferSize + 
            			" chars in " + totalMessageNum + 
            			" messages, coding took " + totalCodingTime + 

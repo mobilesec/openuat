@@ -42,7 +42,7 @@ import simple.http.serve.CacheContext;
  *
  */
 public class HTTPServer {
-	private static Logger logger = Logger.getLogger(HTTPServer.class);
+	private static Logger logger = Logger.getLogger(HTTPServer.class.getName());
 
 	private ServerSocket server;
 
@@ -111,8 +111,7 @@ public class HTTPServer {
 					+ server.getInetAddress().getHostName());
 			logger.finer("server is listening to "
 					+ server.getInetAddress().getHostAddress());
-			logger
-					.debug("server is listening on port "
+			logger.finer("server is listening on port "
 							+ server.getLocalPort());
 			if (mapper != null) {
 				mapper.delete();

@@ -21,6 +21,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
@@ -270,8 +271,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	 * @param connectionURL The URL to connect to.
 	 */
 	private boolean attemptConnection(String connectionURL) {
-		// TODO: debug
-		logger.warning("Attempting to connect to '" + connectionURL + "'");
+		logger.info("Attempting to connect to '" + connectionURL + "'");
 		BluetoothRFCOMMChannel channel;
 		int numRetries = -1;
 
@@ -299,7 +299,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			localAddress = LocalDevice.getLocalDevice().getBluetoothAddress();
 			remoteAddress = (String) channel.getRemoteAddress();
 		} catch (IOException e) {
-			logger.severe("Can't initialize Bluetooth subsystem and/or get local address", e);
+			logger.log(Level.SEVERE, "Can't initialize Bluetooth subsystem and/or get local address", e);
 			return false;
 		}
 
@@ -324,7 +324,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					return false;
 				}
 			} catch (IOException e) {
-				logger.severe("Can't initialize Bluetooth subsystem - this should not happen when we get to here!", e);
+				logger.log(Level.SEVERE, "Can't initialize Bluetooth subsystem - this should not happen when we get to here!", e);
 				return false;
 			}
 		}
@@ -338,9 +338,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		 */
 		if (numRetries == 0) {
 			if (localAddress.compareTo(remoteAddress) > 0) {
-				if (logger.isInfoEnabled())
-					// TODO: debug
-					logger.warning("My Bluetooth address '" + localAddress +
+				if (logger.isLoggable(Level.FINE))
+					logger.fine("My Bluetooth address '" + localAddress +
 						"' is higher than the remote address to connect to '" + 
 						remoteAddress + "', backing off and waiting for remote to connect");
 				// but this counts as a failed attempt, or we would never do it...
@@ -353,13 +352,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		boolean wasRunning = manager.isInquiryActive();
 		if (wasRunning) {
 			if (!manager.stopInquiry(false))
-				// TODO: info
-				logger.warning("Unable to stop background inquiry, connection attempt may fail");
+				logger.fine("Unable to stop background inquiry, connection attempt may fail");
 		}
 		try {
 			if (!manager.waitForBackgroundSearchToFinish(retryConnectionDelay))
-				// TODO: info
-				logger.warning("Unable to wait for background search to finish, connection attempt may fail");
+				logger.fine("Unable to wait for background search to finish, connection attempt may fail");
 		}
 		catch (InterruptedException e) {
 			// just ignore, doesn't matter
@@ -368,18 +365,15 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		boolean success;
 		try {
 			if (logger.isLoggable(Level.FINER))
-				// TODO: debug
-				logger.warning("Attempting to connect to '" + connectionURL + "' with " +
+				logger.finer("Attempting to connect to '" + connectionURL + "' with " +
 					numRetries + " failures so far");
 			channel.open();
 			if (logger.isLoggable(Level.FINER))
-				// TODO: debug
-				logger.warning("Connection to '" + connectionURL + "' established, starting key agreement");
+				logger.finer("Connection to '" + connectionURL + "' established, starting key agreement");
 			HostProtocolHandler.startAuthenticationWith(channel, 
 					new AuthenticationEventsHandler(false), maximumKeyAgreementRuntime,
 					keepConnected, optionalParameter, useJSSE);
-			// TODO: info
-			logger.warning("Discovered remote device  " + 
+			logger.fine("Discovered remote device  " + 
 					channel.getRemoteAddress() + "/'" + 
 					channel.getRemoteName() + 
 					"' which advertises opportunistic authentication, started key agreement");
@@ -407,8 +401,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 					}
 					else
 						connectionsQueue.put(connectionURL, new Integer(++numRetries));
-					// TODO: info
-					logger.warning("Could not connect to remote service '" + connectionURL + 
+					logger.info("Could not connect to remote service '" + connectionURL + 
 							"' after " + (numRetries-1) + " previously failed attempts, will retry in " + 
 							retryConnectionDelay + "ms");
 					// if we get here, we have re-scheduled, so maybe need to start the timer
@@ -479,9 +472,8 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		}
 
 		public void serviceSearchCompleted(RemoteDevice remoteDevice, Vector services, int errorReason) {
-			if (logger.isInfoEnabled())
-				// TODO: debug
-				logger.warning("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
+			if (logger.isLoggable(Level.FINE))
+				logger.fine("Discovered new remote device " + remoteDevice.getBluetoothAddress() +
 					"/'" + BluetoothPeerManager.resolveName(remoteDevice) + "' with " +
 					services.size() + " matching authentication services");
 			

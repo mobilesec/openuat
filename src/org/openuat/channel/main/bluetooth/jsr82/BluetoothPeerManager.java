@@ -24,6 +24,7 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
 import org.openuat.util.LoggingHelper;
@@ -300,7 +301,7 @@ public class BluetoothPeerManager {
 		long startWait = System.currentTimeMillis();
 		while (eventsHandler.isInquiryRunning() && 
 			   System.currentTimeMillis()-startWait <= timeoutMs) {
-			logger.trace("Waiting for background inquiry to finish...");
+			logger.finest("Waiting for background inquiry to finish...");
 			Thread.sleep(200);
 		}
 		if (eventsHandler.isInquiryRunning()) {
@@ -681,7 +682,7 @@ public class BluetoothPeerManager {
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				else {
-					if (logger.isInfoEnabled())
+					if (logger.isLoggable(Level.INFO))
 						logger.info("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
@@ -728,7 +729,7 @@ public class BluetoothPeerManager {
 
 
 		public void servicesDiscovered(int transID, ServiceRecord[] serviceRecord) {
-			if (logger.isInfoEnabled())
+			if (logger.isLoggable(Level.INFO))
 				logger.info("Discovered " + serviceRecord.length + " services for remote device " +
 					currentRemoteDevice.getBluetoothAddress() + 
 					" with transaction id " + transID);
@@ -781,7 +782,7 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			if (logger.isInfoEnabled())
+			if (logger.isLoggable(Level.INFO))
 				logger.info("Service search completed for " + currentRemoteDevice.getBluetoothAddress() + 
 					" with transID " + transID + " and respCode " + respCode);
 			
@@ -821,7 +822,7 @@ public class BluetoothPeerManager {
 				}
 
 				synchronized (services) { 
-					if (logger.isInfoEnabled())
+					if (logger.isLoggable(Level.INFO))
 						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
 								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
@@ -970,7 +971,7 @@ public class BluetoothPeerManager {
 			while (!dev.serviceSearchFinished && 
 					System.currentTimeMillis()-startWait <= timeoutMs) {
 				if (logger.isLoggable(Level.FINEST))
-					logger.trace("Waiting for service search to finish...");
+					logger.finest("Waiting for service search to finish...");
 				dev.notifier.wait(500);
 			}
 			if (!dev.serviceSearchFinished) {

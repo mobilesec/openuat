@@ -7,7 +7,7 @@ import java.util.logging.Logger;
 
 public class MainboardAccelerometerReaderFactory {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(MainboardAccelerometerReaderFactory.class);
+	private static Logger logger = Logger.getLogger(MainboardAccelerometerReaderFactory.class.getName());
 
 	public static AsciiLineReaderBase createInstance(int sampleRate) throws FileNotFoundException {
 		if (System.getProperty("os.name").startsWith("Linux")) {

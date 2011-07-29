@@ -11,7 +11,6 @@ package org.openuat.apps;
 import java.io.IOException;
 
 import java.util.logging.Logger;
-import org.apache.log4j.PropertyConfigurator;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.relate.RelateAuthenticationProtocol;
 
@@ -31,7 +30,7 @@ import uk.ac.lancs.relate.core.MeasurementManager;
  */
 public abstract class IPSecConnectorCommon implements AuthenticationProgressHandler {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnectorCommon.class);
+	private static Logger logger = Logger.getLogger(IPSecConnectorCommon.class.getName());
 	
 	/** This name is used as a prefix for transmitting the XML-encoded
 	 * configuration block from the admin end to the client end.
@@ -74,10 +73,12 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			throws IOException {
 		this.adminEnd = adminEnd;
 
-		if (System.getProperty("os.name").startsWith("Windows CE")) {
+		// DISABLED old-style logging with log4j
+		// TODO: switch to configuring the standard java.util.logging framework instaed
+		/*if (System.getProperty("os.name").startsWith("Windows CE")) {
 			System.out.println("Configuring log4j");
 			PropertyConfigurator.configure("log4j.properties");
-		}
+		}*/
 
 		if (relateConf != null) {
 			logger.finer("Registering MeasuementManager with SerialConnector");

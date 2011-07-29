@@ -41,7 +41,7 @@ public class DebugOutputStream extends OutputStream {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void write(int c) throws IOException {
-		logger.trace("'" + (char) c + "' " + c);
+		logger.finest("'" + (char) c + "' " + c);
 		realStream.write(c);
 	}
 
@@ -52,7 +52,7 @@ public class DebugOutputStream extends OutputStream {
 		StringBuffer log = new StringBuffer();
 		for (int i=0; i<arr.length; i++)
 			log.append("'" + (char) arr[i] + "' " + arr[i] + ", ");
-		logger.trace(log.toString());
+		logger.finest(log.toString());
 		realStream.write(arr);
 	}
 	
@@ -63,7 +63,7 @@ public class DebugOutputStream extends OutputStream {
 		StringBuffer log = new StringBuffer();
 		for (int i=off; i<off+len; i++)
 			log.append("'" + (char) arr[i] + "' " + arr[i] + ", ");
-		logger.trace(log.toString());
+		logger.finest(log.toString());
 		realStream.write(arr, off, len);
 	}
 	

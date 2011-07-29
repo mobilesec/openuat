@@ -28,7 +28,7 @@ import org.openuat.util.LineReaderWriter;
  */
 public class BinaryBlockStreamer {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(BinaryBlockStreamer.class);
+	private static Logger logger = Logger.getLogger(BinaryBlockStreamer.class.getName());
 	
 	private final static String BinaryStreamCommand = "PUSH";
 

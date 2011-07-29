@@ -10,6 +10,7 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class implements a collection of multiple time series that belong together,
@@ -80,7 +81,6 @@ public abstract class TimeSeriesBundle {
 		//@Override
 		protected void toQuiescent(int lineIndex, int numSample) {
 			// +1 because first and last samples are added
-			if (logger.is)
 			if (logger.isLoggable(Level.FINER) && (curSampleIndex != numSample && curSampleIndex+1 != numSample && 
 			    curSampleIndex-windowSize != numSample && curSampleIndex-windowSize+1 != numSample))
 				logger.finer("Unexpected index of segment end, got " + numSample 

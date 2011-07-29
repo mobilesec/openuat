@@ -30,7 +30,7 @@ import org.openuat.channel.main.HostServerBase;
  */
 public class TCPPortServer extends HostServerBase {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(TCPPortServer.class);
+	private static Logger logger = Logger.getLogger(TCPPortServer.class.getName());
 
 	/** This is the (bound but unconnected) TCP socket for listening for incoming connections. */
 	private ServerSocket listener;

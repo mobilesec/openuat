@@ -26,6 +26,8 @@ import org.openuat.util.SafetyBeltTimer;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class handles the key agreement protocol between two hosts on a stream
@@ -388,7 +390,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
    		}
    		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
-   			logger.severe("Unable to close streams cleanly", e);
+   			logger.log(Level.SEVERE, "Unable to close streams cleanly", e);
    		}
     }
     
@@ -1010,7 +1012,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 oobMsg = null;
             }
             else if (remotePreAuthenticationMessage != null) {
-            	if (logger.isInfoEnabled())
+            	if (logger.isLoggable(Level.INFO))
             		logger.info("Using pre-authentication message to verify remote public key on "
             			+ (serverSide ? "server" : "client"));
             	// we have a pre-authentication message, so check if it matches the remote public key
@@ -1077,7 +1079,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (timer != null)
             	timer.stop();
             
-           	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
+           	statisticsLogger.warning("Key transfers took " + totalTransferTime + 
            			"ms for total " + totalTransferSize + 
            			" chars, crypto took " + totalCryptoTime + "ms");
         }
@@ -1101,7 +1103,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (Exception e)
         {
-            logger.fatal("UNEXPECTED EXCEPTION: " + e);
+            logger.severe("UNEXPECTED EXCEPTION: " + e);
             e.printStackTrace();
             shutdownConnectionCleanly();
         }
@@ -1308,7 +1310,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			boolean keepConnected, 
 			String optionalParameter,
 			boolean useJSSE) throws IOException {
-    	if (logger.isInfoEnabled())
+    	if (logger.isLoggable(Level.INFO))
     		logger.info("Starting authentication with " + 
     				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 

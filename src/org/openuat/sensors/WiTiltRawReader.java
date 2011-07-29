@@ -59,7 +59,7 @@ import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
  */
 public class WiTiltRawReader extends AsciiLineReaderBase {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(WiTiltRawReader.class);
+	private static Logger logger = Logger.getLogger(WiTiltRawReader.class.getName());
 
 	/** The baud rate to use when connecting to a serial port. This is not used
 	 * when connecting directly to the RFCOMM channel.

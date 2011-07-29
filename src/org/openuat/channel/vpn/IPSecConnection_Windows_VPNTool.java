@@ -42,7 +42,7 @@ import org.apache.commons.codec.binary.*;
  */
 class IPSecConnection_Windows_VPNTool implements IPSecConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Windows_VPNTool.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Windows_VPNTool.class.getName());
 
 	/** To remember the remote host address that was passed in init(). 
 	 * @see #init(String, String, int)

@@ -10,6 +10,7 @@ package org.openuat.util;
 
 import java.security.SecureRandom;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 

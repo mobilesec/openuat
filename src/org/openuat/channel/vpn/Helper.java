@@ -24,7 +24,7 @@ import java.util.logging.Logger;
  */
 public class Helper {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(Helper.class);
+	private static Logger logger = Logger.getLogger(Helper.class.getName());
 
 	public final static String[] Interface_Names_Blacklist = new String[] { "vmnet", "lo" };
     

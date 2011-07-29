@@ -28,7 +28,7 @@ import simple.http.serve.Context;
 
 
 public class PostFileTransfer extends simple.http.load.Service {
-	private static Logger logger = Logger.getLogger(PostFileTransfer.class);
+	private static Logger logger = Logger.getLogger(PostFileTransfer.class.getName());
 	private Vector listener;
 	private File path = new File("");
 	

@@ -161,7 +161,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 			textComponent.setText(text);
 		}
 		else {
-			logger.warning("Method repaint(): paintableComponent and textComponent are null");
+			logger.warn("Method repaint(): paintableComponent and textComponent are null");
 		}
 	}
 
@@ -185,8 +185,8 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 				if (e.getKeyCode() == buttonKey) {
 					lastKeyDown = e.getWhen();
 					if (!isKeyDown) {
-						if (logger.isLoggable(Level.FINER)) {
-							logger.finer("Key pressed.  Event time: " + e.getWhen() + 
+						if (logger.isDebugEnabled()) {
+							logger.debug("Key pressed.  Event time: " + e.getWhen() + 
 										" Captured at: " + System.currentTimeMillis());
 						}
 						isKeyDown = true;
@@ -225,8 +225,8 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 						java.awt.EventQueue.invokeLater(new Runnable(){
 							public void run() {
 								if (lastKeyDown != e.getWhen()) {
-									if (logger.isLoggable(Level.FINER)) {
-										logger.finer("Key released. Event time: " + e.getWhen() +
+									if (logger.isDebugEnabled()) {
+										logger.debug("Key released. Event time: " + e.getWhen() +
 												" Captured at: " + System.currentTimeMillis());
 									}
 									isKeyDown = false;

@@ -18,6 +18,7 @@ import java.util.BitSet;
 import java.util.Hashtable;
 import java.util.Vector;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.InterlockProtocol;
@@ -507,7 +508,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				timestamp = System.currentTimeMillis();
 				decision = checkCoherence(remoteSegment);
 				totalComparisonTime += System.currentTimeMillis()-timestamp;
-				if (logger.isInfoEnabled())
+				if (logger.isLoggable(Level.INFO))
 					logger.info("COHERENCE MATCH: " + decision + "(computed " + 
 						lastCoherenceMean + " and threshold is " + coherenceThresholdSucceed + ")");
 			}
@@ -544,7 +545,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 
-			statisticsLogger.warn("Segment coding took " + totalCodingTime + 
+			statisticsLogger.warning("Segment coding took " + totalCodingTime + 
 						"ms, interlock took " + totalInterlockTime + 
 						"ms, coherence comparison took" + totalComparisonTime + "ms");
 	        return true;

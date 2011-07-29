@@ -50,7 +50,7 @@ public class MDNSDiscovery {
 	private static MDNSDiscovery instance = null;
 		
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(MDNSDiscovery.class);
+	private static Logger logger = Logger.getLogger(MDNSDiscovery.class.getName());
 	
 	/** This holds one instance of the jMDNS responder for each interface that this host has. */
 	private JmDNS[] jmdns = null; 

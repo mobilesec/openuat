@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.codec.binary.*;
 
@@ -30,7 +31,7 @@ import org.apache.commons.codec.binary.*;
  */
 class IPSecConnection_Openswan implements IPSecConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class.getName());
 
 	private LinkedList ignoredConns = new LinkedList();
     /**constant for connection header*/
@@ -274,7 +275,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 					try {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
 					} catch (ExitCodeException f) {
-						logger.severe("Can't execute command!", f);
+						logger.log(Level.SEVERE, "Can't execute command!", f);
 					}
 				}
 			}
@@ -287,7 +288,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 			} catch (ExitCodeException f) {
-				logger.severe("Can't execute command!", f);
+				logger.log(Level.SEVERE, "Can't execute command!", f);
 			}
 			return false;
 		}
@@ -300,7 +301,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 			} catch (Exception f) {
-				logger.severe("Can't execute command!", f);
+				logger.log(Level.SEVERE, "Can't execute command!", f);
 			}
 			return false;
 		}

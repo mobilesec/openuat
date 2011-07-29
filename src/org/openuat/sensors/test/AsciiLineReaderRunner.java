@@ -43,7 +43,7 @@ import org.openuat.sensors.XsensLogReader;
 
 public class AsciiLineReaderRunner {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(AsciiLineReaderRunner.class);
+	private static Logger logger = Logger.getLogger(AsciiLineReaderRunner.class.getName());
 
 	static class XYSink implements SamplesSink {
 		XYSeries series = new XYSeries("Line", false);

@@ -9,6 +9,7 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This is a base class for emitting samples to a list of registers 

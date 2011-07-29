@@ -67,7 +67,7 @@ public class ButtonToButtonChannel extends ButtonChannel {
 	// @Override
 	public void transmit(byte[] message) {
 		// This method is not implemented!
-		logger.warning("Method transmit(byte[]): Not implemented for the ButtonToButtonChannel.");
+		logger.warn("Method transmit(byte[]): Not implemented for the ButtonToButtonChannel.");
 	}
 
 }

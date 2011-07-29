@@ -23,6 +23,8 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
@@ -64,9 +66,6 @@ import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.TrafficLightToButtonChannel;
 import org.openuat.channel.oob.desktop.AWTButtonChannelImpl;
 import org.openuat.channel.oob.desktop.ButtonChannelImpl;
-import org.openuat.log.Log;
-import org.openuat.log.Log4jFactory;
-import org.openuat.log.LogFactory;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 
@@ -147,7 +146,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	private SecureRandom random;
 	
 	/* Logger instance */
-	private Log logger;
+	private Logger logger = Logger.getLogger(BedaApp.class.getName());
 	
 	
 	/**
@@ -171,9 +170,9 @@ public class BedaApp implements AuthenticationProgressHandler {
 		isInitiator		= false;
 				
 		// Initialize the logger. Use a wrapper around the log4j framework.
-		LogFactory.init(new Log4jFactory());
+		/*LogFactory.init(new Log4jFactory());
 		logger = LogFactory.getLogger(BedaApp.class.getName());
-		logger.finer("Logger initiated!");
+		logger.finer("Logger initiated!");*/
 		
 		mainWindow = new JFrame("Beda App");
 		mainWindow.setSize(new Dimension(FRAME_WIDTH, FRAME_HIGHT));
@@ -323,7 +322,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(listener);
 		} catch (IOException e) {
-			logger.severe("Could not initiate BluetoothPeerManager.", e);
+			logger.log(Level.SEVERE, "Could not initiate BluetoothPeerManager.", e);
 		}
 		
 		// set up the bluetooth rfcomm server
@@ -331,11 +330,11 @@ public class BedaApp implements AuthenticationProgressHandler {
 			btServer = new BluetoothRFCOMMServer(null, SERVICE_UUID, SERVICE_NAME, 30000, true, false);
 			btServer.addAuthenticationProgressHandler(this);
 			btServer.start();
-			if (logger.isInfoEnabled()) {
+			if (logger.isLoggable(Level.INFO)) {
 				logger.info("Finished starting SDP service at " + btServer.getRegisteredServiceURL());
 			}
 		} catch (IOException e) {
-			logger.severe("Could not create bluetooth server.", e);
+			logger.log(Level.SEVERE, "Could not create bluetooth server.", e);
 		}
 		ProtocolCommandHandler inputProtocolHandler = new ProtocolCommandHandler() {
 			@Override
@@ -368,7 +367,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 		// in the input case, reset the shared key
 		btServer.setPresharedShortSecrets(null);
-		logger.severe(msg, e);
+		logger.log(Level.SEVERE, msg, e);
 		alertError("Authentication failed!");
 	}
 
@@ -393,7 +392,7 @@ public class BedaApp implements AuthenticationProgressHandler {
         byte[] authKey = (byte[]) res[1];
         // then extract the optional parameter
         String param = (String) res[2];
-        if (logger.isInfoEnabled()) {
+        if (logger.isLoggable(Level.INFO)) {
         	logger.info("Extracted session key of length " + sharedKey.length +
         		", authentication key of length " + (authKey != null ? authKey.length : 0) + 
         		" and optional parameter '" + param + "'");
@@ -527,7 +526,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				}
 			}
 		} catch (IOException e) {
-			logger.severe("Failed to start authentication.", e);
+			logger.log(Level.SEVERE, "Failed to start authentication.", e);
 		}
 	}
 	
@@ -561,7 +560,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				String txt = String.format(
 					"The following message has been captured: %02x%02x%02x",
 					data[0], data[1], data[2]);
-				if (logger.isInfoEnabled()) {
+				if (logger.isLoggable(Level.INFO)) {
 					logger.info("Capture ok. Message: " + txt);
 				}
 				JOptionPane.showMessageDialog(mainWindow, txt, "Capture ok", JOptionPane.INFORMATION_MESSAGE);
@@ -582,7 +581,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				String txt = String.format(
 					"The following message has been transmitted: %02x%02x%02x",
 					randomMessage[0], randomMessage[1], randomMessage[2]);
-				if (logger.isInfoEnabled()) {
+				if (logger.isLoggable(Level.INFO)) {
 					logger.info("Transmission ok. Message: " + txt);
 				}
 				JOptionPane.showMessageDialog(mainWindow, txt, "Transmission ok", JOptionPane.INFORMATION_MESSAGE);
@@ -602,7 +601,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 			byte[] hash = Hash.doubleSHA256(bytes, false);
 			System.arraycopy(hash, 0, result, 0, 3);
 		} catch (InternalApplicationException e) {
-			logger.severe("Could not create hash.", e);
+			logger.log(Level.SEVERE, "Could not create hash.", e);
 			result = null;
 		}
 		return result;
@@ -651,7 +650,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 			in = connection.getInputStream();
 			out = connection.getOutputStream();
 		} catch (IOException e) {
-			logger.severe("Failed to open stream from connection. Abort transfer protocol.", e);
+			logger.log(Level.SEVERE, "Failed to open stream from connection. Abort transfer protocol.", e);
 			return;
 		}
 		
@@ -704,7 +703,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 						try {
 							LineReaderWriter.println(out, DONE);
 							// check data
-							if (logger.isInfoEnabled()) {
+							if (logger.isLoggable(Level.INFO)) {
 								logger.info("sent oobMsg: " + new String(Hex.encodeHex(oobMsg)) +
 										" received oobMsg: " + new String(Hex.encodeHex(data)));
 							}
@@ -730,7 +729,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				LineReaderWriter.println(out, READY);
 				captureChannel.capture();
 			} catch (IOException e) {
-				logger.severe("Failed to read/write from io stream. Abort transfer protocol.", e);
+				logger.log(Level.SEVERE, "Failed to read/write from io stream. Abort transfer protocol.", e);
 			}
 		}
 	}
@@ -765,7 +764,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 			in = connection.getInputStream();
 			out = connection.getOutputStream();
 		} catch (IOException e) {
-			logger.severe("Failed to open stream from connection. Abort input protocol.", e);
+			logger.log(Level.SEVERE, "Failed to open stream from connection. Abort input protocol.", e);
 			return;
 		}
 		
@@ -809,7 +808,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 									Thread.sleep(1000);
 									btChannel.open();
 								} catch (Exception e) {
-									logger.severe("Failed to open bluetooth channel. Abort input protocol.", e);
+									logger.log(Level.SEVERE, "Failed to open bluetooth channel. Abort input protocol.", e);
 									return;
 								}
 							}
@@ -817,14 +816,14 @@ public class BedaApp implements AuthenticationProgressHandler {
 							HostProtocolHandler.startAuthenticationWith(btChannel, BedaApp.this, null, sharedSecrets, null, 20000, false, "INPUT", false);
 							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
-							logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
+							logger.log(Level.SEVERE, "Failed to read/write from io stream. Abort input protocol.", e);
 						}
 					}
 				};
 				channel.setOOBMessageHandler(messageHandler);
 				channel.capture();
 			} catch (IOException e) {
-				logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
+				logger.log(Level.SEVERE, "Failed to read/write from io stream. Abort input protocol.", e);
 			}
 		}
 		else { // responder
@@ -864,7 +863,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 							//connection.close();
 							statusLabel.setText("Please wait... Authentication in progress...");
 						} catch (IOException e) {
-							logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
+							logger.log(Level.SEVERE, "Failed to read/write from io stream. Abort input protocol.", e);
 						}
 					}
 				};
@@ -872,7 +871,7 @@ public class BedaApp implements AuthenticationProgressHandler {
 				captureChannel.capture();
 				LineReaderWriter.println(out, READY);
 			} catch (IOException e) {
-				logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
+				logger.log(Level.SEVERE, "Failed to read/write from io stream. Abort input protocol.", e);
 			}
 		}
 	}

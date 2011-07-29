@@ -228,7 +228,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 		logger.info("CKP succeeded with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds, shared key is now " + sharedSessionKey.toString() +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
-		statisticsLogger.warn("Data coding took " + totalCodingTime + 
+		statisticsLogger.warning("Data coding took " + totalCodingTime + 
 				"ms, CKP took " + totalCKPTime + 
 				"ms, FFT and quantization took" + totalFFTTime + 
 				"ms with " + totalMessageSize + " bytes in " +

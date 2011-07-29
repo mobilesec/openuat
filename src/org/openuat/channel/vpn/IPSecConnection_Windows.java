@@ -26,7 +26,7 @@ import org.apache.commons.codec.binary.*;
  */
 public class IPSecConnection_Windows implements IPSecConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class.getName());
 	
 	/** These values are from types.h from the ipsec2k library. */
 	private static final int CIPHER_3DES = 3;

@@ -16,6 +16,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.Hash;
@@ -110,7 +112,7 @@ import org.openuat.util.Hash;
  */
 public class CandidateKeyProtocol {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(CandidateKeyProtocol.class);
+	private static Logger logger = Logger.getLogger(CandidateKeyProtocol.class.getName());
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
@@ -242,7 +244,7 @@ public class CandidateKeyProtocol {
 			this.remoteRound = remoteRound;
 			this.remoteCandidateNumber = remoteCandidateNumber;
 			if (logger.isLoggable(Level.FINEST))
-				logger.trace("Created new matching key part object out of a candidate key part for local " +
+				logger.finest("Created new matching key part object out of a candidate key part for local " +
 						this.round + "/" + this.candidateNumber + ", remote "+
 						this.remoteRound + "/" + this.remoteCandidateNumber + ": " +
 						new String(Hex.encodeHex(this.keyPart)) + " with hash " +
@@ -550,8 +552,8 @@ public class CandidateKeyProtocol {
 
 			recentKeyParts[recentKeyPartsIndex++] = p;
 			if (recentKeyPartsIndex == recentKeyParts.length) {
-				if (statisticsLogger.isDebugEnabled())
-					statisticsLogger.debug("o recentKeyPartsIndex overflow (" + recentKeyParts.length + ") while adding " + 
+				if (statisticsLogger.isLoggable(Level.FINE))
+					statisticsLogger.fine("o recentKeyPartsIndex overflow (" + recentKeyParts.length + ") while adding " + 
 							candidateKeys.length + " candidate key parts; lastRound=" + lastRound);
 				recentKeyPartsIndex = 0;
 			}
@@ -559,7 +561,7 @@ public class CandidateKeyProtocol {
 			// and generate the candidate identifier to send to the remote host
 			ret[i] = p.extractPublicIdentifier();
 			if (logger.isLoggable(Level.FINEST))
-				logger.trace("Generating local candidate identifier number " + p.candidateNumber +
+				logger.finest("Generating local candidate identifier number " + p.candidateNumber +
 						" for part " + new String(Hex.encodeHex(p.keyPart)) + " with hash " +
 						new String(Hex.encodeHex(p.hash)) +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -663,7 +665,7 @@ public class CandidateKeyProtocol {
 			}
 		}
 
-		if (statisticsLogger.isInfoEnabled())
+		if (statisticsLogger.isLoggable(Level.INFO))
 			statisticsLogger.info("m found " + numMatches + " matches out of " + candidateIdentifiers.length +
 					" incoming candidates from + " + remoteHost + " and " + numHistoryParts + 
 					" parts in the recent history; lastRound=" + lastRound + 
@@ -753,8 +755,8 @@ public class CandidateKeyProtocol {
 			matchList = new MatchingKeyParts();
 			matchList.firstLocalRoundNumber = recentKeyParts[candidateIndex].round;
 			matchingKeyParts.put(remoteHost, matchList);
-			if (statisticsLogger.isDebugEnabled())
-				statisticsLogger.debug("+ Creating new match list for " + remoteHost + ", now " + 
+			if (statisticsLogger.isLoggable(Level.FINE))
+				statisticsLogger.fine("+ Creating new match list for " + remoteHost + ", now " + 
 						matchingKeyParts.size() + " lists; lastRound=" + lastRound);
 		}
 		long curTime = System.currentTimeMillis();
@@ -776,8 +778,8 @@ public class CandidateKeyProtocol {
 					logger.severe("Could not purge match list for remote host " + checkHost + 
 							". This should not happen." +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-				if (statisticsLogger.isDebugEnabled())
-					statisticsLogger.debug("- Removing old match list for " + checkHost + ", now " + 
+				if (statisticsLogger.isLoggable(Level.FINE))
+					statisticsLogger.fine("- Removing old match list for " + checkHost + ", now " + 
 							matchingKeyParts.size() + " lists; lastRound=" + lastRound);
 			}
 		}
@@ -811,12 +813,12 @@ public class CandidateKeyProtocol {
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			if (matchList.index == matchList.parts.length) {
 				matchList.index = 0;
-				if (statisticsLogger.isDebugEnabled())
-					statisticsLogger.debug("o matchList index overflow for " + remoteHost + " (" + 
+				if (statisticsLogger.isLoggable(Level.FINE))
+					statisticsLogger.fine("o matchList index overflow for " + remoteHost + " (" + 
 							matchList.parts.length + "); lastRound=" + lastRound);
 			}
-			if (statisticsLogger.isDebugEnabled())
-				statisticsLogger.debug("= now " + matchList.numMatchingRounds + " matches for " + remoteHost + 
+			if (statisticsLogger.isLoggable(Level.FINE))
+				statisticsLogger.fine("= now " + matchList.numMatchingRounds + " matches for " + remoteHost + 
 						" since round " + matchList.firstLocalRoundNumber + " (max list size " + matchList.parts.length + 
 						"); lastRound=" + lastRound);
 		}
@@ -989,7 +991,7 @@ public class CandidateKeyProtocol {
 		int numCopied = ((Integer) keyRet[1]).intValue();
 		int[][] localIndices = ((int[][][]) keyRet[2])[0];
 		int[][] remoteIndices = ((int[][][]) keyRet[3])[0];
-		if (statisticsLogger.isInfoEnabled())
+		if (statisticsLogger.isLoggable(Level.INFO))
 			statisticsLogger.info("g generated key for " + remoteHost + " out of " + numCopied + 
 					" matching parts; lastRound=" + lastRound + "; numMatches=" + 
 					((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
@@ -1062,7 +1064,7 @@ public class CandidateKeyProtocol {
 		if (numCopied != numParts) 
 			throw new InternalApplicationException("Did not get as many parts as requestes. This should not happen" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
-		if (statisticsLogger.isInfoEnabled())
+		if (statisticsLogger.isLoggable(Level.INFO))
 			statisticsLogger.info("g* generated " + keyParts.length + " candiates keys for " + remoteHost + 
 					" out of " + numCopied + " matching parts; lastRound=" + lastRound + "; numMatches=" + 
 					((MatchingKeyParts) matchingKeyParts.get(remoteHost)).numMatchingRounds);
@@ -1269,7 +1271,7 @@ public class CandidateKeyProtocol {
 		int off = 0;
 		for (int i=0; i<keyParts.length; i++) {
 			if (logger.isLoggable(Level.FINEST))
-				logger.trace("Assembling key: part " + i + " with " + keyParts[i].keyPart.length +
+				logger.finest("Assembling key: part " + i + " with " + keyParts[i].keyPart.length +
 						" bytes starting at offset " + off + ": local " +
 						keyParts[i].round + "/" + keyParts[i].candidateNumber + ", remote: " +
 						keyParts[i].remoteRound + "/" + keyParts[i].remoteCandidateNumber + ": " +
@@ -1342,8 +1344,8 @@ public class CandidateKeyProtocol {
 			}
 			matchList.parts = null;
 			matchList = null;
-			if (statisticsLogger.isDebugEnabled())
-				statisticsLogger.debug("- wiping match list for " + remoteHost + ", contained " +
+			if (statisticsLogger.isLoggable(Level.FINE))
+				statisticsLogger.fine("- wiping match list for " + remoteHost + ", contained " +
 						numMatches + " matches; lastRound=" + lastRound);
 			
 			// and call the garbage collector
@@ -1457,7 +1459,7 @@ public class CandidateKeyProtocol {
 			}
 		}
 		if (numParts > numCopied) {
-			if (logger.isInfoEnabled()) {
+			if (logger.isLoggable(Level.INFO)) {
 				String roundNumbers = "";
 				for (int j=0; j<numCopied; j++) {
 					roundNumbers += initialCombination[j].round;
@@ -1700,7 +1702,7 @@ public class CandidateKeyProtocol {
 			int outPos=0;
 			for (int j=0; j<numParts; j++) {
 				if (logger.isLoggable(Level.FINEST))
-					logger.trace("Assembling key: part " + i + " with " + allCombinations[i][j].keyPart.length +
+					logger.finest("Assembling key: part " + i + " with " + allCombinations[i][j].keyPart.length +
 							" bytes starting at offset " + outPos + ": local " +
 							allCombinations[i][j].round + "/" + allCombinations[i][j].candidateNumber + ", remote: " +
 							allCombinations[i][j].remoteRound + "/" + allCombinations[i][j].remoteCandidateNumber + ": " +
@@ -1761,7 +1763,7 @@ public class CandidateKeyProtocol {
 		
 		int numSetCombinations = (int) (fact(set.length) / (fact(k) * fact(set.length - k)));
 		if (logger.isLoggable(Level.FINEST))
-			logger.trace("(" + set.length + " over " + k + ") = " + numSetCombinations);
+			logger.finest("(" + set.length + " over " + k + ") = " + numSetCombinations);
 		// sanity check
 		if (numSetCombinations < 1)
 			throw new InternalApplicationException("Would pre-explode into " + numSetCombinations + 
@@ -1779,19 +1781,19 @@ public class CandidateKeyProtocol {
 		while (indices[0] <= set.length-k) {
 			indices[level]++;
 			if (logger.isLoggable(Level.FINEST))
-				logger.trace("Now at level " + level + ", index is " + indices[level]);
+				logger.finest("Now at level " + level + ", index is " + indices[level]);
 			if (level < k-1) {
 				// is it possible to go forward?
 				if (indices[level] < set.length-1) {
 					if (logger.isLoggable(Level.FINEST))
-						logger.trace("Not last level, forward track");
+						logger.finest("Not last level, forward track");
 					// yes, forward track
 					indices[level+1] = indices[level];
 					level++;
 				}
 				else {
 					if (logger.isLoggable(Level.FINEST))
-						logger.trace("Not last level, back track");
+						logger.finest("Not last level, back track");
 					// no, need to back track even further
 					level--;
 				}
@@ -1800,20 +1802,20 @@ public class CandidateKeyProtocol {
 				// still a valid combination?
 				if (indices[level] < set.length) {
 					if (logger.isLoggable(Level.FINEST))
-						logger.trace("Last level, storing indices/values at output position " +
+						logger.finest("Last level, storing indices/values at output position " +
 								combinationNumber + " (out of " + combinations.length + ")");
 					// yes, last level, remember current combination
 					combinations[combinationNumber] = new BitSet();
 					for (int i=0; i<k; i++) {
 						combinations[combinationNumber].set(set[indices[i]]);
 						if (logger.isLoggable(Level.FINEST))
-							logger.trace(indices[i] + "/" + set[indices[i]] + " ");
+							logger.finest(indices[i] + "/" + set[indices[i]] + " ");
 					}
 					combinationNumber++;
 				}
 				else {
 					if (logger.isLoggable(Level.FINEST))
-						logger.trace("Last level, invalid index, back track");
+						logger.finest("Last level, invalid index, back track");
 					// no longer valid, back track
 					level--;
 				}

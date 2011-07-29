@@ -26,7 +26,7 @@ import org.xmlpull.v1.XmlSerializer;
  */
 public class IPSecConfigHandler {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConfigHandler.class);
+	private static Logger logger = Logger.getLogger(IPSecConfigHandler.class.getName());
 	
 	/** This namespace is used for creating the XML config. */
 	private final static String Namespace = "http://www.mayrhofer.eu.org/ns/security/ipsecadmin";

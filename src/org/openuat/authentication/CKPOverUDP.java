@@ -18,6 +18,8 @@ import java.util.StringTokenizer;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKey;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKeyPartIdentifier;
@@ -53,7 +55,7 @@ import org.openuat.channel.main.ip.UDPMulticastSocket;
  */
 public abstract class CKPOverUDP extends AuthenticationEventSender {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(CKPOverUDP.class);
+	private static Logger logger = Logger.getLogger(CKPOverUDP.class.getName());
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
@@ -401,7 +403,7 @@ Bogdan Groza, 2007-04-19 */
 					logger.info("Duplicate feature vectors detected: " + parts.size() +
 							" unique vectors out of " + keyParts.length +
 							(instanceId != null ? " [" + instanceId + "]" : ""));
-					statisticsLogger.debug("d duplicate feature vectors detected: " + parts.size() + " out of " + keyParts.length + " are unique");
+					statisticsLogger.fine("d duplicate feature vectors detected: " + parts.size() + " out of " + keyParts.length + " are unique");
 					keyParts = new byte[parts.size()][];
 					Iterator iter = parts.values().iterator();
 					for (int i=0; i<keyParts.length; i++)
@@ -493,7 +495,7 @@ Bogdan Groza, 2007-04-19 */
 			}
 
 			totalCodingTime += System.currentTimeMillis()-timestamp;
-			statisticsLogger.debug("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
+			statisticsLogger.fine("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
 	
@@ -599,7 +601,7 @@ Bogdan Groza, 2007-04-19 */
 						// and remove from the list to not match one incoming message twice
 						incomingCandKeyBuffer[i] = null;
 				}
-			statisticsLogger.debug("rk* processed " + numOldMessages + " old incoming KEY messages with " + numOldCandidates + " candidate key parts");
+			statisticsLogger.fine("rk* processed " + numOldMessages + " old incoming KEY messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
 	
@@ -691,7 +693,7 @@ Bogdan Groza, 2007-04-19 */
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				genList.list[genList.index++] = candKey;
 				if (genList.index == genList.list.length) {
-					statisticsLogger.debug("o candidate key list overflow (" + genList.list.length + ")");
+					statisticsLogger.fine("o candidate key list overflow (" + genList.list.length + ")");
 					genList.index = 0;
 				}
 			
@@ -804,7 +806,7 @@ Bogdan Groza, 2007-04-19 */
 			matchingRoundsFraction = ckp.getMatchingRoundsFraction(remoteHostAddress);
 		}
 		catch (InternalApplicationException f) { 
-			logger.severe("Can not compute fraction of matching rounds, this should not happen!", f);
+			logger.log(Level.SEVERE, "Can not compute fraction of matching rounds, this should not happen!", f);
 		}
 
 		// also wipe the state local to this class
@@ -881,7 +883,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 */
 
 			String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
-			if (logger.isInfoEnabled())
+			if (logger.isLoggable(Level.INFO))
 				logger.info("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
 					+ " to remote host " + remoteHostAddress + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -1071,7 +1073,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 								keyParts[i] = new CandidateKeyPartIdentifier();
 								keyParts[i].hash = Hex.decodeHex(st.nextToken().toCharArray());
 								keyParts[i].round = round;
-								// small otpimization: the candidate number is not transmitted explicitly, but just as its position
+								// small optimization: the candidate number is not transmitted explicitly, but just as its position
 								keyParts[i].candidateNumber = (byte) i;
 							}
 							totalCodingTime += System.currentTimeMillis()-timestamp;
@@ -1082,7 +1084,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 
 							if (match > -1) {
 								// yes, we have a match, handle it
-								statisticsLogger.debug("rc+ match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
+								statisticsLogger.fine("rc+ match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
 								handleMatchingCandidateKeyPart(round, match, (InetAddress) sender);
 							}
 							else {
@@ -1090,7 +1092,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 								logger.finer("None of the incoming candidate key parts matches, only storing it in " +
 										"buffer for future reference"+ 
 										(instanceId != null ? " [" + instanceId + "]" : ""));
-								statisticsLogger.debug("rc- no match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
+								statisticsLogger.fine("rc- no match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
 								/* But since this was a mismatch, need to check if negative criteria might be fulfilled now.
 								 * This method call takes care of it.
 								 */
@@ -1108,7 +1110,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 							// alas, if we had a match, remember it to prevent double matches with the same local round!
 							incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
 							if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length) {
-								statisticsLogger.debug("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
+								statisticsLogger.fine("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
 								incomingKeyPartsBufferIndex = 0;
 							}
 							totalCodingTime += System.currentTimeMillis()-timestamp;
@@ -1182,7 +1184,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 							tmp[4] = remoteIndices;
 							incomingCandKeyBuffer[incomingCandKeyBufferIndex++] = tmp;
 							if (incomingCandKeyBufferIndex == incomingCandKeyBuffer.length) {
-								statisticsLogger.debug("o incoming KEY messages list overflow (" + incomingCandKeyBuffer.length + ")");
+								statisticsLogger.fine("o incoming KEY messages list overflow (" + incomingCandKeyBuffer.length + ")");
 								incomingCandKeyBufferIndex = 0;
 							}
 						}

@@ -10,6 +10,7 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class represents a possibly multi-dimensional time series of a single
@@ -225,7 +226,7 @@ public class TimeSeries_Int implements SamplesSink_Int {
 		else if (subtractTotalMean)
 			nextStageSample -= getTotalMean();
 		if (logger.isLoggable(Level.FINEST))
-			logger.trace("Pushing value " + nextStageSample + " to next stage");
+			logger.finest("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
     		for (int i=0; i<nextStageSinks.size(); i++) {
     			SamplesSink_Int s = (SamplesSink_Int) nextStageSinks.elementAt(i);

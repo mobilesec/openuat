@@ -32,7 +32,7 @@ import java.util.logging.Logger;
 
 public class FileTransferService {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(FileTransferService.class);
+	private static Logger logger = Logger.getLogger(FileTransferService.class.getName());
 
 	private static FileTransferService instance;
 

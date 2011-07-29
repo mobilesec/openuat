@@ -22,7 +22,7 @@ import java.util.logging.Logger;
  */
 public class MainboardAccelerometerReader_Linux extends AsciiLineReaderBase {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(MainboardAccelerometerReader_Linux.class);
+	private static Logger logger = Logger.getLogger(MainboardAccelerometerReader_Linux.class.getName());
 	
 	/** Path to the HDAPS (IBM/Lenovo Thinkpads) sensor pseudo-file. */ 
 	private static final String hdapsSensorFile = "/sys/bus/platform/devices/hdaps/position";

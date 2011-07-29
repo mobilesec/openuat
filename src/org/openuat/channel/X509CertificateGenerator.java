@@ -45,7 +45,6 @@ import java.util.Enumeration;
 
 import org.apache.commons.codec.binary.Hex;
 import java.util.logging.Logger;
-import org.apache.log4j.PropertyConfigurator;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -102,7 +101,7 @@ import org.bouncycastle.x509.extension.SubjectKeyIdentifierStructure;
  */
 public class X509CertificateGenerator {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class);
+	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class.getName());
 	
 	/** This method is used for signing the certificate. */
 	public static final String CertificateSignatureAlgorithm = "SHA1WithRSAEncryption";
@@ -717,10 +716,10 @@ public class X509CertificateGenerator {
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception {
-		if (System.getProperty("os.name").startsWith("Windows CE")) {
+		/*if (System.getProperty("os.name").startsWith("Windows CE")) {
 			System.out.println("Configuring log4j");
 			PropertyConfigurator.configure("log4j.properties");
-		}
+		}*/
 
 		if (args.length > 0 && args[0].equals("newca")) {
 			System.out.println(X509CertificateGenerator.createNewCa("My Test CA", 365, "ca.p12", "test password", "Test CA", true));

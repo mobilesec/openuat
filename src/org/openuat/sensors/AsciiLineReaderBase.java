@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This is a base class for reading from sensors that are represented by

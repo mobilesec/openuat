@@ -10,6 +10,7 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class implements an aggregation of multiple time series into one. To do so,

@@ -66,7 +66,7 @@ import java.util.logging.Logger;
  */
 public class PDAHTTPServer {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(PDAHTTPServer.class);
+	private static Logger logger = Logger.getLogger(PDAHTTPServer.class.getName());
 	
 	Vector listeners;
 	

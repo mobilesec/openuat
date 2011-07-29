@@ -25,7 +25,6 @@ import java.net.UnknownHostException;
 import java.util.Iterator;
 
 import java.util.logging.Logger;
-import org.apache.log4j.PropertyConfigurator;
 
 import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.MeasurementQueue;
@@ -69,7 +68,7 @@ import uk.ac.lancs.relate.auth.ProgressEventHandler;
  */
 public class RelateAuthenticationProtocol extends DHWithVerification {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class);
+	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class.getName());
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
@@ -351,7 +350,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 
 		// also log that failure to the statistics logger
 		if (!simulation)
-			statisticsLogger.error("- " + rounds + " " + referenceMeasurement + 
+			statisticsLogger.severe("- " + rounds + " " + referenceMeasurement + 
 					" Authentication failed: '" + e + "' / '" + message);
 	}
 
@@ -568,9 +567,10 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 
     public static void main(String[] args) throws Exception
 	{
-		if (System.getProperty("os.name").startsWith("Windows CE")) {
+    	// TODO: work with java.util.logging framework
+		/*if (System.getProperty("os.name").startsWith("Windows CE")) {
 			PropertyConfigurator.configure("log4j.properties");
-		}
+		}*/
 
 		class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
 			private int mode; // 0 = client, 1 = server, 2 = both
@@ -739,7 +739,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
             			// just ignore, it doesn't matter too much if it's shorter
             		}
             		System.out.println("******** Timed out");
-        			statisticsLogger.error("- Timer killed client");
+        			statisticsLogger.severe("- Timer killed client");
    	        		resetBothDongles(deviceType);
    	        		if (! System.getProperty("os.name").startsWith("Windows CE"))
    	        			System.exit(100);
@@ -814,7 +814,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
             			// just ignore, it doesn't matter too much if it's shorter
             		}
             		System.out.println("******** Timed out");
-            		statisticsLogger.error("- Timer killed client");
+            		statisticsLogger.severe("- Timer killed client");
             		if (! System.getProperty("os.name").startsWith("Windows CE"))
             			System.exit(100);
             		}

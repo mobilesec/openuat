@@ -41,7 +41,7 @@ import org.openuat.sensors.WiTiltRawReader;
  */
 public class ShakingSinglePCDemonstrator {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(ShakingSinglePCDemonstrator.class);
+	private static Logger logger = Logger.getLogger(ShakingSinglePCDemonstrator.class.getName());
 	
 	/** The displayed text when a device is active. */
 	private static String DEVICE_STATE_ACTIVE = "active";

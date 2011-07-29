@@ -11,6 +11,7 @@
  */
 package org.openuat.features;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class implements computation of the coherence function. It is

@@ -11,6 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** This class implements a "grenade timer" that will let any loop bail out 
@@ -131,7 +132,7 @@ public class SafetyBeltTimer implements Runnable {
 	
 	/** Returns true when the timer has triggered and the task should terminate. */
 	public boolean isTriggered() {
-		if (timeout && logger.isInfoEnabled())
+		if (timeout && logger.isLoggable(Level.INFO))
 			logger.info("Triggered safety belt timer just got queried - task should bail out now");
 		// no synchronization method here since it's only a boolean
 		return timeout;

@@ -28,9 +28,6 @@ import org.openuat.util.IntervalList;
  * @version 1.0
  */
 public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
-	
-	
-	
 	/**
 	 * Length of an oob message that can be sent
 	 * over a button channel: 24 bit = 3 byte.<br/>
@@ -236,7 +233,7 @@ public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
 					messageHandler.handleOOBMessage(OOBChannel.BUTTON_CHANNEL, message);
 				}
 				else {
-					logger.warning("Method buttonPressed(): Message received, but 'messageHandler' is null");
+					logger.warn("Method buttonPressed(): Message received, but 'messageHandler' is null");
 				}
 			}
 		}

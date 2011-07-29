@@ -21,7 +21,7 @@ import java.util.logging.Logger;
  */
 public class IPSecConnection_Factory {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Factory.class);
+	private static Logger logger = Logger.getLogger(IPSecConnection_Factory.class.getName());
 
 	/** Returns the appropriate instance of the ipsec secure channel implementation. or null if
 	 * no implementation is yet available for the running platform. 

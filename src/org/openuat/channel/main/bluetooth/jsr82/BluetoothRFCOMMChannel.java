@@ -20,6 +20,8 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.channel.main.RemoteConnection;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
@@ -288,7 +290,7 @@ public class BluetoothRFCOMMChannel implements RemoteConnection {
 		}
 		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
-   			logger.severe("Unable to close streams cleanly", e);
+   			logger.log(Level.SEVERE, "Unable to close streams cleanly", e);
 		}
 		finally {
 			// remove from the list of open channels again

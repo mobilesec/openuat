@@ -20,6 +20,7 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 import javax.microedition.io.StreamConnectionNotifier;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostServerBase;
@@ -152,7 +153,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				StreamConnection connection = listener.acceptAndOpen();
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
-				if (logger.isInfoEnabled())
+				if (logger.isLoggable(Level.INFO))
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 							channel.getRemoteName() + "'");
 				

@@ -52,7 +52,7 @@ import uk.ac.lancs.relate.model.NLRAlgorithm;
 public class IPSecConnectorClient extends IPSecConnectorCommon {
 	
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnectorClient.class);
+	private static Logger logger = Logger.getLogger(IPSecConnectorClient.class.getName());
 
 	private byte[] sharedKey = null;
 	

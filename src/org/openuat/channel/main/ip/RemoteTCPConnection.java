@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.openuat.channel.main.RemoteConnection;
 import org.openuat.util.DebugInputStream;
@@ -91,7 +92,7 @@ public class RemoteTCPConnection implements RemoteConnection {
 		}
 		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
-   			logger.severe("Unable to close streams cleanly", e);
+   			logger.log(Level.SEVERE, "Unable to close streams cleanly", e);
 		}
 	}
 

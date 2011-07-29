@@ -34,7 +34,7 @@ import uk.ac.lancs.relate.events.AuthenticationEvent;
  */
 public class DongleProtocolHandler extends AuthenticationEventSender {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(DongleProtocolHandler.class);
+	private static Logger logger = Logger.getLogger(DongleProtocolHandler.class.getName());
 
 	/** With the current Relate dongle hard-/firmware, each round of the dongle authentication protocol transports 3 bits
 	 * of entropy.
@@ -198,7 +198,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			}
 		} 
 		catch (DeviceException e) {
-			logger.fatal("ERROR: could not send start-of-authentication packet to dongle: " + e);
+			logger.severe("ERROR: could not send start-of-authentication packet to dongle: " + e);
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), e, "Unable to send start-of-authentication packet to dongle, resetting it.");
 			serialConn.switchDiagnosticMode(false);
 			return false;

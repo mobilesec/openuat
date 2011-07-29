@@ -26,6 +26,8 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
 import org.apache.commons.codec.binary.Hex;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.codec.audio.AudioUtils;
 import org.codec.audio.PlayerPiano;
@@ -236,7 +238,7 @@ public class OpenUATtoolkit {
 						status.setFont(new Font("Serif",Font.BOLD, 24));
 						frame.repaint();
 					} catch (UnsupportedEncodingException e) {
-						logger.severe("UnsupportedEncodingException", e);
+						logger.log(Level.SEVERE, "UnsupportedEncodingException", e);
 					}
 					send (UACAPProtocolConstants.DONE, connectionToRemote);
 					String done = readLine(connectionToRemote);
@@ -269,7 +271,7 @@ public class OpenUATtoolkit {
 						frame.repaint();
 						System.out.println("done updating frame");
 					} catch (InternalApplicationException e) {
-						logger.severe("Failed to build hash.", e);
+						logger.log(Level.SEVERE, "Failed to build hash.", e);
 						System.out.println("error"+e);
 						return;
 					}
@@ -296,7 +298,7 @@ public class OpenUATtoolkit {
 
 					PlayerPiano.PlayerPiano(score);
 				} catch (Exception ioex) {
-					logger.severe(ioex);
+					logger.log(Level.SEVERE, "Unable to play MIDI tune", ioex);
 				}
 			}
 
@@ -308,9 +310,9 @@ public class OpenUATtoolkit {
 			
 			if(success.equals(UACAPProtocolConstants.SUCCESS)){
 				status.setText("Congratulations! Authentication was successful.");
-				if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+				if(logger.isLoggable(Level.INFO)) logger.info("Authentication completed successfully.");
 			}else if (success.equals(UACAPProtocolConstants.FAILURE)){
-				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
+				if(logger.isLoggable(Level.INFO)) logger.info("Authentication failed.");
 				status.setText("Error! Authentication failed.");
 			
 			}else if (success.equals(UACAPProtocolConstants.REPLAY)){
@@ -342,13 +344,13 @@ public class OpenUATtoolkit {
 					//					ImageIcon icon = new ImageIcon(imageURL);
 					//					progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 					status.setText("Congratulations! Authentication was successful.");
-					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+					if(logger.isLoggable(Level.INFO)) logger.info("Authentication completed successfully.");
 					
 					
 					//for demo purposes
 					connectionToRemote.close();
 				}else if (outcome.equals(UACAPProtocolConstants.FAILURE)){
-					if(logger.isInfoEnabled()) logger.info("Authentication failed.");
+					if(logger.isLoggable(Level.INFO)) logger.info("Authentication failed.");
 
 					//					java.net.URL imageURL = getClass().getResource("/error_bg.png");
 					//					ImageIcon icon = new ImageIcon(imageURL);
@@ -381,10 +383,10 @@ public class OpenUATtoolkit {
 //				ImageIcon icon = new ImageIcon(imageURL);
 //				progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 				status.setText("Congratulations! Authentication was successful.");
-					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+					if(logger.isLoggable(Level.INFO)) logger.info("Authentication completed successfully.");
 				
 			}else if (success.equals(UACAPProtocolConstants.FAILURE)){
-				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
+				if(logger.isLoggable(Level.INFO)) logger.info("Authentication failed.");
 				
 //				java.net.URL imageURL = getClass().getResource("/error_bg.png");
 //				ImageIcon icon = new ImageIcon(imageURL);

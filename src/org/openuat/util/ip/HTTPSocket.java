@@ -23,7 +23,7 @@ import java.util.logging.Logger;
 
 public class HTTPSocket  implements Runnable{
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(HTTPSocket.class);
+	private static Logger logger = Logger.getLogger(HTTPSocket.class.getName());
 
 	public static String RELATE_ATTRIBUTE_FILENAME = "X-Relate-Filename";
 	public static String RELATE_ATTRIBUTE_ID = "X-Relate-Id";

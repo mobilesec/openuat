@@ -29,7 +29,6 @@ import javax.swing.JTextField;
 
 import org.apache.commons.codec.binary.Hex;
 import java.util.logging.Logger;
-import org.apache.log4j.PropertyConfigurator;
 import org.openuat.apps.BinaryBlockStreamer;
 import org.openuat.apps.IPSecConfigHandler;
 import org.openuat.channel.X509CertificateGenerator;
@@ -58,7 +57,7 @@ import uk.ac.lancs.relate.model.NLRAlgorithm;
 public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 	
 	/** Our logger. */
-	protected static Logger logger = Logger.getLogger(IPSecConnectorAdmin.class);
+	protected static Logger logger = Logger.getLogger(IPSecConnectorAdmin.class.getName());
 	/** This string holds the temporary file name of the certificate that
 	 * has been created. It is also used as a state variable for synchronizing
 	 * with the background thread that is creating it: if it is set to null,
@@ -162,7 +161,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 				guiHandler.progress(sender.toString(), remote.toString(), id, cur, max, msg);
 			}
 		} catch(Exception e) {
-			logger.severe("Can't update progress bar", e);
+			logger.log(Level.SEVERE, "Can't update progress bar", e);
 		}
 	}
 	public boolean AuthenticationStarted(Object sender, Object remote) {
@@ -229,7 +228,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		config.setSide(csides.getSelectedIndex());
 		config.setUserName(username.getText());
 		config.setDeviceType(Configuration.DEVICE_TYPE_DONGLE);
-		logger.finer(config);
+//		logger.finer(config);
 		return config;
 	}
 	
@@ -336,7 +335,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		}
 
 		private void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) throws UnknownHostException, IOException {	
-			logger.finer("start Authentication with "+remoteHost + " at port " + serialPort + " where id is: "+ remoteRelateId+ " and the number of round is "+ numRounds);
+			logger.debug("start Authentication with "+remoteHost + " at port " + serialPort + " where id is: "+ remoteRelateId+ " and the number of round is "+ numRounds);
 			authp.startAuthentication(remoteHost, remoteRelateId, numRounds);
 		}		
 
