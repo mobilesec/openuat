@@ -31,5 +31,6 @@
 	<classpathentry kind="lib" path="lib/j2me/jsr75.jar"/>
 	<classpathentry kind="lib" path="lib/tgdh-1.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
+	<classpathentry kind="lib" path="lib/log4j-over-slf4j-1.5.11.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

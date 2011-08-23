@@ -563,8 +563,8 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		ProtocolCommandHandler inputProtocolHandler = new ProtocolCommandHandler() {
 			// @Override
 			public boolean handleProtocol(String firstLine, RemoteConnection remote) {
-				if (logger.isLoggable(Level.FINER)) {
-					logger.finer("Handle protocol command: " + firstLine);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Handle protocol command: " + firstLine);
 				}
 				if (firstLine.equals(PRE_AUTH)) {
 					inputProtocol(false, remote, null);
@@ -763,7 +763,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 		
 		if (isInitiator) {
-			logger.finer("Running transfer as initiator");
+			logger.debug("Running transfer as initiator");
 			try {
 				String initString = TRANSFER_AUTH + ":" + channel.toString();
 				LineReaderWriter.println(out, initString);
@@ -808,7 +808,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			}
 		}
 		else { // responder
-			logger.finer("Running transfer as responder");
+			logger.debug("Running transfer as responder");
 			try {
 				String lineIn = LineReaderWriter.readLine(in);
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
@@ -892,7 +892,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 		}
 		
 		if (isInitiator) {
-			logger.finer("Running input as initiator");
+			logger.debug("Running input as initiator");
 			try {
 				String initString = INPUT + ":" + channel.toString();
 				LineReaderWriter.println(out, initString);
@@ -939,7 +939,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			}
 		}
 		else { // responder
-			logger.finer("Running input as responder");
+			logger.debug("Running input as responder");
 			try {
 				String lineIn = LineReaderWriter.readLine(in);
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));

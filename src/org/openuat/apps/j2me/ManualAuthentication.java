@@ -183,8 +183,8 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 				if (dev_list.getSelectedIndex() >= 0) { //find services
 					RemoteDevice[] devices = peerManager.getPeers();
 					currentPeerAddress = devices[dev_list.getSelectedIndex()].getBluetoothAddress();
-					if (logger.isLoggable(Level.FINER)) {
-						logger.finer("currentPeerAddress set to " + currentPeerAddress);
+					if (logger.isDebugEnabled()) {
+						logger.debug("currentPeerAddress set to " + currentPeerAddress);
 					}
 					serv_list.deleteAll(); //empty the list of services in case user has pressed back
 					if (!peerManager.startServiceSearch(devices[dev_list.getSelectedIndex()], SERVICE_UUID)) {
@@ -205,7 +205,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 					try {
 						BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(currentPeerAddress, BLUETOOTH_CHANNEL_NR);
 						channel.open();
-						logger.finer("Bluetooth channel opened, start DH key agreement.");
+						logger.debug("Bluetooth channel opened, start DH key agreement.");
 						HostProtocolHandler.startAuthenticationWith(channel, this, 10000, keepConnected, optionalParam, false);
 					} catch (IOException e) {
 						logger.severe("Failed to open connection to peer.", e);
@@ -337,7 +337,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 	 * strings on both devices and gives appropriate feedback.
 	 */
 	private void verifyHashComparison(byte[] authKey) {
-		logger.finer("Start key verification: Hash comparison");
+		logger.debug("Start key verification: Hash comparison");
 		String hashString;
         try {
 			hashString = getHexString(Hash.doubleSHA256(authKey, false));

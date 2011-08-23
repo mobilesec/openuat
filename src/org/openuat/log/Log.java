@@ -104,6 +104,7 @@ public interface Log {
 	 * @param t The cause of the error.
 	 */
 	public void error(Object message, Throwable t);
+	public void severe(Object message, Throwable t);
 
 	/**
 	 * Logs a message at log level fatal.

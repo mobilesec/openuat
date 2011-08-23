@@ -140,4 +140,35 @@ public class BandyLogger implements Log {
 	public void warn(Object message, Throwable t) {
 		LogService.warn(name, message.toString() + "  " + t.toString());
 	}
+
+	@Override
+	public void finest(Object message) {
+		// map trace to debug
+		this.debug(message);
+	}
+
+	@Override
+	public void fine(Object message) {
+		this.debug(message);
+	}
+
+	@Override
+	public void warning(Object message) {
+		this.warn(message);
+	}
+
+	@Override
+	public void warning(Object message, Throwable t) {
+		this.warn(message, t);
+	}
+
+	@Override
+	public void severe(Object message) {
+		this.error(message);
+	}
+
+	@Override
+	public void severe(Object message, Throwable t) {
+		this.error(message, t);
+	}
 }

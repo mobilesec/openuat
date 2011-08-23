@@ -37,7 +37,7 @@ import org.openuat.channel.main.MessageListener;
  */
 public class UDPMulticastSocket {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(UDPMulticastSocket.class);
+	private static Logger logger = Logger.getLogger(UDPMulticastSocket.class.getName());
 
 	/** A list of network interface names <b>not</b> to use for communication.
 	 * All other network interfaces not matching these names are used to multicast

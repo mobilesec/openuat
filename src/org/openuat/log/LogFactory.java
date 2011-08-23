@@ -195,6 +195,11 @@ public abstract class LogFactory {
 		public void warning(Object message) {
 			// Do nothing
 		}
+
+		@Override
+		public void severe(Object message, Throwable t) {
+			// Do nothing
+		}
 	}
 	
 }

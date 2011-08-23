@@ -161,7 +161,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 				guiHandler.progress(sender.toString(), remote.toString(), id, cur, max, msg);
 			}
 		} catch(Exception e) {
-			logger.log(Level.SEVERE, "Can't update progress bar", e);
+//			logger.log(Level.SEVERE, "Can't update progress bar", e);
 		}
 	}
 	public boolean AuthenticationStarted(Object sender, Object remote) {
@@ -245,10 +245,10 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			confFile = "ipsec-conf.xml";
 		}
 
-		if (System.getProperty("os.name").startsWith("Windows CE")) {
+/*		if (System.getProperty("os.name").startsWith("Windows CE")) {
 			System.out.println("Configuring log4j");
 			PropertyConfigurator.configure("log4j.properties");
-		}
+		}*/
 		
 //		 if we have an IP address as argument, then start in simulation mode
 		Configuration relateConf = null;
@@ -335,7 +335,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		}
 
 		private void authenticationStarted(String serialPort, String remoteHost, int remoteRelateId, byte numRounds) throws UnknownHostException, IOException {	
-			logger.debug("start Authentication with "+remoteHost + " at port " + serialPort + " where id is: "+ remoteRelateId+ " and the number of round is "+ numRounds);
+//			logger.debug("start Authentication with "+remoteHost + " at port " + serialPort + " where id is: "+ remoteRelateId+ " and the number of round is "+ numRounds);
 			authp.startAuthentication(remoteHost, remoteRelateId, numRounds);
 		}		
 
@@ -403,22 +403,22 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		private void doAutenticationForId(int relateId) throws UnknownHostException, IOException {
 			Configuration c = hostManager.getConfigurationForId(relateId);
 			String remoteAddress =null;
-			logger.finer("For id: "+relateId+" hostInfoManager offers this configuration: "+c);
+//			logger.finer("For id: "+relateId+" hostInfoManager offers this configuration: "+c);
 			if (c!= null && c.getInetAddress() != null){
 				remoteAddress = c.getInetAddress().getHostAddress();
 				String error ="For id: "+relateId+" we have this ip address: "+remoteAddress;
-				logger.finer(error);
+//				logger.finer(error);
 			} 
 			if (remoteAddress == null) {
 				String text ="Could not lookup up address of device id " + relateId +
 				".\nHas the secure authentication code been enabled on the other host?";
-				logger.info(text);
+//				logger.info(text);
 				showErrorMessageBox(text, "Start Secure Authentication");
 				return;
 			}
 			if (auth != null) {
 				if (!auth.startAuthenticationWith(remoteAddress, (byte) relateId, 10)) {
-					logger.finer( "start the authentication."); 
+//					logger.finer( "start the authentication."); 
 					return;
 				}
 			}
@@ -453,7 +453,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		}
 		
 		public void issueCertificate(String commonNameInput, int days, int relateId) {
-			logger.finer ("issue Certificate");
+//			logger.finer ("issue Certificate");
 			// ok, got the shared password - use it to create the certificate (in the background)
 			// (and need to get the text fields in the SWT UI thread) 
 
@@ -463,7 +463,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 				if (certificateFilename == null) {
 					// hmm, thread not started yet - can't cope
 					String text= "Certificate generation thread was not started properly, can not continue";
-					logger.severe(text);
+//					logger.severe(text);
 					guiHandler.showErrorMessageBox(text, "Waiting for Certificate Creation");
 					toRemote.close();
 					return;
@@ -482,7 +482,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 					if (certificateFilename.startsWith("ERROR")) {
 						// ouch, generation failed
 						String text = "Certificate generation failed: " + certificateFilename;
-						logger.severe(text);
+//						logger.severe(text);
 						guiHandler.showErrorMessageBox(text, "Certificate Generation Failed");
 						toRemote.close();
 						return;
@@ -498,7 +498,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			}
 			catch (IOException e) {
 				String text ="Could not open output stream to remote host: ";
-				logger.severe(text + e);
+//				logger.severe(text + e);
 				guiHandler.showErrorMessageBox(text+ "\n"+e, " OutputStream to Remote Host ");
 				toRemote.close();
 				return;
@@ -508,22 +508,22 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 				StringWriter confBlock = new StringWriter();
 				if (!config.writeConfig(confBlock)) {
 					String text = "Could not export IPSec configuration to XML";
-					logger.severe(text);
+//					logger.severe(text);
 					guiHandler.showErrorMessageBox(text, "Export of IPSec Configuration");
 					toRemote.close();
 					return;
 				}
 				String confTmpBlock = confBlock.toString();
-				logger.finer("Sending configuration block of " + confTmpBlock.length() + "B to client");
+//				logger.finer("Sending configuration block of " + confTmpBlock.length() + "B to client");
 				s.sendBinaryBlock(BLOCKNAME_CONFIG, new ByteArrayInputStream(confTmpBlock.getBytes()), confTmpBlock.length());
 				
 				// and now the certificate
 				File certFile = new File(certificateFilename);
-				logger.finer("Sending certificate block of " + certFile.length() + "B to client");
+//				logger.finer("Sending certificate block of " + certFile.length() + "B to client");
 				s.sendBinaryBlock(BLOCKNAME_CERTIFICATE, new FileInputStream(certFile), (int) certFile.length());
 			} catch (IOException e) {
 				String text ="Could not send to remote host: ";
-				logger.severe(text + e);
+//				logger.severe(text + e);
 				guiHandler.showErrorMessageBox(text+ "\n"+ e, "Sending to Remote Host");
 				return;
 			}
@@ -555,8 +555,8 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 		 * @see #certificateFilename
 		 */
 		protected boolean asyncCreateCertificate(String commonName, int validityDays, String exportPassword, final int relateId) {
-			logger.finer("Starting thread to create certificate for CN='" + 
-					commonName + "' valid for " + validityDays + " days");
+//			logger.finer("Starting thread to create certificate for CN='" + 
+//					commonName + "' valid for " + validityDays + " days");
 			synchronized (certificateFilenameLock) {
 				// this states that it is not yet ready, and that the thread is running		
 				certificateFilename = "";
@@ -570,12 +570,12 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			}
 			catch (IOException e) {
 				String text = "Unable to create temporary file for certificate: ";
-				logger.severe(text + e);
+//				logger.severe(text + e);
 				guiHandler.showErrorMessageBox(text+"\n"+e," Creating Temporary File" );
 				return false;
 			}
 			tempCertFile.deleteOnExit();
-			logger.finer("Created temporary file '" + tempCertFile.getAbsolutePath() + "'");
+//			logger.finer("Created temporary file '" + tempCertFile.getAbsolutePath() + "'");
 
 			final String cn = commonName;
 			final int val = validityDays;
@@ -583,10 +583,10 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 			final String pass = exportPassword;
 			// and start the certificate generation in the background
 			new Thread(new Runnable() { public void run() {
-				logger.finer("Certificate creation thread started");
+//				logger.finer("Certificate creation thread started");
 				try {
 					if (certGenerator.createCertificate(cn, val, file, pass)) {
-						logger.finer("Finished creating certificate with success");
+//						logger.finer("Finished creating certificate with success");
 						informAdminPanelofSuccess(relateId);
 						adminFrame.setVisible(false);
 						// ok, finished creating the file - store the name and wake up other threads that might be waiting
@@ -596,7 +596,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 						}
 					}
 					else {
-						logger.severe("Finished creating certificate with error");
+//						logger.severe("Finished creating certificate with error");
 						// error during creating
 						synchronized (certificateFilenameLock) {
 							certificateFilename = "ERROR";
@@ -605,7 +605,7 @@ public class IPSecConnectorAdmin extends IPSecConnectorCommon{
 					}
 				}
 				catch (Exception e) {
-					logger.severe("Certificate generation failed with: " + e);
+//					logger.severe("Certificate generation failed with: " + e);
 					synchronized (certificateFilenameLock) {
 						certificateFilename = "ERROR: " + e;
 						certificateFilenameLock.notify();

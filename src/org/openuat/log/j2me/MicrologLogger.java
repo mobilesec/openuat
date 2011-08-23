@@ -63,22 +63,22 @@ public class MicrologLogger implements Log {
 	
 	// @Override
 	public void debug(Object message) {
-		logger.finer(message);
+		logger.debug(message);
 	}
 
 	// @Override
 	public void debug(Object message, Throwable t) {
-		logger.finer(message, t);
+		logger.debug(message, t);
 	}
 
 	// @Override
 	public void error(Object message) {
-		logger.severe(message);
+		logger.error(message);
 	}
 
 	// @Override
 	public void error(Object message, Throwable t) {
-		logger.severe(message, t);
+		logger.error(message, t);
 	}
 
 	// @Override
@@ -103,7 +103,7 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public boolean isDebugEnabled() {
-		return logger.isLoggable(Level.FINER);
+		return logger.isDebugEnabled();
 	}
 
 	// @Override
@@ -123,7 +123,7 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public boolean isTraceEnabled() {
-		return logger.isLoggable(Level.FINEST);
+		return logger.isTraceEnabled();
 	}
 
 	// @Override
@@ -143,12 +143,41 @@ public class MicrologLogger implements Log {
 
 	// @Override
 	public void warn(Object message) {
-		logger.warning(message);
+		logger.warn(message);
 	}
 
 	// @Override
 	public void warn(Object message, Throwable t) {
-		logger.warning(message, t);
+		logger.warn(message, t);
 	}
 
+	@Override
+	public void finest(Object message) {
+		this.trace(message);
+	}
+
+	@Override
+	public void fine(Object message) {
+		this.debug(message);
+	}
+
+	@Override
+	public void warning(Object message) {
+		this.warn(message);
+	}
+
+	@Override
+	public void warning(Object message, Throwable t) {
+		this.warn(message, t);
+	}
+
+	@Override
+	public void severe(Object message) {
+		this.error(message);
+	}
+
+	@Override
+	public void severe(Object message, Throwable t) {
+		this.error(message, t);
+	}
 }

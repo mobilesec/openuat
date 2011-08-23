@@ -28,11 +28,11 @@ import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
 
 import net.sf.microlog.Level;
+import net.sf.microlog.Logger;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
-import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;
@@ -148,9 +148,9 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			volumeControl = (VolumeControl) player.getControl("VolumeControl");
 			volumeControl.setLevel(45);
 		} catch (IOException e) {
-			logger.severe("Unable to get volume control: " + e);
+			logger.error("Unable to get volume control: " + e);
 		} catch (MediaException e) {
-			logger.severe("Unable to get volume control: " + e);
+			logger.error("Unable to get volume control: " + e);
 		}
 		
 		mainForm = new Form("Shake Me");
@@ -175,7 +175,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			bad = Image.createImage(IMAGE_BAD);
 			retry = Image.createImage(IMAGE_RETRY);
 		} catch (IOException e1) {
-			logger.warning("Could not load image: " + e1);
+			logger.warn("Could not load image: " + e1);
 		}
 		goodOrBad = new ImageItem(null, bad, Item.LAYOUT_DEFAULT, null);
 		mainForm.append(goodOrBad);
@@ -198,7 +198,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		try {
 			Manager.playTone(72, 300, 30);
 		} catch (MediaException e) {
-			logger.severe("Unable to play tone");
+			logger.error("Unable to play tone");
 		}
 	}
 
@@ -283,7 +283,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				connector.start();
 			}
 		} catch (IOException e) {
-			logger.severe("Error initializing BlutoothRFCOMMServer: " + e);
+			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
 			return false;
 		}
 		
@@ -417,7 +417,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				Manager.playTone(60, 100, 30);
 				Manager.playTone(64, 100, 30);
 			} catch (MediaException e) {
-				logger.severe("Unable to play tone");
+				logger.error("Unable to play tone");
 			}*/
 		}
 
@@ -439,7 +439,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				Manager.playTone(62, 100, 30);
 				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
-				logger.severe("Unable to play tone");
+				logger.error("Unable to play tone");
 			}*/
 			
 			// remember the remote channel number
@@ -451,21 +451,21 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				String remoteDeviceAddress = optionalParam.substring(8, 20);
 				int end = optionalParam.indexOf(';') > 0 ? optionalParam.indexOf(';') : optionalParam.length();
 				int remoteChannelNumber = Integer.parseInt(optionalParam.substring(21, end));
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Parsed remote device address '" + remoteDeviceAddress + 
+				if (logger.isDebugEnabled())
+					logger.debug("Parsed remote device address '" + remoteDeviceAddress + 
 						"' and channel " + remoteChannelNumber + " from remote URL parameter '" +
 						optionalParam + "'");
 				BluetoothRFCOMMChannel channel = (BluetoothRFCOMMChannel) remote;
 				if (! channel.getRemoteAddress().equals(remoteDeviceAddress)) {
-					if (logger.isLoggable(Level.FINER))
-						logger.finer("Device address of remote is '" + channel.getRemoteAddress() +
+					if (logger.isDebugEnabled())
+						logger.debug("Device address of remote is '" + channel.getRemoteAddress() +
 							"', but parsed '" + remoteDeviceAddress + 
 							"' from URL parameter, assuming that this is the client and thus not storing channel number");
 				}
 				else {
 					if (channel.getRemoteChannelNumber() != -1 && 
 						channel.getRemoteChannelNumber() != remoteChannelNumber)
-						logger.warning("Currently known remote channel number of remote is '" + channel.getRemoteChannelNumber() +
+						logger.warn("Currently known remote channel number of remote is '" + channel.getRemoteChannelNumber() +
 							"', but parsed '" + remoteChannelNumber + 
 							"' from URL parameter, something is very wrong here");
 					// and finally remember the parsed number (if it was already in there, it won't change)
@@ -474,10 +474,10 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				}
 			}
 			else {
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Could not parse URL '" + optionalParam + "'");
+				if (logger.isDebugEnabled())
+					logger.debug("Could not parse URL '" + optionalParam + "'");
 				if (((BluetoothRFCOMMChannel) remote).getRemoteChannelNumber() == -1)
-					logger.warning("Could neither parse remote URL parameter nor already have a remote channel number to use, thus outgoing key verification to this host will not work!");
+					logger.warn("Could neither parse remote URL parameter nor already have a remote channel number to use, thus outgoing key verification to this host will not work!");
 			}
 			
 			if (FIXED_DEMO_MODE)
@@ -497,7 +497,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					Manager.playTone(64, 100, 30);*/
 					Manager.playTone(76, 200, 30);
 				} catch (MediaException e) {
-					logger.severe("Unable to play tone");
+					logger.error("Unable to play tone");
 				}
 			}}).start();
 
@@ -511,7 +511,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					toRemote.write(tmp.toString());
 					toRemote.flush();
 				} catch (IOException e) {
-					logger.severe("Could not push segment to debug stream");
+					logger.error("Could not push segment to debug stream");
 				}
 			}
 			
@@ -578,13 +578,13 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 				else if (localAddr.equals(FIXED_DEMO_PEER_2))
 					remoteAddr = FIXED_DEMO_PEER_1;
 				else {
-					logger.severe("Aieh, my own address (" + localAddr + 
+					logger.error("Aieh, my own address (" + localAddr + 
 							") is neither " + FIXED_DEMO_PEER_1 + " nor " +
 							FIXED_DEMO_PEER_2 + ", can't orient - aborting demo mode");
 					return;
 				}
 			} catch (BluetoothStateException e1) {
-				logger.severe("Can't get my own address, aborting demo mode");
+				logger.error("Can't get my own address, aborting demo mode");
 			}
 			if (localAddr.compareTo(remoteAddr) > 0) {
 				if (logger.isInfoEnabled())
@@ -640,11 +640,11 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 								// ignore
 							}
 						}
-						logger.warning("Connection to " + remoteAddr + " has been closed, will re-establish");
+						logger.warn("Connection to " + remoteAddr + " has been closed, will re-establish");
 						connected = false;
 					}
 				} catch (IOException e) {
-					logger.severe("Unable to connect to " + remoteAddr + 
+					logger.error("Unable to connect to " + remoteAddr + 
 							" and start verification (will retry): " + e);
 					conn = null;
 				}
@@ -657,7 +657,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		}
 
 		public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
-			logger.warning("Disconnected from " + remote + ": " + msg);
+			logger.warn("Disconnected from " + remote + ": " + msg);
 			// on authentication failure, the remote connection is terminated, so may need to reconnect
 			connected = false;
 		}
@@ -682,7 +682,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			try {
 				toRemote = new OutputStreamWriter(remote.getOutputStream());
-				logger.warning("Opened output stream for debugging");
+				logger.warn("Opened output stream for debugging");
 				status.setText("DEBUG streaming");
 				// just wait in this incoming handler thread
 				while (toRemote != null) {
@@ -693,7 +693,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 					}
 				}
 			} catch (IOException e) {
-				logger.finer("Unable to open stream to remote: " + e);
+				logger.debug("Unable to open stream to remote: " + e);
 			}
 			return true;
 		}
@@ -713,7 +713,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 						toRemote.flush();
 					}
 				} catch (IOException e) {
-					logger.severe("Error sending samples to RFCOMM channel, dropping connection: " + e);
+					logger.error("Error sending samples to RFCOMM channel, dropping connection: " + e);
 					toRemote = null;
 				}
 			}
@@ -739,7 +739,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			try {
 				Manager.playTone(60, 100, 30);
 			} catch (MediaException e) {
-				logger.severe("Unable to play tone");
+				logger.error("Unable to play tone");
 			}
 		}
 
@@ -749,7 +749,7 @@ public class ShakeMIDlet extends MIDlet implements CommandListener {
 			try {
 				Manager.playTone(72, 100, 30);
 			} catch (MediaException e) {
-				logger.severe("Unable to play tone");
+				logger.error("Unable to play tone");
 			}
 		}
 	}

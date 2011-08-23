@@ -9,7 +9,7 @@
 package org.openuat.log;
 
 import org.apache.log4j.Level;
-import java.util.logging.Logger;
+import org.apache.log4j.Logger;
 
 /**
  * This class is a thin wrapper around a logger. Configuration of the
@@ -55,22 +55,22 @@ public class Log4jLogger implements Log {
 	
 	// @Override
 	public void debug(Object message) {
-		logger.finer(message);
+		logger.debug(message);
 	}
 
 	// @Override
 	public void debug(Object message, Throwable t) {
-		logger.finer(message, t);
+		logger.debug(message, t);
 	}
 
 	// @Override
 	public void error(Object message) {
-		logger.severe(message);
+		logger.error(message);
 	}
 
 	// @Override
 	public void error(Object message, Throwable t) {
-		logger.severe(message, t);
+		logger.error(message, t);
 	}
 
 	// @Override
@@ -95,12 +95,12 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public boolean isDebugEnabled() {
-		return logger.isLoggable(Level.FINER);
+		return logger.isDebugEnabled();
 	}
 
 	// @Override
 	public boolean isErrorEnabled() {
-		return logger.isEnabledFor(Level.ERROR);
+		return logger.isErrorEnabled();
 	}
 
 	// @Override
@@ -115,7 +115,7 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public boolean isTraceEnabled() {
-		return logger.isLoggable(Level.FINEST);
+		return logger.isTraceEnabled();
 	}
 
 	// @Override
@@ -135,11 +135,41 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public void warn(Object message) {
-		logger.warning(message);
+		logger.warn(message);
 	}
 
 	// @Override
 	public void warn(Object message, Throwable t) {
-		logger.warning(message, t);
+		logger.warn(message, t);
+	}
+
+	@Override
+	public void finest(Object message) {
+		logger.trace(message);
+	}
+
+	@Override
+	public void fine(Object message) {
+		logger.debug(message);
+	}
+
+	@Override
+	public void warning(Object message) {
+		logger.warn(message);
+	}
+
+	@Override
+	public void warning(Object message, Throwable t) {
+		logger.warn(message, t);
+	}
+
+	@Override
+	public void severe(Object message) {
+		logger.error(message);
+	}
+
+	@Override
+	public void severe(Object message, Throwable t) {
+		logger.error(message, t);
 	}
 }

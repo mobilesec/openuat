@@ -1,0 +1,44 @@
+This package was debianized by Benoit Joly <benoit@debian.org> on
+Sat Apr 12 2003 18:32:20 -0400.
+
+It was downloaded from:
+	http://logging.apache.org/log4j/1.2/download.html
+
+Upstream Authors:
+    Copyright (C) 1999-2007, The Apache Software Foundation
+    Contributors:
+        Mathias Bogaert
+	James P. Cakalic
+        Paul Glezen
+        Ceki Gülcü
+        Anders Kristensen
+        Jim Moore
+        Jon Skeet
+    	Chris Taylor
+    
+For more details about the upstream authors, see: http://jakarta.apache.org/log4j/docs/contributors.html
+
+License: Apache-2.0
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	    http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+
+The full text of the license can be found in
+`/usr/share/common-licenses/Apache-2.0'.
+
+Debian packaging: (C) 2001 - 2004, Benoit Joly <benoit@debian.org>
+       		  (C) 2005 - 2007, Kalle Kivimaa <killer@debian.org>
+		  (C) 2005 - 2007, Wolfgang Baer <WBaer@gmx.de>, Michael Koch <konqueror@gmx.de>
+		  (C) 2007  Varun Hiremath <varunhiremath@gmail.com>, Kumar Appaiah <akumar@ee.iitm.ac.in>
+
+The Debian packaging of this package is licensed under the Apache
+Software License 2.0 (see above).

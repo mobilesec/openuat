@@ -191,7 +191,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			//-> i know that serial connection is not really there.
 			//-> remote Host ist the Name of the Host -> could get IPInet. and from there, I could get the Id. and 
 			// then calculationg back, and the initial message.
-			logger.finer("Store the Admin' s relate id"+ remoteHost);
+//			logger.finer("Store the Admin' s relate id"+ remoteHost);
 			try { 
 				if (remoteId==null){
 					int id=Integer.parseInt(remoteHost);
@@ -200,7 +200,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 					remoteId=new Integer(id);
 					}
 				} catch (Exception e) {
-					logger.severe("Can't update progress bar", e);
+//					logger.severe("Can't update progress bar", e);
 				}
 			this.setPaintingToFreeze(true);
 			this.setLocalProgressBar(cur, max);
