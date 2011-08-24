@@ -60,7 +60,7 @@ import org.openuat.channel.oob.PowerBarToButtonChannel;
 import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.TrafficLightToButtonChannel;
-import org.openuat.channel.oob.desktop.ButtonChannelImpl;
+import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.j2me.J2MEButtonChannelImpl;
 import org.openuat.log.Log;
 import org.openuat.log.LogFactory;

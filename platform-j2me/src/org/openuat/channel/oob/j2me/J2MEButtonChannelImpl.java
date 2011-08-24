@@ -21,7 +21,7 @@ import javax.microedition.lcdui.Image;
 
 import org.openuat.channel.oob.ButtonChannel;
 import org.openuat.channel.oob.ButtonInputHandler;
-import org.openuat.channel.oob.desktop.ButtonChannelImpl;
+import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.log.LogFactory;
 import org.openuat.util.RgbColor;
 

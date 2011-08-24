@@ -27,6 +27,7 @@ import javax.swing.JComponent;
 import javax.swing.JTextPane;
 
 import org.openuat.channel.oob.ButtonChannel;
+import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonInputHandler;
 import org.openuat.log.LogFactory;
 

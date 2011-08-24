@@ -57,6 +57,7 @@ import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
 import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMChannel;
 import org.openuat.channel.main.bluetooth.jsr82.BluetoothRFCOMMServer;
 import org.openuat.channel.oob.ButtonChannel;
+import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.channel.oob.ButtonToButtonChannel;
 import org.openuat.channel.oob.FlashDisplayToButtonChannel;
 import org.openuat.channel.oob.LongVibrationToButtonChannel;
@@ -65,7 +66,6 @@ import org.openuat.channel.oob.ProgressBarToButtonChannel;
 import org.openuat.channel.oob.ShortVibrationToButtonChannel;
 import org.openuat.channel.oob.TrafficLightToButtonChannel;
 import org.openuat.channel.oob.desktop.AWTButtonChannelImpl;
-import org.openuat.channel.oob.desktop.ButtonChannelImpl;
 import org.openuat.util.Hash;
 import org.openuat.util.LineReaderWriter;
 

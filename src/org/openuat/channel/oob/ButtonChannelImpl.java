@@ -6,10 +6,8 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.openuat.channel.oob.desktop;
+package org.openuat.channel.oob;
 
-import org.openuat.channel.oob.ButtonChannel;
-import org.openuat.channel.oob.ButtonInputHandler;
 import org.openuat.log.Log;
 import org.openuat.util.IntervalList;
 

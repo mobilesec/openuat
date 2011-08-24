@@ -1,12 +1,3 @@
-/* Copyright Iulia Ion
- * File created 2008-08-01
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- */
-
 package com.swetake.util;
 
 import java.io.BufferedInputStream;
@@ -26,7 +17,7 @@ import java.io.InputStream;
  *
  *
  */
-public class QRcodeGen{
+public class QRcodeGen {
 
 	static final String QRCODE_DATA_PATH="resources/qrcode_data/";
 	

@@ -12,7 +12,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.openuat.authentication.OOBChannel;
-import org.openuat.channel.oob.desktop.ButtonChannelImpl;
+import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.log.LogFactory;
 import org.openuat.util.IntervalList;
 

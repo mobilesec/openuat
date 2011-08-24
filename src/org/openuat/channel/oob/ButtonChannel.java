@@ -10,7 +10,7 @@ package org.openuat.channel.oob;
 
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
-import org.openuat.channel.oob.desktop.ButtonChannelImpl;
+import org.openuat.channel.oob.ButtonChannelImpl;
 import org.openuat.log.Log;
 import org.openuat.util.IntervalList;
 

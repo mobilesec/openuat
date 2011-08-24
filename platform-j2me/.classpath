@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="thirdparty/bandy"/>
+	<classpathentry kind="src" path="thirdparty/microlog"/>
+	<classpathentry kind="lib" path="lib/antenna-bin-0.9.14.jar"/>
+	<classpathentry kind="lib" path="lib/cldcapi11.jar"/>
+	<classpathentry kind="lib" path="lib/jsr234.jar"/>
+	<classpathentry kind="lib" path="lib/jsr75.jar"/>
+	<classpathentry kind="lib" path="lib/midpapi20.jar"/>
+	<classpathentry kind="lib" path="lib/mmapi.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/openuat"/>
+	<classpathentry kind="lib" path="/openuat/lib/jsr082.jar"/>
+	<classpathentry kind="lib" path="/openuat/lib/junit.jar"/>
+	<classpathentry kind="lib" path="/openuat/lib/tgdh-1.2.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="lib/linux/swt-3.1.1_gtk.linux.x86.jar"/>
+	<classpathentry kind="lib" path="lib/macosx/swt-3.1_macosx.jar"/>
+	<classpathentry kind="lib" path="lib/pocketpc/swt-3.1_wince.arm.jar"/>
+	<classpathentry kind="lib" path="lib/win32/swt-3.1_win32.x86.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/openuat"/>
+	<classpathentry kind="lib" path="lib/relate-2.2-apps.jar"/>
+	<classpathentry kind="lib" path="lib/relate-2.2-core.jar"/>
+	<classpathentry kind="lib" path="/openuat/lib/jsr082.jar"/>
+	<classpathentry kind="lib" path="/openuat/lib/junit.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
