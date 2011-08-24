@@ -9,7 +9,6 @@
 	<classpathentry kind="src" path="thirdparty/bouncycastle-openssl-deps"/>
 	<classpathentry kind="src" path="thirdparty/bouncycastle-x509-deps"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/log4j-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/kxml2-2.2.2.jar"/>
 	<classpathentry kind="lib" path="lib/jfreechart-1.0.1.jar"/>
 	<classpathentry kind="lib" path="lib/RXTXcomm.jar"/>
@@ -32,5 +31,6 @@
 	<classpathentry kind="lib" path="lib/j2me/jsr75.jar"/>
 	<classpathentry kind="lib" path="lib/tgdh-1.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
+	<classpathentry kind="lib" path="lib/log4j-over-slf4j-1.5.11.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

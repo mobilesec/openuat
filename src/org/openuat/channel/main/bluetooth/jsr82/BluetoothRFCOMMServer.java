@@ -20,7 +20,8 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 import javax.microedition.io.StreamConnectionNotifier;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostServerBase;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
@@ -37,7 +38,7 @@ import org.openuat.channel.main.bluetooth.BluetoothSupport;
  * @version 1.0
  */
 public class BluetoothRFCOMMServer extends HostServerBase {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMServer" /*BluetoothRFCOMMServer.class*/);
 	
 	/** This notifier is used to accept new RFCOMM connection. */
@@ -92,14 +93,14 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 			try {
 				this.listener = (StreamConnectionNotifier) Connector.open(serviceURL);
 			} catch (IOException e) {
-				logger.error("Unable to register SDP service with URL '" + serviceURL + "', aborting startListening: " + e);
+				logger.severe("Unable to register SDP service with URL '" + serviceURL + "', aborting startListening: " + e);
 				throw e;
 			}
 			try {
 				// make sure we are discoverable
 				LocalDevice local = LocalDevice.getLocalDevice();
 	            if (!local.setDiscoverable(DiscoveryAgent.GIAC)) {
-	            	logger.warn("Failed to change to discoverable mode");
+	            	logger.warning("Failed to change to discoverable mode");
 	            }
 				
 				// we can query and modify our local service description
@@ -112,7 +113,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				registeredURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
 				logger.info("Registered local service with URL " + registeredURL);
 			} catch (BluetoothStateException e) {
-				logger.error("Unable to query registered SDP record, aborting startListening: " + e);
+				logger.severe("Unable to query registered SDP record, aborting startListening: " + e);
 				throw e;
 			}
 		}
@@ -146,13 +147,13 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	
 	/** This actually implements the listening for new RFCOMM channels. */
 	public void run() {
-		logger.debug("Listening thread for RFCOMM service now running");
+		logger.finer("Listening thread for RFCOMM service now running");
 		try {
 			while (running) {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				StreamConnection connection = listener.acceptAndOpen();
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
-				if (logger.isInfoEnabled())
+				if (logger.isLoggable(Level.INFO))
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 							channel.getRemoteName() + "'");
 				
@@ -202,7 +203,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 //					LineReaderWriter.println(out, "MSG14");
 //					
 //				}catch(Exception e){
-//					logger.error(e);
+//					logger.severe(e);
 //				}
 				//runBEDA input
 				
@@ -221,9 +222,9 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				}
 			}
 		} catch (IOException e) {
-			logger.warn("Error in listening thread: " + e + ". Stopping thread");
+			logger.warning("Error in listening thread: " + e + ". Stopping thread");
 		}
-		logger.debug("Listening thread for RFCOMM service now exiting");
+		logger.finer("Listening thread for RFCOMM service now exiting");
 		running = false;
 	}
 	
@@ -232,7 +233,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		try {
 			stop();
 		} catch (InternalApplicationException e) {
-			logger.error("Could not properly dispose object: unable to close listener: " + e);
+			logger.severe("Could not properly dispose object: unable to close listener: " + e);
 		}
 	}
 	

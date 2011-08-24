@@ -24,8 +24,7 @@ import java.net.UnknownHostException;
 //import java.util.Arrays;
 import java.util.Iterator;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import java.util.logging.Logger;
 
 import uk.ac.lancs.relate.core.Configuration;
 import uk.ac.lancs.relate.core.MeasurementQueue;
@@ -68,9 +67,9 @@ import uk.ac.lancs.relate.auth.ProgressEventHandler;
  * @version 1.0
  */
 public class RelateAuthenticationProtocol extends DHWithVerification {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class);
-	/** This is a special log4j logger used for logging only statistics. It is separate from the main logger
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(RelateAuthenticationProtocol.class.getName());
+	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
 	private static Logger statisticsLogger = Logger.getLogger("statistics.relateauthentication");
@@ -193,7 +192,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	private int fetchReferenceMeasurement(int remoteIdToMeasure) {
 		int ref = -1;
 		while (ref == -1) {
-			logger.debug("Fetching reference mesurements from dongle at port " + serialPort + " to remote id " + remoteIdToMeasure);
+			logger.finer("Fetching reference mesurements from dongle at port " + serialPort + " to remote id " + remoteIdToMeasure);
 			/* this gives us all the measurements that the local dongle took (i.e. where the 
 			 * getDongleId() of MeasurementEvent was equal to the localRelateId) to the remote 
 			 * dongle (i.e. where Measurement.getRelatumId was equal to remoteRelateId) */
@@ -202,7 +201,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 			Iterator iter = measurements.iterator();
 			while (ref == -1 && iter.hasNext()) {
 				Measurement m = (Measurement) iter.next();
-				logger.debug("Examining measurement from dongle at port " + serialPort + ": " + m);
+				logger.finer("Examining measurement from dongle at port " + serialPort + ": " + m);
 				if (m.getTransducers() > 0 && m.getDistance() < 4094) {
 					ref = m.getDistance();
 					logger.info("Taking reference measurement from dongle at port " + serialPort + " to remote id " + remoteIdToMeasure + ": " + ref);
@@ -241,7 +240,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 			int rounds) 
 			throws UnknownHostException, IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (rounds < 2) {
-			logger.error("Invalid number of rounds (" + rounds + "), need at least 2");
+			logger.severe("Invalid number of rounds (" + rounds + "), need at least 2");
 			return false;
 		}
 		
@@ -261,7 +260,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 				logger.info("-------- connected successfully to dongle at port " + serialPort + ", including first handshake. My ID is " + serialConn.getLocalRelateId());
 			}
 			catch (DeviceException e) {
-				logger.error("-------- failed to connect to dongle at port " + serialPort + ", didn't get my ID.");
+				logger.severe("-------- failed to connect to dongle at port " + serialPort + ", didn't get my ID.");
 				// throw new ConfigurationErrorException("Can't connect to dongle.", e);
 				return false;
 			}
@@ -277,12 +276,12 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 			referenceMeasurement = fetchReferenceMeasurement(remoteRelateId);
 		}
 		else
-			logger.warn("Skipping to get local relate id and reference measurement due to simulation mode");
+			logger.warning("Skipping to get local relate id and reference measurement due to simulation mode");
 		
 		// create the optional parameter object to pass, consisting of the relate id and the number of rounds
 		String param = Integer.toString(localRelateId) + " " + Integer.toString(rounds);
 		if (!startAuthentication(new RemoteTCPConnection(new Socket(remoteHost, TcpPort)), KeyAgreementProtocolTimeout, param)) {
-			logger.error("Could not start authentication with " + remoteHost + ", relate id " + remoteRelateId);
+			logger.severe("Could not start authentication with " + remoteHost + ", relate id " + remoteRelateId);
 			return false;
 		}
 		else
@@ -311,7 +310,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 		/* the optionalRemoteReference is set to the DongleProtocolHandler object
 		 * in AuthenticationSuccess and authenticationFailure handlers */
 		DongleProtocolHandler localSide = (DongleProtocolHandler) keyManager.getOptionalRemoteReference(remote);
-		logger.debug("protocolSucceededHook called at port " + serialPort + " with remote " + 
+		logger.finer("protocolSucceededHook called at port " + serialPort + " with remote " + 
 				remote + "/" + optionalVerificationId + ", param " + optionalParameterFromRemote + ", session key " + 
 				SerialConnector.byteArrayToHexString(sharedSessionKey));
 		
@@ -341,7 +340,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	//@Override
 	protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
-		logger.error("Authentication protocol failed at port " + serialPort + 
+		logger.severe("Authentication protocol failed at port " + serialPort + 
 				" with " + remote + "/" + optionalVerificationId + "%" + remoteRelateId + ": " + e + " / " + message);
 		if (relateEventHandler != null)
 			relateEventHandler.failure(serialPort, remote.getRemoteName(),
@@ -351,7 +350,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 
 		// also log that failure to the statistics logger
 		if (!simulation)
-			statisticsLogger.error("- " + rounds + " " + referenceMeasurement + 
+			statisticsLogger.severe("- " + rounds + " " + referenceMeasurement + 
 					" Authentication failed: '" + e + "' / '" + message);
 	}
 
@@ -364,7 +363,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	 */
 	//@Override
 	protected void protocolProgressHook(RemoteConnection remote, int cur, int max, String message) {
-		logger.debug("protocolProgressHook called at port " + serialPort + " with " + 
+		logger.finer("protocolProgressHook called at port " + serialPort + " with " + 
 				remote + ": " + cur + "/" + max + ": " + message);
 		if (relateEventHandler != null) {
 			Object optionalRemoteReference = keyManager.getOptionalRemoteReference(remote);
@@ -375,7 +374,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 		}
 	}
 	protected void protocolStartedHook(RemoteConnection remote) {
-		logger.debug("protocolStartedHook called at port " + serialPort + " with " + 
+		logger.finer("protocolStartedHook called at port " + serialPort + " with " + 
 				remote);
 	}
 	
@@ -388,9 +387,9 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 		// first do some sanity checks
 		// TODO: these checks are bogus now - what did they do in the past?
 		if (referenceMeasurement != -1)
-			logger.error("Internal inconsistency! Object is idle in server mode, but referenceMeasurement is set");
+			logger.severe("Internal inconsistency! Object is idle in server mode, but referenceMeasurement is set");
 		if (remoteRelateId != -1)
-			logger.error("Internal inconsistency! Object is idle in server mode, but remoteRelateId is set");
+			logger.severe("Internal inconsistency! Object is idle in server mode, but remoteRelateId is set");
 		
 		logger.info("Starting key verification at port " + serialPort + " after successful host authentication with " +
 				toRemote.getRemoteName() + ", socketToRemote is " + toRemote);
@@ -401,7 +400,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
         /* extract the optional parameters (in the case of the RelateAuthenticationProtocol: the remote
         relate id to authenticate with and the number of rounds - we assume them to be set) as well as the 
         socket (which is assumed to be still connected to the remote) */
-		logger.debug("Splitting received param string '" + param + "'");
+		logger.finer("Splitting received param string '" + param + "'");
 		String param1 = param.substring(0, param.indexOf(' '));
 		String param2 = param.substring(param.indexOf(' ')+1, param.length());
 		// distinguish between client and server mode here
@@ -409,12 +408,12 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 		if (remoteRelateId != -1) {
 			// "client" mode - this is the id that was passed to startAuthentication
      		otherRelateId = remoteRelateId;
-     		logger.debug("Client mode at port " + serialPort + ": taking remote relate id that was passed earlier: " + otherRelateId);
+     		logger.finer("Client mode at port " + serialPort + ": taking remote relate id that was passed earlier: " + otherRelateId);
 		}
 		else {
      		// "server" mode - take the id that was passed by the client
      		otherRelateId = Integer.parseInt(param1);
-     		logger.debug("Server mode at port " + serialPort + ": taking remote relate id from authentication request message: " + otherRelateId);
+     		logger.finer("Server mode at port " + serialPort + ": taking remote relate id from authentication request message: " + otherRelateId);
  			/* And remember the last reference measurement taken to the remote relate id for
  			 * future use (i.e. computing the delays). For client mode, it has been set even
  			 * before starting the host authentication phase.
@@ -422,15 +421,15 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
      		if (!simulation)
      			referenceMeasurement = fetchReferenceMeasurement(otherRelateId);
      		else
-     			logger.warn("Skipping to get reference measurement due to simulation mode");
+     			logger.warning("Skipping to get reference measurement due to simulation mode");
 		}
 		rounds = Integer.parseInt(param2);
-		logger.debug("Parameters for dongle authentication are now remoteId=" + 
+		logger.finer("Parameters for dongle authentication are now remoteId=" + 
 				otherRelateId + ", rounds=" + rounds);
 
         if (!simulation) {
         	// and use the agreed authentication key to start the dongle authentication
-        	logger.debug("Starting dongle authentication at dongle " + serialPort + " with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
+        	logger.finer("Starting dongle authentication at dongle " + serialPort + " with remote relate id " + otherRelateId + " and " + rounds + " rounds.");
         	DongleProtocolHandler dh = new DongleProtocolHandler(serialPort, otherRelateId, useJSSE);
         	dh.addAuthenticationProgressHandler(new DongleAuthenticationEventHandler());
         	/* IMPORTANT NOTE: this uses the authentication key, and not the shared secret on purpose! The
@@ -440,7 +439,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
         	dh.startAuthentication(sharedAuthenticationKey, rounds, referenceMeasurement);
         }
         else {
-        	logger.warn("Skipping to start dongle authentication with " + rounds + " rounds due to simulation mode, assuming immediate authentication success");
+        	logger.warning("Skipping to start dongle authentication with " + rounds + " rounds due to simulation mode, assuming immediate authentication success");
         	new DongleAuthenticationEventHandler().AuthenticationSuccess(null, new Integer(-1), null);
         }
 	}
@@ -451,13 +450,13 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 	private class DongleAuthenticationEventHandler implements AuthenticationProgressHandler {
 	    public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
-	    		logger.error("Received dongle authentication success event with remote id " + remote + 
+	    		logger.severe("Received dongle authentication success event with remote id " + remote + 
 	    				" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
 	    	}
 	    	// this sanity check is basically just to get rid of the unused warning
 	    	if (result != null) {
-	    		logger.error("Received result object with dongle authentication success event with remote id " 
+	    		logger.severe("Received result object with dongle authentication success event with remote id " 
 	    				+ remote + " while none expected. This event will be ignored. Object is " + result);
 	    		return;
 	    	}
@@ -482,7 +481,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 
 	    public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
-	    		logger.error("Received dongle authentication failure event with remote id " + remote + 
+	    		logger.severe("Received dongle authentication failure event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
 	    	}
@@ -507,12 +506,12 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
 	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
-	    		logger.error("Received dongle authentication progress event with remote id " + remote + 
+	    		logger.severe("Received dongle authentication progress event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return;
 	    	}
 			
-	        logger.debug("Received dongle authentication progress event at port " + serialPort + " with id " + remote + " " + cur + " out of " + max + ": " + msg);
+	        logger.finer("Received dongle authentication progress event at port " + serialPort + " with id " + remote + " " + cur + " out of " + max + ": " + msg);
 	        raiseAuthenticationProgressEvent(remote, HostProtocolHandler.AuthenticationStages + cur, 
 	        		HostProtocolHandler.AuthenticationStages + DongleProtocolHandler.AuthenticationStages + rounds,
 	        		msg);
@@ -527,12 +526,12 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 
 	    public boolean AuthenticationStarted(Object sender, Object remote) {
 	    	if (keyManager.getState(remoteHost) != KeyManager.STATE_VERIFICATION) {
-	    		logger.error("Received dongle authentication started event with remote id " + remote + 
+	    		logger.severe("Received dongle authentication started event with remote id " + remote + 
 	    			" from " + sender + " while not expecting one! This event will be ignored.");
 	    		return false;
 	    	}
 			
-	        logger.debug("Received dongle authentication progress event at port " + serialPort + " with id " + remote);
+	        logger.finer("Received dongle authentication progress event at port " + serialPort + " with id " + remote);
 	        return raiseAuthenticationStartedEvent(remote);
 	    }
 	}
@@ -551,7 +550,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 			SerialConnector.getSerialConnector("/dev/ttyUSB0", 1).switchDiagnosticMode(false);
 		}
 		catch (DeviceException e) { 
-			logger.error("Could not reset dongle");
+			logger.severe("Could not reset dongle");
 		}
 		try {
 			Thread.sleep(deviceType == 1 ? 2000 : 500);
@@ -562,15 +561,16 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
 			SerialConnector.getSerialConnector("/dev/ttyUSB1", 1).switchDiagnosticMode(false);
 		}
 		catch (DeviceException e) { 
-			logger.error("Could not reset dongle");
+			logger.severe("Could not reset dongle");
 		}
 	}
 
     public static void main(String[] args) throws Exception
 	{
-		if (System.getProperty("os.name").startsWith("Windows CE")) {
+    	// TODO: work with java.util.logging framework
+		/*if (System.getProperty("os.name").startsWith("Windows CE")) {
 			PropertyConfigurator.configure("log4j.properties");
-		}
+		}*/
 
 		class TempAuthenticationEventHandler implements AuthenticationProgressHandler {
 			private int mode; // 0 = client, 1 = server, 2 = both
@@ -605,7 +605,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
     			logger.info("Received relate authentication success event from " + sender + 
     					" with " + remoteParam[0] + "/" + remoteParam[1]);
     			if (result == null)
-    				logger.error("Did not receive a result object, don't know the session key");
+    				logger.severe("Did not receive a result object, don't know the session key");
     			else
     				logger.info("Session key is now " + SerialConnector.byteArrayToHexString((byte[]) result));
     			System.out.println("SUCCESS");
@@ -739,7 +739,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
             			// just ignore, it doesn't matter too much if it's shorter
             		}
             		System.out.println("******** Timed out");
-        			statisticsLogger.error("- Timer killed client");
+        			statisticsLogger.severe("- Timer killed client");
    	        		resetBothDongles(deviceType);
    	        		if (! System.getProperty("os.name").startsWith("Windows CE"))
    	        			System.exit(100);
@@ -778,7 +778,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
             	connector2.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
         	}
         	catch (DeviceException e) {
-        		logger.error("-------- failed to connect to dongle, didn't get my ID.");
+        		logger.severe("-------- failed to connect to dongle, didn't get my ID.");
         		System.out.println(e);
         		//e.printStackTrace();
         		if (! System.getProperty("os.name").startsWith("Windows CE"))
@@ -814,7 +814,7 @@ public class RelateAuthenticationProtocol extends DHWithVerification {
             			// just ignore, it doesn't matter too much if it's shorter
             		}
             		System.out.println("******** Timed out");
-            		statisticsLogger.error("- Timer killed client");
+            		statisticsLogger.severe("- Timer killed client");
             		if (! System.getProperty("os.name").startsWith("Windows CE"))
             			System.exit(100);
             		}

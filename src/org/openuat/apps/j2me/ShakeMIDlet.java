@@ -28,11 +28,11 @@ import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
 
 import net.sf.microlog.Level;
+import net.sf.microlog.Logger;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.KeyManager;
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1;

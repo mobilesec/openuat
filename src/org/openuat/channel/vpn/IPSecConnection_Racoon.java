@@ -17,7 +17,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the racoon IPSec implementation, which is
@@ -28,8 +29,8 @@ import org.apache.commons.codec.binary.*;
  * @version 1.0
  */
 class IPSecConnection_Racoon implements IPSecConnection {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class.getName());
 
 	/** To remember the remote host address that was passed in init(). 
 	 * @see #init(String, String, int)
@@ -93,7 +94,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
-			logger.error("Can not initialize connection with remote '" + remoteHost + 
+			logger.severe("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
 			return false;
 		}
@@ -140,11 +141,11 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	 */
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
-			logger.error("Can not start connection, remoteHost not yet set");
+			logger.severe("Can not start connection, remoteHost not yet set");
 			return false;
 		}
 		
-		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
+		logger.finer("Trying to create " + (persistent ? "persistent" : "temporary") + 
 				" ipsec connection to host " + remoteHost + (remoteNetwork != null ? " to remote network " + remoteNetwork : ""));
 		// TODO: error checks on input parameters!
 		
@@ -152,29 +153,29 @@ class IPSecConnection_Racoon implements IPSecConnection {
 		File configConn = new File("/etc/racoon/remote/" + remoteHost + ".conf");
 		// but if it already exists, better not overwrite it....
 		if (configConn.exists()) {
-			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
+			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
 			return false;
 		}
 		File configPsk = new File("/etc/racoon/psk.txt");
 		// this file must already exist, we only append to it
 		if (! configPsk.exists() || ! configPsk.canWrite()) {
-			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " does not exist or is not writable.");
+			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " does not exist or is not writable.");
 			return false;
 		}
 		File configPskTmp = new File("/etc/racoon/psk.tmp");
 		if (configPskTmp.exists()) {
-			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " already exists.");
+			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " already exists.");
 			return false;
 		}
 		try {
 			logger.info("Creating config file " + configConn);
 			if (! configConn.createNewFile()) {
-				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
-			logger.debug("Creating temporary file " + configPskTmp);
+			logger.finer("Creating temporary file " + configPskTmp);
 			if (! configPskTmp.createNewFile()) {
-				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " could not be created.");
+				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " could not be created.");
 				configConn.delete();
 				return false;
 			}
@@ -253,12 +254,12 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				logger.info("Established connection to " + remoteHost);
 			}
 			catch (ExitCodeException e) {
-				logger.error("Command failed: " + e);
+				logger.severe("Command failed: " + e);
 				// ignore it, because if one of the connections comes up, we are set
 			}
 		}
 		catch (IOException e) {
-			logger.error("Could not get list of local addresses: " + e);
+			logger.severe("Could not get list of local addresses: " + e);
 			if (configConn.exists())
 				configConn.delete();
 			if (configPskTmp.exists())
@@ -266,7 +267,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
 			} catch (Exception f) {
-				logger.error("Can't execure command", f);
+				logger.log(Level.SEVERE, "Can't execure command", f);
 			}
 			return false;
 		}
@@ -277,19 +278,19 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.error("Unable to stop IPSec connection, it has not been initialized yet (don't know which host to act on)");
+			logger.severe("Unable to stop IPSec connection, it has not been initialized yet (don't know which host to act on)");
 			return false;
 		}
 		
 		File configConn = new File("/etc/racoon/remote/" + remoteHost + ".conf");
 		if (! configConn.exists()) {
-			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
+			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
 			return false;
 		}
 		// TODO: we should also delete the PSK entry, but don't care right now
 
 		if (! configConn.delete()) {
-			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
+			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 			return false;
 		}
 		
@@ -317,11 +318,11 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null, null);
 		}
 		catch (ExitCodeException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 		
@@ -337,11 +338,11 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			return getConnStatus(remoteHost) == 1;
 		}
 		catch (ExitCodeException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 	}
@@ -392,7 +393,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				if (fromAddr.equals("No") && toAddr.equals("SAD entries."))
 					continue;
 				
-				logger.debug("Examining SA from address " + fromAddr + " to address " + toAddr);
+				logger.finer("Examining SA from address " + fromAddr + " to address " + toAddr);
 
 				// the next line should be "esp mode=transport ..."
 				line = strT.nextToken();
@@ -411,7 +412,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				if (! line.startsWith("\tA: "))
 					continue;
 				String authAlg = line.substring(4, line.indexOf(' ', 4));
-				logger.debug("This SA seems to be active, using encryption algorithm " + encAlg + " and authentication algorithm " + authAlg);
+				logger.finer("This SA seems to be active, using encryption algorithm " + encAlg + " and authentication algorithm " + authAlg);
 
 				// and now the critical line, with the 4th field being the state information
 				line = strT.nextToken();
@@ -420,14 +421,14 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				pos = line.indexOf('=', pos+1);
 				pos = line.indexOf('=', pos+1);
 				String state = line.substring(pos+1, line.length());
-				logger.debug("This SA is in state " + state);
+				logger.finer("This SA is in state " + state);
 				if (state.startsWith("mature")) {
 					if (fromAddr.startsWith(remoteHost)) {
-						logger.debug("Found active incoming SA");
+						logger.finer("Found active incoming SA");
 						foundIn = true;
 					}
 					if (toAddr.startsWith(remoteHost)) {
-						logger.debug("Found active outgoing SA");
+						logger.finer("Found active outgoing SA");
 						foundOut = true;
 					}
 				}

@@ -9,7 +9,8 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** This is a base class for emitting samples to a list of registers 
  * SamplesSink objects. It imlements handling the listeners and the background
@@ -19,7 +20,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public abstract class SamplesSource {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.SamplesSource" /*SamplesSource.class*/);
 
 	/** The maximum number of data lines to read from the device - depends on the sensor. */
@@ -123,13 +124,13 @@ public abstract class SamplesSource {
 			if (lines[i] < 0 || lines[i] > maxNumLines-1)
 				throw new IllegalArgumentException("Line index must be between 0 and " +
 						(maxNumLines-1));
-			if (logger.isDebugEnabled()) {
+			if (logger.isLoggable(Level.FINER)) {
 				tmp.append(lines[i]);
 				tmp.append(' ');
 			}
 		}
-		if (logger.isDebugEnabled())
-			logger.debug("Registering new listener for lines " + tmp.toString());
+		if (logger.isLoggable(Level.FINER))
+			logger.finer("Registering new listener for lines " + tmp.toString());
 		listeners.addElement(listener);
 	}
 
@@ -215,8 +216,8 @@ public abstract class SamplesSource {
 	 */
 	public void start() {
 		if (samplingThread == null) {
-			if (logger.isDebugEnabled())
-				logger.debug("Starting sampling thread");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Starting sampling thread");
 			samplingThread = new Thread(new RunHelper());
 			samplingThread.start();
 		}
@@ -225,8 +226,8 @@ public abstract class SamplesSource {
 	/** Stops the background thread, if started previously. */
 	public void stop() {
 		if (samplingThread != null) {
-			if (logger.isDebugEnabled())
-				logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
+			if (logger.isLoggable(Level.FINER))
+				logger.finer("Stopping sampling thread: signalling thread to cancel and waiting;");
 			alive = false;
 			try {
 				samplingThread.interrupt();
@@ -235,16 +236,16 @@ public abstract class SamplesSource {
 			catch (InterruptedException e) {
 //#if cfg.haveReflectionSupport
 				if (! System.getProperty("os.name").startsWith("Windows CE")) {
-					logger.error("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
+					logger.severe("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
 				}
 				else
 //#endif
 				{
 					// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
-					logger.error("Error waiting for sampling thread to terminate: " + e.toString());
+					logger.severe("Error waiting for sampling thread to terminate: " + e.toString());
 				}
 			}
-			logger.error("Sampling thread stopped");
+			logger.severe("Sampling thread stopped");
 			samplingThread = null;
 		}
 	}
@@ -282,9 +283,9 @@ public abstract class SamplesSource {
 	 * @param sample The current sample.
 	 */
 	protected void emitSample(double[] sample) {
-		if (logger.isDebugEnabled()) 
+		if (logger.isLoggable(Level.FINER)) 
 			for (int i=0; i<maxNumLines; i++)
-				logger.debug("Double sample number " + numSamples +  
+				logger.finer("Double sample number " + numSamples +  
 						", line " + i + " = " + sample[i]);
     	if (listeners != null)
     		for (int j=0; j<listeners.size(); j++) {
@@ -311,9 +312,9 @@ public abstract class SamplesSource {
 	 * @param sample The current sample.
 	 */
 	protected void emitSample(int[] sample) {
-		if (logger.isDebugEnabled()) 
+		if (logger.isLoggable(Level.FINER)) 
 			for (int i=0; i<maxNumLines; i++)
-				logger.debug("Integer sample number " + numSamples +  
+				logger.finer("Integer sample number " + numSamples +  
 						", line " + i + " = " + sample[i]);
     	if (listeners != null)
     		for (int j=0; j<listeners.size(); j++) {
@@ -342,10 +343,10 @@ public abstract class SamplesSource {
 				}
 			}
 			if (! alive)
-				if (logger.isDebugEnabled())
-					logger.debug("Background sampling thread terminated regularly due to request");
+				if (logger.isLoggable(Level.FINER))
+					logger.finer("Background sampling thread terminated regularly due to request");
 			else
-				logger.warn("Background sampling thread received no more samples, ending now");
+				logger.warning("Background sampling thread received no more samples, ending now");
 			// old code that used to read from a UDP socket
 			/*else {
 				// no port to read from, instead read from UDP socket
@@ -368,7 +369,7 @@ public abstract class SamplesSource {
 					}
 				}
 				catch (IOException e) {
-					logger.error("Aborting reading from UDP port due to: " + e);
+					logger.severe("Aborting reading from UDP port due to: " + e);
 				}
 			}*/
 		}

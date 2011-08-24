@@ -151,4 +151,33 @@ public class MicrologLogger implements Log {
 		logger.warn(message, t);
 	}
 
+	@Override
+	public void finest(Object message) {
+		this.trace(message);
+	}
+
+	@Override
+	public void fine(Object message) {
+		this.debug(message);
+	}
+
+	@Override
+	public void warning(Object message) {
+		this.warn(message);
+	}
+
+	@Override
+	public void warning(Object message, Throwable t) {
+		this.warn(message, t);
+	}
+
+	@Override
+	public void severe(Object message) {
+		this.error(message);
+	}
+
+	@Override
+	public void severe(Object message, Throwable t) {
+		this.error(message, t);
+	}
 }

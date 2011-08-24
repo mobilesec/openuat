@@ -8,7 +8,7 @@
  */
 package org.openuat.authentication.relate;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.authentication.exceptions.*;
@@ -33,8 +33,8 @@ import uk.ac.lancs.relate.events.AuthenticationEvent;
  * @version 1.0
  */
 public class DongleProtocolHandler extends AuthenticationEventSender {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(DongleProtocolHandler.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(DongleProtocolHandler.class.getName());
 
 	/** With the current Relate dongle hard-/firmware, each round of the dongle authentication protocol transports 3 bits
 	 * of entropy.
@@ -190,7 +190,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		// construct the start-of-authentication message and sent it to the dongle
 		try {
 			if (!serialConn.startAuthenticationWith(remoteRelateId, nonce, sentRfMessage, rounds, EntropyBitsPerRound)) {
-				logger.error("ERROR: could not send start-of-authentication packet to dongle");
+				logger.severe("ERROR: could not send start-of-authentication packet to dongle");
 				raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Unable to send start-of-authentication packet to dongle, resetting it.");
 				// also reset the dongle, just in case the command was sent but just not acknowledged
 				serialConn.switchDiagnosticMode(false);
@@ -198,7 +198,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			}
 		} 
 		catch (DeviceException e) {
-			logger.fatal("ERROR: could not send start-of-authentication packet to dongle: " + e);
+			logger.severe("ERROR: could not send start-of-authentication packet to dongle: " + e);
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), e, "Unable to send start-of-authentication packet to dongle, resetting it.");
 			serialConn.switchDiagnosticMode(false);
 			return false;
@@ -224,7 +224,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				eventQueue.waitForMessage(500);
 			RelateEvent e = (RelateEvent) eventQueue.getMessage();
 			if (e == null) {
-				logger.warn("Warning: got null message out of message queue! This should normally not happen. " +
+				logger.warning("Warning: got null message out of message queue! This should normally not happen. " +
 						"Is the dongle asleep or malfunctioning so that it doesn't generate any messages?");
 				continue;
 			}
@@ -233,7 +233,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 
 				// sanity check
 				if (ae.getRound() > rounds) {
-					logger.warn("Ignoring authentication part from dongle " + remoteRelateId + 
+					logger.warning("Ignoring authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
 							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + ": " +
 							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()) + ". Reason: only expected + " + rounds + " rounds.");
@@ -241,7 +241,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// authentication info event: just remember the bits received with it
 				if (! interlockRf.addMessage(ae.getAuthenticationPart(), ae.getRound()-1)) {
-					logger.warn("Could not add authentication part from dongle " + remoteRelateId + 
+					logger.warning("Could not add authentication part from dongle " + remoteRelateId + 
 							": round " + ae.getRound() + 
 							(ae.getAcknowledgment() ? " with" : " without") + " ack out of " + rounds + " to interlock protocol: " +
 							SerialConnector.byteArrayToHexString(ae.getAuthenticationPart()));
@@ -261,11 +261,11 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				
 				if (me.getMeasurement().getTransducers() == 0) {
 					//logger.info("Measurement is reported with 0 valid transducers, using it anyway.");
-					logger.debug("Discarding invalid measurement in authentication mode: 0 valid transducers.");
+					logger.finer("Discarding invalid measurement in authentication mode: 0 valid transducers.");
 					continue;
 				}
 				if (me.getMeasurement().getDistance() == 4094) {
-					logger.debug("Discarding invalid measurement in authentication mode: 4094 reported by dongle");
+					logger.finer("Discarding invalid measurement in authentication mode: 4094 reported by dongle");
 					continue;
 				}
 
@@ -288,7 +288,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				
 				// sanity check
 				if (lastAuthPart >= rounds) {
-					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
+					logger.warning("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
 							", round " + (lastAuthPart+1) +
 							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
 							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). Reason: only expected " + rounds + " rounds.");
@@ -296,7 +296,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// even more sanity...
 				if (lastAuthPart < 0) {
-					logger.warn("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
+					logger.warning("Ignoring delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement +
 							", round " + (lastAuthPart+1) +
 							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
 							" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits). Reason: got measurement before first authentication packet");
@@ -304,7 +304,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				}
 				// still do a sanity check (within our accuracy range)
 				if (delayedMeasurement - referenceMeasurement <= -(1 << EntropyBitsOffset)) {
-					logger.warn("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
+					logger.warning("Discarding invalid measurement in authentication mode: smaller than reference (got " + delayedMeasurement + 
 							", reference is " + referenceMeasurement);
 					continue;
 				}
@@ -313,7 +313,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				if (! interlockUs.addMessage(new byte[] {delay}, 
 						(lastAuthPart * EntropyBitsPerRound) % (NonceByteLength * 8), 
 						curBits, lastAuthPart)) {
-					logger.warn("Could not add delayed measurement from dongle " + remoteRelateId + 
+					logger.warning("Could not add delayed measurement from dongle " + remoteRelateId + 
 							": " + delayedMeasurement + ", round " + (lastAuthPart+1) +
 							", delay in mm=" + (delayedMeasurement-referenceMeasurement) + 
 							", computed nonce part from delay: " + (delay /*& 0x07*/) + 
@@ -324,7 +324,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 				logger.info("Received delayed measurement to dongle " + remoteRelateId + ": " + delayedMeasurement + 
 						", delay in mm=" + (delayedMeasurement-referenceMeasurement) + ", computed nonce part from delay: " + (delay /*& 0x07*/) + 
 						" " + SerialConnector.byteArrayToBinaryString(new byte[] {delay}) + " (using " + curBits + " bits)");
-				logger.debug("reference=" + referenceMeasurement + ", delta=" + delta + " (" + Integer.toBinaryString(delta) + ")");
+				logger.finer("reference=" + referenceMeasurement + ", delta=" + delta + " (" + Integer.toBinaryString(delta) + ")");
 				raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + lastCompletedRound+1, AuthenticationStages + rounds, "Got delayed measurement at round " + (lastCompletedRound+1));
 
 				// here we have progress, so reset the timer
@@ -336,7 +336,7 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			/* The loop was left because of a timeout, so reset the dongle and
 			 * exit cleanly with a failure event. 
 			 */
-			logger.error("Dongle authentication timed out after " + (System.currentTimeMillis() - startTime) + 
+			logger.severe("Dongle authentication timed out after " + (System.currentTimeMillis() - startTime) + 
 					" ms. Last received round is " + (lastCompletedRound+1) + 
 					". Resetting dongle (by turning off diagnostic mode) and generating an authentication failed event.");
 			serialConn.switchDiagnosticMode(false);
@@ -365,8 +365,8 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
         r.nextBytes(nonce);
 
    		logger.info("Starting authentication protocol with remote dongle " + remoteRelateId);
-   		logger.debug("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
-   		logger.debug("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
+   		logger.finer("My shared authentication key is " + SerialConnector.byteArrayToBinaryString(sharedKey));
+   		logger.finer("My nonce is " + SerialConnector.byteArrayToBinaryString(nonce));
     		
    		InterlockProtocol interlockRf = new InterlockProtocol(sharedKey, rounds, nonce.length*8, "RF at " + serialPort, useJSSE);
    		byte[] rfMessage = interlockRf.encrypt(nonce);
@@ -374,12 +374,12 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
    		InterlockProtocol interlockUs = new InterlockProtocol(null, rounds, EntropyBitsPerRound*rounds, "US at " + serialPort, useJSSE);
 		
 		if (rfMessage.length != NonceByteLength) {
-			logger.error("Encryption went wrong, got "
+			logger.severe("Encryption went wrong, got "
 					+ rfMessage.length + " bytes");
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Encryption went wrong, got " + rfMessage.length + " bytes instead of " + NonceByteLength + ".");
 			return;
 		}
-		logger.debug("My RF packet is " + SerialConnector.byteArrayToBinaryString(rfMessage));
+		logger.finer("My RF packet is " + SerialConnector.byteArrayToBinaryString(rfMessage));
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 1, AuthenticationStages + rounds, "Encrypted nonce");
 		
@@ -402,20 +402,20 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			return;
 		}
 
-		logger.debug("Received RF packet is " + SerialConnector.byteArrayToBinaryString(receivedRfMessage));
-		logger.debug("Received delays have been concatenated to " + SerialConnector.byteArrayToBinaryString(receivedDelays));
+		logger.finer("Received RF packet is " + SerialConnector.byteArrayToBinaryString(receivedRfMessage));
+		logger.finer("Received delays have been concatenated to " + SerialConnector.byteArrayToBinaryString(receivedDelays));
 
 		// check that the delays match the (encrypted) message sent by the remote
 		byte[] receivedNonce = interlockRf.decrypt(receivedRfMessage);
 
 		if (receivedNonce.length != NonceByteLength) {
-			logger.error("Decryption went wrong, got "
+			logger.severe("Decryption went wrong, got "
 					+ receivedNonce.length + " bytes");
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Decryption went wrong, got " + receivedNonce.length + " bytes instead of " + NonceByteLength + ".");
 			return;
 		}
 
-		logger.debug("Received nonce is " + SerialConnector.byteArrayToBinaryString(receivedNonce));
+		logger.finer("Received nonce is " + SerialConnector.byteArrayToBinaryString(receivedNonce));
 
 		raiseAuthenticationProgressEvent(new Integer(remoteRelateId), 3 + rounds, AuthenticationStages + rounds, "Decrypted remote message");
 
@@ -428,13 +428,13 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 			raiseAuthenticationSuccessEvent(new Integer(remoteRelateId), null);
 		}
 		else {
-			logger.warn("Received RF packet length is " + receivedRfMessage.length);
-			logger.warn("Decrypted nonce length is " + receivedNonce.length);
-			logger.warn("Received delays length is " + receivedDelays.length);
-			logger.warn("Ultrasound delays do not match received nonce (checking " + numBitsToCheck + " bits)!");
-			logger.warn("Expected: " + SerialConnector.byteArrayToBinaryString(receivedNonce));
-			logger.warn("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
-			logger.warn("Hamming distance between the strings is " + hammingDistance(receivedNonce, receivedDelays, numBitsToCheck));
+			logger.warning("Received RF packet length is " + receivedRfMessage.length);
+			logger.warning("Decrypted nonce length is " + receivedNonce.length);
+			logger.warning("Received delays length is " + receivedDelays.length);
+			logger.warning("Ultrasound delays do not match received nonce (checking " + numBitsToCheck + " bits)!");
+			logger.warning("Expected: " + SerialConnector.byteArrayToBinaryString(receivedNonce));
+			logger.warning("Got:      " + SerialConnector.byteArrayToBinaryString(receivedDelays));
+			logger.warning("Hamming distance between the strings is " + hammingDistance(receivedNonce, receivedDelays, numBitsToCheck));
 			raiseAuthenticationFailureEvent(new Integer(remoteRelateId), null, "Ultrasound delays do not match received nonce");
 		}
 	}
@@ -495,14 +495,14 @@ public class DongleProtocolHandler extends AuthenticationEventSender {
 		this.sharedKey = sharedKey;
 		this.rounds = rounds;
 		this.referenceMeasurement = referenceMeasurement;
-		logger.debug("Starting authentication with " + rounds + " rounds and reference=" + referenceMeasurement);
+		logger.finer("Starting authentication with " + rounds + " rounds and reference=" + referenceMeasurement);
 		
 		new Thread(new AsynchronousCallHelper(this) { public void run() {
 			try {
 				outer.handleCompleteProtocol();
 			}
 			catch (InternalApplicationException e) {
-				logger.error("InternalApplicationException. This should not happen: " + e + "\n" + e.getStackTrace());
+				logger.severe("InternalApplicationException. This should not happen: " + e + "\n" + e.getStackTrace());
 				outer.raiseAuthenticationFailureEvent(new Integer(outer.remoteRelateId), e, "Dongle authentication protocol failed");
 			}
 			catch (DongleAuthenticationProtocolException e) {

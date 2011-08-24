@@ -14,7 +14,7 @@ import java.io.IOException;
 import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.sensors.SamplesSource;
 import org.openuat.sensors.TimeSeries;
 import org.openuat.sensors.TimeSeries_Int;
@@ -28,7 +28,7 @@ import org.openuat.sensors.TimeSeries_Int;
  *               now the Python wrapper implementation.
  */
 public class NokiaAccelerometerReader extends SamplesSource {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.j2me.NokiaAccelerometerReader" /*SymbianTCPAccelerometerReader.class*/);
 	
 	private final static int Port = 12008;
@@ -87,7 +87,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 		String version = phone.substring(phone.indexOf('/')+1);
 
 		if (model.equals("Nokia5500d")) {
-			logger.warn("Detected Nokia 5500 phone");
+			logger.warning("Detected Nokia 5500 phone");
 			VALUE_RANGE = 2048;
 			// normalize to 1024 range
 			MULTIPLICATOR = 1;
@@ -96,9 +96,9 @@ public class NokiaAccelerometerReader extends SamplesSource {
 			SAMPLERATE = 30;
 		} else if (model.equals("NokiaN95")) {
 			if (version.compareTo("20.0.015") < 0)
-				logger.warn("Detected Nokia N95 with old firmware (" + version + "). This may not work!");
+				logger.warning("Detected Nokia N95 with old firmware (" + version + "). This may not work!");
 			else
-				logger.warn("Detected Nokia N95 with new firmware");
+				logger.warning("Detected Nokia N95 with new firmware");
 			VALUE_RANGE = 680;
 			// normalize roughly to 1024 range
 			MULTIPLICATOR = 3;
@@ -107,7 +107,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 			// NOTE: need to set the same as above!
 			SAMPLERATE = 30;
 		} else {
-			logger.warn("Detected unknown phone '" + model + "' version '" + 
+			logger.warning("Detected unknown phone '" + model + "' version '" + 
 					version + "', using defaults. This may now work!");
 			TimeSeries_Int.forceSampleRateEstimation = true;
 			needValueLogging = true;
@@ -141,7 +141,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 	//@Override
 	public void start() {
 		if (sensorDataIn != null || dataConnector != null) {
-			logger.warn("Connection seems to be already open: sensorDataIn="
+			logger.warning("Connection seems to be already open: sensorDataIn="
 					+ sensorDataIn + ", dataConnector=" + dataConnector +
 					", not starting again");
 			return;
@@ -154,7 +154,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 			// start the background thread for reading
 			super.start();
 		} catch (IOException e) {
-			logger.error("Unable to connect to Symbian sensor API wrapper, can not continue");
+			logger.severe("Unable to connect to Symbian sensor API wrapper, can not continue");
 			return;
 		}
 	}
@@ -164,23 +164,23 @@ public class NokiaAccelerometerReader extends SamplesSource {
 	 */
 	//@Override
 	public void stop() {
-		logger.warn("11111111111");
+		logger.warning("11111111111");
 		try {
 			// properly close all resources
-			logger.warn("22222222");
+			logger.warning("22222222");
 			if (sensorDataIn != null) {
 				sensorDataIn.close();
 				sensorDataIn = null;
 			}
-			logger.warn("444444444444");
+			logger.warning("444444444444");
 			if (dataConnector != null) {
 				dataConnector.close();
 				dataConnector = null;
 			}
 		} catch (IOException e) {
-			logger.error("Error closing server socket or connection to sensor source: " + e);
+			logger.severe("Error closing server socket or connection to sensor source: " + e);
 		}
-		logger.warn("66666666666");
+		logger.warning("66666666666");
 		super.stop();
 	}
 
@@ -193,7 +193,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 	//@Override
 	protected boolean handleSample() {
 		if (dataConnector == null) {
-			logger.error("Not connected to sensor wrapper");
+			logger.severe("Not connected to sensor wrapper");
 			return false;
 		}
 
@@ -203,7 +203,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
 			while ((char) x != '*') {
 				x = sensorDataIn.read();
 				if (x == -1) {
-					logger.error("Symbian sensor wrapper terminated connection, aborting reading");
+					logger.severe("Symbian sensor wrapper terminated connection, aborting reading");
 					return false;
 				}
 				if ((char) x != '*')
@@ -243,7 +243,7 @@ public class NokiaAccelerometerReader extends SamplesSource {
             		}
             	}
             	if (minMaxChanged) {
-            		logger.warn(minValues[0] + "<x<" + maxValues[0] + " " +
+            		logger.warning(minValues[0] + "<x<" + maxValues[0] + " " +
             				minValues[1] + "<y<" + maxValues[1] + " " +
             				minValues[2] + "<z<" + maxValues[2]);
             	}
@@ -251,11 +251,11 @@ public class NokiaAccelerometerReader extends SamplesSource {
 
 			emitSample(bytes);
 		} catch (IOException e) {
-			logger.error("Unable to read from socket: " + e);
+			logger.severe("Unable to read from socket: " + e);
 			return false;
 		}
 		catch (Exception e) {
-			logger.error("UNKOWN EXCEPTION reading data from sensor server: " + e);
+			logger.severe("UNKOWN EXCEPTION reading data from sensor server: " + e);
 			return false;
 		}
 

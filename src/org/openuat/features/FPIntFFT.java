@@ -11,7 +11,7 @@
  */
 package org.openuat.features;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**   All data are fixed-point short integers, in which -32768
   to +32768 represent -1.0 to +1.0 respectively. Integer
@@ -41,7 +41,7 @@ import org.apache.log4j.Logger;
           enhanced Dimitrios P. Bouras  14 Jun 2006,
           ported to Java Rene Mayrhofer 2007-05-12 */
 public class FPIntFFT {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.features.FPIntFFT" /*FPIntFFT.class*/);
 
 	private final static int N_WAVE = 1024; /* full length of Sinewave[] */
@@ -173,19 +173,19 @@ public class FPIntFFT {
 		n = 1 << m;
 		
 		if (fr.length < n+off_fr) {
-			logger.error("fr is too short, expecting " + n + " elements, got "
+			logger.severe("fr is too short, expecting " + n + " elements, got "
 					+ fr.length + " and accessing with offset " + off_fr);
 			return -1;
 		}
 		if (fi.length < n+off_fi) {
-			logger.error("fi is too short, expecting " + n + " elements, got "
+			logger.severe("fi is too short, expecting " + n + " elements, got "
 					+ fi.length + " and accessing with offset " + off_fi);
 			return -1;
 		}
 
 		/* max FFT size = N_WAVE */
 		if (n > N_WAVE) {
-			logger.error("Can only compute FFT windows of up to " + N_WAVE + 
+			logger.severe("Can only compute FFT windows of up to " + N_WAVE + 
 					", but requested  + n");
 			return -1;
 		}
@@ -298,7 +298,7 @@ public class FPIntFFT {
 		short tt;
 		
 		if (f.length != N<<1) {
-			logger.error("Length of f does not match m, expected " + (N<<1) +
+			logger.severe("Length of f does not match m, expected " + (N<<1) +
 					", but got " + f.length);
 			return -1;
 		}

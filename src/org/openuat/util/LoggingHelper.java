@@ -8,7 +8,8 @@
  */
 package org.openuat.util;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LoggingHelper {
 	public static void debugWithException(Logger logger, String msg, Exception e) {
@@ -17,10 +18,10 @@ public class LoggingHelper {
 		if (msg != null)
 			stackTrace = msg + "\n";
 		
-		if (logger.isDebugEnabled()) {
+		if (logger.isLoggable(Level.FINER)) {
 			for (int j=0; j<e.getStackTrace().length; j++)
 				stackTrace += e.getStackTrace()[j].toString() + "\n";
-			logger.debug(stackTrace);
+			logger.finer(stackTrace);
 		}
 //#endif
 	}

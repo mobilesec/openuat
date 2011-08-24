@@ -11,7 +11,8 @@
  */
 package org.openuat.features;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** This class implements computation of the coherence function. It is
  * modelled after the Matlab/Octave "coher" function, but en explanation
@@ -33,7 +34,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public class Coherence_Int {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.features.Coherence" /*Coherence.class*/);
 	
 	/** This is a small helper function to compute how many slices will be used. */
@@ -72,7 +73,7 @@ public class Coherence_Int {
 			overlap = windowsize / 2;
 
 		if (s1.length < 2*windowsize - overlap) {
-			logger.error("Signals are too short to compute coherence. Need at least 2 slices: " +
+			logger.severe("Signals are too short to compute coherence. Need at least 2 slices: " +
 					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
 					" with overlap " + overlap + ", but got only " + s1.length);
 			return null;
@@ -85,15 +86,15 @@ public class Coherence_Int {
 		double[] hann = hann(windowsize);	
 		// sanity check
 		if (hann.length != windowsize) {
-			logger.error("FFT window size is different from than the hanning window size, can not cope");
+			logger.severe("FFT window size is different from than the hanning window size, can not cope");
 			return null;
 		}
 		// normalize the hanning window
 		double hannNorm = l2Norm(hann);
 		for (int i=0; i<windowsize; i++)
 			hann[i] = hann[i] / hannNorm;
-		if (logger.isDebugEnabled() && Math.abs(l2Norm(hann) - 1) > 0.00001)
-			logger.debug("Norm of normalized hann window is not 1");
+		if (logger.isLoggable(Level.FINER) && Math.abs(l2Norm(hann) - 1) > 0.00001)
+			logger.finer("Norm of normalized hann window is not 1");
 		
 		// the self- and cross-correlations of the frequency power spectra of the signals
 		// they are initialized to 0 by the JVM
@@ -106,7 +107,7 @@ public class Coherence_Int {
 		// this calculates the average of the P** over all slices
 		int slices=0;
 		for (int offset=0; offset<s1.length-windowsize+1; offset+=windowsize-overlap) {
-			logger.debug("Using slice " + slices + " at offset " + offset);
+			logger.finer("Using slice " + slices + " at offset " + offset);
 			slices++;
 
 			// create the slices and mask them with hanning

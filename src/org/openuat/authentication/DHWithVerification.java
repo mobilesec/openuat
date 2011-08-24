@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostAuthenticationServer;
 import org.openuat.channel.main.RemoteConnection;
@@ -76,7 +76,7 @@ import org.openuat.util.LineReaderWriter;
  *               to events with String and RemoteConnection objects.
  */
 public abstract class DHWithVerification extends AuthenticationEventSender {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.authentication.DHWithVerification" /*DHOverTCPWithVerification.class*/);
 
 	/** This message is sent via the remote channel to the remote upon authentication success. */
@@ -217,7 +217,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	public boolean startAuthentication(RemoteConnection remote, int protocolTimeoutMs, String param) 
 			throws IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (! isIdle()) {
-			logger.warn("Tried to start authentication with host " + remote.getRemoteName() + 
+			logger.warning("Tried to start authentication with host " + remote.getRemoteName() + 
 					" while another authentication protocol run is still active. Not starting authentication and " +
 					" returning false." + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -225,7 +225,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		}
 		
 		if (!keyManager.startKeyAgreement(remote)) {
-        	logger.error("Could not start remote host object, this should not happen! Aborting startAuthentication" +
+        	logger.severe("Could not start remote host object, this should not happen! Aborting startAuthentication" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	return false;
 		}
@@ -257,18 +257,18 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	protected void reset(RemoteConnection remote) {
 		if (remote == null) {
-			logger.error("Can not reset nonexistant remote object, this should not happen!");
+			logger.severe("Can not reset nonexistant remote object, this should not happen!");
 			return;
 		}
 		if (!keyManager.reset(remote))
-			logger.error("Could not reset remote host object, this should not happen!" +
+			logger.severe("Could not reset remote host object, this should not happen!" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		
 		// also allow derived classes to do more specific resets
 		resetHook(remote);
 
 		// and finally reset the state
-		logger.debug("Reset object to idle set" + 
+		logger.finer("Reset object to idle set" + 
 				(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
 	
@@ -291,11 +291,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	protected void authenticationFailed(boolean failHard, RemoteConnection remote, Object optionalVerificationId, 
 			Exception e, String message) {
 		if (remote == null) {
-			logger.error("Can not fail nonexistant remote object, this should not happen!");
+			logger.severe("Can not fail nonexistant remote object, this should not happen!");
 			return;
 		}
 		if (failHard && !keyManager.fail(remote))
-			logger.error("Could not fail remote host object, this should not happen!" +
+			logger.severe("Could not fail remote host object, this should not happen!" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		raiseAuthenticationFailureEvent(remote, e, message);
 		
@@ -319,21 +319,21 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		try {
     		// this enables auto-flush
     		OutputStreamWriter toRemote = new OutputStreamWriter(remote.getOutputStream());
-	    	logger.debug("Sending status to remote: '" + reportToRemote + "'" + 
+	    	logger.finer("Sending status to remote: '" + reportToRemote + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		toRemote.write(reportToRemote + "\n");
     		toRemote.flush();
-    		logger.debug("Status sent, waiting for status from remote" + 
+    		logger.finer("Status sent, waiting for status from remote" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			/* do not use a BufferedReader here because that would potentially mess up
 			 * the stream for other users of the socket (by consuming too many bytes)
 			 */
     		InputStream fromRemote = remote.getInputStream();
     		String remoteStatus = LineReaderWriter.readLine(fromRemote);
-	    	logger.debug("Received remote status: '" + remoteStatus + "'" + 
+	    	logger.finer("Received remote status: '" + remoteStatus + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		if (remoteStatus.length() == 0) {
-    			logger.error("Could not get status message from remote host" + 
+    			logger.severe("Could not get status message from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(true, remote, optionalVerificationId, null, 
     					"Could not get status message from remote host" + 
@@ -344,7 +344,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     			return remoteStatus;
         }
         catch (IOException e) {
-        	logger.error("Could not report success/failure to remote host or get status message from remote host: " + e + 
+        	logger.severe("Could not report success/failure to remote host or get status message from remote host: " + e + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	authenticationFailed(true, remote, optionalVerificationId, e, 
         			"Could not report success/failure to remote host or get status message from remote host" + 
@@ -380,7 +380,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 
     			// mark host as succeeded
 		        if (!keyManager.succeed(remote)) {
-		        	logger.error("Could not succeed remote host object, this should not happen! Aborting verificationSuccess" +
+		        	logger.severe("Could not succeed remote host object, this should not happen! Aborting verificationSuccess" +
 							(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		        	return;
 		        }
@@ -396,7 +396,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		         */
 		        byte[] sessKey = keyManager.getSessionKey(remote);
 		        if (sessKey == null) {
-		        	logger.error("Could not retreive session key for remote host '" + remote.getRemoteName() +
+		        	logger.severe("Could not retreive session key for remote host '" + remote.getRemoteName() +
 		        			", this should not happen! Aborting verificationSuccess" +
 							(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		        	return;
@@ -430,7 +430,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        keyManager.reset(remote);
     		}
     		else if (remoteStatus.startsWith(Protocol_HardFailure)) {
-    			logger.error("Received hard failure status from remote host although local authentication was successful. " + 
+    			logger.severe("Received hard failure status from remote host although local authentication was successful. " + 
     					"Authentication protocol failed" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(true, remote, optionalVerificationId, null, 
@@ -438,7 +438,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else if (remoteStatus.startsWith(Protocol_SoftFailure)) {
-    			logger.error("Received soft failure status from remote host although local authentication was successful. " + 
+    			logger.severe("Received soft failure status from remote host although local authentication was successful. " + 
     					"Verification protocol failed, but not resetting keys for this host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(false, remote, optionalVerificationId, null, 
@@ -446,7 +446,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else {
-    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
+    			logger.severe("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(true, remote, optionalVerificationId, null, 
     					"Unkown status from remote host (was '" + remoteStatus + "')" + 
@@ -491,7 +491,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     					(failHard ? "Failing hard anyway, and remote should do the same now." : "Good that we agreed." ) + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		} else {
-    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
+    			logger.severe("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		}
 
@@ -515,7 +515,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
-	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
+	        logger.finer("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this is not optional because we don't know the number of rounds to use yet
 	        raiseAuthenticationProgressEvent(remote, cur, 
@@ -526,7 +526,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	    }
 
 		public boolean AuthenticationStarted(Object sender, Object remote) {
-	        logger.debug("Received host authentication started event with " + remote + 
+	        logger.finer("Received host authentication started event with " + remote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        boolean ret = raiseAuthenticationStartedEvent(remote);
 	        // also call the hook of derived classes

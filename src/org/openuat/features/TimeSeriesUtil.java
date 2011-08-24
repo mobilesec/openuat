@@ -8,7 +8,7 @@
  */
 package org.openuat.features;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This class contains utility functions for dealing with time series.
  *
@@ -16,7 +16,7 @@ import org.apache.log4j.Logger;
  * @version 1.1, changes to 1.0: added integer versions of the helper methods
  */
 public class TimeSeriesUtil {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.features.TimeSeriesUtil" /*TimeSeriesUtil.class*/);
 
 	/** This method equalizes the length of two time series segments by cutting
@@ -34,7 +34,7 @@ public class TimeSeriesUtil {
 //ENABLED FOR NOW       #if cfg.haveFloatSupport
 	public static double[][] cutSegmentsToEqualLength(double[] segment1, double[] segment2) {
 		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
-		logger.debug("Using " + len + " samples for coherence computation");
+		logger.finer("Using " + len + " samples for coherence computation");
 
 		double[][] ret = new double[2][];
 		ret[0] = new double[len];
@@ -49,7 +49,7 @@ public class TimeSeriesUtil {
 	/** This is the integer variant of {@link #cutSegmentsToEqualLength(double[], double[]).} */
 	public static int[][] cutSegmentsToEqualLength(int[] segment1, int[] segment2) {
 		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
-		logger.debug("Using " + len + " samples for coherence computation");
+		logger.finer("Using " + len + " samples for coherence computation");
 
 		int[][] ret = new int[2][];
 		ret[0] = new int[len];
@@ -84,7 +84,7 @@ public class TimeSeriesUtil {
 		
 		if (maxSegmentLength > 0 && segment.length > maxSegmentLength) {
 			int numSplits = (segment.length-maxSegmentLength) / (segmentSkip) + 1;
-			logger.debug("Segments are longer than maximum length: " +
+			logger.finer("Segments are longer than maximum length: " +
 					segment.length + " > " + maxSegmentLength + 
 					" s, splitting into " + numSplits + " segments");
 			ret = new double[numSplits][];
@@ -109,7 +109,7 @@ public class TimeSeriesUtil {
 		
 		if (maxSegmentLength > 0 && segment.length > maxSegmentLength) {
 			int numSplits = (segment.length-maxSegmentLength) / (segmentSkip) + 1;
-			logger.debug("Segments are longer than maximum length: " +
+			logger.finer("Segments are longer than maximum length: " +
 					segment.length + " > " + maxSegmentLength + 
 					" s, splitting into " + numSplits + " segments");
 			ret = new int[numSplits][];
@@ -166,7 +166,7 @@ public class TimeSeriesUtil {
 		for (int i=0; i<b.length; i++)
 			if (b[i] == ' ') numBlanks++;
 		if (numBlanks == 0) {
-			logger.error("Received invalid encoding without any blanks, aborting");
+			logger.severe("Received invalid encoding without any blanks, aborting");
 			return null;
 		}
 		else {

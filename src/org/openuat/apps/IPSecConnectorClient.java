@@ -21,7 +21,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 import org.openuat.apps.BinaryBlockStreamer;
 import org.openuat.apps.IPSecConfigHandler;
@@ -51,8 +51,8 @@ import uk.ac.lancs.relate.model.NLRAlgorithm;
 
 public class IPSecConnectorClient extends IPSecConnectorCommon {
 	
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnectorClient.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(IPSecConnectorClient.class.getName());
 
 	private byte[] sharedKey = null;
 	
@@ -94,7 +94,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		config.setSide(csides.getSelectedIndex());
 		config.setUserName(username.getText());
 		config.setDeviceType(Configuration.DEVICE_TYPE_DONGLE);
-		logger.debug(config);
+		logger.finer(config);
 		return config;
 	}*/
 	
@@ -172,10 +172,6 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	}
 
 	private class CAEventsHandler extends RelateGridDemo {
-
-		/**
-		 * 
-		 */
 		private static final long serialVersionUID = 1L;
 		
 		private Integer remoteId;
@@ -195,7 +191,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			//-> i know that serial connection is not really there.
 			//-> remote Host ist the Name of the Host -> could get IPInet. and from there, I could get the Id. and 
 			// then calculationg back, and the initial message.
-			logger.debug("Store the Admin' s relate id"+ remoteHost);
+//			logger.finer("Store the Admin' s relate id"+ remoteHost);
 			try { 
 				if (remoteId==null){
 					int id=Integer.parseInt(remoteHost);
@@ -204,7 +200,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 					remoteId=new Integer(id);
 					}
 				} catch (Exception e) {
-					logger.error("Can't update progress bar", e);
+//					logger.severe("Can't update progress bar", e);
 				}
 			this.setPaintingToFreeze(true);
 			this.setLocalProgressBar(cur, max);
@@ -237,7 +233,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 
 	public void AuthenticationSuccess(Object sender, Object remote, Object result) {
 		Object[] remoteParam = (Object[]) remote;
-		logger.debug("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
+		logger.finer("Received relate authentication success event with " + remoteParam[0] + "/" + remoteParam[1]);
 		logger.info("SUCCESS");
 		
 		guiHandler.setPaintingToFreeze(false);
@@ -255,7 +251,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			int recvSize = s.receiveBinaryBlock(confName, confBlock); 
 			if (recvSize <= 0) {
 				String text ="Unable to receive configuration block from admin";
-				logger.error(text);
+				logger.severe(text);
 				guiHandler.showErrorMessageBox(text, "Receving Certificate block");
 				toRemote.close();
 				return;
@@ -264,16 +260,16 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 				String text ="Binary block name is '" + confName + 
 				"' instead of the expected '" + BLOCKNAME_CONFIG +
 				"'. Is the admin application running on the other end?";
-				logger.error(text);
+				logger.severe(text);
 				guiHandler.showErrorMessageBox(text, "Receving Certificate block");
 				toRemote.close();
 				return;
 			}
-			logger.debug("Received configuration block from admin (" + recvSize + "B), parsing now");
+			logger.finer("Received configuration block from admin (" + recvSize + "B), parsing now");
 			config = new IPSecConfigHandler();
 			if (!config.parseConfig(new StringReader(confBlock.toString()))) {
 				String text ="Could not parse IPSec configuration from XML";
-				logger.error(text);
+				logger.severe(text);
 				guiHandler.showErrorMessageBox(text, "Receving Certificate block");
 				toRemote.close();
 				return;
@@ -287,7 +283,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 			recvSize = s.receiveBinaryBlock(certName, certBlock); 
 			if (recvSize <= 0) {
 				String text ="Unable to receive certificate block from admin";
-				logger.error(text);
+				logger.severe(text);
 				guiHandler.showErrorMessageBox(text, "Recevied Certificate block");
 				toRemote.close();
 				return;
@@ -296,16 +292,16 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 				String text ="Binary block name is '" + certName + 
 				"' instead of the expected '" + BLOCKNAME_CERTIFICATE +
 				"'.\nIs the admin application running on the other end?";
-				logger.error(text);
+				logger.severe(text);
 				guiHandler.showErrorMessageBox(text, "Recevied Certificate block");
 				toRemote.close();
 				return;
 			}
-			logger.debug("Received certificate from admin (" + recvSize + "B)");
+			logger.finer("Received certificate from admin (" + recvSize + "B)");
 			certificate = certBlock.toByteArray();
 		} catch (IOException e) {
 			String text ="Could not read from remote host: ";
-			logger.error(text + e);
+			logger.severe(text + e);
 			guiHandler.showErrorMessageBox(text+"\n"+e, "Recevied Certificate");
 			return;
 		}
@@ -323,11 +319,11 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		}
 		catch (IOException e) {
 			String text ="Unable to create or write to temporary file for certificate: ";
-			logger.error( text+ e);
+			logger.severe( text+ e);
 			guiHandler.showErrorMessageBox(text+"\n"+e, "Create Certificate File");
 			return;
 		}
-		logger.debug("Wrote received certificate to temporary file " + tempCertFile.getAbsolutePath());
+		logger.finer("Wrote received certificate to temporary file " + tempCertFile.getAbsolutePath());
 		// and display some details from the certificate	
 		logger.info(" Authentification is now finished ... ");
 		String certName;
@@ -343,7 +339,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		}
 		catch (IOException e) {
 			String text ="Unable to open certificate: ";
-			logger.error( text+ e);
+			logger.severe( text+ e);
 			guiHandler.showErrorMessageBox(text+"\n"+e, "Open Certificate");
 			return;
 		}
@@ -356,7 +352,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 	private void letUserImportCertificate(String name, String days) {
 		int side =guiHandler.getSide();
 		String text ="";
-		logger.debug("what does the gui give us for a side "+ side);
+		logger.finer("what does the gui give us for a side "+ side);
 		String sSide ="";
 		if (side ==Configuration.LEFT || side==Configuration.RIGHT || side==Configuration.BACK){
 			sSide=Configuration.SIDE_NAMES[side];
@@ -395,7 +391,7 @@ public class IPSecConnectorClient extends IPSecConnectorCommon {
 		}
 		catch (IOException e) {
 			String text ="Could not open input stream to remote host: ";
-			logger.error( text+ e);
+			logger.severe( text+ e);
 			guiHandler.showErrorMessageBox(text, "Receving Certificate block");
 			toRemote.close();
 			return null;

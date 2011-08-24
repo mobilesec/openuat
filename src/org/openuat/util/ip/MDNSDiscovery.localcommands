@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import javax.jmdns.*;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This class wraps host and service discovery via Multicast DNS, using the jmDNS library
  * (a MDNS and DNS-SD implementation in pure Java) at the moment. If another MDNS responder
@@ -27,7 +27,7 @@ public class MDNSDiscovery {
 	/** This is the DNS-SD attribute name that is registered as DNS TXT data. */
 	public final static String DNS_SD_Attribute = "dongleid";
 	
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger(MDNSDiscovery.class);
 
 	/** Holds the only instance of this class. */
@@ -50,7 +50,7 @@ public class MDNSDiscovery {
 	 */
 	public static MDNSDiscovery getMDNSDiscovery() throws IOException {
 		if (instance == null) {
-			logger.debug("Creating singleton instance of MDNSDiscovery");
+			logger.finer("Creating singleton instance of MDNSDiscovery");
 			instance = new MDNSDiscovery();
 		}
 		return instance;
@@ -66,20 +66,20 @@ public class MDNSDiscovery {
 		LinkedList allAddrs = new LinkedList();
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
-			logger.debug("Found local interface " + iface.getName());
+			logger.finer("Found local interface " + iface.getName());
 			Enumeration addrs = iface.getInetAddresses();
 			while (addrs.hasMoreElements()) {
 				InetAddress addr = (InetAddress) addrs.nextElement();
-				logger.debug("Found address " + addr);
+				logger.finer("Found address " + addr);
 				allAddrs.add(addr);
 			}
 		}
 		// start the responders
-		logger.debug("Using " + allAddrs.size() + " addresses, starting one jmDNS responder for each");
+		logger.finer("Using " + allAddrs.size() + " addresses, starting one jmDNS responder for each");
 		jmdns = new JmDNS[allAddrs.size()];
 		for (int i=0; allAddrs.size() > 0; i++)
 			jmdns[i] = new JmDNS((InetAddress) allAddrs.removeFirst());
-		logger.debug("jmDNS responders started");
+		logger.finer("jmDNS responders started");
 		//addresses = new HashMap();
 		// and register our listener
 		//jmdns.addServiceListener(DNS_SD_Type, new ListenerHelper());
@@ -94,7 +94,7 @@ public class MDNSDiscovery {
 		final int positiveId = localRelateId < 0 ? localRelateId + 0x100 : localRelateId;
 		
 		
-		logger.debug("Registering local relate id " + localRelateId + " for MDNS/DNS-SD lookup");
+		logger.finer("Registering local relate id " + localRelateId + " for MDNS/DNS-SD lookup");
 		
 		// TODO: register a meaningful port number
 		/*logger.info("Registering DNS-SD service " + Integer.toString(positiveId) + "." + DNS_SD_Type);
@@ -102,28 +102,28 @@ public class MDNSDiscovery {
 				54321, DNS_SD_Attribute + "=" + Integer.toString(positiveId)));*/
 		new Thread(new Runnable() { public void run() {
 			if (System.getProperty("os.name").startsWith("Linux")) {
-				logger.debug("Using Linux-specific services for MDNS/DNS-SD: avahi");
+				logger.finer("Using Linux-specific services for MDNS/DNS-SD: avahi");
 				try {
 					String[] cmdArgs = new String[] {"avahi-publish-service", Integer.toString(positiveId), DNS_SD_Type, "54321"};
 					for (int i=0; i<cmdArgs.length; i++)
 						System.out.println(cmdArgs[i]);
 					int exitCode = Runtime.getRuntime().exec(cmdArgs).waitFor();
 					if (exitCode != 0) {
-						logger.error("Unable to publish DNS-SD record in MDNS using avahi. Others will be unable " +
+						logger.severe("Unable to publish DNS-SD record in MDNS using avahi. Others will be unable " +
 								"to discover this host's IP address. exitcode=" + exitCode);
 					}
 				}
 				catch (InterruptedException e) {
-					logger.error("The process was interrupted while trying to set serial port parameters with " + e + ". " +
+					logger.severe("The process was interrupted while trying to set serial port parameters with " + e + ". " +
 					    "This is non-fatal, but the dongle communication might now be subtly broken.");
 				}
 				catch (IOException e) {
-					logger.error("The process execution failed while trying to set serial port parameters with " + e + ". " +
+					logger.severe("The process execution failed while trying to set serial port parameters with " + e + ". " +
 				    "This is non-fatal, but the dongle communication might now be subtly broken.");
 				}
 			}
 			else {
-				logger.error("Don't know how to use OS-specific services for this OS yet.");
+				logger.severe("Don't know how to use OS-specific services for this OS yet.");
 			}
 		}}).start();
 	}
@@ -136,14 +136,14 @@ public class MDNSDiscovery {
 				val -= 0x100;
 			// just a sanity check
 			if (val < -128 || val > 127) {
-				logger.error("Dongle id is out of range");
+				logger.severe("Dongle id is out of range");
 				return null;
 			}
 			return new Byte((byte) val);
 		}
 		catch (NumberFormatException e) {
 			// ok, not parseable, probably no entry created by the class
-			logger.error("Dongle id is not an integer number");
+			logger.severe("Dongle id is not an integer number");
 			return null;
 		}
 	}*/
@@ -185,7 +185,7 @@ public class MDNSDiscovery {
 		
 		public void serviceAdded(ServiceEvent e)
 		{
-			logger.debug("ADD: " + e);
+			logger.finer("ADD: " + e);
 			if (e.getType().equals(DNS_SD_Type)) {
 				logger.info("Received MDNS add event for a Relate type");
 				Byte id = parseService(e.getName());
@@ -205,11 +205,11 @@ public class MDNSDiscovery {
 		}
 		public void serviceRemoved(ServiceEvent e)
 		{
-			logger.debug("REMOVE: " + e);
+			logger.finer("REMOVE: " + e);
 		}
 		public void serviceResolved(ServiceEvent e)
 		{
-			logger.debug("RESOLVED: " + e);
+			logger.finer("RESOLVED: " + e);
 			if (e.getType().equals(DNS_SD_Type)) {
 				logger.info("Received MDNS resolved event for a Relate type");
 				Byte id = parseService(e.getName());

@@ -10,8 +10,7 @@ package org.openuat.apps;
 
 import java.io.IOException;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import java.util.logging.Logger;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.relate.RelateAuthenticationProtocol;
 
@@ -30,8 +29,8 @@ import uk.ac.lancs.relate.core.MeasurementManager;
  * @version 1.0
  */
 public abstract class IPSecConnectorCommon implements AuthenticationProgressHandler {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnectorCommon.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(IPSecConnectorCommon.class.getName());
 	
 	/** This name is used as a prefix for transmitting the XML-encoded
 	 * configuration block from the admin end to the client end.
@@ -74,13 +73,15 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			throws IOException {
 		this.adminEnd = adminEnd;
 
-		if (System.getProperty("os.name").startsWith("Windows CE")) {
+		// DISABLED old-style logging with log4j
+		// TODO: switch to configuring the standard java.util.logging framework instaed
+		/*if (System.getProperty("os.name").startsWith("Windows CE")) {
 			System.out.println("Configuring log4j");
 			PropertyConfigurator.configure("log4j.properties");
-		}
+		}*/
 
 		if (relateConf != null) {
-			logger.debug("Registering MeasuementManager with SerialConnector");
+			logger.finer("Registering MeasuementManager with SerialConnector");
         	//SerialConnector connector = SerialConnector.getSerialConnector(relateConf.getDevicePortName(), relateConf.getDeviceType());
         	//connector.registerEventQueue(EventDispatcher.getDispatcher().getEventQueue());
             // this will start the SerialConnector thread and start listening for incoming measurements
@@ -91,12 +92,12 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 			manager = null;
 			RelateAuthenticationProtocol.setSimulationMode(true);
 		}
-		logger.debug("Creating RelateAuthenticationProtocol");
+		logger.finer("Creating RelateAuthenticationProtocol");
 		authp = new RelateAuthenticationProtocol((relateConf != null ? relateConf.getPort() : null), manager, !adminEnd, true, null);
 		authp.addAuthenticationProgressHandler(this);
 		
 		if (! adminEnd) {
-			logger.debug("Client end, starting authentication server");
+			logger.finer("Client end, starting authentication server");
 			authp.startListening();
 		}
 	}
@@ -117,7 +118,7 @@ public abstract class IPSecConnectorCommon implements AuthenticationProgressHand
 
 	/** This is an implementation of the AuthenticationProgressHandler interface. */
 	public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg){
-		logger.debug("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
+		logger.finer("Received relate authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg);
 	}
 }
 

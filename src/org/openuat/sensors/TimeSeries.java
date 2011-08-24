@@ -10,7 +10,8 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** This class represents a possibly multi-dimensional time series of a single
  * sensor. It computes simply statistical values, can distinguish active from
@@ -20,7 +21,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public class TimeSeries implements SamplesSink {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries" /*TimeSeries.class*/);
 	
 	/** This interface represents the parameters that <b>must</b> be reasonably
@@ -59,8 +60,8 @@ public class TimeSeries implements SamplesSink {
 	private boolean full = false;
 	/** If set to true, the values forwarded to the next stage will be difference values. */
 	private boolean differencing = false;
-        /** Stores the last value, used only when differencing=true. */
-        private double lastSample;
+	/** Stores the last value, used only when differencing=true. */
+	private double lastSample;
 	
 	/** Keeps a running total sum over all samples added to this time series so far (not only the current time window). */
 	private double totalSum = 0;
@@ -162,7 +163,7 @@ public class TimeSeries implements SamplesSink {
 	 */
 	public void addSample(double sample, int sampleNum) {
 /*		if (sampleNum != totalNum) {
-			logger.warn("Sample index " + sampleNum + " does not correspond to number of samples already received "
+			logger.warning("Sample index " + sampleNum + " does not correspond to number of samples already received "
 					+ "(" + totalNum + ")");
 		}*/
 		
@@ -212,8 +213,8 @@ public class TimeSeries implements SamplesSink {
 			nextStageSample -= getWindowMean();
 		else if (subtractTotalMean)
 			nextStageSample -= getTotalMean();
-		if (logger.isTraceEnabled())
-			logger.trace("Pushing value " + nextStageSample + " to next stage");
+		if (logger.isLoggable(Level.FINEST))
+			logger.finest("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
     		for (int i=0; i<nextStageSinks.size(); i++) {
     			SamplesSink s = (SamplesSink) nextStageSinks.elementAt(i);
@@ -221,12 +222,12 @@ public class TimeSeries implements SamplesSink {
     		}
 		
 		// detect active segments
-    	if (logger.isDebugEnabled())
-    		logger.debug("Checking for activity: window variance is " + getWindowVariance() + 
+    	if (logger.isLoggable(Level.FINER))
+    		logger.finer("Checking for activity: window variance is " + getWindowVariance() + 
     				", threshold is " + activeVarianceThreshold);
     	if (activeVarianceThreshold > 0 && getWindowVariance() >= activeVarianceThreshold
     			&& !isActive) {
-    		logger.debug("Detected transition to active at index " + sampleNum);
+    		logger.finer("Detected transition to active at index " + sampleNum);
     		isActive = true;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
@@ -237,7 +238,7 @@ public class TimeSeries implements SamplesSink {
     	}
     	if (activeVarianceThreshold > 0 && getWindowVariance() < activeVarianceThreshold
     			&& isActive) {
-    		logger.debug("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
+    		logger.finer("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
     		isActive = false;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
@@ -248,7 +249,7 @@ public class TimeSeries implements SamplesSink {
     	}
 
     	// enable the sample rate
-    	if (logger.isDebugEnabled() || forceSampleRateEstimation) {
+    	if (logger.isLoggable(Level.FINER) || forceSampleRateEstimation) {
     		if (totalNum % estimateSampleRateWidth == 0) {
 				long curTime = System.currentTimeMillis();
     			if (lastSampleRateEstimated >= 0) {
@@ -259,9 +260,9 @@ public class TimeSeries implements SamplesSink {
     					float sampleRate = (curTime - lastSampleRateEstimated) / (float) estimateSampleRateWidth;
         				lastSampleRateEstimated = curTime;
     					if (forceSampleRateEstimation)
-    						logger.warn("Current sample rate: " + sampleRate + " Hz");
+    						logger.warning("Current sample rate: " + sampleRate + " Hz");
     					else
-    						logger.debug("Current sample rate: " + sampleRate + " Hz");
+    						logger.finer("Current sample rate: " + sampleRate + " Hz");
     				}
     			}
     			else
@@ -273,12 +274,12 @@ public class TimeSeries implements SamplesSink {
 	
 	/** Dummy implementation of SamplesSink.segmentStart. Does nothing. */
 	public void segmentStart(int indexNotUsed) {
-		logger.warn("segmentStart method of TimeSeries called. This should not happen");
+		logger.warning("segmentStart method of TimeSeries called. This should not happen");
 	}
 
 	/** Dummy implementation of SamplesSink.segmentEnd. Does nothing. */
 	public void segmentEnd(int indexNotUsed) {
-		logger.warn("segmentEnd method of TimeSeries called. This should not happen");
+		logger.warning("segmentEnd method of TimeSeries called. This should not happen");
 	}
 	
 	/** Registers a sink, which will receive all new values as they are sampled.
@@ -404,7 +405,7 @@ public class TimeSeries implements SamplesSink {
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
 		if (subtractTotalMean == true && subtractWindowMean == true) {
-			logger.error("Can not set both subtractWindowMean and subtractTotalMean");
+			logger.severe("Can not set both subtractWindowMean and subtractTotalMean");
 			return;
 		}
 		this.subtractWindowMean = subtractWindowMean;
@@ -424,7 +425,7 @@ public class TimeSeries implements SamplesSink {
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
 		if (subtractTotalMean == true && subtractWindowMean == true) {
-			logger.error("Can not set both subtractWindowMean and subtractTotalMean");
+			logger.severe("Can not set both subtractWindowMean and subtractTotalMean");
 			return;
 		}
 		this.subtractTotalMean = subtractTotalMean;

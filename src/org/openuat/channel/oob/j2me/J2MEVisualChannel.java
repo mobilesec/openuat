@@ -23,7 +23,8 @@ import javax.microedition.media.MediaException;
 import javax.microedition.media.Player;
 import javax.microedition.media.control.VideoControl;
 
-import org.apache.log4j.Logger;
+import net.sf.microlog.Logger;
+
 import org.openuat.authentication.OOBChannel;
 import org.openuat.authentication.OOBMessageHandler;
 

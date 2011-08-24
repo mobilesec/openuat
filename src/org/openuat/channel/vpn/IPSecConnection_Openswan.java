@@ -15,7 +15,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the openswan/strongswan/freeswan IPSec implementation
@@ -29,8 +30,8 @@ import org.apache.commons.codec.binary.*;
  * @version 1.0
  */
 class IPSecConnection_Openswan implements IPSecConnection {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class.getName());
 
 	private LinkedList ignoredConns = new LinkedList();
     /**constant for connection header*/
@@ -123,7 +124,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
-			logger.error("Can not initialize connection with remote '" + remoteHost + 
+			logger.severe("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
 			return false;
 		}
@@ -174,17 +175,17 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
-			logger.error("Can not start connection, remoteHost not yet set");
+			logger.severe("Can not start connection, remoteHost not yet set");
 			return false;
 		}
 		if (sharedSecret != null && caDistinguishedName != null) {
-			logger.error("Can't use both secret key and X.509 certificate authentication");
+			logger.severe("Can't use both secret key and X.509 certificate authentication");
 			return false;
 		}
 
 		this.persistent = persistent;
 		
-		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
+		logger.finer("Trying to create " + (persistent ? "persistent" : "temporary") + 
 				" ipsec connection to host " + remoteHost + (remoteNetwork != null ? " to remote network " + remoteNetwork : ""));
 		// TODO: error checks on input parameters!
 		
@@ -192,24 +193,24 @@ class IPSecConnection_Openswan implements IPSecConnection {
 		File configConn = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".conf");
 		// but if it already exists, better not overwrite it....
 		if (configConn.exists()) {
-			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
+			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
 			return false;
 		}
 		File configPsk = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".psk");
 		// but if it already exists, better not overwrite it....
 		if (configConn.exists()) {
-			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " already exists.");
+			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " already exists.");
 			return false;
 		}
 		try {
 			logger.info("Creating config files " + configConn + " and " + configPsk);
 			if (! configConn.createNewFile()) {
-				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
 			BufferedWriter writerConn = new BufferedWriter(new FileWriter(configConn));
 			if (! configPsk.createNewFile()) {
-				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				configConn.delete();
 				return false;
 			}
@@ -221,7 +222,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			while (allLocalAddrs.size() > 0) {
 				// for each local address, create one configuration block
 				String localAddr = (String) allLocalAddrs.removeFirst();
-				logger.debug("Using local address " + localAddr);
+				logger.finer("Using local address " + localAddr);
 				
 				writerConn.write("conn " + createConnName(localAddr, remoteHost) + "\n");
 				writerConn.write("    left=" + localAddr + "\n");
@@ -260,7 +261,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--asynchronous", "--up", createConnName(localAddr, remoteHost)}, null, null);
 					}
 					catch (ExitCodeException e) {
-						logger.debug("Trying to take ipsec up resulted in error code different from 0:" + e);
+						logger.finer("Trying to take ipsec up resulted in error code different from 0:" + e);
 					}
 					this.localAddr = localAddr;
 					writerConn.close();
@@ -269,30 +270,30 @@ class IPSecConnection_Openswan implements IPSecConnection {
 					return isEstablished();
 				}
 				catch (ExitCodeException e) {
-					logger.error("Command failed: " + e);
+					logger.severe("Command failed: " + e);
 					// ignore it, because if one of the connections comes up, we are set
 					try {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
 					} catch (ExitCodeException f) {
-						logger.error("Can't execute command!", f);
+						logger.log(Level.SEVERE, "Can't execute command!", f);
 					}
 				}
 			}
 			writerConn.close();
 			writerPsk.close();
 			// none of the connections came up
-			logger.error("None of the connections could be established, cleaning up");
+			logger.severe("None of the connections could be established, cleaning up");
 			configConn.delete();
 			configPsk.delete();
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 			} catch (ExitCodeException f) {
-				logger.error("Can't execute command!", f);
+				logger.log(Level.SEVERE, "Can't execute command!", f);
 			}
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command, handle files, or get list of local addresses: " + e);
+			logger.severe("Could not execute command, handle files, or get list of local addresses: " + e);
 			if (configConn.exists())
 				configConn.delete();
 			if (configConn.exists())
@@ -300,7 +301,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 			} catch (Exception f) {
-				logger.error("Can't execute command!", f);
+				logger.log(Level.SEVERE, "Can't execute command!", f);
 			}
 			return false;
 		}
@@ -308,18 +309,18 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.error("Unable to stop IPSec connection, it has not been initialized yet (don't know which remote host to work on)");
+			logger.severe("Unable to stop IPSec connection, it has not been initialized yet (don't know which remote host to work on)");
 			return false;
 		}
 		
 		File configConn = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".conf");
 		if (! configConn.exists()) {
-			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
+			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
 			return false;
 		}
 		File configPsk = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".psk");
 		if (! configPsk.exists()) {
-			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " does not exists.");
+			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " does not exists.");
 			return false;
 		}
 
@@ -330,20 +331,20 @@ class IPSecConnection_Openswan implements IPSecConnection {
 				logger.info("Skipping to take the connection down, it does not seem to have been started.");
 		}
 		catch (ExitCodeException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			// ignore it here and go on to delete the files
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			// dt.
 		}
 
 		if (! configConn.delete()) {
-			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
+			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 			return false;
 		}
 		if (! configPsk.delete()) {
-			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " could not be deleted.");
+			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " could not be deleted.");
 			return false;
 		}
 		
@@ -351,11 +352,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 		}
 		catch (ExitCodeException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 		
@@ -371,11 +372,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			return getConnStatus(createConnName(localAddr, remoteHost)) == 1;
 		}
 		catch (ExitCodeException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.error("Could not execute command: " + e);
+			logger.severe("Could not execute command: " + e);
 			return false;
 		}
 	}

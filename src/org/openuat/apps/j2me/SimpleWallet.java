@@ -21,10 +21,10 @@ import javax.microedition.rms.RecordStoreNotOpenException;
 import javax.microedition.lcdui.*;
 
 import net.sf.microlog.Level;
+import net.sf.microlog.Logger;
 import net.sf.microlog.appender.FormAppender;
 import net.sf.microlog.ui.LogForm;
 
-import org.apache.log4j.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.Hash;
 import org.openuat.util.SimpleBlockCipher;

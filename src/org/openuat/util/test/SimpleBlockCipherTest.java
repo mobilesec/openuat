@@ -9,7 +9,7 @@
 package org.openuat.util.test;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.test.SimpleKeyAgreementTest;
 import org.openuat.util.Hash;
@@ -19,7 +19,7 @@ import junit.framework.Assert;
 import junit.framework.TestCase;
 
 public class SimpleBlockCipherTest extends TestCase {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.test.SimpleBlockCipherTest" /*SimpleBlockCipher.class*/);
 
 	protected boolean useJSSE = true;

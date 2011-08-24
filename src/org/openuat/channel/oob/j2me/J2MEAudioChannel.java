@@ -24,7 +24,7 @@ import javax.microedition.media.Player;
 import javax.microedition.media.control.RecordControl;
 import javax.microedition.media.control.VolumeControl;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.codec.audio.j2me.AudioUtils;
 import org.openbandy.service.LogService;
 import org.openuat.authentication.OOBChannel;

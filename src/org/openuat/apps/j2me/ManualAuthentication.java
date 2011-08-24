@@ -117,14 +117,14 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
+			logger.severe("Error initializing BlutoothRFCOMMServer: " + e);
 		}
 
 		try {
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(this);
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothPeerManager: " + e);
+			logger.severe("Error initializing BlutoothPeerManager: " + e);
 			return;
 		}
 
@@ -208,7 +208,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 						logger.debug("Bluetooth channel opened, start DH key agreement.");
 						HostProtocolHandler.startAuthenticationWith(channel, this, 10000, keepConnected, optionalParam, false);
 					} catch (IOException e) {
-						logger.error("Failed to open connection to peer.", e);
+						logger.severe("Failed to open connection to peer.", e);
 					}
 				}
 			}
@@ -324,7 +324,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
         	LineReaderWriter.println(connectionToRemote.getOutputStream(), 
         			"Finished DH key agreement - now start to verify");
 		} catch (IOException e) {
-			logger.debug("Unable to open stream to remote: " + e);
+			logger.finer("Unable to open stream to remote: " + e);
 		}
 		
 		do_alert("Authentication with " + remote + " successful", Alert.FOREVER);
@@ -343,7 +343,7 @@ public class ManualAuthentication extends MIDlet implements CommandListener,
 			hashString = getHexString(Hash.doubleSHA256(authKey, false));
 			hashString = hashString.substring(0, HASH_STRING_LENGTH);
 		} catch (InternalApplicationException e) {
-			logger.error("Failed to build hash.", e);
+			logger.severe("Failed to build hash.", e);
 			return;
 		}
 		Form userFeedback = new Form ("Hash Comparison");

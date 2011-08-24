@@ -229,42 +229,42 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			errorIcon = Image.createImage("/Button_Icon_Red_32.png");
 		} catch (IOException ioe) {
 			errorIcon = null;
-			logger.warn("Could not create error icon", ioe);
+			logger.warning("Could not create error icon", ioe);
 		}
 		try {
 			warnIcon = Image.createImage("/Button_Icon_Yellow_32.png");
 		} catch (IOException ioe) {
 			warnIcon = null;
-			logger.warn("Could not create warn icon", ioe);
+			logger.warning("Could not create warn icon", ioe);
 		}
 		try {
 			successIcon = Image.createImage("/Button_Icon_Green_32.png");
 		} catch (IOException ioe) {
 			successIcon = null;
-			logger.warn("Could not create success icon", ioe);
+			logger.warning("Could not create success icon", ioe);
 		}
 		try {
 			listIcon = Image.createImage("/Button_Icon_Blue_12.png");
 		} catch (IOException ioe) {
 			listIcon = null;
-			logger.warn("Could not create list icon", ioe);
+			logger.warning("Could not create list icon", ioe);
 		}
 		
 		// build button channels
 		CommandListener abortHandler = new CommandListener() {
 			public void commandAction(Command command, Displayable displayable) {
 				if (command.getCommandType() == Command.STOP) {
-					logger.warn("Protocol run aborted by user.");
+					logger.warning("Protocol run aborted by user.");
 					statisticsEnd(currentChannel.toString(), false);
 					try {
 						BluetoothRFCOMMChannel.shutdownAllChannels();
 					} catch (Exception e) {
-						logger.error("Unable to close bluetooth connections", e);
+						logger.severe("Unable to close bluetooth connections", e);
 					}
 					alertError("Protocol run aborted.");
 				}
 				else {
-					logger.warn("Command not handled: " + command.getLabel());
+					logger.warning("Command not handled: " + command.getLabel());
 				}
 			}
 		};
@@ -330,7 +330,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			Image logo = Image.createImage("/Button_Icon_Blue_beda.png");
 			welcomeScreen.append(new ImageItem(null, logo, Item.LAYOUT_CENTER, null));
 		} catch (IOException e) {
-			logger.warn("Could not create beda logo", e);
+			logger.warning("Could not create beda logo", e);
 		}
 		welcomeScreen.append("\nButton Enabled Device Association\n");
 		
@@ -355,7 +355,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 	public void AuthenticationFailure(Object sender, Object remote, Exception e, String msg) {
 		// in the input case, reset the shared key
 		btServer.setPresharedShortSecrets(null);
-		logger.error(msg, e);
+		logger.severe(msg, e);
     	if (currentChannel != null) {
     		// log session duration only on initiator
     		// on responder, currentChannel is null
@@ -486,7 +486,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String deviceName = device.getFriendlyName(false);
 				deviceList.append(deviceName, listIcon);
 			} catch (IOException e) {
-				logger.warn("Could not get name of a bluetooth device.", e);
+				logger.warning("Could not get name of a bluetooth device.", e);
 				deviceList.append("Unknown device", listIcon);
 			}
 		}
@@ -546,7 +546,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			peerManager = new BluetoothPeerManager();
 			peerManager.addListener(listener);
 		} catch (IOException e) {
-			logger.error("Could not initiate BluetoothPeerManager.", e);
+			logger.severe("Could not initiate BluetoothPeerManager.", e);
 		}
 		
 		// bluetooth server
@@ -558,7 +558,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				logger.info("Finished starting SDP service at " + btServer.getRegisteredServiceURL());
 			}
 		} catch (IOException e) {
-			logger.error("Could not create bluetooth server.", e);
+			logger.severe("Could not create bluetooth server.", e);
 		}
 		ProtocolCommandHandler inputProtocolHandler = new ProtocolCommandHandler() {
 			// @Override
@@ -587,7 +587,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				// input case
 				String hello = LineReaderWriter.readLine(btChannel.getInputStream());
 				if (!hello.equals(HostProtocolHandler.Protocol_Hello)) {
-					logger.warn("Got wrong greeting string from server. This probably leads to protocol failure.");
+					logger.warning("Got wrong greeting string from server. This probably leads to protocol failure.");
 				}
 				LineReaderWriter.println(btChannel.getOutputStream(), PRE_AUTH);
 				inputProtocol(true, btChannel, currentChannel);
@@ -598,7 +598,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				HostProtocolHandler.startAuthenticationWith(btChannel, BedaMIDlet.this, -1, keepConnected, TRANSFER_AUTH, false);
 			}
 		} catch (IOException e) {
-			logger.error("Failed to start authentication.", e);
+			logger.severe("Failed to start authentication.", e);
 		}
 	}
 	
@@ -704,7 +704,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			byte[] hash = Hash.doubleSHA256(bytes, false);
 			System.arraycopy(hash, 0, result, 0, 3);
 		} catch (InternalApplicationException e) {
-			logger.error("Could not create hash.", e);
+			logger.severe("Could not create hash.", e);
 			result = null;
 		}
 		return result;
@@ -758,7 +758,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			in = connection.getInputStream();
 			out = connection.getOutputStream();
 		} catch (IOException e) {
-			logger.error("Failed to open stream from connection. Abort transfer protocol.", e);
+			logger.severe("Failed to open stream from connection. Abort transfer protocol.", e);
 			return;
 		}
 		
@@ -769,14 +769,14 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				LineReaderWriter.println(out, initString);
 				String lineIn = LineReaderWriter.readLine(in);
 				if (!lineIn.equals(READY)) {
-					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
+					logger.severe("Unexpected protocol string from remote device. Abort transfer protocol.");
 					return;
 				}
 				channel.transmit(oobMsg);
 				// wait for other device
 				lineIn = LineReaderWriter.readLine(in);
 				if (!lineIn.equals(DONE)) {
-					logger.error("Unexpected protocol string from remote device. Abort transfer protocol.");
+					logger.severe("Unexpected protocol string from remote device. Abort transfer protocol.");
 					return;
 				}
 				Form successFeedback = new Form("Authentication");
@@ -804,7 +804,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				successFeedback.setCommandListener(listener);
 				display.setCurrent(successFeedback);
 			} catch (IOException e) {
-				logger.error("Failed to read/write from io stream. Abort transfer protocol.");
+				logger.severe("Failed to read/write from io stream. Abort transfer protocol.");
 			}
 		}
 		else { // responder
@@ -814,7 +814,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
 				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
 				if (!protocolDesc.equals(TRANSFER_AUTH)) {
-					logger.error("Wrong protocol descriptor from remote device. Abort transfer protocol.");
+					logger.severe("Wrong protocol descriptor from remote device. Abort transfer protocol.");
 					return;
 				}
 				// get appropriate channel
@@ -841,7 +841,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 								alertError("Authentication failed! Please report to the other device");
 							}
 						} catch (IOException e) {
-							logger.error("Failed to read/write to io stream. Abort transfer protocol.");
+							logger.severe("Failed to read/write to io stream. Abort transfer protocol.");
 						}
 						finally {
 							connection.close();
@@ -852,7 +852,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				LineReaderWriter.println(out, READY);
 				captureChannel.capture();
 			} catch (IOException e) {
-				logger.error("Failed to read/write from io stream. Abort transfer protocol.", e);
+				logger.severe("Failed to read/write from io stream. Abort transfer protocol.", e);
 			}
 		}
 	}
@@ -887,7 +887,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 			in = connection.getInputStream();
 			out = connection.getOutputStream();
 		} catch (IOException e) {
-			logger.error("Failed to open stream from connection. Abort input protocol.", e);
+			logger.severe("Failed to open stream from connection. Abort input protocol.", e);
 			return;
 		}
 		
@@ -898,7 +898,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				LineReaderWriter.println(out, initString);
 				String lineIn = LineReaderWriter.readLine(in);
 				if (!lineIn.equals(READY)) {
-					logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+					logger.severe("Unexpected protocol string from remote device. Abort input protocol.");
 					return;
 				}
 				OOBMessageHandler messageHandler = new OOBMessageHandler() {
@@ -918,7 +918,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							LineReaderWriter.println(out, DONE);
 							String line = LineReaderWriter.readLine(in);
 							if (!line.equals(DONE)) {
-								logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+								logger.severe("Unexpected protocol string from remote device. Abort input protocol.");
 								return;
 							}
 							connection.close();
@@ -928,14 +928,14 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							HostProtocolHandler.startAuthenticationWith(
 									btChannel, BedaMIDlet.this, null, sharedSecrets, null, 20000, false, "INPUT", false);
 						} catch (IOException e) {
-							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+							logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
 						}
 					}
 				};
 				channel.setOOBMessageHandler(messageHandler);
 				channel.capture();
 			} catch (IOException e) {
-				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+				logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
 			}
 		}
 		else { // responder
@@ -945,7 +945,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				String protocolDesc = lineIn.substring(0, lineIn.indexOf(':'));
 				String channelDesc = lineIn.substring(lineIn.indexOf(':') + 1);
 				if (!protocolDesc.equals(INPUT)) {
-					logger.error("Wrong protocol descriptor from remote device. Abort input protocol.");
+					logger.severe("Wrong protocol descriptor from remote device. Abort input protocol.");
 					return;
 				}
 				// get appropriate channel
@@ -966,7 +966,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 						try {
 							String line = LineReaderWriter.readLine(in);
 							if (!line.equals(DONE)) {
-								logger.error("Unexpected protocol string from remote device. Abort input protocol.");
+								logger.severe("Unexpected protocol string from remote device. Abort input protocol.");
 								return;
 							}
 							// prepare server to handle incoming request
@@ -974,7 +974,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 							LineReaderWriter.println(out, DONE);
 							alertWait("Authentication in progress...", true);
 						} catch (IOException e) {
-							logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+							logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
 						}
 					}
 				};
@@ -982,7 +982,7 @@ public class BedaMIDlet extends MIDlet implements AuthenticationProgressHandler 
 				captureChannel.capture();
 				LineReaderWriter.println(out, READY);
 			} catch (IOException e) {
-				logger.error("Failed to read/write from io stream. Abort input protocol.", e);
+				logger.severe("Failed to read/write from io stream. Abort input protocol.", e);
 			}
 		}
 	}

@@ -31,6 +31,7 @@ public interface Log {
 	 * @param message The message to log.
 	 */
 	public void trace(Object message);
+	public void finest(Object message);
 	
 	/**
 	 * Logs a message at log level trace.
@@ -46,6 +47,7 @@ public interface Log {
 	 * @param message The message to log.
 	 */
 	public void debug(Object message);
+	public void fine(Object message);
 	
 	/**
 	 * Logs a message at log level debug.
@@ -76,6 +78,7 @@ public interface Log {
 	 * @param message The message to log.
 	 */
 	public void warn(Object message);
+	public void warning(Object message);
 	
 	/**
 	 * Logs a message at log level warn.
@@ -84,6 +87,7 @@ public interface Log {
 	 * @param t The cause of the error.
 	 */
 	public void warn(Object message, Throwable t);
+	public void warning(Object message, Throwable t);
 
 	/**
 	 * Logs a message at log level error.
@@ -91,6 +95,7 @@ public interface Log {
 	 * @param message The message to log.
 	 */
 	public void error(Object message);
+	public void severe(Object message);
 	
 	/**
 	 * Logs a message at log level error.
@@ -99,6 +104,7 @@ public interface Log {
 	 * @param t The cause of the error.
 	 */
 	public void error(Object message, Throwable t);
+	public void severe(Object message, Throwable t);
 
 	/**
 	 * Logs a message at log level fatal.

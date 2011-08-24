@@ -10,7 +10,8 @@ package org.openuat.util;
 
 import java.security.SecureRandom;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This class implements a simple interface to a block cipher (AES/Rijndael)
@@ -19,7 +20,7 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
  * @author Rene Mayrhofer
  */
 public class SimpleBlockCipher {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.util.SimpleBlockCipher" /*SimpleBlockCipher.class*/);
 
 	/** The current length in byte of the key. */
@@ -114,8 +115,8 @@ public class SimpleBlockCipher {
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
 						BlockByteLength : plainText.length - i*BlockByteLength;
-				if (logger.isDebugEnabled())
-					logger.debug("Encrypting block " + i + ": " + bytesInBlock + " bytes" + 
+				if (logger.isLoggable(Level.FINER))
+					logger.finer("Encrypting block " + i + ": " + bytesInBlock + " bytes" + 
 							(instanceId != null ? " [instance " + instanceId : ""));
 				System.arraycopy(plainText, i*BlockByteLength, plainBlock, 0, bytesInBlock);
 				// if not filled, the rest is padded with zeros (initialized by the JVM)
@@ -209,8 +210,8 @@ public class SimpleBlockCipher {
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
 						BlockByteLength : plainText.length - i*BlockByteLength; 
-				if (logger.isDebugEnabled())
-					logger.debug("Decrypting block " + i + ": " + bytesInBlock + " bytes" + 
+				if (logger.isLoggable(Level.FINER))
+					logger.finer("Decrypting block " + i + ": " + bytesInBlock + " bytes" + 
 							(instanceId != null ? " [instance " + instanceId : ""));
 				// and finally add to the output
 				System.arraycopy(plainBlock, 0, plainText, i*BlockByteLength, bytesInBlock);
@@ -272,7 +273,7 @@ public class SimpleBlockCipher {
     	byte[] output = new byte[BlockByteLength];
 		int processedBytes = ((org.bouncycastle.crypto.BlockCipher) cipher).processBlock(input, 0, output, 0);
 		if (processedBytes != BlockByteLength) {
-   			logger.error("Block processing went wrong: unexpexted number of bytes returned");
+   			logger.severe("Block processing went wrong: unexpexted number of bytes returned");
 			return new byte[processedBytes];
 		}
 		return output;

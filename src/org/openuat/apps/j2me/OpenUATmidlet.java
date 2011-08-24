@@ -335,7 +335,7 @@ public class OpenUATmidlet extends MIDlet implements CommandListener,
 			warnIcon = Image.createImage("/Button_Icon_Yellow_32.png");
 		} catch (IOException ioe) {
 			warnIcon = null;
-			logger.warn("Could not create warn icon", ioe);
+			logger.warning("Could not create warn icon", ioe);
 		}
 		dev_list.addCommand(exit);
 		dev_list.addCommand(log);

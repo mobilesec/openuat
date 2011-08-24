@@ -220,7 +220,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 						try {
 							Thread.sleep(15);
 						} catch(InterruptedException ie) {
-							logger.warn("Thread interrupted.", ie);
+							logger.warning("Thread interrupted.", ie);
 						}
 						java.awt.EventQueue.invokeLater(new Runnable(){
 							public void run() {
@@ -312,7 +312,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 	// @Override
 	public void vibrate(int milliseconds) {
 		// can't be implemented on this platform
-		logger.warn("Method vibrate(int): Not implemented on J2SE (AWT)");
+		logger.warning("Method vibrate(int): Not implemented on J2SE (AWT)");
 	}
 	
 	
@@ -391,7 +391,7 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 					paintBar(g);
 				}
 				else {
-					logger.warn("Method paint(): 'intervalList' is null");
+					logger.warning("Method paint(): 'intervalList' is null");
 				}
 			}
 			else if (transmissionMode == ButtonChannelImpl.TRANSMIT_VERT_BARS) {
@@ -399,11 +399,11 @@ public class AWTButtonChannelImpl extends ButtonChannelImpl {
 					paintVertBars(g);
 				}
 				else {
-					logger.warn("Method paint(): 'intervalList' is null");
+					logger.warning("Method paint(): 'intervalList' is null");
 				}
 			}
 			else {
-				logger.warn("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
+				logger.warning("Method paint(): Unknown 'transmissionMode': " + transmissionMode);
 			}
 			
 		}

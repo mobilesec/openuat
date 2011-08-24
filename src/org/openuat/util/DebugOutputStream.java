@@ -11,7 +11,7 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This is a decorator for an OutputStream that will log every character
  * written to the underlying stream at log4j trace level.
@@ -23,7 +23,7 @@ public class DebugOutputStream extends OutputStream {
 	/** The underlying output stream to read from. */
 	private OutputStream realStream;
 	
-	/** Our log4j logger */
+	/** Our logger */
 	private Logger logger;
 	
 	/** Initializes the decorator with the real stream. 
@@ -41,7 +41,7 @@ public class DebugOutputStream extends OutputStream {
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	public void write(int c) throws IOException {
-		logger.trace("'" + (char) c + "' " + c);
+		logger.finest("'" + (char) c + "' " + c);
 		realStream.write(c);
 	}
 
@@ -52,7 +52,7 @@ public class DebugOutputStream extends OutputStream {
 		StringBuffer log = new StringBuffer();
 		for (int i=0; i<arr.length; i++)
 			log.append("'" + (char) arr[i] + "' " + arr[i] + ", ");
-		logger.trace(log.toString());
+		logger.finest(log.toString());
 		realStream.write(arr);
 	}
 	
@@ -63,7 +63,7 @@ public class DebugOutputStream extends OutputStream {
 		StringBuffer log = new StringBuffer();
 		for (int i=off; i<off+len; i++)
 			log.append("'" + (char) arr[i] + "' " + arr[i] + ", ");
-		logger.trace(log.toString());
+		logger.finest(log.toString());
 		realStream.write(arr, off, len);
 	}
 	

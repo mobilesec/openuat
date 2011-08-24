@@ -8,7 +8,7 @@
  */
 package org.openuat.sensors;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /** This is a small helper class for checking the status of a device
  * with multiple lines/time series based on the events fired by its SampleSource objects.
@@ -21,7 +21,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public abstract class DeviceStateListener {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.DeviceStateListener" /*DeviceStateListener.class*/);
 
 	/** Used to remember which of the lines are currently active. */
@@ -143,7 +143,7 @@ public abstract class DeviceStateListener {
 			boolean previouslyActive = isActive();
 			lineActive[lineIndex] = true;
 			if (!previouslyActive && isActive()) {
-				logger.debug("Time series " + lineIndex + " is first to become active at index " + numSample);
+				logger.finer("Time series " + lineIndex + " is first to become active at index " + numSample);
 				toActive(lineIndex, numSample);
 			}
 		}
@@ -153,7 +153,7 @@ public abstract class DeviceStateListener {
 			boolean previouslyActive = isActive();
 			lineActive[lineIndex] = false;
 			if (previouslyActive && !isActive()) {
-				logger.debug("Time series " + lineIndex + " is last to become quiescent");
+				logger.finer("Time series " + lineIndex + " is last to become quiescent");
 				toQuiescent(lineIndex, numSample);
 			}
 		}

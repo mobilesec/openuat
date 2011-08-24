@@ -28,9 +28,6 @@ import org.openuat.util.IntervalList;
  * @version 1.0
  */
 public abstract class ButtonChannel implements OOBChannel, ButtonInputHandler {
-	
-	
-	
 	/**
 	 * Length of an oob message that can be sent
 	 * over a button channel: 24 bit = 3 byte.<br/>

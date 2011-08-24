@@ -12,7 +12,7 @@ import java.io.*;
 import java.util.*;
 import java.net.*;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * A simple, tiny, nicely embeddable HTTP 1.0 server in Java
@@ -65,8 +65,8 @@ import org.apache.log4j.Logger;
  * </ul>
  */
 public class PDAHTTPServer {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(PDAHTTPServer.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(PDAHTTPServer.class.getName());
 	
 	Vector listeners;
 	
@@ -98,18 +98,18 @@ public class PDAHTTPServer {
 	 */
 	public Response serve(String uri, String method, Properties header,
 			Properties parms) {
-		logger.debug(method + " '" + uri + "' ");
+		logger.finer(method + " '" + uri + "' ");
 
 		Enumeration e = header.propertyNames();
 		while (e.hasMoreElements()) {
 			String value = (String) e.nextElement();
-			logger.debug("  HDR: '" + value + "' = '"
+			logger.finer("  HDR: '" + value + "' = '"
 					+ header.getProperty(value) + "'");
 		}
 		e = parms.propertyNames();
 		while (e.hasMoreElements()) {
 			String value = (String) e.nextElement();
-			logger.debug("  PRM: '" + value + "' = '"
+			logger.finer("  PRM: '" + value + "' = '"
 					+ header.getProperty(value) + "'");
 		}
 		return serveFile(uri, header, new File("."), true);
@@ -222,10 +222,10 @@ public class PDAHTTPServer {
 		t.setDaemon(deamon);
 		t.start();
 		this.myFileDir = new File("");
-		logger.debug("Now serving files in port " + port + " from \""
+		logger.finer("Now serving files in port " + port + " from \""
 				+ new File("").getAbsolutePath() + "\"");
 		if (deamon){
-			logger.debug("Hit Enter to stop.\n");
+			logger.finer("Hit Enter to stop.\n");
 			
 				try {
 					System.in.read();
@@ -268,7 +268,7 @@ public class PDAHTTPServer {
 		try {
 			new PDAHTTPServer(port, deamon, ia);
 		} catch (IOException ioe) {
-			logger.error("Couldn't start server:\n" + ioe);
+			logger.severe("Couldn't start server:\n" + ioe);
 			System.exit(-1);
 		}
 	}
@@ -288,7 +288,7 @@ public class PDAHTTPServer {
 
 		public void run() {
 			try {
-				logger.debug("try method in run ");
+				logger.finer("try method in run ");
 				InputStream is = mySocket.getInputStream();
 				if (is == null)
 					return;
@@ -298,7 +298,7 @@ public class PDAHTTPServer {
 				Response r = null;
 				String inLine = in.readLine();
 				if (inLine == null){
-					logger.debug("in Line was null !");
+					logger.finer("in Line was null !");
 					sendAnswer(HTTP_BADREQUEST,
 					"BAD REQUEST: Syntax error. Usage: GET /example/file.html");
 					return;
@@ -311,10 +311,10 @@ public class PDAHTTPServer {
 				if (!st.hasMoreTokens())
 					sendAnswer(HTTP_BADREQUEST,
 							"BAD REQUEST: Missing URI. Usage: GET /example/file.html");
-				logger.debug("before decode");
+				logger.finer("before decode");
 				
 				String uri = decodePercent(st.nextToken());
-				logger.debug("afeter decode");
+				logger.finer("afeter decode");
 				// Decode parameters from the URI
 				Properties parms = new Properties();
 				int qmi = uri.indexOf('?');
@@ -332,13 +332,13 @@ public class PDAHTTPServer {
 						header.put(line.substring(0, p).trim(), line.substring(
 								p + 1).trim());
 						line = in.readLine();
-						logger.debug("header reading: "+line);
+						logger.finer("header reading: "+line);
 					}
 				}
 				// If the method is POST, there may be parameters
 				// in data section, too, read it:
 				if (method.equalsIgnoreCase("POST")) {
-					logger.debug(" recognition of POST request");
+					logger.finer(" recognition of POST request");
 					long size = 0x7FFFFFFFFFFFFFFFl;
 					String contentLength = header.getProperty("Content-Length");
 					if (contentLength != null) {
@@ -358,7 +358,7 @@ public class PDAHTTPServer {
 					
 					String id = header.getProperty(HTTPSocket.RELATE_ATTRIBUTE_ID);
 					if (relateFile != null) {
-						logger.debug("header contains a X-Relate-Filename");
+						logger.finer("header contains a X-Relate-Filename");
 						long now = System.currentTimeMillis();
 						File outfile = new File(now + "-" + relateFile);
 						FileOutputStream os = new FileOutputStream(outfile);
@@ -380,15 +380,15 @@ public class PDAHTTPServer {
 							os.flush();
 						}
 						os.close();
-						logger.debug("file received and stored");
+						logger.finer("file received and stored");
 						File received =new File(relateFile);
 						outfile.renameTo(received);
 						FileTransferEvent fte =new FileTransferEvent(id, received);
 						fireEventToListener(fte);
-						logger.debug("file renamed");
+						logger.finer("file renamed");
 						sendAnswer(HTTP_OK,
 						"SERVER INFO: File Transmitted.");
-						logger.debug(" http_ok send back");
+						logger.finer(" http_ok send back");
 						return;
 					} else { // some parameter might be transfered.
 						String postLine = "";
@@ -425,11 +425,11 @@ public class PDAHTTPServer {
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();
 			}
-			logger.debug("END of run");
+			logger.finer("END of run");
 		}
 
 		private void fireEventToListener(FileTransferEvent fte) {
-			logger.debug("fire filetransfer event to listeners: " +listeners.size());
+			logger.finer("fire filetransfer event to listeners: " +listeners.size());
 			Iterator iter= listeners.iterator();
 			while(iter !=null && iter.hasNext()){
 				FileTransferListener l = (FileTransferListener)iter.next();
@@ -609,19 +609,19 @@ public class PDAHTTPServer {
 				|| uri.indexOf("../") >= 0)
 			return new Response(HTTP_FORBIDDEN, MIME_PLAINTEXT,
 					"FORBIDDEN: Won't serve ../ for security reasons.");
-		logger.debug("homeDir: " + homeDir);
-		logger.debug("uri: " + uri);
+		logger.finer("homeDir: " + homeDir);
+		logger.finer("uri: " + uri);
 		File f = new File(homeDir, uri);
-		logger.debug("file: " + f.toString());
+		logger.finer("file: " + f.toString());
 		if (!f.exists()) {
-			logger.debug("file does not exist");
+			logger.finer("file does not exist");
 			return new Response(HTTP_NOTFOUND, MIME_PLAINTEXT,
 					"Error 404, file not found.");
 		}
 
 		// List the directory, if necessary
 		if (f.isDirectory()) {
-			logger.debug("f is directory");
+			logger.finer("f is directory");
 			// Browsers get confused without '/' after the
 			// directory, send a redirect.
 			if (!uri.endsWith("/")) {
@@ -692,7 +692,7 @@ public class PDAHTTPServer {
 		}
 
 		try {
-			logger.debug("get MIME typ");
+			logger.finer("get MIME typ");
 			// Get MIME type from file name extension, if possible
 			String mime = null;
 			int dot = f.getCanonicalPath().lastIndexOf('.');

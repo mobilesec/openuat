@@ -15,7 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** This is a base class for reading from sensors that are represented by
  * simple files and output ASCII lines, with one line for each sample. It
@@ -30,7 +31,7 @@ import org.apache.log4j.Logger;
  * @version 1.0
  */
 public abstract class AsciiLineReaderBase extends SamplesSource {
-	/** Our log4j logger. */
+	/** Our logger. */
 	private static Logger logger = Logger.getLogger("org.openuat.sensors.AsciiLineReaderBase" /*AsciiLineReaderBase.class*/);
 	
 	/** This represent the stream to read from and is opened in the constructor.
@@ -163,14 +164,14 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 				}
 			}
 			catch (IOException e) {
-				if (logger.isDebugEnabled())
-					logger.debug("Ignoring exception, but ending reading: " + e);
+				if (logger.isLoggable(Level.FINER))
+					logger.finer("Ignoring exception, but ending reading: " + e);
 				return false;
 			}
 			return true;
 		}
 		catch (IOException e) {
-			logger.error("Could not read from file: " + e);
+			logger.severe("Could not read from file: " + e);
 			return false;
 		}
 	}
@@ -187,7 +188,7 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 				port.close();
 		}
 		catch (Exception e) {
-			logger.error("Could not properly close input stream");
+			logger.severe("Could not properly close input stream");
 		}
 	}
 

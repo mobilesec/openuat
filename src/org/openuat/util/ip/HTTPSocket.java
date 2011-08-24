@@ -19,11 +19,11 @@ import java.net.Socket;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 public class HTTPSocket  implements Runnable{
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(HTTPSocket.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(HTTPSocket.class.getName());
 
 	public static String RELATE_ATTRIBUTE_FILENAME = "X-Relate-Filename";
 	public static String RELATE_ATTRIBUTE_ID = "X-Relate-Id";
@@ -77,15 +77,15 @@ public class HTTPSocket  implements Runnable{
 	 * 		to yes, file transfer was succesful.
 	 */
 	public boolean sendFile(InetAddress ip, FileTransferEvent fts) {
-		logger.debug(" begin of sending file to "+ip.getHostAddress());
+		logger.finer(" begin of sending file to "+ip.getHostAddress());
 		this.ip=ip;
 		this.destId= fts.getSource().toString();
 		fileToSend=fts.getTmpFile();
 		if (!fileToSend.isFile()){
-			logger.warn("file does not exist.");
+			logger.warning("file does not exist.");
 			return false;
 		}
-		logger.debug("create thread");
+		logger.finer("create thread");
 		thread = new Thread(this);
 		thread.start();
 		return true;
@@ -118,7 +118,7 @@ public class HTTPSocket  implements Runnable{
 		String filename = file.getName().replace(' ', '_');
 		FileNameMap fileNameMap = URLConnection.getFileNameMap();
 	    String mimeType = fileNameMap.getContentTypeFor(filename);
-	    logger.debug("MIME TYPE: "+ mimeType);
+	    logger.finer("MIME TYPE: "+ mimeType);
 		String header = "POST / HTTP/1.1\r\n";
 		header += RELATE_ATTRIBUTE_FILENAME+": " + filename + "\r\n";
 		header += RELATE_ATTRIBUTE_ID + ": " + id + "\r\n";
@@ -133,7 +133,7 @@ public class HTTPSocket  implements Runnable{
 	}
 
 	public void run() {
-		logger.debug("in run ");
+		logger.finer("in run ");
 		OutputStream out=null;
 		try {
 			Socket myClient = null;
@@ -142,17 +142,17 @@ public class HTTPSocket  implements Runnable{
 			writeHTTPHeader(ip, out, fileToSend, destId);
 			sendFileContentToHost(out, fileToSend);
 		} catch (UnknownHostException e) {
-			logger.warn(" unknown Host Exception: " + ip.getHostAddress()
+			logger.warning(" unknown Host Exception: " + ip.getHostAddress()
 					+ " is unknown host");
 		} catch (IOException e) {
-			logger.warn("file " + fileToSend.getAbsolutePath()+
+			logger.warning("file " + fileToSend.getAbsolutePath()+
 					" not found in your System");
 		}
 		if (out != null ){
 			try {
 				out.close();
 			} catch (IOException e) {
-				logger.warn(" closing the output stream throw a IO Exception.");
+				logger.warning(" closing the output stream throw a IO Exception.");
 			}
 		}
 		

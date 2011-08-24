@@ -8,20 +8,13 @@
  */
 package org.openuat.sensors.test;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
 
 import org.openuat.authentication.accelerometer.ShakeWellBeforeUseParameters;
 import org.openuat.sensors.AsciiLineReaderBase;
 import org.openuat.sensors.ParallelPortPWMReader;
-import org.openuat.sensors.TimeSeriesAggregator;
 import org.openuat.sensors.TimeSeriesAlignment;
 
 import junit.framework.Assert;

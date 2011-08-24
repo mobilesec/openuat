@@ -13,7 +13,7 @@ import java.net.InetAddress;
 import java.util.Iterator;
 import java.util.Vector;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /*
  * file transfer is realised over http protocol. to 
@@ -31,8 +31,8 @@ import org.apache.log4j.Logger;
  */
 
 public class FileTransferService {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(FileTransferService.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(FileTransferService.class.getName());
 
 	private static FileTransferService instance;
 
@@ -104,7 +104,7 @@ public class FileTransferService {
 				pdaServer =new PDAHTTPServer(port,false, ia);
 				pdaServer.addFileTransferListener(listener);
 			} catch (IOException ioe) {
-				logger.error("Couldn't start server:\n");
+				logger.severe("Couldn't start server:\n");
 				System.exit(-1);
 			}
 		}else {
@@ -117,7 +117,7 @@ public class FileTransferService {
 		public FileTransferHandler() {
 		}
 		public void receivedFile(FileTransferEvent fts) {
-			logger.debug(" file received: "
+			logger.finer(" file received: "
 					+ fts.getTmpFile().getAbsolutePath());
 			FileTransferService.this.fireFileToListeners(fts);
 		}

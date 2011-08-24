@@ -26,7 +26,9 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.codec.audio.AudioUtils;
 import org.codec.audio.PlayerPiano;
 import org.codec.audio.WavPlayer;
@@ -108,7 +110,7 @@ public class OpenUATtoolkit {
 				LineReaderWriter.println(connectionToRemote.getOutputStream(), message);
 				return false;
 			} catch (IOException e) {
-				logger.error("Unable to open stream to remote: " + e);
+				logger.severe("Unable to open stream to remote: " + e);
 			}
 			return true;
 
@@ -124,7 +126,7 @@ public class OpenUATtoolkit {
 			try {
 				line = LineReaderWriter.readLine(connectionToRemote.getInputStream(), -1);
 			} catch (IOException e) {
-				logger.error("Unable to open stream to remote: " + e);
+				logger.severe("Unable to open stream to remote: " + e);
 			}
 			return line;
 
@@ -158,14 +160,14 @@ public class OpenUATtoolkit {
 			/** check to see which out-of-band channel should be used for verification */
 			if (verify.equals(UACAPProtocolConstants.VERIFY)){
 				String method = readLine(connectionToRemote);
-				if (logger.isDebugEnabled()) {
-					logger.debug("method: " + method);
+				if (logger.isLoggable(Level.FINER)) {
+					logger.finer("method: " + method);
 				}
 				byte[] hash = null;
 				try {
 					hash = Hash.doubleSHA256(authKey, false);
 				} catch (InternalApplicationException e) {
-					logger.debug("Error while creating hash: " + e);
+					logger.finer("Error while creating hash: " + e);
 				}
 				if (method.equals(UACAPProtocolConstants.VISUAL)){//generate QR code and display
 					send (UACAPProtocolConstants.ACK, connectionToRemote);
@@ -180,8 +182,8 @@ public class OpenUATtoolkit {
 						
 						// the trimmed hash is encoded in hexadecimal because otherwise the QR decoder cannot cope with it
 						String toSend = new String(Hex.encodeHex(trimmedHash));
-						if (logger.isDebugEnabled()) {
-							logger.debug("hash: "+toSend);
+						if (logger.isLoggable(Level.FINER)) {
+							logger.finer("hash: "+toSend);
 						}
 						//display the QR code 
 						VisualChannel channel = new VisualChannel();
@@ -207,8 +209,8 @@ public class OpenUATtoolkit {
 						//the audio codec works best if we add some padding after the hash 
 						byte [] padded = new byte[toSend.length + UACAPProtocolConstants.AUDIO_PADDING];
 						System.arraycopy(toSend, 0, padded, 0, toSend.length);
-						if (logger.isDebugEnabled()) {
-							logger.debug("hash: "+toSend);
+						if (logger.isLoggable(Level.FINER)) {
+							logger.finer("hash: "+toSend);
 						}
 					
 					java.net.URL imageURL = getClass().getResource("/audio_bg.png");
@@ -228,7 +230,7 @@ public class OpenUATtoolkit {
 					MadLib madLib = new MadLib();
 					try {
 						String text = madLib.GenerateMadLib(hash, 0, 5);
-						if (logger.isDebugEnabled()) logger.debug("MADLIB: "+text);
+						if (logger.isLoggable(Level.FINER)) logger.finer("MADLIB: "+text);
 //						java.net.URL imageURL = getClass().getResource("/madlib_bg.png");
 //						ImageIcon icon = new ImageIcon(imageURL);
 //						progress.add(new JLabel(text, icon, JLabel.CENTER));
@@ -236,7 +238,7 @@ public class OpenUATtoolkit {
 						status.setFont(new Font("Serif",Font.BOLD, 24));
 						frame.repaint();
 					} catch (UnsupportedEncodingException e) {
-						logger.error("UnsupportedEncodingException", e);
+						logger.log(Level.SEVERE, "UnsupportedEncodingException", e);
 					}
 					send (UACAPProtocolConstants.DONE, connectionToRemote);
 					String done = readLine(connectionToRemote);
@@ -260,7 +262,7 @@ public class OpenUATtoolkit {
 					try {
 						String text = Hash.getHexString(Hash.doubleSHA256(authKey, false));
 						text = text.substring(0, UACAPProtocolConstants.HASH_STRING_LENGTH);
-						if (logger.isDebugEnabled()) logger.debug("hash: "+text);
+						if (logger.isLoggable(Level.FINER)) logger.finer("hash: "+text);
 //						java.net.URL imageURL = getClass().getResource("/madlib_bg.png");
 //						ImageIcon icon = new ImageIcon(imageURL);
 //						progress.add(new JLabel(text, icon, JLabel.CENTER));
@@ -269,7 +271,7 @@ public class OpenUATtoolkit {
 						frame.repaint();
 						System.out.println("done updating frame");
 					} catch (InternalApplicationException e) {
-						logger.error("Failed to build hash.", e);
+						logger.log(Level.SEVERE, "Failed to build hash.", e);
 						System.out.println("error"+e);
 						return;
 					}
@@ -296,7 +298,7 @@ public class OpenUATtoolkit {
 
 					PlayerPiano.PlayerPiano(score);
 				} catch (Exception ioex) {
-					logger.error(ioex);
+					logger.log(Level.SEVERE, "Unable to play MIDI tune", ioex);
 				}
 			}
 
@@ -308,9 +310,9 @@ public class OpenUATtoolkit {
 			
 			if(success.equals(UACAPProtocolConstants.SUCCESS)){
 				status.setText("Congratulations! Authentication was successful.");
-				if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+				if(logger.isLoggable(Level.INFO)) logger.info("Authentication completed successfully.");
 			}else if (success.equals(UACAPProtocolConstants.FAILURE)){
-				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
+				if(logger.isLoggable(Level.INFO)) logger.info("Authentication failed.");
 				status.setText("Error! Authentication failed.");
 			
 			}else if (success.equals(UACAPProtocolConstants.REPLAY)){
@@ -328,9 +330,9 @@ public class OpenUATtoolkit {
 		private void tryAudio(RemoteConnection connectionToRemote, byte[] sound) {
 			String start = readLine(connectionToRemote);
 			if(start.equals(UACAPProtocolConstants.START)){
-				if (logger.isDebugEnabled()) logger.debug("Playing...");
+				if (logger.isLoggable(Level.FINER)) logger.finer("Playing...");
 				WavPlayer.PlayWav(new ByteArrayInputStream(sound));
-				if (logger.isDebugEnabled()) logger.debug("Done.");
+				if (logger.isLoggable(Level.FINER)) logger.finer("Done.");
 				send(UACAPProtocolConstants.DONE, connectionToRemote);
 				String outcome = readLine(connectionToRemote);
 				status.setText("");
@@ -342,13 +344,13 @@ public class OpenUATtoolkit {
 					//					ImageIcon icon = new ImageIcon(imageURL);
 					//					progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 					status.setText("Congratulations! Authentication was successful.");
-					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+					if(logger.isLoggable(Level.INFO)) logger.info("Authentication completed successfully.");
 					
 					
 					//for demo purposes
 					connectionToRemote.close();
 				}else if (outcome.equals(UACAPProtocolConstants.FAILURE)){
-					if(logger.isInfoEnabled()) logger.info("Authentication failed.");
+					if(logger.isLoggable(Level.INFO)) logger.info("Authentication failed.");
 
 					//					java.net.URL imageURL = getClass().getResource("/error_bg.png");
 					//					ImageIcon icon = new ImageIcon(imageURL);
@@ -381,10 +383,10 @@ public class OpenUATtoolkit {
 //				ImageIcon icon = new ImageIcon(imageURL);
 //				progress.add(new JLabel("Congratulations! Authentication was successful.", icon, JLabel.CENTER));
 				status.setText("Congratulations! Authentication was successful.");
-					if(logger.isInfoEnabled()) logger.info("Authentication completed successfully.");
+					if(logger.isLoggable(Level.INFO)) logger.info("Authentication completed successfully.");
 				
 			}else if (success.equals(UACAPProtocolConstants.FAILURE)){
-				if(logger.isInfoEnabled()) logger.info("Authentication failed.");
+				if(logger.isLoggable(Level.INFO)) logger.info("Authentication failed.");
 				
 //				java.net.URL imageURL = getClass().getResource("/error_bg.png");
 //				ImageIcon icon = new ImageIcon(imageURL);
@@ -453,7 +455,7 @@ public class OpenUATtoolkit {
 
 	private  void initBluetoothServer() {
 		if (! BluetoothSupport.init()) {
-			logger.error("Could not initialize Bluetooth API");
+			logger.severe("Could not initialize Bluetooth API");
 			return;
 		}
 
@@ -464,7 +466,7 @@ public class OpenUATtoolkit {
 			rfcommServer.start();
 			logger.info("Finished starting SDP service at " + rfcommServer.getRegisteredServiceURL());
 		} catch (IOException e) {
-			logger.error("Error initializing BlutoothRFCOMMServer: " + e);
+			logger.severe("Error initializing BlutoothRFCOMMServer: " + e);
 			e.printStackTrace();
 		}
 	}

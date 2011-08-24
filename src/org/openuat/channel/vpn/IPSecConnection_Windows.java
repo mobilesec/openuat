@@ -14,7 +14,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.LinkedList;
 
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the Windows 2000/XP implementation. It is
@@ -25,8 +25,8 @@ import org.apache.commons.codec.binary.*;
  * @version 1.0
  */
 public class IPSecConnection_Windows implements IPSecConnection {
-	/** Our log4j logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class);
+	/** Our logger. */
+	private static Logger logger = Logger.getLogger(IPSecConnection_Windows.class.getName());
 	
 	/** These values are from types.h from the ipsec2k library. */
 	private static final int CIPHER_3DES = 3;
@@ -66,11 +66,11 @@ public class IPSecConnection_Windows implements IPSecConnection {
 				return addr.getAddress();
 			}
 			else {
-				logger.error("The passed address is not an IPv4 address");
+				logger.severe("The passed address is not an IPv4 address");
 				return null;
 			}
 		} catch (UnknownHostException e) {
-			logger.error("Could not parse address or could not resolve hose name:" + e);
+			logger.severe("Could not parse address or could not resolve hose name:" + e);
 			return null;
 		}
 	}
@@ -128,7 +128,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
-			logger.error("Can not initialize connection with remote '" + remoteHost + 
+			logger.severe("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
 			return false;
 		}
@@ -176,11 +176,11 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	 */
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
-			logger.error("Can not start connection, remoteHost not yet set");
+			logger.severe("Can not start connection, remoteHost not yet set");
 			return false;
 		}
 
-		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
+		logger.finer("Trying to create " + (persistent ? "persistent" : "temporary") + 
 				" ipsec connection to host " + remoteHost + 
 				(remoteNetwork != null ? " to remote network " + remoteNetwork + "/" + remoteNetmask : ""));
 		// TODO: error checks on input parameters!
@@ -229,14 +229,14 @@ public class IPSecConnection_Windows implements IPSecConnection {
 			}
 			String policyId = registerPolicy(handle);
 			if (policyId == null) {
-				logger.error("Could not create IPSec policy to address " + remoteHost);
+				logger.severe("Could not create IPSec policy to address " + remoteHost);
 				return false;
 			}
 			logger.info("Created IPSec policy to address " + remoteHost + 
 					" with GUID " + policyId + ", activating now");
 			
 			if (! activatePolicy(policyId)) {
-				logger.error("Could not activate IPSec policy to address " + remoteHost + 
+				logger.severe("Could not activate IPSec policy to address " + remoteHost + 
 						" with GUID " + policyId);
 				return false;
 			}
@@ -247,7 +247,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 			return true;
 		}
 		catch (IOException e) {
-			logger.error("Could not get list of local addresses: " + e);
+			logger.severe("Could not get list of local addresses: " + e);
 			return false;
 		}
 	}
@@ -258,7 +258,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 	 */
 	public boolean stop() {
 		/*if (policies == null) {
-			logger.error("Can not stop IPSec connections because no policies have been installed");
+			logger.severe("Can not stop IPSec connections because no policies have been installed");
 			return false;
 		}
 		
@@ -266,12 +266,12 @@ public class IPSecConnection_Windows implements IPSecConnection {
 			String policyId = (String) policies.removeFirst();
 			logger.info("Removing IPSec policy with GUID " + policyId);
 			if (! deactivatePolicy(policyId)) {
-				logger.error("Could not deactivate IPSec policy with GUID " + policyId);
+				logger.severe("Could not deactivate IPSec policy with GUID " + policyId);
 				// ignore it here, deactivated the others
 				continue;
 			}
 			if (! removePolicy(policyId)) {
-				logger.error("Could not remove IPSec policy with GUID " + policyId);
+				logger.severe("Could not remove IPSec policy with GUID " + policyId);
 				// ignore it here, remove the others
 			}
 		}
@@ -279,16 +279,16 @@ public class IPSecConnection_Windows implements IPSecConnection {
 		return policies.size() == 0;*/
 		
 		if (policy == null) {
-			logger.error("Can not stop IPSec connections because no policy has been installed");
+			logger.severe("Can not stop IPSec connections because no policy has been installed");
 			return false;
 		}
 		logger.info("Removing IPSec policy with GUID " + policy);
 		if (! deactivatePolicy(policy)) {
-			logger.error("Could not deactivate IPSec policy with GUID " + policy);
+			logger.severe("Could not deactivate IPSec policy with GUID " + policy);
 			return false;
 		}
 		if (! removePolicy(policy)) {
-			logger.error("Could not remove IPSec policy with GUID " + policy);
+			logger.severe("Could not remove IPSec policy with GUID " + policy);
 			return false;
 		}
 		policy = null;
@@ -321,7 +321,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 				ret += ".";
 		}
 		
-		logger.debug("Converted CIDR-style netmask '" + cidrMask + "' to address-style netmask '" + ret + "'");
+		logger.finer("Converted CIDR-style netmask '" + cidrMask + "' to address-style netmask '" + ret + "'");
 		return ret;
 	}
 
