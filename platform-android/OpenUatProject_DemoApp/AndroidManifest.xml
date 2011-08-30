@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="at.fhooe.mc1010237"
+      android:versionCode="1"
+      android:versionName="1.0" android:installLocation="preferExternal">
+
+
+    <application android:icon="@drawable/icon" android:label="@string/app_name" android:persistent="false">
+        <activity android:name="DemoApp"
+        		  android:configChanges="keyboardHidden|orientation"
+                  android:label="@string/app_name">
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.PICK_ACTIVITY"></action>
+                <action android:name="android.intent.action.MAIN"></action>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

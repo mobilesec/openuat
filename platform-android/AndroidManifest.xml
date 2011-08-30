@@ -3,6 +3,7 @@
 	package="org.openuat.apps.android" android:versionCode="1" android:versionName="1.0">
 
 	<application android:icon="@drawable/icon" android:label="@string/app_name_openuat">
+        <!-- requires Bluetooth permission -->
 		<activity android:label="@string/launcher_name_shake" 
 				  android:name=".StartActivity"
 				  android:taskAffinity=".StartActvity">
@@ -14,6 +15,7 @@
 		<activity android:name="ResultActivity" android:label="@string/launcher_name_shake"></activity>
 		<activity android:name="SampleSinkAndroid" android:label="@string/launcher_name_shake"></activity>
 
+        <!-- requires Internet permission -->
         <activity android:label="@string/launcher_name_scope" 
         		  android:name=".ReadSensor"
         		  android:taskAffinity=".ReadSensor">
@@ -22,6 +24,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <!--  requires Internet permission -->
+        <service android:name=".WifiService" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="org.openuat.android.apps.WifiService"></action>
+            </intent-filter>
+        </service>
 	</application>
 
 	<uses-permission android:name="android.permission.INTERNET"></uses-permission>
