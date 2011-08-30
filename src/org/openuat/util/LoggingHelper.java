@@ -8,10 +8,25 @@
  */
 package org.openuat.util;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 public class LoggingHelper {
+	public final static String LOGGING_PROPERTIES_FILE = "logging.properties"; 
+	
+	public static void init() {
+		try {
+			FileInputStream fis = new FileInputStream(LOGGING_PROPERTIES_FILE);
+		    LogManager.getLogManager().readConfiguration(fis);
+		} catch (IOException e) {
+			Logger log = Logger.getAnonymousLogger();
+			log.log(Level.SEVERE, "Unable to load logging properties file " + LOGGING_PROPERTIES_FILE, e);
+		}
+	}
+	
 	public static void debugWithException(Logger logger, String msg, Exception e) {
 //#if cfg.haveReflectionSupport
 		String stackTrace = "";
