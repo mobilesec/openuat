@@ -6,15 +6,16 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-package org.openuat.apps.groupkey;
+package org.openuat.groupkey;
 
 import java.util.Hashtable;
+
 /**
  * 
  * @author Christoph Egger, Lukas Wallentin
  * Extends Runnable interface, as implementations MUST run as threads
  */
-public interface ifPair extends ifListener {
+public interface PairwiseKeyHandler extends StringEventListener {
 	/**
 	 * Returns Hashtable with keys
 	 */

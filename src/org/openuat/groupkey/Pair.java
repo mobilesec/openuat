@@ -7,7 +7,7 @@
  * (at your option) any later version.
  */
 
-package org.openuat.apps.groupkey;
+package org.openuat.groupkey;
 
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -34,13 +34,13 @@ import org.openuat.util.SimpleBlockCipher;
  * additional keys between its two hop neighbors.
  */
 
-public class Pair implements ifPair 
+public class Pair implements PairwiseKeyHandler 
 {
 	private Hashtable pairKeyTable; //Tables for keys from one hop neighbors
 	private Hashtable tmpKeyTable; //Table for keys from one and two hop neighbors
 	private Hashtable keyGeneration;
 	private String name;
-	private ifComm comm;
+	private GroupKeyMessageHandler comm;
 	private String log;
 	private Vector workspace;
 	private boolean init;
@@ -52,7 +52,7 @@ public class Pair implements ifPair
     /**
 	* Standard Constructor
 	*/
-	public Pair()
+	public Pair(GroupKeyMessageHandler _comm)
 	{
 		lock=false;
 		pairKeyTable=new Hashtable();
@@ -64,9 +64,11 @@ public class Pair implements ifPair
 		magicWord = new String("KlaatuBaradaNikto");
 		log="init - ";
 		init=true;
-		comm = new CommPlain();
-		Thread commThread = new Thread(comm);
-		commThread.start();	
+		comm = _comm;
+		if (comm != null) {
+			Thread commThread = new Thread(comm);
+			commThread.start();
+		}
 		cipher = new SimpleBlockCipher(true);			
 	}
 	/**
@@ -131,7 +133,7 @@ public class Pair implements ifPair
 	}
 	
 	/**
-	 * @see org.openuat.apps.groupkey.ifPair#getLog()
+	 * @see org.openuat.groupkey.PairwiseKeyHandler#getLog()
 	 */
 	public String getLog()
 	{
@@ -139,7 +141,7 @@ public class Pair implements ifPair
 	}
 	
 	/**
-	 * @see org.openuat.apps.groupkey.ifPair#getKey(java.lang.String)
+	 * @see org.openuat.groupkey.PairwiseKeyHandler#getKey(java.lang.String)
 	 */
 	public byte[] getKey(String _bob) 
 	{
@@ -151,7 +153,7 @@ public class Pair implements ifPair
 	}
 
 	/**
-	 * @see org.openuat.apps.groupkey.ifPair#listKeys()
+	 * @see org.openuat.groupkey.PairwiseKeyHandler#listKeys()
 	 */
 	public Hashtable listKeys() 
 	{
@@ -159,7 +161,7 @@ public class Pair implements ifPair
 	}
 
    /**
-    * @see org.openuat.apps.groupkey.ifPair#setKeyPair(java.lang.String, byte[])
+    * @see org.openuat.groupkey.PairwiseKeyHandler#setKeyPair(java.lang.String, byte[])
     */
 	public void setKeyPair(String _remote, byte[] _key) 
 	{
@@ -170,7 +172,7 @@ public class Pair implements ifPair
 	}
 	
 	/**
-	 * @see org.openuat.apps.groupkey.ifPair#setName(java.lang.String)
+	 * @see org.openuat.groupkey.PairwiseKeyHandler#setName(java.lang.String)
 	 */
 	public void setName( String _name)
 	{
@@ -184,7 +186,7 @@ public class Pair implements ifPair
 	 * If there is a new message, the message is stored in the vector 
 	 * for later usage
 	 * 
-	 * @see org.openuat.apps.groupkey.ifListener#handleStringEvent(java.lang.String, boolean)
+	 * @see org.openuat.groupkey.StringEventListener#handleStringEvent(java.lang.String, boolean)
 	 */
 	public void handleStringEvent(String _data, boolean _success) 
 	{
@@ -441,7 +443,7 @@ public class Pair implements ifPair
 	}
 	
 	/**
-	 * @see org.openuat.apps.groupkey.ifPair#resetLog()
+	 * @see org.openuat.groupkey.PairwiseKeyHandler#resetLog()
 	 */
 	public void resetLog()
 	{

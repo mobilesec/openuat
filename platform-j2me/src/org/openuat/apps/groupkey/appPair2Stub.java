@@ -23,14 +23,17 @@ import org.apache.commons.codec.binary.Hex;
 import org.openuat.authentication.SimpleKeyAgreement;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.authentication.exceptions.KeyAgreementProtocolException;
+import org.openuat.groupkey.Pair;
+import org.openuat.groupkey.StringEventListener;
+import org.openuat.groupkey.PairwiseKeyHandler;
 
 /**
  * @author Lukas
  *
  */
-public class appPair2Stub implements ifListener,CommandListener {
+public class appPair2Stub implements StringEventListener,CommandListener {
 
-	private ifPair pair;
+	private PairwiseKeyHandler pair;
 	private String message;
 	//Midlet Sachen
 	private Display display;
@@ -45,7 +48,7 @@ public class appPair2Stub implements ifListener,CommandListener {
 
 	public appPair2Stub(Display _display){
 		display = _display;
-		pair = new Pair();
+		pair = new Pair(new CommPlain());
 		Thread commThread = new Thread(pair);
 		commThread.start();
 	}

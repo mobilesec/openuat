@@ -9,6 +9,8 @@ import javax.microedition.io.HttpConnection;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.openuat.groupkey.GroupKeyMessageHandler;
+import org.openuat.groupkey.StringEventListener;
 
 /**
  * @author Christoph Egger
@@ -25,7 +27,7 @@ import org.apache.commons.codec.binary.Hex;
  *  stops the waiting in the run() method. Further work has to be done triggered 
  *  by the run() method.
  */
-public class CommHex implements ifComm {
+public class CommHex implements GroupKeyMessageHandler {
 
 	private String serverLocation = "http://www.ibk.tuwien.ac.at/~lwallentin/UAT/";
 	private int whatToDo = 0; //1=send, 2=get, 3=getSince
@@ -38,7 +40,7 @@ public class CommHex implements ifComm {
 	private String folder;
 	private String message;
 	private int time;
-	private ifListener guest;
+	private StringEventListener guest;
 	private String log;
 	/**
 	 * Standard Constructor
@@ -72,9 +74,9 @@ public class CommHex implements ifComm {
 	 * 
 	 * @param _folder folder name where the desired messages are
 	 * @param _guest calling application thread
-	 * @see ifComm
+	 * @see GroupKeyMessageHandler
 	 */
-	public void getMsg(String _folder, ifListener _guest) {
+	public void getMsg(String _folder, StringEventListener _guest) {
 		synchronized (this){
 			log+="getMsg - ";
 			folder = _folder;
@@ -86,7 +88,7 @@ public class CommHex implements ifComm {
 	/**
 	 * Called by the run method when the reception of all message is triggered by getMsg
 	 * @see Comm#run()
-	 * @see Comm#getMsg(String, ifListener)
+	 * @see Comm#getMsg(String, StringEventListener)
 	 */
 	private synchronized void get() {
 		String URL1 = serverLocation + "get.php?folder="+folder;
@@ -122,9 +124,9 @@ public class CommHex implements ifComm {
 	 * @param _folder folder name where the desired messages are
 	 * @param _time starting time, oldest wanted message
 	 * @param _guest calling application thread
-	 * @see ifComm
+	 * @see GroupKeyMessageHandler
 	 */
-	public void getMsgSince(String _folder, int _time, ifListener _guest) {
+	public void getMsgSince(String _folder, int _time, StringEventListener _guest) {
 		synchronized (this){
 			log+="getMsgSince - ";
 			folder = _folder;
@@ -137,7 +139,7 @@ public class CommHex implements ifComm {
 	/**
 	 * Called by the run method when the reception of messages, sent at a specific time until now is triggered by getMsgSince
 	 * @see Comm#run()
-	 * @see Comm#getMsgSince(String, int , ifListener)
+	 * @see Comm#getMsgSince(String, int , StringEventListener)
 	 */
 	public synchronized void getSince() {
 		String URL1 = serverLocation + "get.php?folder="+folder+"&time="+time;
@@ -171,7 +173,7 @@ public class CommHex implements ifComm {
 	 * @param _msg message to send
 	 * @param _guest calling application thread
 	 */
-	public  void sendMsg(String _folder, String _msg, ifListener _guest) {
+	public  void sendMsg(String _folder, String _msg, StringEventListener _guest) {
 		synchronized (this){
 			log+="sendMsg - ";
 			folder = _folder;
@@ -185,7 +187,7 @@ public class CommHex implements ifComm {
 	/**
 	 * Called by the run method when sending of a message, is triggered by sendMsg
 	 * @see Comm#run()
-	 * @see Comm#sendMsg(String, String, ifListener)
+	 * @see Comm#sendMsg(String, String, StringEventListener)
 	 */
 	public synchronized void send() {
 		

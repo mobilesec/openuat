@@ -7,7 +7,7 @@
  * (at your option) any later version.
  */
 
-package org.openuat.apps.groupkey;
+package org.openuat.groupkey;
 
 
 import tgdh.TgdhException;
@@ -26,13 +26,13 @@ import tgdh.tree.TreeInfo;
  * org.openuat.channel.http is used as communicator instead of the tgdh.comm class.
  */
 
-public class App2tgdh  implements ifListener  {
+public class App2tgdh  implements StringEventListener  {
 	
 	private static LeafNode hostNode = new LeafNode();
 	
 	private static BasicTree testTree;
 	private static LeafNode newNode;
-	private static CommPlain communicator;
+	private static GroupKeyMessageHandler communicator;
 	private static byte[] privateTestKey = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 	private static byte[] publicTestKey = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0};
 
@@ -42,8 +42,8 @@ public class App2tgdh  implements ifListener  {
 	
 	
 	
-	public App2tgdh(){
-		communicator = new CommPlain();
+	public App2tgdh(GroupKeyMessageHandler _communicator){
+		communicator = _communicator;
 		Thread commThread = new Thread(communicator);
 		commThread.start();
 		

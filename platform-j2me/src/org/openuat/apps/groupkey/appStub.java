@@ -7,14 +7,17 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.StringItem;
 
+import org.openuat.groupkey.GroupKeyMessageHandler;
+import org.openuat.groupkey.StringEventListener;
+
 
 /**
  * @author Christoph Egger
  *
  */
-public class appStub implements ifListener,CommandListener {
+public class appStub implements StringEventListener,CommandListener {
 
-	private ifComm comm;
+	private GroupKeyMessageHandler comm;
 	private String message;
 	//Midlet Sachen
 	private Display display;

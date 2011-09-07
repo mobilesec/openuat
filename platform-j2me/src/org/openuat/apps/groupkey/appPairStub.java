@@ -19,10 +19,12 @@ import net.mypapit.java.StringTokenizer;
 
 import org.apache.commons.codec.binary.Hex;
 import org.openuat.authentication.SimpleKeyAgreement;
+import org.openuat.groupkey.GroupKeyMessageHandler;
+import org.openuat.groupkey.StringEventListener;
 
-public class appPairStub implements ifListener,CommandListener {
+public class appPairStub implements StringEventListener,CommandListener {
 
-	private ifComm comm;
+	private GroupKeyMessageHandler comm;
 	private String message;
 	private Display display;
 	private Form mainForm,resultForm;

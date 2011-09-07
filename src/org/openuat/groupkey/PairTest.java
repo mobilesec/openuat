@@ -7,9 +7,10 @@
  * (at your option) any later version.
  */
 
-package org.openuat.apps.groupkey;
+package org.openuat.groupkey;
 
 import java.util.Arrays;
+
 
 
 import junit.framework.Assert;
@@ -30,7 +31,7 @@ public class PairTest extends TestCase {
 	 */
 	public PairTest(String name) {
 		super(name);
-		target = new Pair();
+		target = new Pair(null);
 	}
 
 	/* (non-Javadoc)
@@ -50,7 +51,7 @@ public class PairTest extends TestCase {
 	}
 
 	/**
-	 * Test method for {@link org.openuat.apps.groupkey.Pair#getKey(java.lang.String)}.
+	 * Test method for {@link org.openuat.groupkey.Pair#getKey(java.lang.String)}.
 	 */
 	public void testGetKey() {
 		// TODO
