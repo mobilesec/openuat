@@ -237,7 +237,8 @@
 		<echo message="    * Compiling OpenUAT core: secure communication channels"/>
 		<javac srcdir="${src}" destdir="${bin-auxchannels}" includeAntRuntime="no"
 		       classpathref="lib.path.all" debug="${compile.debug}" target="${compile.level}" source="${compile.level}"
-		       includes="org/openuat/channel/oob/ org/openuat/channel/vpn/ org/openuat/channel/bluetooth/jsr82/ org/openuat/roles/">
+		       includes="org/openuat/channel/oob/ org/openuat/channel/vpn/ org/openuat/channel/bluetooth/jsr82/ org/openuat/roles/
+				 org/openuat/groupkey/">
 			<exclude name="${test-files1}" />
 			<exclude name="${test-files2}" />
 			<exclude name="${test-files3}" />
