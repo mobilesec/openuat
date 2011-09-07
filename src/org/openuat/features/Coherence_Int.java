@@ -13,8 +13,6 @@ package org.openuat.features;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This class implements computation of the coherence function. It is
  * modelled after the Matlab/Octave "coher" function, but en explanation

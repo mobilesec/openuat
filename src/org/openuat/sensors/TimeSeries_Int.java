@@ -12,8 +12,6 @@ import java.util.Vector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This class represents a possibly multi-dimensional time series of a single
  * sensor. It computes simply statistical values, can distinguish active from

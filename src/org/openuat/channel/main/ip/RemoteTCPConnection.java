@@ -15,8 +15,6 @@ import java.net.Socket;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.openuat.channel.main.RemoteConnection;
 import org.openuat.util.DebugInputStream;
 import org.openuat.util.DebugOutputStream;

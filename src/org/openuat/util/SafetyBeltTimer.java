@@ -13,8 +13,6 @@ import java.io.InputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This class implements a "grenade timer" that will let any loop bail out 
  * with a timeout when it is stuck for too long waiting for something. To use

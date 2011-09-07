@@ -352,6 +352,7 @@
 				<pathelement location="${jarfile.channels}"/>
 				<pathelement location="${jarfile.apps}"/>
 				<pathelement location="${bin-test}"/>
+				<pathelement location="${bin-BC-core}"/>
 				<pathelement location="${bin-BC-x509}"/>
 				<!-- to also use the log4.properties file -->
 				<pathelement location="${src}"/>

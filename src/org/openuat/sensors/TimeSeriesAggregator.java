@@ -12,8 +12,6 @@ import java.util.Vector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This class implements an aggregation of multiple time series into one. To do so,
  * it calculates the magnitude of the multi-dimensional vector for each sample and uses

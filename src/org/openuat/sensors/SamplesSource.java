@@ -11,8 +11,6 @@ import java.util.Vector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This is a base class for emitting samples to a list of registers 
  * SamplesSink objects. It imlements handling the listeners and the background

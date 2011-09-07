@@ -10,8 +10,6 @@ package org.openuat.features.test;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.openuat.features.FPIntFFT;
 
 import junit.framework.Assert;

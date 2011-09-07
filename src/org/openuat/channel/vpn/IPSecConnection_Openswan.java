@@ -17,8 +17,6 @@ import java.util.StringTokenizer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the openswan/strongswan/freeswan IPSec implementation

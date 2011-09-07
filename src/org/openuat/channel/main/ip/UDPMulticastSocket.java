@@ -25,8 +25,6 @@ import java.util.ListIterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.openuat.channel.main.MessageListener;
 
 /** This class offers unicast and multicast UDP communication. It binds one

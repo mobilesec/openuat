@@ -12,8 +12,6 @@ import java.util.Vector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This class implements a collection of multiple time series that belong together,
  * for example multiple dimensions from a single sensor.
