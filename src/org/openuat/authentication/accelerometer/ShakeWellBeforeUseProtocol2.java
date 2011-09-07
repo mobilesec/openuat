@@ -247,7 +247,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolProgressHook(String remote, int cur, int max, String message) {
-		logger.finer("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message +
+		logger.debug("CKP progress with remote " + remote + ": " + cur + " out of " + max + ": " + message +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}
 

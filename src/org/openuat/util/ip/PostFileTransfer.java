@@ -85,7 +85,7 @@ public class PostFileTransfer extends simple.http.load.Service {
     	 
     	 fireEventToListener(new FileTransferEvent (source, output));
     	 sendAnswer("file transfer was successfull", resp);
-    	 logger.finer("file stored in "+ output.getAbsolutePath());
+    	 logger.debug("file stored in "+ output.getAbsolutePath());
     	
        
      }
@@ -97,7 +97,7 @@ public class PostFileTransfer extends simple.http.load.Service {
     		 String nextToken= token.nextToken();
 			StringTokenizer parameter = new StringTokenizer(nextToken, ": ");
 			if (parameter.nextToken().compareToIgnoreCase(HTTPSocket.RELATE_ATTRIBUTE_FILENAME)==0){
-				logger.finer(" file name found");
+				logger.debug(" file name found");
 				result= parameter.nextToken();
 			}
     	 }
@@ -111,7 +111,7 @@ public class PostFileTransfer extends simple.http.load.Service {
     		 String nextToken= token.nextToken();
 			StringTokenizer parameter = new StringTokenizer(nextToken, ": ");
 			if (parameter.nextToken().compareToIgnoreCase(HTTPSocket.RELATE_ATTRIBUTE_ID)==0){
-				logger.finer("id found");
+				logger.debug("id found");
 				result= parameter.nextToken();
 			}
     	 }

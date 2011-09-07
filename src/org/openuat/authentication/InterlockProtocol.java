@@ -158,8 +158,8 @@ public class InterlockProtocol {
 		// compute a few helper variables
 		if (sharedKey == null || numMessageBits == SimpleBlockCipher.BlockByteLength*8) {
 			// simple - one block
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Case 1: cipher is one block long: " + SimpleBlockCipher.BlockByteLength + " bytes" + 
+			if (logger.isDebugEnabled())
+				logger.debug("Case 1: cipher is one block long: " + SimpleBlockCipher.BlockByteLength + " bytes" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			numCipherTextBlocks = 1;
 		}
@@ -168,8 +168,8 @@ public class InterlockProtocol {
 			numCipherTextBlocks = (numMessageBits%(SimpleBlockCipher.BlockByteLength*8) == 0 ? 
 					numMessageBits/(SimpleBlockCipher.BlockByteLength*8) : 
 					numMessageBits/(SimpleBlockCipher.BlockByteLength*8) + 1) + 1;
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Case 2: cipher takes " + numCipherTextBlocks + " blocks: " + 
+			if (logger.isDebugEnabled())
+				logger.debug("Case 2: cipher takes " + numCipherTextBlocks + " blocks: " + 
 						(numCipherTextBlocks*SimpleBlockCipher.BlockByteLength) + " bytes" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 		}
@@ -259,8 +259,8 @@ public class InterlockProtocol {
 		byte[][] parts = new byte[rounds][];
 		// need to explicitly check for the size length because of recursive calling
 		if (cipherText.length == SimpleBlockCipher.BlockByteLength) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + 
+			if (logger.isDebugEnabled())
+				logger.debug("Case 1: splitting cipher text of " + cipherText.length + " bytes with one block into " + 
 						rounds + " parts" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			// simple case: the parts are just taken one after each other
@@ -269,14 +269,14 @@ public class InterlockProtocol {
 						cipherBitsPerRoundPerBlock : (SimpleBlockCipher.BlockByteLength*8 - cipherBitsPerRoundPerBlock*round);
 				if (curBits > 0) {
 					parts[round] = new byte[curBits%8 == 0 ? curBits/8 : curBits/8+1];
-					/*logger.finer("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes" + 
+					/*logger.debug("Part " + round + " holds " + curBits + " bits, thus " + parts.length + " bytes" + 
 							(instanceId != null ? " [instance " + instanceId : ""));*/
 					extractPart(parts[round], cipherText, round*cipherBitsPerRoundPerBlock, curBits);
 				}
 				else {
 					// no more left
-					if (logger.isLoggable(Level.FINER))
-						logger.finer("Part " + round + " is empty" + 
+					if (logger.isDebugEnabled())
+						logger.debug("Part " + round + " is empty" + 
 								(instanceId != null ? " [instance " + instanceId : ""));
 					parts[round] = null;
 				}
@@ -284,8 +284,8 @@ public class InterlockProtocol {
 		}
 		else {
 			// the more complicated case is reduced to the simple case - each block split independently, then merged
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Case 2: splitting cipher text of " + cipherText.length + " bytes with " 
+			if (logger.isDebugEnabled())
+				logger.debug("Case 2: splitting cipher text of " + cipherText.length + " bytes with " 
 						+ numCipherTextBlocks + " blocks into " + rounds + " parts" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			for (int block=0; block<numCipherTextBlocks; block++) {
@@ -306,16 +306,16 @@ public class InterlockProtocol {
 							int partBits = curBits*numCipherTextBlocks;
 							parts[round] = new byte[partBits%8 == 0 ? partBits/8 : partBits/8+1];
 						}
-						if (logger.isLoggable(Level.FINER))
-							logger.finer("Adding " + curBits + " bits of block " + block + " to part " + 
+						if (logger.isDebugEnabled())
+							logger.debug("Adding " + curBits + " bits of block " + block + " to part " + 
 									round + " at offset " + (block*cipherBitsPerRoundPerBlock) + 
 									(instanceId != null ? " [instance " + instanceId : ""));
 						addPart(parts[round], blockParts[round], block*curBits, curBits);
 					}
 					else {
 						// no more left
-						if (logger.isLoggable(Level.FINER))
-							logger.finer("Part " + round + " is empty" + 
+						if (logger.isDebugEnabled())
+							logger.debug("Part " + round + " is empty" + 
 									(instanceId != null ? " [instance " + instanceId : ""));
 						parts[round] = null;
 					}
@@ -346,8 +346,8 @@ public class InterlockProtocol {
 		byte[] cipherText = new byte[numCipherTextBlocks * SimpleBlockCipher.BlockByteLength];
 		if (numCipherTextBlocks == 1) {
 			// simple case
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Case 1: reassembling " + rounds + " parts to cipher text of " + 
+			if (logger.isDebugEnabled())
+				logger.debug("Case 1: reassembling " + rounds + " parts to cipher text of " + 
 						cipherText.length + " bytes" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			for (int round=0; round<rounds; round++) {
@@ -365,8 +365,8 @@ public class InterlockProtocol {
 		} 
 		else {
 			// more complex case, need to reassemble blocks
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Case 2: reassembling " + rounds + " parts to cipher text of " + 
+			if (logger.isDebugEnabled())
+				logger.debug("Case 2: reassembling " + rounds + " parts to cipher text of " + 
 						cipherText.length + " bytes with " + numCipherTextBlocks + " blocks" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			for (int block=0; block<numCipherTextBlocks; block++) {
@@ -397,8 +397,8 @@ public class InterlockProtocol {
 			int round, int block, int numBits) throws InternalApplicationException {
 		byte[] partInBlock = new byte[numBits%8 == 0 ? numBits/8 : numBits/8+1];
 		extractPart(partInBlock, message, block*numBits, numBits);
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Extracting " + numBits + " bits of block " + block + " from part " + round + 
+		if (logger.isDebugEnabled())
+			logger.debug("Extracting " + numBits + " bits of block " + block + " from part " + round + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		addPart(cipherText, partInBlock, 
 				block*SimpleBlockCipher.BlockByteLength*8+round*cipherBitsPerRoundPerBlock, numBits);
@@ -452,14 +452,14 @@ public class InterlockProtocol {
 		// offset and numBits will be checked in addPart
 		
 		if (assembledCipherText == null) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds" + 
+			if (logger.isDebugEnabled())
+				logger.debug("First call to addMessage, creating helper variables for assembly of " + rounds + " rounds" + 
 						(instanceId != null ? " [instance " + instanceId : ""));
 			assembledCipherText = new byte[numCipherTextBlocks * SimpleBlockCipher.BlockByteLength];
 			receivedRounds = new BitSet(rounds);
 		}
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Adding cipher text message part " + round + ": " + numBits + " bits" + 
+		if (logger.isDebugEnabled())
+			logger.debug("Adding cipher text message part " + round + ": " + numBits + " bits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 
 		// check if we already got that round - only use the first packet so to ignore any ack-only packets
@@ -502,8 +502,8 @@ public class InterlockProtocol {
 	 */
 	private static String swapLine(String command, String value, 
 			InputStream fromRemote, OutputStreamWriter toRemote) throws IOException {
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Sending line to remote host: command '" + command + "', value '" + value + "'");
+		if (logger.isDebugEnabled())
+			logger.debug("Sending line to remote host: command '" + command + "', value '" + value + "'");
 		String outStr = command + " " + value + "\n";
 		toRemote.write(outStr);
 		toRemote.flush();
@@ -522,8 +522,8 @@ public class InterlockProtocol {
 		if (remoteLine.length() > command.length()+1 && 
 			remoteLine.toString().substring(0, command.length()+1).equals(command + " ")) {
 			String ret = remoteLine.toString().substring(command.length() + 1);
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Received line from remote host: command '" + command + "', value + '" + ret + "'");
+			if (logger.isDebugEnabled())
+				logger.debug("Received line from remote host: command '" + command + "', value + '" + ret + "'");
 			return ret;
 		}
 		else {
@@ -623,7 +623,7 @@ public class InterlockProtocol {
 		if (interlockGroup != null && (groupSize < 2 || instanceInGroup >= groupSize))
 			throw new IllegalArgumentException("Using interlock group, but either group size is <2 or this instance number is >= group size");
 
-		if (logger.isLoggable(Level.INFO))
+		if (logger.isInfoEnabled())
 			logger.info("Running interlock exchange with " + rounds + " rounds and timeout of " +
 				timeoutMs + "ms. My message is " + message.length + " bytes long");
 
@@ -665,8 +665,8 @@ public class InterlockProtocol {
 		
 		int round=0;
 		while (round<rounds && !(timer != null && timer.isTriggered())) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Sending my round " + round + ", length of part is " + localParts[round].length + " bytes");
+			if (logger.isDebugEnabled())
+				logger.debug("Sending my round " + round + ", length of part is " + localParts[round].length + " bytes");
 			StringBuffer remoteTmp = new StringBuffer();
 			remoteTmp.append(round);
 			remoteTmp.append(' ');
@@ -688,16 +688,16 @@ public class InterlockProtocol {
 
 			// first part is the round number, then the part
 			int remoteRound = Integer.parseInt(remotePart.substring(0, remotePart.indexOf(' ')));
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Received remote round " + remoteRound);
+			if (logger.isDebugEnabled())
+				logger.debug("Received remote round " + remoteRound);
 	       	totalCodingTime += System.currentTimeMillis()-timestamp;
 	       	timestamp = System.currentTimeMillis();
 			if (remoteRound == round) {
 				try { 
 					byte[] part = Hex.decodeHex(remotePart.substring(remotePart.indexOf(' ')+1).toCharArray());
 					remoteIp.addMessage(part, round);
-					if (logger.isLoggable(Level.FINER))
-						logger.finer("Received " + part.length + " bytes from other host");
+					if (logger.isDebugEnabled())
+						logger.debug("Received " + part.length + " bytes from other host");
 					round++;
 					// successfully got a new round, reset timer
 					if (timer != null)
@@ -763,8 +763,8 @@ public class InterlockProtocol {
 		if (round == rounds) {
 			if (timer != null)
 				timer.stop();
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Interlock protocol completed");
+			if (logger.isDebugEnabled())
+				logger.debug("Interlock protocol completed");
 
 	       	timestamp = System.currentTimeMillis();
 			byte[] remoteCiphertext = remoteIp.reassemble();

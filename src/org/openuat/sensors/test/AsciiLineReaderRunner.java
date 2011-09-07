@@ -60,13 +60,13 @@ public class AsciiLineReaderRunner {
 				segment.add(new Double(s));
 		}
 		public void segmentStart(int index) {
-			logger.finer("Receiving segment starting from index " + index);
+			logger.debug("Receiving segment starting from index " + index);
 			
 			if (firstActiveSegment == null)
 				segment = new ArrayList();
 		}
 		public void segmentEnd(int index) {
-			logger.finer("Receiving segment ending at index " + index);
+			logger.debug("Receiving segment ending at index " + index);
 
 			if (segment != null) {
 				firstActiveSegment = new XYSeries("Segment", false);

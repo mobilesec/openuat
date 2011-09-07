@@ -98,7 +98,7 @@ public class SafetyBeltTimer implements Runnable {
 	
 	/** Implements the timer background thread. */
 	public void run() {
-		logger.finer("Starting safety belt timer with " + msCountdown + "ms");
+		logger.debug("Starting safety belt timer with " + msCountdown + "ms");
 		
 		while (!timeout && !gracefulStop) {
 			try {
@@ -109,15 +109,15 @@ public class SafetyBeltTimer implements Runnable {
 			catch (InterruptedException e) {
 				// ok. this is a heartbeat, just restart the timer waiting
 				// timeout will not have been set to true in that case
-				logger.finer("Safety belt timer reset to " + msCountdown + "ms");
+				logger.debug("Safety belt timer reset to " + msCountdown + "ms");
 			}
 		}
 		/* Need to check gracefulStop too - it seems that J2ME implementations
 		 * don't necessarily support thread interruption and thus timeout might
 		 * be set to true even if stop() was called!. */
 		if (timeout && !gracefulStop) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Safety belt timer triggered");
+			if (logger.isDebugEnabled())
+				logger.debug("Safety belt timer triggered");
 			if (abortStream != null) {
 				logger.warn("Forcefully closing input stream to abort reads: " + abortStream);
 				try {
@@ -128,13 +128,13 @@ public class SafetyBeltTimer implements Runnable {
 			}
 		}
 		else
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Safety belt timer exited gracefully");
+			if (logger.isDebugEnabled())
+				logger.debug("Safety belt timer exited gracefully");
 	}
 	
 	/** Returns true when the timer has triggered and the task should terminate. */
 	public boolean isTriggered() {
-		if (timeout && logger.isLoggable(Level.INFO))
+		if (timeout && logger.isInfoEnabled())
 			logger.info("Triggered safety belt timer just got queried - task should bail out now");
 		// no synchronization method here since it's only a boolean
 		return timeout;

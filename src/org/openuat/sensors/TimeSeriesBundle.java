@@ -58,7 +58,7 @@ public abstract class TimeSeriesBundle {
 			// also forward this event to the sample listeners
 //#if cfg.haveFloatSupport
 			if (samplesSinks != null) {
-				logger.finer("Forwarding segment start event of line " + 
+				logger.debug("Forwarding segment start event of line " + 
 						lineIndex + " to " + samplesSinks.size() + " registered integer sinks");
 				for (int i=0; i<samplesSinks.size(); i++) {
 					SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
@@ -67,7 +67,7 @@ public abstract class TimeSeriesBundle {
 			}
 //#endif			
 			if (samplesSinks_Int != null) {
-				logger.finer("Forwarding segment start event of line " + 
+				logger.debug("Forwarding segment start event of line " + 
 						lineIndex + " to " + samplesSinks_Int.size() + " registered sinks");
 				for (int i=0; i<samplesSinks_Int.size(); i++) {
 					SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
@@ -83,9 +83,9 @@ public abstract class TimeSeriesBundle {
 		//@Override
 		protected void toQuiescent(int lineIndex, int numSample) {
 			// +1 because first and last samples are added
-			if (logger.isLoggable(Level.FINER) && (curSampleIndex != numSample && curSampleIndex+1 != numSample && 
+			if (logger.isDebugEnabled() && (curSampleIndex != numSample && curSampleIndex+1 != numSample && 
 			    curSampleIndex-windowSize != numSample && curSampleIndex-windowSize+1 != numSample))
-				logger.finer("Unexpected index of segment end, got " + numSample 
+				logger.debug("Unexpected index of segment end, got " + numSample 
 						+ ", expected either " + curSampleIndex
 						+ " or " +  + (curSampleIndex+1));
 
@@ -101,7 +101,7 @@ public abstract class TimeSeriesBundle {
 			if (lineIndex != -1) {
 //#if cfg.haveFloatSupport
 				if (samplesSinks != null) {
-					logger.finer("Forwarding segment end event of line " +
+					logger.debug("Forwarding segment end event of line " +
 							lineIndex + " to " + samplesSinks.size() + " registered sinks");
 					for (int i=0; i<samplesSinks.size(); i++) {
 						SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
@@ -110,7 +110,7 @@ public abstract class TimeSeriesBundle {
 				}
 //#endif			
 				if (samplesSinks_Int != null) {
-					logger.finer("Forwarding segment end event of line " +
+					logger.debug("Forwarding segment end event of line " +
 							lineIndex + " to " + samplesSinks_Int.size() + " registered integer sinks");
 					for (int i=0; i<samplesSinks_Int.size(); i++) {
 						SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
@@ -146,7 +146,7 @@ public abstract class TimeSeriesBundle {
 				/* and also check if the maximum segment size has been reached */
 				// need to subtract windowSize, because the segment will be shortened in toQuiescent
 				if (maxSegmentSize != -1 && curActiveSegmentLength-windowSize == maxSegmentSize) {
-					logger.finer("Active segment with " + curActiveSegmentLength +
+					logger.debug("Active segment with " + curActiveSegmentLength +
 							" samples has reached maximum segment size, forwarding now");
 					// the first parameter is ignored by this toQuiescent implementation
 					toQuiescent(-1, numSample);
@@ -171,7 +171,7 @@ public abstract class TimeSeriesBundle {
 				/* and also check if the maximum segment size has been reached */
 				// need to subtract windowSize, because the segment will be shortened in toQuiescent
 				if (maxSegmentSize != -1 && curActiveSegmentLength-windowSize == maxSegmentSize) {
-					logger.finer("Active segment with " + curActiveSegmentLength +
+					logger.debug("Active segment with " + curActiveSegmentLength +
 							" samples has reached maximum segment size, forwarding now");
 					// the first parameter is ignored by this toQuiescent implementation
 					toQuiescent(-1, numSample);
@@ -438,12 +438,12 @@ public abstract class TimeSeriesBundle {
 //#if cfg.haveFloatSupport
 	public void addNextStageSegmentsSink(SegmentsSink sink) {
 		segmentsSinks.addElement(sink);
-		logger.finer("Registered next stage float segments sink " + sink);
+		logger.debug("Registered next stage float segments sink " + sink);
 	}
 //#endif
 	public void addNextStageSegmentsSink_Int(SegmentsSink_Int sink) {
 		segmentsSinks_Int.addElement(sink);
-		logger.finer("Registered next stage integer segments sink " + sink);
+		logger.debug("Registered next stage integer segments sink " + sink);
 	}
 
 	/** Removes a previously registered sink.

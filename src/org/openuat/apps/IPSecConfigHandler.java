@@ -117,36 +117,36 @@ public class IPSecConfigHandler {
 			parser.setInput(input);
 			
 			// this is the main parser loop
-			logger.finer("Beginning parsing of config");
+			logger.debug("Beginning parsing of config");
 			String lastTag = null;
 			int eventType = parser.getEventType();
 			do {
 				if (eventType == XmlPullParser.START_DOCUMENT) {
-					logger.finer("Found XML document start");
+					logger.debug("Found XML document start");
 				} else if (eventType == XmlPullParser.END_DOCUMENT) {
-					logger.finer("Found XML document end");
+					logger.debug("Found XML document end");
 				} else if (eventType == XmlPullParser.START_TAG) {
-					logger.finer("Found tag start: '" + parser.getName() + "'");
+					logger.debug("Found tag start: '" + parser.getName() + "'");
 					lastTag = parser.getName();
 				} else if (eventType == XmlPullParser.END_TAG) {
-					logger.finer("Found tag end: '" + parser.getName() + "'");
+					logger.debug("Found tag end: '" + parser.getName() + "'");
 				} else if (eventType == XmlPullParser.TEXT) {
 					int[] startAndLength = new int[2];
 					char[] ch = parser.getTextCharacters(startAndLength);
 					StringBuffer str = new StringBuffer();
 					str.append(ch, startAndLength[0], startAndLength[1]);
-					logger.finer("Found text: '" + str + "' at tag '" + lastTag + "'");
+					logger.debug("Found text: '" + str + "' at tag '" + lastTag + "'");
 					if (lastTag != null && lastTag.equals(GatewayTag)) {
-						logger.finer("Associating with gateway field");
+						logger.debug("Associating with gateway field");
 						gateway = str.toString();
 					} else if (lastTag != null && lastTag.equals(RemoteNetworkTag)) {
-						logger.finer("Associating with remote network field");
+						logger.debug("Associating with remote network field");
 						remoteNetwork = str.toString();
 					} else if (lastTag != null && lastTag.equals(RemoteNetmaskTag)) {
-						logger.finer("Associating with remote netmask field");
+						logger.debug("Associating with remote netmask field");
 						remoteNetmask = Integer.parseInt(str.toString());
 					} else if (lastTag != null && lastTag.equals(CaDistinguishedNameTag)) {
-						logger.finer("Associating with CA distinguished name field");
+						logger.debug("Associating with CA distinguished name field");
 						caDistinguishedName = str.toString();
 					} else
 						logger.warn("Encountered unkown tag '" + lastTag + "', ignoring it");

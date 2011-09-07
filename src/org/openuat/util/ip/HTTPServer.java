@@ -108,20 +108,20 @@ public class HTTPServer {
 			server = new ServerSocket();
 			server = new ServerSocket(port, 50, ia);
 			connection.connect(server);*/
-			logger.finer("server is listening to "
+			logger.debug("server is listening to "
 					+ server.getInetAddress().getHostName());
-			logger.finer("server is listening to "
+			logger.debug("server is listening to "
 					+ server.getInetAddress().getHostAddress());
-			logger.finer("server is listening on port "
+			logger.debug("server is listening on port "
 							+ server.getLocalPort());
 			if (mapper != null) {
 				mapper.delete();
 			}
 
 		} catch (IOException e) {
-			logger.finer("Http Server throw a IOException");
+			logger.debug("Http Server throw a IOException");
 		} catch (Exception e) {
-			logger.finer("other exception: ");
+			logger.debug("other exception: ");
 		}
 	}
 
@@ -129,7 +129,7 @@ public class HTTPServer {
 		try {
 			new HTTPServer();
 		} catch (UnknownHostException e) {
-			logger.finer("unknown host exception");
+			logger.debug("unknown host exception");
 		}
 	}
 
@@ -138,7 +138,7 @@ public class HTTPServer {
 			if (server != null)
 				server.close();
 		} catch (IOException e) {
-			logger.finer(" IOException");
+			logger.debug(" IOException");
 		}
 	}
 

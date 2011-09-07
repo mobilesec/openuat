@@ -126,13 +126,13 @@ public abstract class SamplesSource {
 			if (lines[i] < 0 || lines[i] > maxNumLines-1)
 				throw new IllegalArgumentException("Line index must be between 0 and " +
 						(maxNumLines-1));
-			if (logger.isLoggable(Level.FINER)) {
+			if (logger.isDebugEnabled()) {
 				tmp.append(lines[i]);
 				tmp.append(' ');
 			}
 		}
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Registering new listener for lines " + tmp.toString());
+		if (logger.isDebugEnabled())
+			logger.debug("Registering new listener for lines " + tmp.toString());
 		listeners.addElement(listener);
 	}
 
@@ -218,8 +218,8 @@ public abstract class SamplesSource {
 	 */
 	public void start() {
 		if (samplingThread == null) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Starting sampling thread");
+			if (logger.isDebugEnabled())
+				logger.debug("Starting sampling thread");
 			samplingThread = new Thread(new RunHelper());
 			samplingThread.start();
 		}
@@ -228,8 +228,8 @@ public abstract class SamplesSource {
 	/** Stops the background thread, if started previously. */
 	public void stop() {
 		if (samplingThread != null) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Stopping sampling thread: signalling thread to cancel and waiting;");
+			if (logger.isDebugEnabled())
+				logger.debug("Stopping sampling thread: signalling thread to cancel and waiting;");
 			alive = false;
 			try {
 				samplingThread.interrupt();
@@ -285,9 +285,9 @@ public abstract class SamplesSource {
 	 * @param sample The current sample.
 	 */
 	protected void emitSample(double[] sample) {
-		if (logger.isLoggable(Level.FINER)) 
+		if (logger.isDebugEnabled()) 
 			for (int i=0; i<maxNumLines; i++)
-				logger.finer("Double sample number " + numSamples +  
+				logger.debug("Double sample number " + numSamples +  
 						", line " + i + " = " + sample[i]);
     	if (listeners != null)
     		for (int j=0; j<listeners.size(); j++) {
@@ -314,9 +314,9 @@ public abstract class SamplesSource {
 	 * @param sample The current sample.
 	 */
 	protected void emitSample(int[] sample) {
-		if (logger.isLoggable(Level.FINER)) 
+		if (logger.isDebugEnabled()) 
 			for (int i=0; i<maxNumLines; i++)
-				logger.finer("Integer sample number " + numSamples +  
+				logger.debug("Integer sample number " + numSamples +  
 						", line " + i + " = " + sample[i]);
     	if (listeners != null)
     		for (int j=0; j<listeners.size(); j++) {
@@ -345,8 +345,8 @@ public abstract class SamplesSource {
 				}
 			}
 			if (! alive)
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Background sampling thread terminated regularly due to request");
+				if (logger.isDebugEnabled())
+					logger.debug("Background sampling thread terminated regularly due to request");
 			else
 				logger.warn("Background sampling thread received no more samples, ending now");
 			// old code that used to read from a UDP socket

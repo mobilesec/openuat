@@ -95,7 +95,7 @@ public class TCPPortServer extends HostServerBase {
 	 * used to start a thread that handles the new connection.
 	 */
 	public void run() {
-		logger.finer("Listening thread for server socket now running port " + listener.getLocalPort());
+		logger.debug("Listening thread for server socket now running port " + listener.getLocalPort());
 		try {
 			while (running) {
 				Socket s = listener.accept();
@@ -106,7 +106,7 @@ public class TCPPortServer extends HostServerBase {
 			if (running)
 				logger.error("Error in listening thread: " + e);
 			else
-				logger.finer("Listening socket was forcibly closed, exiting listening thread now.");
+				logger.debug("Listening socket was forcibly closed, exiting listening thread now.");
 		} catch (IOException e) {
 			logger.error("Error in listening thread: " + e);
 		}

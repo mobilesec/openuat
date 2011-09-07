@@ -83,12 +83,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 	}
 
 	protected void toQuiescentLastLine(int numSample) {
-	  if (logger.isLoggable(Level.FINER) && (
+	  if (logger.isDebugEnabled() && (
 //#if cfg.haveFloatSupport
 			(aggregatedSeries != null && aggregatedSeries.size() > windowSize) ||
 //#endif					
 			(aggregatedSeries_Int != null && aggregatedSeriesIndex_Int >= 0 && aggregatedSeriesIndex_Int > windowSize))) {
-				logger.finer("Unexpected index of segment end, got " + numSample 
+				logger.debug("Unexpected index of segment end, got " + numSample 
 						+ ", expected either " + curSampleIndex
 						+ " or " +  + (curSampleIndex+1));
 	  }
@@ -100,12 +100,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 				for (int i=0; i<aggregatedSeries.size()-windowSize; i++)
 					segment[i] = ((Double) aggregatedSeries.elementAt(i)).doubleValue();
 				if (segmentsSinks != null) {
-					logger.finer("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
+					logger.debug("Forwarding segment to " + segmentsSinks.size() + " registered sinks");
 					for (int i=0; i<segmentsSinks.size(); i++) {
 						SegmentsSink s = (SegmentsSink) segmentsSinks.elementAt(i);
 						s.addSegment(segment, curSampleIndex-aggregatedSeries.size());
 					}			
-					logger.finer("Finished forwarding segment to sinks");
+					logger.debug("Finished forwarding segment to sinks");
 				}
 			}
 			else
@@ -126,12 +126,12 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 				int[] segment = new int[aggregatedSeriesIndex_Int-windowSize];
 				System.arraycopy(aggregatedSeries_Int, 0, segment, 0, aggregatedSeriesIndex_Int-windowSize);
 				if (segmentsSinks_Int != null) {
-					logger.finer("Forwarding segment to " + segmentsSinks_Int.size() + " registered sinks");
+					logger.debug("Forwarding segment to " + segmentsSinks_Int.size() + " registered sinks");
 					for (int i=0; i<segmentsSinks_Int.size(); i++) {
 						SegmentsSink_Int s = (SegmentsSink_Int) segmentsSinks_Int.elementAt(i);
 						s.addSegment(segment, curSampleIndex-aggregatedSeriesIndex_Int);
 					}			
-					logger.finer("Finished forwarding segment to sinks");
+					logger.debug("Finished forwarding segment to sinks");
 				}
 			}
 			else
@@ -161,7 +161,7 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 			 * immediately to all registered listeners
 			 */
 			if (samplesSinks != null) {
-				logger.finer("Forwarding single sample to " + samplesSinks.size() + " registered sinks");
+				logger.debug("Forwarding single sample to " + samplesSinks.size() + " registered sinks");
 				for (int i=0; i<samplesSinks.size(); i++) {
 					SamplesSink s = (SamplesSink) samplesSinks.elementAt(i);
 					s.addSample(magnitude, numSample);
@@ -187,7 +187,7 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 			 * immediately to all registered listeners
 			 */
 			if (samplesSinks_Int != null) {
-				logger.finer("Forwarding single sample to " + samplesSinks_Int.size() + " registered sinks");
+				logger.debug("Forwarding single sample to " + samplesSinks_Int.size() + " registered sinks");
 				for (int i=0; i<samplesSinks_Int.size(); i++) {
 					SamplesSink_Int s = (SamplesSink_Int) samplesSinks_Int.elementAt(i);
 					s.addSample(magnitude, numSample);

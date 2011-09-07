@@ -187,7 +187,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 
 		this.persistent = persistent;
 		
-		logger.finer("Trying to create " + (persistent ? "persistent" : "temporary") + 
+		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
 				" ipsec connection to host " + remoteHost + (remoteNetwork != null ? " to remote network " + remoteNetwork : ""));
 		// TODO: error checks on input parameters!
 		
@@ -224,7 +224,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			while (allLocalAddrs.size() > 0) {
 				// for each local address, create one configuration block
 				String localAddr = (String) allLocalAddrs.removeFirst();
-				logger.finer("Using local address " + localAddr);
+				logger.debug("Using local address " + localAddr);
 				
 				writerConn.write("conn " + createConnName(localAddr, remoteHost) + "\n");
 				writerConn.write("    left=" + localAddr + "\n");
@@ -263,7 +263,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--asynchronous", "--up", createConnName(localAddr, remoteHost)}, null, null);
 					}
 					catch (ExitCodeException e) {
-						logger.finer("Trying to take ipsec up resulted in error code different from 0:" + e);
+						logger.debug("Trying to take ipsec up resulted in error code different from 0:" + e);
 					}
 					this.localAddr = localAddr;
 					writerConn.close();
@@ -277,7 +277,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 					try {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
 					} catch (ExitCodeException f) {
-						logger.log(Level.SEVERE, "Can't execute command!", f);
+						logger.error("Can't execute command!", f);
 					}
 				}
 			}
@@ -290,7 +290,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 			} catch (ExitCodeException f) {
-				logger.log(Level.SEVERE, "Can't execute command!", f);
+				logger.error("Can't execute command!", f);
 			}
 			return false;
 		}
@@ -303,7 +303,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 			} catch (Exception f) {
-				logger.log(Level.SEVERE, "Can't execute command!", f);
+				logger.error("Can't execute command!", f);
 			}
 			return false;
 		}

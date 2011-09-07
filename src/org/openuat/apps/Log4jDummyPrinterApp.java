@@ -16,8 +16,8 @@ public class Log4jDummyPrinterApp {
 			PropertyConfigurator.configure("log4j.properties");
 		}*/
 
-		logger.finest("TEST 0");
-		logger.finer("TEST 1");
+		logger.trace("TEST 0");
+		logger.debug("TEST 1");
 		logger.info("TEST 2");
 		logger.warn("TEST 3");
 		logger.error("TEST 4");

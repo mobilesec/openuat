@@ -62,7 +62,7 @@ public class MDNSDiscovery {
 	 */
 	public static MDNSDiscovery getMDNSDiscovery() throws IOException {
 		if (instance == null) {
-			logger.finer("Creating singleton instance of MDNSDiscovery");
+			logger.debug("Creating singleton instance of MDNSDiscovery");
 			instance = new MDNSDiscovery();
 		}
 		return instance;
@@ -82,7 +82,7 @@ public class MDNSDiscovery {
 			LinkedList allAddrs = new LinkedList();
 			while (ifaces.hasMoreElements()) {
 				java.net.NetworkInterface iface = (java.net.NetworkInterface) ifaces.nextElement();
-				logger.finer("Found local interface " + iface.getName());
+				logger.debug("Found local interface " + iface.getName());
 				// check if that interface name is blacklisted
 				boolean blacklisted = false;
 				for (int i=0; i<Interface_Names_Blacklist.length; i++) {
@@ -98,27 +98,27 @@ public class MDNSDiscovery {
 					while (addrs.hasMoreElements()) {
 						InetAddress addr = (InetAddress) addrs.nextElement();
 						if (addr instanceof Inet6Address) {
-							logger.finer("Ignoring IPv6 address " + addr + " for now");
+							logger.debug("Ignoring IPv6 address " + addr + " for now");
 						} else {
-							logger.finer("Found address " + addr);
+							logger.debug("Found address " + addr);
 							allAddrs.add(addr);
 							// only use the first one for now.... - see above TODO
 							break;
 						}
 					}
 				} else {
-					logger.finer("Ignoring interface because it is blacklisted");
+					logger.debug("Ignoring interface because it is blacklisted");
 				}
 			}
 			// start the responders
-			logger.finer("Using " + allAddrs.size() + " addresses, starting one jmDNS responder for each");
+			logger.debug("Using " + allAddrs.size() + " addresses, starting one jmDNS responder for each");
 			jmdns = new JmDNS[allAddrs.size()];
 			for (int i=0; allAddrs.size() > 0; i++) {
 				InetAddress addr = (InetAddress) allAddrs.removeFirst();
-				logger.finer("Starting on " + addr);
+				logger.debug("Starting on " + addr);
 				jmdns[i] = new JmDNS(addr);
 			}
-			logger.finer("jmDNS responders started");
+			logger.debug("jmDNS responders started");
 			//addresses = new HashMap();
 			// and register our listener on all resolvers
 			for (int i = 0; i<jmdns.length; i++) {
@@ -142,7 +142,7 @@ public class MDNSDiscovery {
 		if (positiveId < 0)
 			positiveId += 0x100;
 		
-		logger.finer("Registering local relate id " + localRelateId + " for MDNS/DNS-SD lookup");
+		logger.debug("Registering local relate id " + localRelateId + " for MDNS/DNS-SD lookup");
 		
 		// TODO: register a meaningful port number
 		int MY_PORT=8888;
@@ -186,7 +186,7 @@ public class MDNSDiscovery {
 		if (positiveId < 0)
 			positiveId += 0x100;
 		
-		logger.finer("Trying to resolve relate id " + positiveId);
+		logger.debug("Trying to resolve relate id " + positiveId);
 		
 		// this performs a query right now - so it will take some time
 		// TODO: this just uses the first instance, which might not necessarily be the best - return all found addresses
@@ -195,7 +195,7 @@ public class MDNSDiscovery {
 			service = jmdns[i].getServiceInfo(DNS_SD_Type, Integer.toString(positiveId));
 			try {
 				if (service != null) {
-					logger.finer("Found service for relate id " + positiveId + " on interface " + 
+					logger.debug("Found service for relate id " + positiveId + " on interface " + 
 							jmdns[i].getInterface() + ": maps to " + service.getHostAddress());
 					// found the id, no need to continue
 					break;
@@ -251,7 +251,7 @@ public class MDNSDiscovery {
 		}
 		
 		public void serviceAdded(ServiceEvent e){
-			logger.finer("ADD event:\n" + e);
+			logger.debug("ADD event:\n" + e);
 			parseEvent(e);
 			if(isRelateType && info != null) {
 			    //set current time since we don't have any other timestamp to work with
@@ -276,7 +276,7 @@ public class MDNSDiscovery {
 		
 		public void serviceRemoved(ServiceEvent e)
 		{
-			logger.finer("REMOVE event:\n" + e);
+			logger.debug("REMOVE event:\n" + e);
 			parseEvent(e);
 			if (isRelateType) {
 			    //set current time since we don't have any other timestamp to work with
@@ -290,7 +290,7 @@ public class MDNSDiscovery {
 		{
 			//let's treat this just like an add event
 			//is that ok ???
-			logger.finer("RESOLVE event:\n" + e);
+			logger.debug("RESOLVE event:\n" + e);
 			parseEvent(e);
 			if (isRelateType) {
 			    //set current time since we don't have any other timestamp to work with

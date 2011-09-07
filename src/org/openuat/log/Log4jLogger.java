@@ -10,6 +10,7 @@ package org.openuat.log;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.log4j.Priority;
 
 /**
  * This class is a thin wrapper around a logger. Configuration of the
@@ -32,7 +33,7 @@ public class Log4jLogger implements Log {
 	 * @param name The name of the new logger.
 	 */
 	public Log4jLogger(String name) {
-		this.logger = LoggerFactory.getLogger(name);
+		this.logger = Logger.getLogger(name);
 	}
 	
 	/**
@@ -100,7 +101,7 @@ public class Log4jLogger implements Log {
 
 	// @Override
 	public boolean isErrorEnabled() {
-		return logger.isErrorEnabled();
+		return logger.isEnabledFor(Priority.ERROR);
 	}
 
 	// @Override

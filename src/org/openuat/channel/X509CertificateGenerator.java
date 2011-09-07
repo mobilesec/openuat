@@ -196,7 +196,7 @@ public class X509CertificateGenerator {
 	 */
 	protected X509CertificateGenerator(boolean useBCAPI) {
 		this.useBCAPI = useBCAPI;
-		logger.finer("Protected constructor has been called. Assuming that no CA should be loaded but that a new one will be created");
+		logger.debug("Protected constructor has been called. Assuming that no CA should be loaded but that a new one will be created");
 		caPrivateKey = null;
 		caCert = null;
 	}
@@ -242,9 +242,9 @@ public class X509CertificateGenerator {
 		caPrivateKey = content.privateKeys[0];
 		caCert = content.certificates[0];
 
-		logger.finer("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
+		logger.debug("Successfully loaded CA key and certificate. CA DN is '" + caCert.getSubjectDN().getName() + "'");
 		caCert.verify(caCert.getPublicKey());
-		logger.finer("Successfully verified CA certificate with its own public key.");
+		logger.debug("Successfully verified CA certificate with its own public key.");
 	}
 	
 	/** Returns the distinguished name of the CA used to sign the newly generated certificates.
@@ -307,19 +307,19 @@ public class X509CertificateGenerator {
 		// the BCAPI representation
 		RSAPrivateCrtKeyParameters privateKey = null;
 		
-		logger.finer("Creating RSA keypair");
+		logger.debug("Creating RSA keypair");
 		// generate the keypair for the new certificate
 		if (useBCAPI) {
 			RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
 			// TODO: what are these values??
 			gen.init(new RSAKeyGenerationParameters(BigInteger.valueOf(0x10001), sr, 1024, 80));
 			AsymmetricCipherKeyPair keypair = gen.generateKeyPair();
-			logger.finer("Generated keypair, extracting components and creating public structure for certificate");
+			logger.debug("Generated keypair, extracting components and creating public structure for certificate");
 			RSAKeyParameters publicKey = (RSAKeyParameters) keypair.getPublic();
 			privateKey = (RSAPrivateCrtKeyParameters) keypair.getPrivate();
 			// used to get proper encoding for the certificate
 			RSAPublicKeyStructure pkStruct = new RSAPublicKeyStructure(publicKey.getModulus(), publicKey.getExponent());
-			logger.finer("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
+			logger.debug("New public key is '" + new String(Hex.encodeHex(pkStruct.getEncoded())) + 
 					", exponent=" + publicKey.getExponent() + ", modulus=" + publicKey.getModulus());
 			// TODO: these two lines should go away
 			// JCE format needed for the certificate - because getEncoded() is necessary...
@@ -382,7 +382,7 @@ public class X509CertificateGenerator {
 		}
 		certGen.setExtensions(new X509Extensions(extOrdering, extensions));
 
-		logger.finer("Certificate structure generated, creating SHA1 digest");
+		logger.debug("Certificate structure generated, creating SHA1 digest");
 		// attention: hard coded to be SHA1+RSA!
 		SHA1Digest digester = new SHA1Digest();
 		AsymmetricBlockCipher rsa = new PKCS1Encoding(new RSAEngine());
@@ -397,7 +397,7 @@ public class X509CertificateGenerator {
 		if (useBCAPI) {
 			byte[] certBlock = bOut.toByteArray();
 			// first create digest
-			logger.finer("Block to sign is '" + new String(Hex.encodeHex(certBlock)) + "'");		
+			logger.debug("Block to sign is '" + new String(Hex.encodeHex(certBlock)) + "'");		
 			digester.update(certBlock, 0, certBlock.length);
 			byte[] hash = new byte[digester.getDigestSize()];
 			digester.doFinal(hash, 0);
@@ -429,7 +429,7 @@ public class X509CertificateGenerator {
 	        sig.update(bOut.toByteArray());
 	        signature = sig.sign();
 		}
-		logger.finer("SHA1/RSA signature of digest is '" + new String(Hex.encodeHex(signature)) + "'");
+		logger.debug("SHA1/RSA signature of digest is '" + new String(Hex.encodeHex(signature)) + "'");
 
 		// and finally construct the certificate structure
         ASN1EncodableVector  v = new ASN1EncodableVector();
@@ -439,7 +439,7 @@ public class X509CertificateGenerator {
         v.add(new DERBitString(signature));
 
         X509CertificateObject clientCert = new X509CertificateObject(new X509CertificateStructure(new DERSequence(v))); 
-		logger.finer("Verifying certificate for correct signature with CA public key");
+		logger.debug("Verifying certificate for correct signature with CA public key");
 /*        if (caCert != null) {
         	clientCert.verify(caCert.getPublicKey());
         }
@@ -448,7 +448,7 @@ public class X509CertificateGenerator {
         }*/
 
         // and export as PKCS12 formatted file along with the private key and the CA certificate 
-		logger.finer("Exporting certificate in PKCS12 format");
+		logger.debug("Exporting certificate in PKCS12 format");
 
         PKCS12BagAttributeCarrier bagCert = clientCert;
         // if exportAlias is set, use that, otherwise a default name
@@ -546,31 +546,31 @@ public class X509CertificateGenerator {
 				// extract all known aliases and remember if they are keys or certificates
 				Enumeration entries = ((java.security.KeyStore) caKs).aliases();
 				numEntries = ((java.security.KeyStore) caKs).size();
-				logger.finer("Key store contains " + numEntries + " entries");
+				logger.debug("Key store contains " + numEntries + " entries");
 				aliases = new String[numEntries];
 				certificates = new X509Certificate[numEntries];
 				keys = new Key[numEntries];
 				for (int i=0; i<numEntries; i++) {
 					aliases[i] = (String) entries.nextElement();
 					if (aliasStartsWith != null && aliases[i].startsWith(aliasStartsWith)) {
-						logger.finer("Entry " + i + " with alias '" + aliases[i] + 
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + 
 								"' skipped, does not start with '" + aliasStartsWith + "'"); 
 						continue;
 					}
 						
 					if (((java.security.KeyStore) caKs).isCertificateEntry(aliases[i])) {
-						logger.finer("Entry " + i + " with alias '" + aliases[i] + "' is a certificate");
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a certificate");
 						certificates[i] = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(aliases[i]);
 						numCertificates++;
 					}
 					else if (((java.security.KeyStore) caKs).isKeyEntry(aliases[i])) {
-						logger.finer("Entry " + i + " with alias '" + aliases[i] + "' is a private key");
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a private key");
 						keys[i] = ((java.security.KeyStore) caKs).getKey(aliases[i], password.toCharArray()); 
 						numKeys++;
 						// this is a dirty hack - when an entry is marked as a key, it may also have a certificate with the same alias
 						certificates[i] = (X509Certificate) ((java.security.KeyStore) caKs).getCertificate(aliases[i]);
 						if (certificates[i] != null) {
-							logger.finer("Entry " + i + " with alias '" + aliases[i] + "' also has a certificate");
+							logger.debug("Entry " + i + " with alias '" + aliases[i] + "' also has a certificate");
 							numCertificates++;
 						}
 					}
@@ -587,31 +587,31 @@ public class X509CertificateGenerator {
 				// extract all known aliases and remember if they are keys or certificates
 				Enumeration entries = ((JDKPKCS12KeyStore) caKs).engineAliases();
 				numEntries = ((JDKPKCS12KeyStore) caKs).engineSize();
-				logger.finer("Key store contains " + numEntries + " entries");
+				logger.debug("Key store contains " + numEntries + " entries");
 				aliases = new String[numEntries];
 				certificates = new X509Certificate[numEntries];
 				keys = new Key[numEntries];
 				for (int i=0; i<numEntries; i++) {
 					aliases[i] = (String) entries.nextElement();
 					if (aliasStartsWith != null && ! aliases[i].startsWith(aliasStartsWith)) {
-						logger.finer("Entry " + i + " with alias '" + aliases[i] + 
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + 
 								"' skipped, does not start with '" + aliasStartsWith + "'"); 
 						continue;
 					}
 
 					if (((JDKPKCS12KeyStore) caKs).engineIsCertificateEntry(aliases[i])) {
-						logger.finer("Entry " + i + " with alias '" + aliases[i] + "' is a certificate");
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a certificate");
 						certificates[i] = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(aliases[i]);
 						numCertificates++;
 					}
 					else if (((JDKPKCS12KeyStore) caKs).engineIsKeyEntry(aliases[i])) {
-						logger.finer("Entry " + i + " with alias '" + aliases[i] + "' is a private key");
+						logger.debug("Entry " + i + " with alias '" + aliases[i] + "' is a private key");
 						keys[i] = ((JDKPKCS12KeyStore) caKs).engineGetKey(aliases[i], password.toCharArray()); 
 						numKeys++;
 						// this is a dirty hack - when an entry is marked as a key, it may also have a certificate with the same alias
 						certificates[i] = (X509Certificate) ((JDKPKCS12KeyStore) caKs).engineGetCertificate(aliases[i]);
 						if (certificates[i] != null) {
-							logger.finer("Entry " + i + " with alias '" + aliases[i] + "' also has a certificate");
+							logger.debug("Entry " + i + " with alias '" + aliases[i] + "' also has a certificate");
 							numCertificates++;
 						}
 					}
@@ -622,7 +622,7 @@ public class X509CertificateGenerator {
 				}
 			}
 			
-			logger.finer("Finished reading from key store, found " + numCertificates +
+			logger.debug("Finished reading from key store, found " + numCertificates +
 					" certificates and " + numKeys + " keys with matching aliases");
 			// now that we know how many elements we have, initialize
 			ret.certificates = new X509Certificate[numCertificates];

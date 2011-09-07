@@ -189,7 +189,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected void protocolSucceededHook(RemoteConnection remote, Object optionalVerificationId,
 			String optionalParameterFromRemote,	byte[] sharedSessionKey) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.finer("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
+		logger.debug("protocolSucceededHook called, remote host reported coherence value of " + optionalParameterFromRemote);
 		System.out.println("SUCCESS");
 	}
 	
@@ -199,7 +199,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected void protocolFailedHook(boolean failHard, RemoteConnection remote, Object optionalVerificationId,
 			Exception e, String message) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.finer("protocolFailedHook called");
+		logger.debug("protocolFailedHook called");
 		System.out.println("FAILURE");
 	}
 	
@@ -209,12 +209,12 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	protected void protocolProgressHook(RemoteConnection remote,  
 			int cur, int max, String message) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.finer("protocolProgressHook called");
+		logger.debug("protocolProgressHook called");
 	}
 
 	protected void protocolStartedHook(RemoteConnection remote) {
 		// nothing special to do, events have already been emitted by the base class
-		logger.finer("protocolStartedHook called");
+		logger.debug("protocolStartedHook called");
 	}
 
 	/** Called by the base class when the whole authentication protocol is reset. 
@@ -272,7 +272,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				}
 				if (groupSize < 2) {
-					logger.finer("Although called for multiple concurrent modifications, only " +
+					logger.debug("Although called for multiple concurrent modifications, only " +
 							groupSize + " will actually bs started, thus not using any locking");
 					interlockGroup = null;
 				}
@@ -374,7 +374,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		if (coherenceThreshold < 0 || coherenceThreshold > 1)
 			throw new IllegalArgumentException("Coherence threshold must be in [0;1].");
 		
-		logger.finer("Setting coherence threshold to " + coherenceThreshold);
+		logger.debug("Setting coherence threshold to " + coherenceThreshold);
 		this.coherenceThresholdSucceed = coherenceThreshold;
 	}
 	
@@ -448,8 +448,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			}
 		}
 		
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Starting keyVerification with remote " + remote.toString());
+		if (logger.isDebugEnabled())
+			logger.debug("Starting keyVerification with remote " + remote.toString());
 
 		try {
 			byte[] localPlainText = null;
@@ -474,8 +474,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				verificationFailure(true, remote, null, null, null, "Interlock exchange aborted: encoding segment to a string failed");
 				return false;
 			}
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("My segment is " + localPlainText.length + " bytes long");
+			if (logger.isDebugEnabled())
+				logger.debug("My segment is " + localPlainText.length + " bytes long");
 
 			// exchange with the remote host
 			timestamp = System.currentTimeMillis();
@@ -497,20 +497,20 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 
 			boolean decision = false;
 			// and check the received remote segment, compare it with our local segment
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Remote segment is " + remotePlainText.length + " bytes long");
+			if (logger.isDebugEnabled())
+				logger.debug("Remote segment is " + remotePlainText.length + " bytes long");
 			// count the tokens
 			timestamp = System.currentTimeMillis();
 			double[] remoteSegment = TimeSeriesUtil.decodeVector(remotePlainText);
 			totalCodingTime += System.currentTimeMillis()-timestamp;
 
 			if (remoteSegment != null) {
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("remote segment is " + remoteSegment.length + " elements long");
+				if (logger.isDebugEnabled())
+					logger.debug("remote segment is " + remoteSegment.length + " elements long");
 				timestamp = System.currentTimeMillis();
 				decision = checkCoherence(remoteSegment);
 				totalComparisonTime += System.currentTimeMillis()-timestamp;
-				if (logger.isLoggable(Level.INFO))
+				if (logger.isInfoEnabled())
 					logger.info("COHERENCE MATCH: " + decision + "(computed " + 
 						lastCoherenceMean + " and threshold is " + coherenceThresholdSucceed + ")");
 			}
@@ -575,8 +575,8 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			this.instanceNum = instanceNum;
 			this.openChannel = openChannel;
 
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("Creating AsyncInterlockHelper for " + 
+			if (logger.isDebugEnabled())
+				logger.debug("Creating AsyncInterlockHelper for " + 
 					remote.toString() + " with auth key " + authKey +
 					", instance " + instanceNum + " out of " + groupSize +
 					(openChannel ? ", about to open channel" : ", re-using already opened channel"));
@@ -585,14 +585,14 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		public void run() {
 			boolean cleanup = false;
 			
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("AsyncInterlockHelper thread " + instanceNum + 
+			if (logger.isDebugEnabled())
+				logger.debug("AsyncInterlockHelper thread " + instanceNum + 
 					"/" + groupSize + " starting for remote " + remote.toString());
 			
 			try {
 				outer: do {
 					// first wait for the local segment to be received to start the interlock protocol
-					logger.finer("Waiting for local segment");
+					logger.debug("Waiting for local segment");
 					synchronized(localSegmentLock) {
 						while (localSegment == null) {
 							try {

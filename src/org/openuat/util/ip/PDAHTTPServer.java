@@ -99,18 +99,18 @@ public class PDAHTTPServer {
 	 */
 	public Response serve(String uri, String method, Properties header,
 			Properties parms) {
-		logger.finer(method + " '" + uri + "' ");
+		logger.debug(method + " '" + uri + "' ");
 
 		Enumeration e = header.propertyNames();
 		while (e.hasMoreElements()) {
 			String value = (String) e.nextElement();
-			logger.finer("  HDR: '" + value + "' = '"
+			logger.debug("  HDR: '" + value + "' = '"
 					+ header.getProperty(value) + "'");
 		}
 		e = parms.propertyNames();
 		while (e.hasMoreElements()) {
 			String value = (String) e.nextElement();
-			logger.finer("  PRM: '" + value + "' = '"
+			logger.debug("  PRM: '" + value + "' = '"
 					+ header.getProperty(value) + "'");
 		}
 		return serveFile(uri, header, new File("."), true);
@@ -223,10 +223,10 @@ public class PDAHTTPServer {
 		t.setDaemon(deamon);
 		t.start();
 		this.myFileDir = new File("");
-		logger.finer("Now serving files in port " + port + " from \""
+		logger.debug("Now serving files in port " + port + " from \""
 				+ new File("").getAbsolutePath() + "\"");
 		if (deamon){
-			logger.finer("Hit Enter to stop.\n");
+			logger.debug("Hit Enter to stop.\n");
 			
 				try {
 					System.in.read();
@@ -289,7 +289,7 @@ public class PDAHTTPServer {
 
 		public void run() {
 			try {
-				logger.finer("try method in run ");
+				logger.debug("try method in run ");
 				InputStream is = mySocket.getInputStream();
 				if (is == null)
 					return;
@@ -299,7 +299,7 @@ public class PDAHTTPServer {
 				Response r = null;
 				String inLine = in.readLine();
 				if (inLine == null){
-					logger.finer("in Line was null !");
+					logger.debug("in Line was null !");
 					sendAnswer(HTTP_BADREQUEST,
 					"BAD REQUEST: Syntax error. Usage: GET /example/file.html");
 					return;
@@ -312,10 +312,10 @@ public class PDAHTTPServer {
 				if (!st.hasMoreTokens())
 					sendAnswer(HTTP_BADREQUEST,
 							"BAD REQUEST: Missing URI. Usage: GET /example/file.html");
-				logger.finer("before decode");
+				logger.debug("before decode");
 				
 				String uri = decodePercent(st.nextToken());
-				logger.finer("afeter decode");
+				logger.debug("afeter decode");
 				// Decode parameters from the URI
 				Properties parms = new Properties();
 				int qmi = uri.indexOf('?');
@@ -333,13 +333,13 @@ public class PDAHTTPServer {
 						header.put(line.substring(0, p).trim(), line.substring(
 								p + 1).trim());
 						line = in.readLine();
-						logger.finer("header reading: "+line);
+						logger.debug("header reading: "+line);
 					}
 				}
 				// If the method is POST, there may be parameters
 				// in data section, too, read it:
 				if (method.equalsIgnoreCase("POST")) {
-					logger.finer(" recognition of POST request");
+					logger.debug(" recognition of POST request");
 					long size = 0x7FFFFFFFFFFFFFFFl;
 					String contentLength = header.getProperty("Content-Length");
 					if (contentLength != null) {
@@ -359,7 +359,7 @@ public class PDAHTTPServer {
 					
 					String id = header.getProperty(HTTPSocket.RELATE_ATTRIBUTE_ID);
 					if (relateFile != null) {
-						logger.finer("header contains a X-Relate-Filename");
+						logger.debug("header contains a X-Relate-Filename");
 						long now = System.currentTimeMillis();
 						File outfile = new File(now + "-" + relateFile);
 						FileOutputStream os = new FileOutputStream(outfile);
@@ -381,15 +381,15 @@ public class PDAHTTPServer {
 							os.flush();
 						}
 						os.close();
-						logger.finer("file received and stored");
+						logger.debug("file received and stored");
 						File received =new File(relateFile);
 						outfile.renameTo(received);
 						FileTransferEvent fte =new FileTransferEvent(id, received);
 						fireEventToListener(fte);
-						logger.finer("file renamed");
+						logger.debug("file renamed");
 						sendAnswer(HTTP_OK,
 						"SERVER INFO: File Transmitted.");
-						logger.finer(" http_ok send back");
+						logger.debug(" http_ok send back");
 						return;
 					} else { // some parameter might be transfered.
 						String postLine = "";
@@ -426,11 +426,11 @@ public class PDAHTTPServer {
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();
 			}
-			logger.finer("END of run");
+			logger.debug("END of run");
 		}
 
 		private void fireEventToListener(FileTransferEvent fte) {
-			logger.finer("fire filetransfer event to listeners: " +listeners.size());
+			logger.debug("fire filetransfer event to listeners: " +listeners.size());
 			Iterator iter= listeners.iterator();
 			while(iter !=null && iter.hasNext()){
 				FileTransferListener l = (FileTransferListener)iter.next();
@@ -610,19 +610,19 @@ public class PDAHTTPServer {
 				|| uri.indexOf("../") >= 0)
 			return new Response(HTTP_FORBIDDEN, MIME_PLAINTEXT,
 					"FORBIDDEN: Won't serve ../ for security reasons.");
-		logger.finer("homeDir: " + homeDir);
-		logger.finer("uri: " + uri);
+		logger.debug("homeDir: " + homeDir);
+		logger.debug("uri: " + uri);
 		File f = new File(homeDir, uri);
-		logger.finer("file: " + f.toString());
+		logger.debug("file: " + f.toString());
 		if (!f.exists()) {
-			logger.finer("file does not exist");
+			logger.debug("file does not exist");
 			return new Response(HTTP_NOTFOUND, MIME_PLAINTEXT,
 					"Error 404, file not found.");
 		}
 
 		// List the directory, if necessary
 		if (f.isDirectory()) {
-			logger.finer("f is directory");
+			logger.debug("f is directory");
 			// Browsers get confused without '/' after the
 			// directory, send a redirect.
 			if (!uri.endsWith("/")) {
@@ -693,7 +693,7 @@ public class PDAHTTPServer {
 		}
 
 		try {
-			logger.finer("get MIME typ");
+			logger.debug("get MIME typ");
 			// Get MIME type from file name extension, if possible
 			String mime = null;
 			int dot = f.getCanonicalPath().lastIndexOf('.');

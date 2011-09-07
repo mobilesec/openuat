@@ -118,7 +118,7 @@ public class FileTransferService {
 		public FileTransferHandler() {
 		}
 		public void receivedFile(FileTransferEvent fts) {
-			logger.finer(" file received: "
+			logger.debug(" file received: "
 					+ fts.getTmpFile().getAbsolutePath());
 			FileTransferService.this.fireFileToListeners(fts);
 		}

@@ -93,8 +93,8 @@ public class Coherence {
 		double hannNorm = l2Norm(hann);
 		for (int i=0; i<windowsize; i++)
 			hann[i] = hann[i] / hannNorm;
-		if (logger.isLoggable(Level.FINER) && Math.abs(l2Norm(hann) - 1) > 0.00001)
-			logger.finer("Norm of normalized hann window is not 1");
+		if (logger.isDebugEnabled() && Math.abs(l2Norm(hann) - 1) > 0.00001)
+			logger.debug("Norm of normalized hann window is not 1");
 		
 		// the self- and cross-correlations of the frequency power spectra of the signals
 		// they are initialized to 0 by the JVM
@@ -107,7 +107,7 @@ public class Coherence {
 		// this calculates the average of the P** over all slices
 		int slices=0;
 		for (int offset=0; offset<s1.length-windowsize+1; offset+=windowsize-overlap) {
-			logger.finer("Using slice " + slices + " at offset " + offset);
+			logger.debug("Using slice " + slices + " at offset " + offset);
 			slices++;
 
 			// create the slices and mask them with hanning

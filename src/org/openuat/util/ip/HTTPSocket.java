@@ -78,7 +78,7 @@ public class HTTPSocket  implements Runnable{
 	 * 		to yes, file transfer was succesful.
 	 */
 	public boolean sendFile(InetAddress ip, FileTransferEvent fts) {
-		logger.finer(" begin of sending file to "+ip.getHostAddress());
+		logger.debug(" begin of sending file to "+ip.getHostAddress());
 		this.ip=ip;
 		this.destId= fts.getSource().toString();
 		fileToSend=fts.getTmpFile();
@@ -86,7 +86,7 @@ public class HTTPSocket  implements Runnable{
 			logger.warn("file does not exist.");
 			return false;
 		}
-		logger.finer("create thread");
+		logger.debug("create thread");
 		thread = new Thread(this);
 		thread.start();
 		return true;
@@ -119,7 +119,7 @@ public class HTTPSocket  implements Runnable{
 		String filename = file.getName().replace(' ', '_');
 		FileNameMap fileNameMap = URLConnection.getFileNameMap();
 	    String mimeType = fileNameMap.getContentTypeFor(filename);
-	    logger.finer("MIME TYPE: "+ mimeType);
+	    logger.debug("MIME TYPE: "+ mimeType);
 		String header = "POST / HTTP/1.1\r\n";
 		header += RELATE_ATTRIBUTE_FILENAME+": " + filename + "\r\n";
 		header += RELATE_ATTRIBUTE_ID + ": " + id + "\r\n";
@@ -134,7 +134,7 @@ public class HTTPSocket  implements Runnable{
 	}
 
 	public void run() {
-		logger.finer("in run ");
+		logger.debug("in run ");
 		OutputStream out=null;
 		try {
 			Socket myClient = null;

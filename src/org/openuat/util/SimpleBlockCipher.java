@@ -117,8 +117,8 @@ public class SimpleBlockCipher {
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
 						BlockByteLength : plainText.length - i*BlockByteLength;
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Encrypting block " + i + ": " + bytesInBlock + " bytes" + 
+				if (logger.isDebugEnabled())
+					logger.debug("Encrypting block " + i + ": " + bytesInBlock + " bytes" + 
 							(instanceId != null ? " [instance " + instanceId : ""));
 				System.arraycopy(plainText, i*BlockByteLength, plainBlock, 0, bytesInBlock);
 				// if not filled, the rest is padded with zeros (initialized by the JVM)
@@ -212,8 +212,8 @@ public class SimpleBlockCipher {
 				// the number of bytes left for this block - may be less for the last
 				int bytesInBlock = (i+1)*BlockByteLength <= plainText.length ? 
 						BlockByteLength : plainText.length - i*BlockByteLength; 
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Decrypting block " + i + ": " + bytesInBlock + " bytes" + 
+				if (logger.isDebugEnabled())
+					logger.debug("Decrypting block " + i + ": " + bytesInBlock + " bytes" + 
 							(instanceId != null ? " [instance " + instanceId : ""));
 				// and finally add to the output
 				System.arraycopy(plainBlock, 0, plainText, i*BlockByteLength, bytesInBlock);

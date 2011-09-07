@@ -57,7 +57,7 @@ public class BluetoothSupport {
 	}
 	
 /*	private static boolean initAvetana() {
-		logger.finer("Trying to initializing Avetana JSR82 implementation");
+		logger.debug("Trying to initializing Avetana JSR82 implementation");
 		// Initialize the java stack.
 		try {
 			//de.avetana.bluetooth.stack.BluetoothStack.init(new de.avetana.bluetooth.stack.AvetanaBTStack());

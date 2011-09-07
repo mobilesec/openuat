@@ -90,8 +90,8 @@ public class XsensLogReader extends AsciiLineReaderBase {
 			return;
 		}
 		
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Reading sample number " + samplenum + " at timestamp " + timestamp + " ms");
+		if (logger.isDebugEnabled())
+			logger.debug("Reading sample number " + samplenum + " at timestamp " + timestamp + " ms");
 		// sanity check
 		if (timestamp < lastSampleAt + SAMPLE_WIDTH-1) {
 			logger.error("Reading from the past (read " + timestamp + ", last sample at " + 
@@ -101,8 +101,8 @@ public class XsensLogReader extends AsciiLineReaderBase {
 
 		// special case: first sample
 		if (lastSampleAt == 0) {
-			if (logger.isLoggable(Level.FINER))
-				logger.finer("First sample starting at " + timestamp + " us");
+			if (logger.isDebugEnabled())
+				logger.debug("First sample starting at " + timestamp + " us");
 			lastSampleAt = timestamp;
 		}
 
@@ -125,8 +125,8 @@ public class XsensLogReader extends AsciiLineReaderBase {
 			}
 		}
 			
-		if (logger.isLoggable(Level.FINER))
-			logger.finer("Emitting sample for timestamp " + lastSampleAt);
+		if (logger.isDebugEnabled())
+			logger.debug("Emitting sample for timestamp " + lastSampleAt);
 		emitSample(sample);
 	}
 	

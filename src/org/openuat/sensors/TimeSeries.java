@@ -215,8 +215,8 @@ public class TimeSeries implements SamplesSink {
 			nextStageSample -= getWindowMean();
 		else if (subtractTotalMean)
 			nextStageSample -= getTotalMean();
-		if (logger.isLoggable(Level.FINEST))
-			logger.finest("Pushing value " + nextStageSample + " to next stage");
+		if (logger.isTraceEnabled())
+			logger.trace("Pushing value " + nextStageSample + " to next stage");
     	if (nextStageSinks != null)
     		for (int i=0; i<nextStageSinks.size(); i++) {
     			SamplesSink s = (SamplesSink) nextStageSinks.elementAt(i);
@@ -224,12 +224,12 @@ public class TimeSeries implements SamplesSink {
     		}
 		
 		// detect active segments
-    	if (logger.isLoggable(Level.FINER))
-    		logger.finer("Checking for activity: window variance is " + getWindowVariance() + 
+    	if (logger.isDebugEnabled())
+    		logger.debug("Checking for activity: window variance is " + getWindowVariance() + 
     				", threshold is " + activeVarianceThreshold);
     	if (activeVarianceThreshold > 0 && getWindowVariance() >= activeVarianceThreshold
     			&& !isActive) {
-    		logger.finer("Detected transition to active at index " + sampleNum);
+    		logger.debug("Detected transition to active at index " + sampleNum);
     		isActive = true;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
@@ -240,7 +240,7 @@ public class TimeSeries implements SamplesSink {
     	}
     	if (activeVarianceThreshold > 0 && getWindowVariance() < activeVarianceThreshold
     			&& isActive) {
-    		logger.finer("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
+    		logger.debug("Detected transition to quiescent at index " + (sampleNum-circularBuffer.length+1));
     		isActive = false;
         	if (nextStageSinks != null)
         		for (int i=0; i<nextStageSinks.size(); i++) {
@@ -251,7 +251,7 @@ public class TimeSeries implements SamplesSink {
     	}
 
     	// enable the sample rate
-    	if (logger.isLoggable(Level.FINER) || forceSampleRateEstimation) {
+    	if (logger.isDebugEnabled() || forceSampleRateEstimation) {
     		if (totalNum % estimateSampleRateWidth == 0) {
 				long curTime = System.currentTimeMillis();
     			if (lastSampleRateEstimated >= 0) {
@@ -264,7 +264,7 @@ public class TimeSeries implements SamplesSink {
     					if (forceSampleRateEstimation)
     						logger.warn("Current sample rate: " + sampleRate + " Hz");
     					else
-    						logger.finer("Current sample rate: " + sampleRate + " Hz");
+    						logger.debug("Current sample rate: " + sampleRate + " Hz");
     				}
     			}
     			else

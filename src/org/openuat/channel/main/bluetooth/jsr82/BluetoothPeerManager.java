@@ -26,8 +26,6 @@ import javax.bluetooth.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
 import org.openuat.util.LoggingHelper;
 
@@ -303,7 +301,7 @@ public class BluetoothPeerManager {
 		long startWait = System.currentTimeMillis();
 		while (eventsHandler.isInquiryRunning() && 
 			   System.currentTimeMillis()-startWait <= timeoutMs) {
-			logger.finest("Waiting for background inquiry to finish...");
+			logger.trace("Waiting for background inquiry to finish...");
 			Thread.sleep(200);
 		}
 		if (eventsHandler.isInquiryRunning()) {
@@ -527,7 +525,7 @@ public class BluetoothPeerManager {
 	private class InquiryThread implements Runnable {
 		public void run() {
 			while (inquiryThread != null) {
-				logger.finer("Main inquiry thread: starting next inquiry");
+				logger.debug("Main inquiry thread: starting next inquiry");
 				if (!startInquiry())
 					return;
 				try {
@@ -540,7 +538,7 @@ public class BluetoothPeerManager {
 					synchronized (serviceSearchQueue) {
 						for (int i=0; i<serviceSearchQueue.size(); i++) {
 							RemoteDevice device = (RemoteDevice) serviceSearchQueue.elementAt(i);
-							logger.finer("Main inquiry thread: processing service search queue request for " + 
+							logger.debug("Main inquiry thread: processing service search queue request for " + 
 									device.getBluetoothAddress());
 							startServiceSearch(device, automaticServiceDiscoveryUUID);
 							// wait for the previous service scan to finish before starting the next
@@ -561,7 +559,7 @@ public class BluetoothPeerManager {
 							}
 						}
 						serviceSearchQueue.removeAllElements();
-						logger.finer("Main inquiry thread: service search queue processed, emptying now");
+						logger.debug("Main inquiry thread: service search queue processed, emptying now");
 					}
 					// and sleep (but only if not exiting)
 					if (inquiryThread != null)
@@ -624,7 +622,7 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			logger.finer("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
+			logger.debug("Found remote device with MAC " + remoteDevice.getBluetoothAddress() +
 					" named '" + resolveName(remoteDevice) + "' of class " + 
 					deviceClass.getMajorDeviceClass() + "." + deviceClass.getMinorDeviceClass());
 			synchronized(foundDevices) {
@@ -679,12 +677,12 @@ public class BluetoothPeerManager {
 				}
 				
 				if (newDevices.size() == 0) {
-					if (logger.isLoggable(Level.FINER))
-						logger.finer("Discovery completed, found " + newDevices.size() + 
+					if (logger.isDebugEnabled())
+						logger.debug("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
 				else {
-					if (logger.isLoggable(Level.INFO))
+					if (logger.isInfoEnabled())
 						logger.info("Discovery completed, found " + newDevices.size() + 
 								" new devices, forwarding to " + listeners.size() + " listeners");
 				}
@@ -706,7 +704,7 @@ public class BluetoothPeerManager {
 						sleepBetweenInquiries = MINIMUM_SLEEP_TIME;
 					if (sleepBetweenInquiries > MAXIMUM_SLEEP_TIME)
 						sleepBetweenInquiries = MAXIMUM_SLEEP_TIME;
-					logger.finer("Inquiry found " + newDevices.size() + 
+					logger.debug("Inquiry found " + newDevices.size() + 
 							" new, adapting sleep time to " + sleepBetweenInquiries + "ms");
 				}
 				
@@ -731,7 +729,7 @@ public class BluetoothPeerManager {
 
 
 		public void servicesDiscovered(int transID, ServiceRecord[] serviceRecord) {
-			if (logger.isLoggable(Level.INFO))
+			if (logger.isInfoEnabled())
 				logger.info("Discovered " + serviceRecord.length + " services for remote device " +
 					currentRemoteDevice.getBluetoothAddress() + 
 					" with transaction id " + transID);
@@ -763,13 +761,13 @@ public class BluetoothPeerManager {
 			}
 			synchronized (services) {	
 				for (int i=0; i<serviceRecord.length; i++) {
-					if (logger.isLoggable(Level.FINER))
-						logger.finer("Service " + i + ": " + 
+					if (logger.isDebugEnabled())
+						logger.debug("Service " + i + ": " + 
 							serviceRecord[i].getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
 					dev.services.addElement(serviceRecord[i]);
 				}
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Total number of services discovered for " + 
+				if (logger.isDebugEnabled())
+					logger.debug("Total number of services discovered for " + 
 						currentRemoteDevice + " is now " + services.size());
 				// something in dev changed, notify
 				synchronized (dev.notifier) {
@@ -784,7 +782,7 @@ public class BluetoothPeerManager {
 				return;
 			}
 
-			if (logger.isLoggable(Level.INFO))
+			if (logger.isInfoEnabled())
 				logger.info("Service search completed for " + currentRemoteDevice.getBluetoothAddress() + 
 					" with transID " + transID + " and respCode " + respCode);
 			
@@ -824,14 +822,14 @@ public class BluetoothPeerManager {
 				}
 
 				synchronized (services) { 
-					if (logger.isLoggable(Level.INFO))
+					if (logger.isInfoEnabled())
 						logger.info("Service scan for " + currentRemoteDevice.getBluetoothAddress() +
 								" with transaction " + transID + " completed, found " + services.size() + 
 							" services, forwarding to " + listeners.size() + " listeners");
-					if (logger.isLoggable(Level.FINER)) {
+					if (logger.isDebugEnabled()) {
 						for (int i=0; i<services.size(); i++) {
 							ServiceRecord sr = (ServiceRecord) services.elementAt(i);
-							logger.finer("Service " + i + ": " + sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
+							logger.debug("Service " + i + ": " + sr.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false));
 						}
 					}
 					for (int i=0; i<listeners.size(); i++)
@@ -972,8 +970,8 @@ public class BluetoothPeerManager {
 		synchronized (dev.notifier) {
 			while (!dev.serviceSearchFinished && 
 					System.currentTimeMillis()-startWait <= timeoutMs) {
-				if (logger.isLoggable(Level.FINEST))
-					logger.finest("Waiting for service search to finish...");
+				if (logger.isTraceEnabled())
+					logger.trace("Waiting for service search to finish...");
 				dev.notifier.wait(500);
 			}
 			if (!dev.serviceSearchFinished) {

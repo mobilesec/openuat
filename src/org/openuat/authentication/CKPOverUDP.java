@@ -21,8 +21,6 @@ import org.apache.commons.codec.binary.Hex;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKey;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKeyPartIdentifier;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -405,7 +403,7 @@ Bogdan Groza, 2007-04-19 */
 					logger.info("Duplicate feature vectors detected: " + parts.size() +
 							" unique vectors out of " + keyParts.length +
 							(instanceId != null ? " [" + instanceId + "]" : ""));
-					statisticsLogger.fine("d duplicate feature vectors detected: " + parts.size() + " out of " + keyParts.length + " are unique");
+					statisticsLogger.info("d duplicate feature vectors detected: " + parts.size() + " out of " + keyParts.length + " are unique");
 					keyParts = new byte[parts.size()][];
 					Iterator iter = parts.values().iterator();
 					for (int i=0; i<keyParts.length; i++)
@@ -422,7 +420,7 @@ Bogdan Groza, 2007-04-19 */
 			 * candidate key parts
 			 */
 			if (broadcastCandidates) {
-				logger.finer("Broadcasting " + candidateKeyParts.length + " candidate key parts" + 
+				logger.debug("Broadcasting " + candidateKeyParts.length + " candidate key parts" + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				byte[] buffer = new byte[Maximum_Udp_Data_Size];
 				int outIndex = 0, numMessages = 0;
@@ -430,7 +428,7 @@ Bogdan Groza, 2007-04-19 */
 					if (outIndex == 0 || outIndex+candidateKeyParts[i].hash.length*2+1 >= Maximum_Udp_Data_Size) {
 						// send the old packet and construct a new one
 						if (outIndex > 0) {
-							logger.finer("Sending UDP packet with " + outIndex + " bytes" + 
+							logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
 							byte[] packet = new byte[outIndex];
 							System.arraycopy(buffer, 0, packet, 0, outIndex);
@@ -445,7 +443,7 @@ Bogdan Groza, 2007-04-19 */
 						System.arraycopy(packetStart.getBytes(), 0, buffer, 0, packetStart.length());
 						outIndex = packetStart.length();
 
-						logger.finer("Started new UDP packet with round " + candidateKeyParts[i].round + 
+						logger.debug("Started new UDP packet with round " + candidateKeyParts[i].round + 
 								" for candidate number " + i + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
@@ -461,7 +459,7 @@ Bogdan Groza, 2007-04-19 */
 					outIndex += cand.length();
 				}
 				if (outIndex > 0) {
-					logger.finer("Sending UDP packet with " + outIndex + " bytes" + 
+					logger.debug("Sending UDP packet with " + outIndex + " bytes" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					byte[] packet = new byte[outIndex];
 					System.arraycopy(buffer, 0, packet, 0, outIndex);
@@ -497,7 +495,7 @@ Bogdan Groza, 2007-04-19 */
 			}
 
 			totalCodingTime += System.currentTimeMillis()-timestamp;
-			statisticsLogger.fine("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
+			statisticsLogger.info("rc* processed " + numOldMessages + " old incoming CAND messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
 	
@@ -554,7 +552,7 @@ Bogdan Groza, 2007-04-19 */
 	 * @see #addCandidates(byte[][], float)
 	 */
 	private void handleMatchingCandidateKeyPart(int round, int match, InetAddress remote) throws IOException, InternalApplicationException {
-		logger.finer("Number " + match + " of the incoming candidate key parts from host " + remote + " matches" + 
+		logger.debug("Number " + match + " of the incoming candidate key parts from host " + remote + " matches" + 
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 		// optionally flag
 		if (sendMatches) {
@@ -603,7 +601,7 @@ Bogdan Groza, 2007-04-19 */
 						// and remove from the list to not match one incoming message twice
 						incomingCandKeyBuffer[i] = null;
 				}
-			statisticsLogger.fine("rk* processed " + numOldMessages + " old incoming KEY messages with " + numOldCandidates + " candidate key parts");
+			statisticsLogger.info("rk* processed " + numOldMessages + " old incoming KEY messages with " + numOldCandidates + " candidate key parts");
 		}
 	}
 	
@@ -623,7 +621,7 @@ Bogdan Groza, 2007-04-19 */
 		String remoteHostAddress = remoteHost.getHostAddress();
 		
 		// only if enough rounds have passed in total with this remote host can we do anything
-		logger.finer("Checking criteria for generating a key for remote host " + remoteHostAddress + 
+		logger.debug("Checking criteria for generating a key for remote host " + remoteHostAddress + 
 				": " + ckp.getNumLocalRounds(remoteHostAddress) + " local rounds, " +
 				ckp.getMatchingRoundsFraction(remoteHostAddress) + " matching, " +
 				ckp.getSumMatchEntropy(remoteHostAddress) + " entropy sum; " +
@@ -651,14 +649,14 @@ Bogdan Groza, 2007-04-19 */
 				return false;
 			}
 			else {
-				logger.finer("Enough local rounds have passed with remote host " + remoteHostAddress +
+				logger.debug("Enough local rounds have passed with remote host " + remoteHostAddress +
 						", but neither positive nor negative criteria are fulfilled" +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				return false;
 			}
 		}
 		else {
-			logger.finer("Not enough local rounds have passed yet for remote host " +
+			logger.debug("Not enough local rounds have passed yet for remote host " +
 					remoteHostAddress + " to check for any action (" + 
 					ckp.getNumLocalRounds(remoteHostAddress) + " passed, want " + minNumRoundsForAction + ")" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -685,21 +683,21 @@ Bogdan Groza, 2007-04-19 */
 					genList = (GeneratedKeyCandidates) generatedKeys.get(remoteHostAddress);
 				}
 				else {
-					logger.finer("No list of generated keys found for remote host '" + remoteHostAddress + 
+					logger.debug("No list of generated keys found for remote host '" + remoteHostAddress + 
 							"', creating new list" +
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					genList = new GeneratedKeyCandidates();
 					generatedKeys.put(remoteHostAddress, genList);
 				}
-				logger.finer("Inserting candidate key for host " + remoteHostAddress + " at list position " + genList.index +
+				logger.debug("Inserting candidate key for host " + remoteHostAddress + " at list position " + genList.index +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				genList.list[genList.index++] = candKey;
 				if (genList.index == genList.list.length) {
-					statisticsLogger.fine("o candidate key list overflow (" + genList.list.length + ")");
+					statisticsLogger.info("o candidate key list overflow (" + genList.list.length + ")");
 					genList.index = 0;
 				}
 			
-				logger.finer("Sending candidate key of " + candKey.numParts + " parts with hash " + 
+				logger.debug("Sending candidate key of " + candKey.numParts + " parts with hash " + 
 						new String(Hex.encodeHex(candKey.hash)) +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				statisticsLogger.info("sk sending candidate key of " + candKey.numParts + " parts");
@@ -717,7 +715,7 @@ Bogdan Groza, 2007-04-19 */
 				logger.error("Could not generate key: " + e + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			} catch (IOException e) {
-				logger.finer("Can not send candidate key packet: " + e + 
+				logger.debug("Can not send candidate key packet: " + e + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 		}
@@ -766,7 +764,7 @@ Bogdan Groza, 2007-04-19 */
 			}
 		}
 		else {
-			logger.finer("Could not generate local key that matches received candidate key identifier" + 
+			logger.debug("Could not generate local key that matches received candidate key identifier" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return false;
 		}
@@ -781,14 +779,14 @@ Bogdan Groza, 2007-04-19 */
 			Exception e, String msg) {
 		String remoteHostAddress = remoteHost.getHostAddress();
 
-		logger.finer("Authentication with remote host " + remoteHostAddress + " failed" +
+		logger.debug("Authentication with remote host " + remoteHostAddress + " failed" +
 				(e != null ? " with exception '" + e + "'" : "") +
 				(msg != null ? " with message '" + msg + "'" : "") + 
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 		if (ckp.wipe(remoteHostAddress) && sendTerminateMsg) {
 			// ok, there was some state, also send a termination message
 			String termPacket = Protocol_Terminate;
-			logger.finer("Sending termination message to remote host" + 
+			logger.debug("Sending termination message to remote host" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			try {
 				byte[] pckt = termPacket.getBytes();
@@ -808,7 +806,7 @@ Bogdan Groza, 2007-04-19 */
 			matchingRoundsFraction = ckp.getMatchingRoundsFraction(remoteHostAddress);
 		}
 		catch (InternalApplicationException f) { 
-			logger.log(Level.SEVERE, "Can not compute fraction of matching rounds, this should not happen!", f);
+			logger.error("Can not compute fraction of matching rounds, this should not happen!", f);
 		}
 
 		// also wipe the state local to this class
@@ -830,7 +828,7 @@ Bogdan Groza, 2007-04-19 */
 		long timestamp = System.currentTimeMillis();
 
 		if (! generatedKeys.containsKey(remoteHostAddress)) {
-			logger.finer("Got candidate key message from remote host " + remoteHostAddress + 
+			logger.debug("Got candidate key message from remote host " + remoteHostAddress + 
 					" before generating our own key, creating new list" + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			generatedKeys.put(remoteHostAddress, new GeneratedKeyCandidates());
@@ -845,8 +843,8 @@ Bogdan Groza, 2007-04-19 */
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 			else { 
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Received candidate key message and generated the same matching key as before for " + remoteHost +
+				if (logger.isDebugEnabled())
+					logger.debug("Received candidate key message and generated the same matching key as before for " + remoteHost +
 						", which has not yet been acknowledged. Ignoring now." + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
@@ -885,7 +883,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 */
 
 			String ackPacket = Protocol_KeyAcknowledge + new String(Hex.encodeHex(foundKeyHash));
-			if (logger.isLoggable(Level.INFO))
+			if (logger.isInfoEnabled())
 				logger.info("Sending key acknowledge message for hash " + new String(Hex.encodeHex(foundKeyHash))
 					+ " to remote host " + remoteHostAddress + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -925,7 +923,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 					if (cand.list[i].hash[j] != ackedKeyHash[j])
 						match = false;
 				if (match) {
-					logger.finer("Found recently generated key matching the acknowledged hash" + 
+					logger.debug("Found recently generated key matching the acknowledged hash" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					ackedMatchingKey = cand.list[i].key;
 				}
@@ -1057,7 +1055,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 				byte[] packet = new byte[length];
 				System.arraycopy(message, offset, packet, 0, length);
 				String pack = new String(packet);
-				logger.finer("Received UDP packet with  " + pack.length() + " bytes from " + remoteHostAddress + 
+				logger.debug("Received UDP packet with  " + pack.length() + " bytes from " + remoteHostAddress + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				try {
 					// this handles the different packet types
@@ -1069,7 +1067,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 						StringTokenizer st = new StringTokenizer(pack.substring(off+1));
 						CandidateKeyPartIdentifier[] keyParts = new CandidateKeyPartIdentifier[st.countTokens()]; 
 						if (keyParts.length > 0) {
-							logger.finer("Received packet with " + keyParts.length + " candidate key parts for round " + round + 
+							logger.debug("Received packet with " + keyParts.length + " candidate key parts for round " + round + 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
 							for (int i=0; i<keyParts.length; i++) {
 								keyParts[i] = new CandidateKeyPartIdentifier();
@@ -1086,15 +1084,15 @@ Suggestion by Bogdan Groza, 2007-04-19
 
 							if (match > -1) {
 								// yes, we have a match, handle it
-								statisticsLogger.fine("rc+ match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
+								statisticsLogger.info("rc+ match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
 								handleMatchingCandidateKeyPart(round, match, (InetAddress) sender);
 							}
 							else {
 								// no match
-								logger.finer("None of the incoming candidate key parts matches, only storing it in " +
+								logger.debug("None of the incoming candidate key parts matches, only storing it in " +
 										"buffer for future reference"+ 
 										(instanceId != null ? " [" + instanceId + "]" : ""));
-								statisticsLogger.fine("rc- no match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
+								statisticsLogger.info("rc- no match in incoming CAND packet with " + keyParts.length + " candidate key parts in round " + round);
 								/* But since this was a mismatch, need to check if negative criteria might be fulfilled now.
 								 * This method call takes care of it.
 								 */
@@ -1112,7 +1110,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 							// alas, if we had a match, remember it to prevent double matches with the same local round!
 							incomingKeyPartsBuffer[incomingKeyPartsBufferIndex++] = tmp;
 							if (incomingKeyPartsBufferIndex == incomingKeyPartsBuffer.length) {
-								statisticsLogger.fine("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
+								statisticsLogger.info("o incoming CAND messages list overflow (" + incomingKeyPartsBuffer.length + ")");
 								incomingKeyPartsBufferIndex = 0;
 							}
 							totalCodingTime += System.currentTimeMillis()-timestamp;
@@ -1132,7 +1130,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 						int off = pack.indexOf(' ', Protocol_CandidateMatch.length());
 						int round = Integer.parseInt(pack.substring(Protocol_CandidateMatch.length(), off));
 						int match = Integer.parseInt(pack.substring(off+1));
-						logger.finer("Received packet with matching index " + match + " for round " + round + 
+						logger.debug("Received packet with matching index " + match + " for round " + round + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						totalCodingTime += System.currentTimeMillis()-timestamp;
 						timestamp = System.currentTimeMillis();
@@ -1155,8 +1153,8 @@ Suggestion by Bogdan Groza, 2007-04-19
 						// and, from this host's view, the remote and local encoded index tuples
 						int[][] remoteIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
 						int[][] localIndices = CandidateKeyProtocol.CandidateKey.stringToIndexTuples(st.nextToken());
-						if (logger.isLoggable(Level.FINER))
-							logger.finer("Received candidate key composed of " + numParts + " parts with hash " +
+						if (logger.isDebugEnabled())
+							logger.debug("Received candidate key composed of " + numParts + " parts with hash " +
 								new String(Hex.encodeHex(candKeyHash)) + ", remote indices " + 
 								CandidateKeyProtocol.CandidateKey.indexTuplesToString(remoteIndices) + 
 								", my indices " + 
@@ -1175,7 +1173,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 							 * _not_ to be expected - and if there is a matching key, then we're finished
 							 * anyway (if the other host acknowledges it).  
 							 */
-							logger.finer("Could not generate key with same hash as incoming candidate key, storing it in " +
+							logger.debug("Could not generate key with same hash as incoming candidate key, storing it in " +
 									"buffer for future reference"+ 
 									(instanceId != null ? " [" + instanceId + "]" : ""));
 							Object[] tmp = new Object[5];
@@ -1186,19 +1184,19 @@ Suggestion by Bogdan Groza, 2007-04-19
 							tmp[4] = remoteIndices;
 							incomingCandKeyBuffer[incomingCandKeyBufferIndex++] = tmp;
 							if (incomingCandKeyBufferIndex == incomingCandKeyBuffer.length) {
-								statisticsLogger.fine("o incoming KEY messages list overflow (" + incomingCandKeyBuffer.length + ")");
+								statisticsLogger.info("o incoming KEY messages list overflow (" + incomingCandKeyBuffer.length + ")");
 								incomingCandKeyBufferIndex = 0;
 							}
 						}
 					}
 					else if (pack.startsWith(Protocol_KeyAcknowledge)) {
 						byte[] ackHash = Hex.decodeHex(pack.substring(Protocol_KeyAcknowledge.length()).toCharArray());
-						logger.finer("Received key acknowledge with hash " + new String(Hex.encodeHex(ackHash)) + 
+						logger.debug("Received key acknowledge with hash " + new String(Hex.encodeHex(ackHash)) + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						authenticationSucceededStage2((InetAddress) sender, ackHash);
 					}
 					else if (pack.startsWith(Protocol_Terminate)) {
-						logger.finer("Received protocol termination request, wiping local state" + 
+						logger.debug("Received protocol termination request, wiping local state" + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 						// no need to reply with a terminate message...
 						authenticationFailed((InetAddress) sender, false, null, 

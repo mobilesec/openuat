@@ -34,7 +34,7 @@ public class Helper {
 		LinkedList allAddrs = new LinkedList();
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
-			logger.finer("Found local interface " + iface.getName());
+			logger.debug("Found local interface " + iface.getName());
 			// check if that interface name is blacklisted
 			boolean blacklisted = false;
 			for (int i=0; i<Interface_Names_Blacklist.length; i++)
@@ -46,15 +46,15 @@ public class Helper {
 				while (addrs.hasMoreElements()) {
 					InetAddress addr = (InetAddress) addrs.nextElement();
 					if (addr instanceof Inet6Address)
-						logger.finer("Ignoring IPv6 address " + addr + " for now");
+						logger.debug("Ignoring IPv6 address " + addr + " for now");
 					else {
-						logger.finer("Found address " + addr);
+						logger.debug("Found address " + addr);
 						allAddrs.add(addr.getHostAddress());
 					}
 				}
 			}
 			else
-				logger.finer("Ignoring interface because it is blacklisted");
+				logger.debug("Ignoring interface because it is blacklisted");
 		}
 		
 		return allAddrs;

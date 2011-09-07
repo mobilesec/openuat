@@ -29,8 +29,6 @@ import org.apache.commons.codec.binary.Hex;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This class handles the key agreement protocol between two hosts on a stream
  * level. It implements both sides of the protocol, allowing to handle incoming
@@ -381,7 +379,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 * @see #toRemote
 	 */
     void shutdownStreamsCleanly() {
-    	logger.finer("Shutting down streams");
+    	logger.debug("Shutting down streams");
     	try {
     		if (fromRemote != null)
     			fromRemote.close();
@@ -392,7 +390,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
    		}
    		catch (IOException e) {
    			// need to ignore here, nothing we can do about it...
-   			logger.log(Level.SEVERE, "Unable to close streams cleanly", e);
+   			logger.error("Unable to close streams cleanly", e);
    		}
     }
     
@@ -404,7 +402,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 */
     void shutdownConnectionCleanly() {
     	shutdownStreamsCleanly();
-    	logger.finer("Shutting down sockets");
+    	logger.debug("Shutting down sockets");
    		connection.close();
     }
     
@@ -447,17 +445,17 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
         // try to extract the remote key from it
         if (!msg.startsWith(expectedMsg)) {
-        	logger.finer("Received non-standard command line '" + msg + "'");
+        	logger.debug("Received non-standard command line '" + msg + "'");
         	if (protocolCommandHandlers != null && allowOtherCommands) {
         		// we have registered handlers, maybe one can deal with the first word
         		String command = msg;
         		int firstSpace = msg.indexOf(' ');
         		if (firstSpace > 0)
         			command = msg.substring(0, firstSpace);
-        		logger.finer("Checking " + protocolCommandHandlers.size() + 
+        		logger.debug("Checking " + protocolCommandHandlers.size() + 
         				" registered protocol command handlers for '" + command + "'");
         		if (protocolCommandHandlers.containsKey(command)) {
-        			logger.finer("Command handler is known, calling it");
+        			logger.debug("Command handler is known, calling it");
         			// yes, a handler is known, delegate here
         			if (! ((ProtocolCommandHandler) protocolCommandHandlers.get(command)).handleProtocol(
         					msg, remote)) {
@@ -466,7 +464,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         			}
         		}
         		else
-        			logger.finer("No command handler known, ignoring and aborting protocol run");
+        			logger.debug("No command handler known, ignoring and aborting protocol run");
         		// already handled in here, stop processing
         		return null;
         	}
@@ -688,9 +686,9 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			logger.error("Can not get address of remote. This should not happen!");
 		}
 
-        if (logger.isLoggable(Level.FINER)) {
-        	logger.finer("Starting authentication protocol as " + (serverSide ? "server" : "client"));
-        	logger.finer("Remote is " + remoteAddr + ", with timeout " + timeoutMs + "ms");
+        if (logger.isDebugEnabled()) {
+        	logger.debug("Starting authentication protocol as " + (serverSide ? "server" : "client"));
+        	logger.debug("Remote is " + remoteAddr + ", with timeout " + timeoutMs + "ms");
         }
 
         if (serverSide) {
@@ -703,8 +701,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         	clientToServer = "sent";
         }
         
-        if (logger.isLoggable(Level.FINER))
-        	logger.finer(inOrOut + " connection to authentication service with " + remoteAddr);
+        if (logger.isDebugEnabled())
+        	logger.debug(inOrOut + " connection to authentication service with " + remoteAddr);
         
         SafetyBeltTimer timer = null;
         try
@@ -775,8 +773,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	remoteCommitment = (byte[]) parms[1];
                 // additional parameter from the remote?
                	optionalParameter = (String) parms[3];
-               	if (optionalParameter != null && logger.isLoggable(Level.FINER))
-               		logger.finer("Received optional parameter from client: '" + optionalParameter + "'.");
+               	if (optionalParameter != null && logger.isDebugEnabled())
+               		logger.debug("Received optional parameter from client: '" + optionalParameter + "'.");
                	totalTransferTime += System.currentTimeMillis()-timestamp;
             }
             raiseAuthenticationProgressEvent(connection, 2, AuthenticationStages, inOrOut + " authentication connection, " + clientToServer + " public key");
@@ -1014,7 +1012,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                 oobMsg = null;
             }
             else if (remotePreAuthenticationMessage != null) {
-            	if (logger.isLoggable(Level.INFO))
+            	if (logger.isInfoEnabled())
             		logger.info("Using pre-authentication message to verify remote public key on "
             			+ (serverSide ? "server" : "client"));
             	// we have a pre-authentication message, so check if it matches the remote public key
@@ -1060,7 +1058,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 
             // the authentication success event sent here is just an array of two keys
             if (keepConnected) {
-            	logger.finer("Not closing socket as requested, but passing it to the success event.");
+            	logger.debug("Not closing socket as requested, but passing it to the success event.");
             	// don't shut down the streams because this effectively shuts down the connection
             	// but make sure that the last message has been sent successfully
             	toRemote.flush();
@@ -1130,8 +1128,8 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             // this is not strictly necessary, but clean up properly
             if (timer != null)
             	timer.stop();
-            if (logger.isLoggable(Level.FINER))
-            	logger.finer("Ended " + inOrOut + " authentication connection with " + remoteAddr);
+            if (logger.isDebugEnabled())
+            	logger.debug("Ended " + inOrOut + " authentication connection with " + remoteAddr);
         }
     }
 	
@@ -1230,7 +1228,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	 *                         be fired from within the thread of the caller)
 	 */
 	public void startIncomingAuthenticationThread(boolean asynchronousCall) {
-		logger.finer("Starting incoming authentication thread handler");
+		logger.debug("Starting incoming authentication thread handler");
 		/* The very first thing to do is to fire off the respective started event.
 		 * This is done even before starting a potential background thread 
 		 * (and thus not in performAuthenticationProtocol, but with code 
@@ -1249,11 +1247,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 					outer.performAuthenticationProtocol(true);
 				}
 			}).start();
-			logger.finer("Started incoming authentication thread handler");
+			logger.debug("Started incoming authentication thread handler");
 		}
 		else {
 			performAuthenticationProtocol(true);
-			logger.finer("Exiting incoming authentication thread handler");
+			logger.debug("Exiting incoming authentication thread handler");
 		}
 	}
 	
@@ -1312,7 +1310,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 			boolean keepConnected, 
 			String optionalParameter,
 			boolean useJSSE) throws IOException {
-    	if (logger.isLoggable(Level.INFO))
+    	if (logger.isInfoEnabled())
     		logger.info("Starting authentication with " + 
     				remote.getRemoteAddress() + "'/" + remote.getRemoteName() + "'");
 

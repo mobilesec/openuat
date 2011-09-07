@@ -204,10 +204,10 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	public void start() throws IOException {
 		if (!running) {
 			running = true;
-			logger.finer("Starting listening thread for server socket");
+			logger.debug("Starting listening thread for server socket");
 			listenerThread = new Thread(this);
 			listenerThread.start();
-			logger.finer("Started listening thread for server socket");
+			logger.debug("Started listening thread for server socket");
 		}
 	}
 
@@ -216,7 +216,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 	 */
 	public void stop() throws InternalApplicationException {
 		if (listenerThread != null) {
-			logger.finer("Stopping listening thread for server socket");
+			logger.debug("Stopping listening thread for server socket");
 			running = false;
 			// this is not nice, but will throw an exception in the listener thread
 			// and thus allow it to exit by itself
@@ -228,7 +228,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 						"HostServerSocket listening thread got interrupted while waiting for it to finish. This should not happen.",
 						e);
 			}
-			logger.finer("Stopped listening thread for server socket");
+			logger.debug("Stopped listening thread for server socket");
 		}
 	}
 	
@@ -251,7 +251,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
 		h.setProtocolCommandHandlers(protocolCommandHandlers);
 		h.setPreAuthenticationMessage(preAuthenticationMessageFromClient);
 		// call the protocol asynchronously
-		logger.finer("Accepted incoming channel, now starting host protocol");
+		logger.debug("Accepted incoming channel, now starting host protocol");
 		h.startIncomingAuthenticationThread(true);
 	}
 }

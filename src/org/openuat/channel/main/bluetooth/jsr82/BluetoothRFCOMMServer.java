@@ -22,8 +22,6 @@ import javax.microedition.io.StreamConnectionNotifier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostServerBase;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
@@ -149,13 +147,13 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 	
 	/** This actually implements the listening for new RFCOMM channels. */
 	public void run() {
-		logger.finer("Listening thread for RFCOMM service now running");
+		logger.debug("Listening thread for RFCOMM service now running");
 		try {
 			while (running) {
 				//System.out.println("Listening thread for server socket waiting for connection");
 				StreamConnection connection = listener.acceptAndOpen();
 				BluetoothRFCOMMChannel channel = new BluetoothRFCOMMChannel(connection);
-				if (logger.isLoggable(Level.INFO))
+				if (logger.isInfoEnabled())
 					logger.info("Accepted incoming connection from " + channel.getRemoteAddress() + "/'" + 
 							channel.getRemoteName() + "'");
 				
@@ -226,7 +224,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		} catch (IOException e) {
 			logger.warn("Error in listening thread: " + e + ". Stopping thread");
 		}
-		logger.finer("Listening thread for RFCOMM service now exiting");
+		logger.debug("Listening thread for RFCOMM service now exiting");
 		running = false;
 	}
 	

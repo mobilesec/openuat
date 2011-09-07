@@ -112,7 +112,7 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 		
 		// need to initialize the serial port properly
 		try {
-			logger.finer("Using port '" + serialPortName + "'");
+			logger.debug("Using port '" + serialPortName + "'");
 			CommPortIdentifier portId = CommPortIdentifier.getPortIdentifier(serialPortName);
 			if (portId.isCurrentlyOwned()) {
 				throw new IOException("port " + port + " is currently in use by " +
@@ -220,18 +220,18 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 	 */
 	private void openFinalize(boolean usingMenu) throws IOException {
 		if (usingMenu) {
-			logger.finer("Interacting with menu: trying to gain control");
+			logger.debug("Interacting with menu: trying to gain control");
 			if (! waitForMenuControl()) {
 				throw new IOException("Could not gain control of the WiTilt menu");
 			}
-			logger.finer("Gained menu control, now starting sampling mode");
+			logger.debug("Gained menu control, now starting sampling mode");
 			// now start the sensor output
 			PrintWriter w = new PrintWriter(portCmd);
 			w.print('1');
 			w.flush();
 		}
 		else {
-			logger.finer("Not interacting with menu, assuming sampling mode to be enabled already");
+			logger.debug("Not interacting with menu, assuming sampling mode to be enabled already");
 		}
 	}
 	
@@ -245,9 +245,9 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 			line = r.readLine();
 			// TODO: add a timeout
 			while (!foundMenu && line != null) {
-				logger.finer("read from sensor: '" + line);
+				logger.debug("read from sensor: '" + line);
 				if (line.indexOf(MENU_HEADER) != -1) {
-					logger.finer("Detected menu start header");
+					logger.debug("Detected menu start header");
 					foundMenu = true;
 				}
 				line = r.readLine();
@@ -276,7 +276,7 @@ public class WiTiltRawReader extends AsciiLineReaderBase {
 				logger.info("Trying to invoke menu ...");
 				// before trying to invoke the menu, drain the output
 				if (checkForMenuOutput(r))
-					logger.finer("Initial menu was printed before gaining control, device seems to have been reset");
+					logger.debug("Initial menu was printed before gaining control, device seems to have been reset");
 
 				// try to get the menu to print
 				w.print(' ');

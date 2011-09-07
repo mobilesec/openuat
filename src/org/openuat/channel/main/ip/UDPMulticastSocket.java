@@ -115,7 +115,7 @@ public class UDPMulticastSocket {
      * @param multicastGroup The multicast group to use.
      */
 	public UDPMulticastSocket(int receivePort, int sendPort, String multicastGroup) throws IOException {
-		logger.finer("Constructing UDPMulticastSocket with receive port " + receivePort + 
+		logger.debug("Constructing UDPMulticastSocket with receive port " + receivePort + 
 				", send port " + sendPort + ", multicast group " + multicastGroup);
 		this.receivePort = receivePort;
 		this.sendPort = sendPort;
@@ -144,7 +144,7 @@ public class UDPMulticastSocket {
 		int addressIndex = 0;
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = (NetworkInterface) ifaces.nextElement();
-			logger.finer("Found local interface " + iface.getName());
+			logger.debug("Found local interface " + iface.getName());
 			// check if that interface name is blacklisted
 			boolean blacklisted = false;
 			for (int i=0; i<Interface_Names_Blacklist.length; i++) {
@@ -159,9 +159,9 @@ public class UDPMulticastSocket {
 				while (addrs.hasMoreElements()) {
 					InetAddress addr = (InetAddress) addrs.nextElement();
 					if (addr instanceof Inet6Address) {
-						logger.finer("Ignoring IPv6 address " + addr + " for now");
+						logger.debug("Ignoring IPv6 address " + addr + " for now");
 					} else {
-						logger.finer("Found address " + addr);
+						logger.debug("Found address " + addr);
 						allAddrs.add(addr);
 						// if this is not the first address on the interface, mark it as alias
 						if (alreadyAddedAddr)
@@ -171,13 +171,13 @@ public class UDPMulticastSocket {
 					}
 				}
 			} else {
-				logger.finer("Ignoring interface because it is blacklisted");
+				logger.debug("Ignoring interface because it is blacklisted");
 			}
 		}
 		
 		// start the responders
 		if (usingMulticast) {
-			logger.finer("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
+			logger.debug("Using " + allAddrs.size() + " addresses, starting one multicast sending socket for each");
 
 			multicastSendSockets = new MulticastSocket[allAddrs.size()];
 			Iterator iter = allAddrs.iterator();
@@ -215,13 +215,13 @@ public class UDPMulticastSocket {
 		packet.setPort(sendPort);
 		for (int i=0; i<multicastSendSockets.length; i++) {
 			if (! addressIsAlias.get(i)) {
-				logger.finer("Sending packet with " + message.length + " bytes to multicast group " + 
+				logger.debug("Sending packet with " + message.length + " bytes to multicast group " + 
 						groupAddress + ", port " + sendPort + " on multicast socket bound to address " + 
 						multicastSendSockets[i].getLocalAddress());
 				multicastSendSockets[i].send(packet);
 			}
 			else {
-				logger.finer("Not using multicast socket bound to alias address " + 
+				logger.debug("Not using multicast socket bound to alias address " + 
 						multicastSendSockets[i].getLocalAddress());
 			}
 		}
@@ -236,7 +236,7 @@ public class UDPMulticastSocket {
         DatagramPacket packet = new DatagramPacket(message, 0, message.length);
 		packet.setAddress(target);
 		packet.setPort(sendPort);
-		logger.finer("Sending packet with " + message.length + " bytes to address " + 
+		logger.debug("Sending packet with " + message.length + " bytes to address " + 
 				target + ", port " + sendPort);
 		unicastSendSocket.send(packet);
 	}
@@ -295,7 +295,7 @@ public class UDPMulticastSocket {
 	
 	private class RunHelper implements Runnable {
 		public void run() {
-			logger.finer("Listener thread starting");
+			logger.debug("Listener thread starting");
 			// to allow up to the maximum UDP packet size
 			byte[] buffer = new byte[65535];
 			while (! shouldExit) {
@@ -303,7 +303,7 @@ public class UDPMulticastSocket {
 	            
 				try {
 					multicastReceiveSocket.receive(packet);
-		            logger.finer("Received packet of length " + packet.getLength() + " from " + 
+		            logger.debug("Received packet of length " + packet.getLength() + " from " + 
 		            		packet.getAddress() + " at socket bound to " + packet.getSocketAddress() +
 		            		", port " + receivePort);
 					
@@ -316,7 +316,7 @@ public class UDPMulticastSocket {
 			    			}
 			    			catch (Exception e) {
 			    				String stackTrace = "";
-			    				if (logger.isLoggable(Level.FINER)) {
+			    				if (logger.isDebugEnabled()) {
 			    					for (int j=0; j<e.getStackTrace().length; j++)
 			    						stackTrace += e.getStackTrace()[j].toString() + "\n";
 			    				}
@@ -332,7 +332,7 @@ public class UDPMulticastSocket {
 					logger.error("Could not receive from UDP socket: " + e);
 				}
 			}
-			logger.finer("Listener thread stopping");
+			logger.debug("Listener thread stopping");
 		}
 	}
 }

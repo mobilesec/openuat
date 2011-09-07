@@ -19,8 +19,6 @@ import java.util.Enumeration;
 import java.util.Vector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -32,7 +30,7 @@ import javax.net.ssl.X509TrustManager;
 /** This is a helper class to query local and externally visible IPv6 addresses. */
 public class IPv6AddressesHelper {
 	/** Our logger for this class. */
-	private final static Logger logger = java.util.logging.LoggerFactory.getLogger(IPv6AddressesHelper.class.getName());
+	private final static Logger logger = LoggerFactory.getLogger(IPv6AddressesHelper.class.getName());
 
 	/** This is the host queried for the externally visible IPv6 address of 
 	 * the client when connecting to Internet services. The host name is
@@ -63,28 +61,28 @@ public class IPv6AddressesHelper {
 			Inet6Address server = null;
 			for (InetAddress addr : serverAddrs) {
 				if (addr instanceof Inet6Address) {
-					logger.log(Level.FINE, "Resolved " + GET_OUTBOUND_IP_SERVER + " to IPv6 address " + addr.getHostAddress());
+					logger.debug("Resolved " + GET_OUTBOUND_IP_SERVER + " to IPv6 address " + addr.getHostAddress());
 					if (server == null)
 						server = (Inet6Address) addr;
 					else
-						logger.log(Level.WARNING, "Found multiple IPv6 addresses for host " + 
+						logger.warn("Found multiple IPv6 addresses for host " + 
 								GET_OUTBOUND_IP_SERVER + ", but expected only one. Will use the one found first " +
 								server.getHostAddress() + " and ignore the one found now " + addr.getHostAddress());
 				}
 			}
 			if (server == null) {
-				logger.log(Level.WARNING, "Could not resolve host " + GET_OUTBOUND_IP_SERVER + 
+				logger.warn("Could not resolve host " + GET_OUTBOUND_IP_SERVER + 
 						" to IPv6 address, therefore unable to determine externally visible IPv6 address of this client");
 				return null;
 			}
 			
 			// now that we have the IPv6 address to connect to, query the URL
 			String url = GET_OUTBOUND_IP_URL_PROTOCOL + "[" + server.getHostAddress() + "]" + GET_OUTBOUND_IP_URL_PATH;
-			logger.log(Level.FINER, "Querying URL " + url + " for outbound IPv6 address");
+			logger.debug("Querying URL " + url + " for outbound IPv6 address");
 			return queryServerForOutboundAddress(url);
 		} 
     	catch (UnknownHostException e) {
-			logger.log(Level.WARNING, "Unable to resolve host " + GET_OUTBOUND_IP_SERVER, e);
+			logger.warn("Unable to resolve host " + GET_OUTBOUND_IP_SERVER, e);
 			return null;
 		} 
     }
@@ -133,7 +131,7 @@ public class IPv6AddressesHelper {
 			URLConnection conn = new URL(customURL != null ? customURL : GET_OUTBOUND_IP_URL).openConnection();
 			conn.connect();
 			String retMimeType = conn.getContentType();
-			logger.log(Level.FINE, "URL " + GET_OUTBOUND_IP_URL + " returned content type " + retMimeType);
+			logger.debug("URL " + GET_OUTBOUND_IP_URL + " returned content type " + retMimeType);
 			
 			InputStreamReader in = new InputStreamReader((InputStream) conn.getContent());
 		    BufferedReader buff = new BufferedReader(in);
@@ -150,17 +148,17 @@ public class IPv6AddressesHelper {
 			return reply.toString();
     	}
     	catch (MalformedURLException e) {
-			logger.log(Level.SEVERE, "Internal error: URL deemed invalid " + GET_OUTBOUND_IP_URL, e);
+			logger.error("Internal error: URL deemed invalid " + GET_OUTBOUND_IP_URL, e);
 			return null;
 		} catch (IOException e) {
-			logger.log(Level.WARNING, "Unable to connect to URL " + GET_OUTBOUND_IP_URL + 
+			logger.warn("Unable to connect to URL " + GET_OUTBOUND_IP_URL + 
 					" and/or host " + GET_OUTBOUND_IP_SERVER, e);
 			return null;
 		} catch (NoSuchAlgorithmException e) {
-			logger.log(Level.WARNING, "Unable to install custom TrustManager/SSLContext without certificate validation", e);
+			logger.warn("Unable to install custom TrustManager/SSLContext without certificate validation", e);
 			return null;
 		} catch (KeyManagementException e) {
-			logger.log(Level.WARNING, "Unable to install custom TrustManager/SSLContext without certificate validation", e);
+			logger.warn("Unable to install custom TrustManager/SSLContext without certificate validation", e);
 			return null;
 		}
     }
@@ -193,17 +191,17 @@ public class IPv6AddressesHelper {
                	for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
                		InetAddress inetAddress = enumIpAddr.nextElement();
                		if (!inetAddress.isLoopbackAddress()) {
-               			logger.log(Level.FINE, "Found non-loopback address: " + inetAddress.getHostAddress());
+               			logger.debug("Found non-loopback address: " + inetAddress.getHostAddress());
                			addrs.add(inetAddress.getHostAddress());
                		}
                		
                		if (inetAddress instanceof Inet6Address) {
-               			logger.log(Level.FINE, "Found IPv6 address: " + inetAddress.getHostAddress());
+               			logger.debug("Found IPv6 address: " + inetAddress.getHostAddress());
                		}
                 }
             }
         } catch (SocketException ex) {
-            logger.log(Level.SEVERE, ex.toString());
+            logger.error(ex.toString());
         }
         return addrs;
     }

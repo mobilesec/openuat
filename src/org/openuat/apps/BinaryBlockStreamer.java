@@ -114,7 +114,7 @@ public class BinaryBlockStreamer {
 		}
 		
 		// we can only go on if we actually get a proper start line
-		logger.finer("Trying to get prefix line");
+		logger.debug("Trying to get prefix line");
 		/* do not use a BufferedReader here because that would potentially mess up
 		 * the stream for other users of the socket (by consuming too many bytes)
 		 */
@@ -123,7 +123,7 @@ public class BinaryBlockStreamer {
 			logger.error("Did not receive properly formatted streaming command line while trying to receive binary block. Received '" + prefixLine + "'");
 			return -1;
 		}
-		logger.finer("Received prefix line '" + prefixLine + "'");
+		logger.debug("Received prefix line '" + prefixLine + "'");
 		// try to decode the two parameters: first the size, then the name
 		int offset = prefixLine.indexOf(' ', BinaryStreamCommand.length()+1);
 		int intendedSize = Integer.parseInt(prefixLine.substring(BinaryStreamCommand.length()+1, offset));

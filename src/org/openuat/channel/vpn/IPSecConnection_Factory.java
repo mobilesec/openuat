@@ -30,7 +30,7 @@ public class IPSecConnection_Factory {
 	public static IPSecConnection getImplementation() {
 		String osname = System.getProperty("os.name");
 		String osversion = System.getProperty("os.version");
-		logger.finer("Trying to create IPSec secure channel implementation for '" + osname + "'/'" + osversion + "'");
+		logger.debug("Trying to create IPSec secure channel implementation for '" + osname + "'/'" + osversion + "'");
 		
 		if (osname.startsWith("Windows CE")) {
 			// no implementation for Windows CE/PocketPC
@@ -39,20 +39,20 @@ public class IPSecConnection_Factory {
 		}
 		// TODO: how to detect windows XP/2000 explicitly?
 		else if (osname.startsWith("Windows")) {
-			logger.finer("Detected Windows");
+			logger.debug("Detected Windows");
 			return new IPSecConnection_Windows_VPNTool();
 		}
 		else if (osname.startsWith("Linux")) {
 			if (new File("/etc/ipsec.conf").exists() && 
 				new File("/etc/ipsec.secrets").exists() &&
 				new File("/etc/ipsec.d/dynamic").isDirectory()) {
-				logger.finer("Detected Linux/openswan");
+				logger.debug("Detected Linux/openswan");
 				return new IPSecConnection_Openswan();
 			}
 			else if (new File("/etc/racoon/racoon.conf").exists() &&
 					 new File("/etc/racoon/psk.txt").exists() &&
 					 new File("/etc/racoon/remote").isDirectory()) {
-				logger.finer("Detected Linux/racoon");
+				logger.debug("Detected Linux/racoon");
 				return new IPSecConnection_Racoon();
 			}
 			else {
@@ -61,7 +61,7 @@ public class IPSecConnection_Factory {
 			}
 		}
 		else if (osname.startsWith("Mac OS/X")) {
-			logger.finer("Detected MacOS/X");
+			logger.debug("Detected MacOS/X");
 			return new IPSecConnection_Racoon();
 		}
 		else {

@@ -269,7 +269,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		resetHook(remote);
 
 		// and finally reset the state
-		logger.finer("Reset object to idle set" + 
+		logger.debug("Reset object to idle set" + 
 				(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	}
 	
@@ -320,18 +320,18 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		try {
     		// this enables auto-flush
     		OutputStreamWriter toRemote = new OutputStreamWriter(remote.getOutputStream());
-	    	logger.finer("Sending status to remote: '" + reportToRemote + "'" + 
+	    	logger.debug("Sending status to remote: '" + reportToRemote + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		toRemote.write(reportToRemote + "\n");
     		toRemote.flush();
-    		logger.finer("Status sent, waiting for status from remote" + 
+    		logger.debug("Status sent, waiting for status from remote" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			/* do not use a BufferedReader here because that would potentially mess up
 			 * the stream for other users of the socket (by consuming too many bytes)
 			 */
     		InputStream fromRemote = remote.getInputStream();
     		String remoteStatus = LineReaderWriter.readLine(fromRemote);
-	    	logger.finer("Received remote status: '" + remoteStatus + "'" + 
+	    	logger.debug("Received remote status: '" + remoteStatus + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		if (remoteStatus.length() == 0) {
     			logger.error("Could not get status message from remote host" + 
@@ -516,7 +516,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	    }
 
 	    public void AuthenticationProgress(Object sender, Object remote, int cur, int max, String msg) {
-	        logger.finer("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
+	        logger.debug("Received host authentication progress event with " + remote + " " + cur + " out of " + max + ": " + msg + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        // this is not optional because we don't know the number of rounds to use yet
 	        raiseAuthenticationProgressEvent(remote, cur, 
@@ -527,7 +527,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	    }
 
 		public boolean AuthenticationStarted(Object sender, Object remote) {
-	        logger.finer("Received host authentication started event with " + remote + 
+	        logger.debug("Received host authentication started event with " + remote + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        boolean ret = raiseAuthenticationStartedEvent(remote);
 	        // also call the hook of derived classes

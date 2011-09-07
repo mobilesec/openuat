@@ -39,7 +39,7 @@ public class FPIntFFTTest extends TestCase {
 			for (int freq=1; freq<=512; freq++) {
 				for (int ampl=64; ampl<=32768; ampl*=2) {
 					logger.info("Using test signal with " + freq + "Hz and amplitude " + ampl);
-					logger.finer("Signal: ");
+					logger.debug("Signal: ");
 					for (int i=0; i<N; i++) {
 						x[i] = (short) (ampl*Math.cos(i*freq*(2*Math.PI)/N));
 						// a particular way of populating the array is required...
@@ -47,19 +47,19 @@ public class FPIntFFTTest extends TestCase {
 							fx[(N+i)>>1] = x[i];
 						else
 							fx[i>>1] = x[i];
-						logger.finer(i + " " + x[i]);
+						logger.debug(i + " " + x[i]);
 					}
 
 					FPIntFFT.fix_fftr(fx, log2N, false);
-					if (logger.isLoggable(Level.FINER)) {
-						logger.finer("Spectrum: ");
+					if (logger.isDebugEnabled()) {
+						logger.debug("Spectrum: ");
 						for (int i=0; i<N/2; i++)
-							logger.finer(i + " " + fx[i]);
+							logger.debug(i + " " + fx[i]);
 					}
 
 					int scale = FPIntFFT.fix_fftr(fx, log2N, true);
-					logger.finer("scale=" + scale);
-					logger.finer("Regenerated signal : ");
+					logger.debug("scale=" + scale);
+					logger.debug("Regenerated signal : ");
 					int diff = 0;
 					for (int i=0; i<N; i++) {
 						int sample;
@@ -67,7 +67,7 @@ public class FPIntFFTTest extends TestCase {
 							sample = fx[(N+i)>>1] << scale;
 						else
 							sample = fx[i>>1] << scale;
-						logger.finer(i + " " + sample);
+						logger.debug(i + " " + sample);
 						diff += Math.abs(x[i]-sample);
 						// that difference really is a lot, but some signals are not reproduced well...
 						if (!(ampl<=128 && FFT_SIZE==64 && i==2) &&

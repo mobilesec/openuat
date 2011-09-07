@@ -147,7 +147,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			return false;
 		}
 		
-		logger.finer("Trying to create " + (persistent ? "persistent" : "temporary") + 
+		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
 				" ipsec connection to host " + remoteHost + (remoteNetwork != null ? " to remote network " + remoteNetwork : ""));
 		// TODO: error checks on input parameters!
 		
@@ -175,7 +175,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
-			logger.finer("Creating temporary file " + configPskTmp);
+			logger.debug("Creating temporary file " + configPskTmp);
 			if (! configPskTmp.createNewFile()) {
 				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " could not be created.");
 				configConn.delete();
@@ -269,7 +269,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			try {
 				Command.executeCommand(new String[] {"killall", "-HUP", "racoon"}, null, null);
 			} catch (Exception f) {
-				logger.log(Level.SEVERE, "Can't execure command", f);
+				logger.error("Can't execure command", f);
 			}
 			return false;
 		}
@@ -395,7 +395,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				if (fromAddr.equals("No") && toAddr.equals("SAD entries."))
 					continue;
 				
-				logger.finer("Examining SA from address " + fromAddr + " to address " + toAddr);
+				logger.debug("Examining SA from address " + fromAddr + " to address " + toAddr);
 
 				// the next line should be "esp mode=transport ..."
 				line = strT.nextToken();
@@ -414,7 +414,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				if (! line.startsWith("\tA: "))
 					continue;
 				String authAlg = line.substring(4, line.indexOf(' ', 4));
-				logger.finer("This SA seems to be active, using encryption algorithm " + encAlg + " and authentication algorithm " + authAlg);
+				logger.debug("This SA seems to be active, using encryption algorithm " + encAlg + " and authentication algorithm " + authAlg);
 
 				// and now the critical line, with the 4th field being the state information
 				line = strT.nextToken();
@@ -423,14 +423,14 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				pos = line.indexOf('=', pos+1);
 				pos = line.indexOf('=', pos+1);
 				String state = line.substring(pos+1, line.length());
-				logger.finer("This SA is in state " + state);
+				logger.debug("This SA is in state " + state);
 				if (state.startsWith("mature")) {
 					if (fromAddr.startsWith(remoteHost)) {
-						logger.finer("Found active incoming SA");
+						logger.debug("Found active incoming SA");
 						foundIn = true;
 					}
 					if (toAddr.startsWith(remoteHost)) {
-						logger.finer("Found active outgoing SA");
+						logger.debug("Found active outgoing SA");
 						foundOut = true;
 					}
 				}

@@ -144,7 +144,7 @@ public abstract class DeviceStateListener {
 			boolean previouslyActive = isActive();
 			lineActive[lineIndex] = true;
 			if (!previouslyActive && isActive()) {
-				logger.finer("Time series " + lineIndex + " is first to become active at index " + numSample);
+				logger.debug("Time series " + lineIndex + " is first to become active at index " + numSample);
 				toActive(lineIndex, numSample);
 			}
 		}
@@ -154,7 +154,7 @@ public abstract class DeviceStateListener {
 			boolean previouslyActive = isActive();
 			lineActive[lineIndex] = false;
 			if (previouslyActive && !isActive()) {
-				logger.finer("Time series " + lineIndex + " is last to become quiescent");
+				logger.debug("Time series " + lineIndex + " is last to become quiescent");
 				toQuiescent(lineIndex, numSample);
 			}
 		}

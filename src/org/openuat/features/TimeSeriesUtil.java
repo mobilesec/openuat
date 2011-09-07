@@ -35,7 +35,7 @@ public class TimeSeriesUtil {
 //ENABLED FOR NOW       #if cfg.haveFloatSupport
 	public static double[][] cutSegmentsToEqualLength(double[] segment1, double[] segment2) {
 		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
-		logger.finer("Using " + len + " samples for coherence computation");
+		logger.debug("Using " + len + " samples for coherence computation");
 
 		double[][] ret = new double[2][];
 		ret[0] = new double[len];
@@ -50,7 +50,7 @@ public class TimeSeriesUtil {
 	/** This is the integer variant of {@link #cutSegmentsToEqualLength(double[], double[]).} */
 	public static int[][] cutSegmentsToEqualLength(int[] segment1, int[] segment2) {
 		int len = segment1.length <= segment2.length ? segment1.length : segment2.length;
-		logger.finer("Using " + len + " samples for coherence computation");
+		logger.debug("Using " + len + " samples for coherence computation");
 
 		int[][] ret = new int[2][];
 		ret[0] = new int[len];
@@ -85,7 +85,7 @@ public class TimeSeriesUtil {
 		
 		if (maxSegmentLength > 0 && segment.length > maxSegmentLength) {
 			int numSplits = (segment.length-maxSegmentLength) / (segmentSkip) + 1;
-			logger.finer("Segments are longer than maximum length: " +
+			logger.debug("Segments are longer than maximum length: " +
 					segment.length + " > " + maxSegmentLength + 
 					" s, splitting into " + numSplits + " segments");
 			ret = new double[numSplits][];
@@ -110,7 +110,7 @@ public class TimeSeriesUtil {
 		
 		if (maxSegmentLength > 0 && segment.length > maxSegmentLength) {
 			int numSplits = (segment.length-maxSegmentLength) / (segmentSkip) + 1;
-			logger.finer("Segments are longer than maximum length: " +
+			logger.debug("Segments are longer than maximum length: " +
 					segment.length + " > " + maxSegmentLength + 
 					" s, splitting into " + numSplits + " segments");
 			ret = new int[numSplits][];

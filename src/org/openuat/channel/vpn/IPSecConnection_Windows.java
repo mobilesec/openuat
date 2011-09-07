@@ -181,7 +181,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 			return false;
 		}
 
-		logger.finer("Trying to create " + (persistent ? "persistent" : "temporary") + 
+		logger.debug("Trying to create " + (persistent ? "persistent" : "temporary") + 
 				" ipsec connection to host " + remoteHost + 
 				(remoteNetwork != null ? " to remote network " + remoteNetwork + "/" + remoteNetmask : ""));
 		// TODO: error checks on input parameters!
@@ -322,7 +322,7 @@ public class IPSecConnection_Windows implements IPSecConnection {
 				ret += ".";
 		}
 		
-		logger.finer("Converted CIDR-style netmask '" + cidrMask + "' to address-style netmask '" + ret + "'");
+		logger.debug("Converted CIDR-style netmask '" + cidrMask + "' to address-style netmask '" + ret + "'");
 		return ret;
 	}
 

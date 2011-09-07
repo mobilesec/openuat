@@ -20,7 +20,9 @@
 	<classpathentry kind="lib" path="lib/bluecove-emu-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/tgdh-1.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
-	<classpathentry kind="lib" path="lib/log4j-over-slf4j-1.5.11.jar"/>
 	<classpathentry kind="lib" path="lib/jsr082.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2-1.2.15.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.6.2.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-log4j12-1.6.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

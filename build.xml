@@ -76,21 +76,7 @@
 	<!-- the source tree, excluding files which can't be redistributed because of their license -->
 	<property name="zipfile.source" location="${dist}/${ant.project.name}-src.zip" />
     
-	<!-- Settings for MIDP builds -->
-	<!-- The polish.home property needs to point to the directory -->
-	<!-- containing the J2ME Polish installation.                 -->
-	
 	<property file="${src}/build.properties" />
-	
-	<!-- import global properties                                 -->
-	<property file="${polish.home}/global.properties" />
-	<!-- the device for the test mode - you can define it on the command-line
-	     using the -D switch, e.g. ant -Ddevice=Generic/midp2 emulator -->
-	<property name="device" value="Generic/midp2"/>
-	<property name="midp_libs" value="${polish.home}/import/midp-2.0.jar:${polish.home}/import/cldc-1.1-java5.0.jar" />
-	<!-- These classes can only be compiled with J2ME MIDP class libraries -->
-	<property name="midp-only-files" value="**/j2me/**/*.java" />
-	<property name="preverified" location="${build}/bin-preverified"/>
 	
 	<!-- These classes need at least Java 5 to compile -->
 	<property name="test-files1" value="org/openuat/**/test/*.java" />
@@ -169,22 +155,6 @@
 		<isset property="haveJava5"/>
 	</condition>
 	
-	<!-- Figure out if we have a usable J2ME Polish and WTK installation for compiling and preverifying J2ME MIDP code -->
-	<condition property="haveWTK">
-		<and>
-			<available file="enough-j2mepolish-build.jar" type="file" filepath="${polish.home}/lib/"/>
-			<available file="jdom.jar" type="file" filepath="${polish.home}/lib/"/>
-			<available classname="javax.microedition.io.SecureConnection" classpathref="lib.path.midp"/>
-			<available classname="javax.microedition.pki.Certificate" classpathref="lib.path.midp"/>
-			<available classname="javax.microedition.lcdui.Display" classpathref="lib.path.midp"/>
-			<available classname="com.sun.cldc.io.ConsoleOutputStream" classpathref="lib.path.midp"/>
-			<available classname="de.enough.polish.ant.PolishTask" classpath="${polish.home}/lib/enough-j2mepolish-build.jar:${polish.home}/lib/jdom.jar"/>
-		</and>
-	</condition>
-	<condition property="haveWTK.echo" value="true" else="false">
-		<isset property="haveWTK"/>
-	</condition>
-
 	<!-- And a task for creating installer packages for Windows -->
 	<taskdef name="nsis" classname="info.waynegrant.ant.NsisTask" classpath="${lib}/wat-12.jar"/>
 	<!-- This is a task for checkstyle -->
@@ -215,7 +185,6 @@
 		<echo message="Compiling OpenUAT build number ${build.number}, detected:" level="info"/>
 		<echo message="    Java5: ${haveJava5.echo}" level="info"/>
 		<echo message="    Java6: ${haveJava6.echo}" level="info"/>
-		<echo message="    WTK with MIDP2.0 and CLDC1.1: ${haveWTK.echo}" level="info"/>
 	
 		<echo message="    * Compiling thirdparty crypto core"/>
 		<!-- Compile the BC core dependencies -->
@@ -238,7 +207,6 @@
 	        <!-- And the Google Zxing QR codes -->
 		<javac srcdir="${thirdparty-google-zxing}" destdir="${bin-google-zxing}" includeAntRuntime="no"
 		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}">
-			<exclude name="${midp-only-files}" />
 		</javac>		       
 
 		<echo message="    * Compiling OpenUAT core: sensor data and utility"/>
@@ -253,7 +221,6 @@
 			<exclude name="${java5-core-files1}" />
 			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files}" />
 		</javac>		
 		<echo message="    * Compiling OpenUAT core: authentication protocols"/>
 		<javac srcdir="${src}" destdir="${bin-core}" includeAntRuntime="no"
@@ -265,7 +232,6 @@
 			<exclude name="${java5-core-files1}" />
 			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files}" />
 		</javac>
 		
 		<echo message="    * Compiling OpenUAT core: secure communication channels"/>
@@ -278,7 +244,6 @@
 			<exclude name="${java5-core-files1}" />
 			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files}" />
 		</javac>
 		
 		<echo message="    * Compiling OpenUAT example applications"/>
@@ -291,13 +256,11 @@
 			<exclude name="${java5-core-files1}" />
 			<exclude name="${java5-app-files1}" />
 			<exclude name="${java6-files}" />
-			<exclude name="${midp-only-files}" />
 		</javac>
 		
 		<!-- And call the targets for compiling code that requires Java levels higher than 2 and MIDP -->
 		<antcall target="compile-java5"/>
 		<antcall target="compile-java6"/>
-		<antcall target="compile-midp"/>
 	</target>
 	
 	<target name="compile-java5" description="Compile code that needs Java5 (including JUnit tests)" if="haveJava5">
@@ -371,8 +334,6 @@
 	</target>
 	
 	<target name="jar" depends="jar-standard" description="Build all jar files include J2ME code">
-		<!-- And call the targets for creating MIDP JARs -->
-		<antcall target="jar-midp"/>
 	</target>
 	
 	<!-- ATTENTION: when changing this task, need to copy to the copy in the coverage report below! -->
@@ -389,7 +350,6 @@
 			<classpath>
 				<pathelement location="${lib}/bluecove-emu-2.1.0.jar"/>
 				<fileset refid="lib.alljars"/>
-				<path refid="lib.path.midp"/>
 				<pathelement location="${jarfile.core}"/>
 				<pathelement location="${jarfile.channels}"/>
 				<pathelement location="${jarfile.apps}"/>

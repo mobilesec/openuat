@@ -17,8 +17,6 @@ import java.io.InputStreamReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** This is a base class for reading from sensors that are represented by
  * simple files and output ASCII lines, with one line for each sample. It
@@ -166,8 +164,8 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 				}
 			}
 			catch (IOException e) {
-				if (logger.isLoggable(Level.FINER))
-					logger.finer("Ignoring exception, but ending reading: " + e);
+				if (logger.isTraceEnabled())
+					logger.trace("Ignoring exception, but ending reading: " + e);
 				return false;
 			}
 			return true;

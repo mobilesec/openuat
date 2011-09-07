@@ -43,7 +43,7 @@ public class DebugInputStream extends InputStream {
 	//@Override
 	public int read() throws IOException {
 		int c = realStream.read();
-		logger.finest("'" + (char) c + "' " + c);
+		logger.trace("'" + (char) c + "' " + c);
 		return c;
 	}
 	
@@ -55,7 +55,7 @@ public class DebugInputStream extends InputStream {
 		StringBuffer log = new StringBuffer();
 		for (int i=0; i<len; i++)
 			log.append("'" + (char) arr[i] + "' " + arr[i] + ", ");
-		logger.finest(log.toString());
+		logger.trace(log.toString());
 		return len;
 	}
 	
@@ -67,7 +67,7 @@ public class DebugInputStream extends InputStream {
 		StringBuffer log = new StringBuffer();
 		for (int i=off; i<off+readLen; i++)
 			log.append("'" + (char) arr[i] + "' " + arr[i] + ", ");
-		logger.finest(log.toString());
+		logger.trace(log.toString());
 		return readLen;
 	}
 	
