@@ -20,8 +20,10 @@ import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
 import javax.microedition.io.StreamConnectionNotifier;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostServerBase;
 import org.openuat.channel.main.bluetooth.BluetoothSupport;
@@ -39,7 +41,7 @@ import org.openuat.channel.main.bluetooth.BluetoothSupport;
  */
 public class BluetoothRFCOMMServer extends HostServerBase {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.BluetoothRFCOMMServer" /*BluetoothRFCOMMServer.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.util.BluetoothRFCOMMServer" /*BluetoothRFCOMMServer.class*/);
 	
 	/** This notifier is used to accept new RFCOMM connection. */
 	private StreamConnectionNotifier listener = null;
@@ -93,14 +95,14 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 			try {
 				this.listener = (StreamConnectionNotifier) Connector.open(serviceURL);
 			} catch (IOException e) {
-				logger.severe("Unable to register SDP service with URL '" + serviceURL + "', aborting startListening: " + e);
+				logger.error("Unable to register SDP service with URL '" + serviceURL + "', aborting startListening: " + e);
 				throw e;
 			}
 			try {
 				// make sure we are discoverable
 				LocalDevice local = LocalDevice.getLocalDevice();
 	            if (!local.setDiscoverable(DiscoveryAgent.GIAC)) {
-	            	logger.warning("Failed to change to discoverable mode");
+	            	logger.warn("Failed to change to discoverable mode");
 	            }
 				
 				// we can query and modify our local service description
@@ -113,7 +115,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				registeredURL = service.getConnectionURL(ServiceRecord.NOAUTHENTICATE_NOENCRYPT, false);
 				logger.info("Registered local service with URL " + registeredURL);
 			} catch (BluetoothStateException e) {
-				logger.severe("Unable to query registered SDP record, aborting startListening: " + e);
+				logger.error("Unable to query registered SDP record, aborting startListening: " + e);
 				throw e;
 			}
 		}
@@ -203,7 +205,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 //					LineReaderWriter.println(out, "MSG14");
 //					
 //				}catch(Exception e){
-//					logger.severe(e);
+//					logger.error(e);
 //				}
 				//runBEDA input
 				
@@ -222,7 +224,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 				}
 			}
 		} catch (IOException e) {
-			logger.warning("Error in listening thread: " + e + ". Stopping thread");
+			logger.warn("Error in listening thread: " + e + ". Stopping thread");
 		}
 		logger.finer("Listening thread for RFCOMM service now exiting");
 		running = false;
@@ -233,7 +235,7 @@ public class BluetoothRFCOMMServer extends HostServerBase {
 		try {
 			stop();
 		} catch (InternalApplicationException e) {
-			logger.severe("Could not properly dispose object: unable to close listener: " + e);
+			logger.error("Could not properly dispose object: unable to close listener: " + e);
 		}
 	}
 	

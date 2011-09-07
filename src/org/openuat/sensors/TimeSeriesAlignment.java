@@ -10,7 +10,8 @@ package org.openuat.sensors;
 
 import java.util.BitSet;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** http://en.wikipedia.org/wiki/Image:Spherical_Coordinates.png
  * http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
@@ -29,7 +30,7 @@ import java.util.logging.Logger;
  */
 public class TimeSeriesAlignment extends TimeSeriesBundle {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeriesAlignment" /*TimeSeriesAlignment.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.TimeSeriesAlignment" /*TimeSeriesAlignment.class*/);
 
 	private double[] r = null, theta = null, phi = null;
 	
@@ -222,11 +223,11 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			if (al[q].nTheta > 0)
 				al[q].delta_theta /= al[q].nTheta;
 			else if (al[q].delta_theta != 0)
-				logger.warning("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+				logger.warn("Delta theta is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 			if (al[q].nPhi > 0)
 				al[q].delta_phi /= al[q].nPhi;
 			else if (al[q].delta_phi != 0)
-				logger.warning("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
+				logger.warn("Delta phi is not equal zero, although we didn't have a single relevant pair to process. This should not happen!");
 			
 			// calculate error for theta, phi, and length (magnitude)
 			for (int i=0; i<index && i<otherSide.length; i++) {
@@ -268,7 +269,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		if (angle > Math.PI)
 			angle -= 2*Math.PI;
 		if (angle <= -Math.PI || angle > Math.PI)
-			logger.warning("Unexpected angle: " + angle);
+			logger.warn("Unexpected angle: " + angle);
 		return angle;
 	}
 	
@@ -399,7 +400,7 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 			ret[2] = Math.atan2(Math.sqrt(x*x + y*y), z);
 			// sanity check
 			if (ret[2] < 0 || ret[2] > Math.PI)
-				logger.warning("Computed phi out of tange [0; PI] (" + ret[2] + "). This should not happen!");
+				logger.warn("Computed phi out of tange [0; PI] (" + ret[2] + "). This should not happen!");
 		}
 
 		ret[1] = Math.atan2(y, x);
@@ -418,18 +419,18 @@ public class TimeSeriesAlignment extends TimeSeriesBundle {
 		}*/
 		// sanity check
 		if (ret[1] <= -Math.PI || ret[1] > Math.PI)
-			logger.warning("Phi out of range ]-PI; PI]: " + ret[1]);
+			logger.warn("Phi out of range ]-PI; PI]: " + ret[1]);
 /*		if (coord[1] < -0.000001 && r [index] >= 0)
-			logger.warning("y < 0 but r >= 0. This should not happen.");
+			logger.warn("y < 0 but r >= 0. This should not happen.");
 		if (coord[1] > 0.000001 && r [index] <= 0)
-			logger.warning("y > 0 but r <= 0. This should not happen.");*/
+			logger.warn("y > 0 but r <= 0. This should not happen.");*/
 		
 		return ret;
 	}
 	
 	private void newSample(double[] coord) {
 		if (index >= maxSegmentSize+windowSize) {
-			logger.warning("Want to write more active samples than segment size, aborting. This should not happen!");
+			logger.warn("Want to write more active samples than segment size, aborting. This should not happen!");
 			return;
 		}
 	

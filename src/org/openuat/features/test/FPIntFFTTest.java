@@ -8,8 +8,10 @@
  */
 package org.openuat.features.test;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.features.FPIntFFT;
 
 import junit.framework.Assert;
@@ -17,7 +19,7 @@ import junit.framework.TestCase;
 
 public class FPIntFFTTest extends TestCase {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.features.test.FPIntFFTTest" /*FPIntFFTTest.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.features.test.FPIntFFTTest" /*FPIntFFTTest.class*/);
 
 	private short x[];
 	

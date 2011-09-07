@@ -27,8 +27,10 @@ import org.openuat.util.SafetyBeltTimer;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class handles the key agreement protocol between two hosts on a stream
  * level. It implements both sides of the protocol, allowing to handle incoming
@@ -122,11 +124,11 @@ import java.util.logging.Logger;
  */
 public class HostProtocolHandler extends AuthenticationEventSender {
 	/** Our primary logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.HostProtocolHandler" /*HostProtocolHandler.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.HostProtocolHandler" /*HostProtocolHandler.class*/);
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.uacap");
+	private static Logger statisticsLogger = LoggerFactory.getLogger("statistics.uacap");
 
 	/** The byte length to use for keys, random nonces, and hashes. */ 
 	private static final int NonceByteLength = 16;
@@ -369,7 +371,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	if (protocolCommandHandlers == null) 
     		protocolCommandHandlers = handlers;
     	else
-    		logger.severe("Not overwriting already initialized list of protocol command handlers");
+    		logger.error("Not overwriting already initialized list of protocol command handlers");
     }
     
     /** Helper method used for closing the streams connected to the socket
@@ -437,7 +439,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     protected String getLine(String expectedMsg, RemoteConnection remote, boolean allowOtherCommands) throws IOException {
     	String msg = readLine();
     	if (msg == null) {
-        	logger.warning("helper_getAuthenticationParamLine called with null argument");
+        	logger.warn("helper_getAuthenticationParamLine called with null argument");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: no message received");
             shutdownConnectionCleanly();
             return null;
@@ -459,7 +461,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         			// yes, a handler is known, delegate here
         			if (! ((ProtocolCommandHandler) protocolCommandHandlers.get(command)).handleProtocol(
         					msg, remote)) {
-        				logger.severe("Could not handle protocol command '" + command + 
+        				logger.error("Could not handle protocol command '" + command + 
         						"', registered handler returned error");
         			}
         		}
@@ -469,7 +471,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         		return null;
         	}
 
-        	logger.warning("Protocol error: unkown message '" + msg + "'");
+        	logger.warn("Protocol error: unkown message '" + msg + "'");
             println("Protocol error: unknown message: '" + msg + "'");
             raiseAuthenticationFailureEvent(remote, null, "Protocol error: unknown message");
             shutdownConnectionCleanly();
@@ -536,7 +538,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	    				i + " after expected message '" + expectedMsg + 
     	    				", element text was '" + elem + 
     	    				"', while looking for '" + expectedParts[i] + "'"; 
-    	    		logger.warning(err);
+    	    		logger.warn(err);
     	    		println(err);
     	    		raiseAuthenticationFailureEvent(remote, null, err);
     	    		shutdownConnectionCleanly();
@@ -552,7 +554,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	    				i + " after expected message '" + expectedMsg + 
     	    				", element text was '" + elem + 
     	    				"', decoding exception: " + e.toString(); 
-    	    		logger.warning(err);
+    	    		logger.warn(err);
     	    		println(err);
     	    		raiseAuthenticationFailureEvent(remote, e, err);
     	    		shutdownConnectionCleanly();
@@ -568,7 +570,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     		String err = "Protocol error: received less parameters than expected (" +
     				i + " instead of at least " + numMandatoryParms + 
     				") after expected message '" + expectedMsg + "'"; 
-            logger.warning(err);
+            logger.warn(err);
             println(err);
             raiseAuthenticationFailureEvent(remote, null, err);
             shutdownConnectionCleanly();
@@ -683,7 +685,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         try {
 			remoteAddr = connection.getRemoteAddress().toString();
 		} catch (IOException e1) {
-			logger.severe("Can not get address of remote. This should not happen!");
+			logger.error("Can not get address of remote. This should not happen!");
 		}
 
         if (logger.isLoggable(Level.FINER)) {
@@ -805,7 +807,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	// second part is the remote public key
                	remotePubKey = (byte[]) parms[1];
                 if (remotePubKey.length < 128) {
-                    logger.warning("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
+                    logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
                     println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
                     raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote key too short (only " + remotePubKey.length + " bytes instead of 128)");
                     shutdownConnectionCleanly();
@@ -835,7 +837,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             	// first and only part is the remote public key
                	remotePubKey = (byte[]) parms[0];
                 if (remotePubKey.length < 128) {
-                    logger.warning("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
+                    logger.warn("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
                     println("Protocol error: could not parse public key, expected 128 Bytes hex-encoded.");
                     raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote key too short (only " + remotePubKey.length + " bytes instead of 128)");
                     shutdownConnectionCleanly();
@@ -848,7 +850,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
                	for (int i=0; i<remoteCommitment.length && i<remoteCommitmentExpected.length; i++) {
                     if (remoteCommitment[i] != remoteCommitmentExpected[i]) {
-                        logger.warning("Protocol error: remote commitment does not match public key");
+                        logger.warn("Protocol error: remote commitment does not match public key");
                         println("Protocol error: remote commitment does not match public key");
                         raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment does not match public key");
                         shutdownConnectionCleanly();
@@ -930,7 +932,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	            	Object[] parms = parseLine(line, Protocol_AuthenticationInputCommit, 
 	            			new boolean[] {true}, null, 1, connection);
 	            	if (parms == null) {
-	                    logger.warning("Protocol error: remote did not send commitment for short shared secret.");
+	                    logger.warn("Protocol error: remote did not send commitment for short shared secret.");
 	                    println("Protocol error: remote did not send input commitment for short shared secret.");
 	                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: no remote commitment");
 	            		shutdownConnectionCleanly();
@@ -938,7 +940,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	            	}
 	            	byte[] remoteM = (byte[]) parms[0];
 	                if (remoteM.length < 16) {
-	                    logger.warning("Protocol error: could not parse commitment for short shared secret, expected 128 Bits hex-encoded.");
+	                    logger.warn("Protocol error: could not parse commitment for short shared secret, expected 128 Bits hex-encoded.");
 	                    println("Protocol error: could not parse input commitment for short shared secret, expected 128 Bits hex-encoded.");
 	                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote commitment too short (only " + remotePubKey.length + " bytes instead of 16)");
 	                    shutdownConnectionCleanly();
@@ -972,7 +974,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	            	}
 	            	byte[] remoteK = (byte[]) parms[0];
 	                if (remoteK.length < 16) {
-	                    logger.warning("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
+	                    logger.warn("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
 	                    println("Protocol error: could not parse remote K, expected 128 Bits hex-encoded.");
 	                    raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote K too short (only " + remotePubKey.length + " bytes instead of 16)");
 	                    shutdownConnectionCleanly();
@@ -990,7 +992,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 	               	for (int i=0; i<remoteM.length && i<remoteMExpected.length; i++) {
 	                    if (remoteM[i] != remoteMExpected[i]) {
 	                    	equal = false;
-	                    	logger.warning("Remote input commitment does not match for current candidate secret.");
+	                    	logger.warn("Remote input commitment does not match for current candidate secret.");
 	                    	break;
 	                    }
 	               	}
@@ -1020,7 +1022,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
                	// grml, no java.util.Arrays class in J2ME - this simply sucks
                	for (int i=0; i<remotePreAuthenticationMessage.length && i<remoteCommitmentExpected.length; i++) {
                     if (remotePreAuthenticationMessage[i] != remoteCommitmentExpected[i]) {
-                        logger.warning("Protocol error: remote pre-authentication does not match public key");
+                        logger.warn("Protocol error: remote pre-authentication does not match public key");
                         println("Protocol error: remote pre-authentication does not match public key");
                         raiseAuthenticationFailureEvent(connection, null, "Protocol error: remote pre-authentication does not match public key");
                         shutdownConnectionCleanly();
@@ -1079,13 +1081,13 @@ public class HostProtocolHandler extends AuthenticationEventSender {
             if (timer != null)
             	timer.stop();
             
-           	statisticsLogger.warning("Key transfers took " + totalTransferTime + 
+           	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
            			"ms for total " + totalTransferSize + 
            			" chars, crypto took " + totalCryptoTime + "ms");
         }
         catch (InternalApplicationException e)
         {
-            logger.severe("Caught exception during host protocol run, aborting: " + e);
+            logger.error("Caught exception during host protocol run, aborting: " + e);
             // also communicate any application exception to interested
 			// listeners
             raiseAuthenticationFailureEvent(connection, e, null);
@@ -1093,7 +1095,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (IOException e)
         {
-            logger.severe("Caught exception during host protocol run, aborting: " + e);
+            logger.error("Caught exception during host protocol run, aborting: " + e);
             // even if we ignore the exception and not treat it as an error
 			// case, report it to listeners
             // so that they can clean up their state of this authentication
@@ -1103,7 +1105,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
         }
         catch (Exception e)
         {
-            logger.severe("UNEXPECTED EXCEPTION: " + e);
+            logger.error("UNEXPECTED EXCEPTION: " + e);
             e.printStackTrace();
             shutdownConnectionCleanly();
         }
@@ -1115,11 +1117,11 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 					try {
 						keyAgreement.resetRemotePart();
 					} catch (KeyAgreementProtocolException e) {
-						logger.severe("Aieh! Resetting permanent key agreement instance " + 
+						logger.error("Aieh! Resetting permanent key agreement instance " + 
 								"failed while trying to properly end protocol. " +
 								"The next protocol run will fail and I can't recover from here! " + e);
 					} catch (InternalApplicationException e) {
-						logger.severe("Aieh! Resetting permanent key agreement instance " + 
+						logger.error("Aieh! Resetting permanent key agreement instance " + 
 								"failed while trying to properly end protocol. " +
 								"The next protocol run will fail and I can't recover from here! " + e);
 					}
@@ -1180,10 +1182,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     	}
         catch (InternalApplicationException e)
         {
-            logger.severe("Caught exception during pre-authentication, can not continue: " + e);
+            logger.error("Caught exception during pre-authentication, can not continue: " + e);
             return null;
         } catch (KeyAgreementProtocolException e) {
-            logger.severe("Caught exception during pre-authentication, can not continue: " + e);
+            logger.error("Caught exception during pre-authentication, can not continue: " + e);
             return null;
 		}
     }
@@ -1206,10 +1208,10 @@ public class HostProtocolHandler extends AuthenticationEventSender {
     		return;
     	
     	if (remotePreAuthenticationMessage != null)
-    		logger.severe("Already set remote pre-authentication message, not overwriting it!");
+    		logger.error("Already set remote pre-authentication message, not overwriting it!");
     	else {
             if (publicKeyCommitment.length < 16) {
-                logger.severe("Expected at least 128 Bits of remote pre-authentication message, but got " + 
+                logger.error("Expected at least 128 Bits of remote pre-authentication message, but got " + 
                 		publicKeyCommitment.length + " bytes, not setting it!");
                 return;
             }
@@ -1237,7 +1239,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		 */
 		// This will e.g. trigger the creation of a State object in KeyManager, when used.
 		if (!raiseAuthenticationStartedEvent(connection)) {
-			logger.warning("Some AuthenticationStarted event handler vetoed the incoming authentication request from " +
+			logger.warn("Some AuthenticationStarted event handler vetoed the incoming authentication request from " +
 					connection + ". Aborting it now, not starting authentication protocol");
 		}
 		
@@ -1332,7 +1334,7 @@ public class HostProtocolHandler extends AuthenticationEventSender {
 		 */
 		// This will e.g. trigger the creation of a State object in KeyManager, when used.
 		if (!tmpProtocolHandler.raiseAuthenticationStartedEvent(remote)) {
-			logger.warning("Some AuthenticationStarted event handler vetoed the outgoing authentication request to " +
+			logger.warn("Some AuthenticationStarted event handler vetoed the outgoing authentication request to " +
 					remote + ". Aborting it now, not starting authentication protocol");
 		}
 

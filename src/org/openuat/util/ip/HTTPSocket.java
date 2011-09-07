@@ -19,11 +19,12 @@ import java.net.Socket;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HTTPSocket  implements Runnable{
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(HTTPSocket.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(HTTPSocket.class.getName());
 
 	public static String RELATE_ATTRIBUTE_FILENAME = "X-Relate-Filename";
 	public static String RELATE_ATTRIBUTE_ID = "X-Relate-Id";
@@ -82,7 +83,7 @@ public class HTTPSocket  implements Runnable{
 		this.destId= fts.getSource().toString();
 		fileToSend=fts.getTmpFile();
 		if (!fileToSend.isFile()){
-			logger.warning("file does not exist.");
+			logger.warn("file does not exist.");
 			return false;
 		}
 		logger.finer("create thread");
@@ -142,17 +143,17 @@ public class HTTPSocket  implements Runnable{
 			writeHTTPHeader(ip, out, fileToSend, destId);
 			sendFileContentToHost(out, fileToSend);
 		} catch (UnknownHostException e) {
-			logger.warning(" unknown Host Exception: " + ip.getHostAddress()
+			logger.warn(" unknown Host Exception: " + ip.getHostAddress()
 					+ " is unknown host");
 		} catch (IOException e) {
-			logger.warning("file " + fileToSend.getAbsolutePath()+
+			logger.warn("file " + fileToSend.getAbsolutePath()+
 					" not found in your System");
 		}
 		if (out != null ){
 			try {
 				out.close();
 			} catch (IOException e) {
-				logger.warning(" closing the output stream throw a IO Exception.");
+				logger.warn(" closing the output stream throw a IO Exception.");
 			}
 		}
 		

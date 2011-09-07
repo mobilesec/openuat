@@ -8,7 +8,8 @@
  */
 package org.openuat.features;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class contains utility functions for dealing with time series.
  *
@@ -17,7 +18,7 @@ import java.util.logging.Logger;
  */
 public class TimeSeriesUtil {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.features.TimeSeriesUtil" /*TimeSeriesUtil.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.features.TimeSeriesUtil" /*TimeSeriesUtil.class*/);
 
 	/** This method equalizes the length of two time series segments by cutting
 	 * the longer to the length of the shorter.
@@ -166,7 +167,7 @@ public class TimeSeriesUtil {
 		for (int i=0; i<b.length; i++)
 			if (b[i] == ' ') numBlanks++;
 		if (numBlanks == 0) {
-			logger.severe("Received invalid encoding without any blanks, aborting");
+			logger.error("Received invalid encoding without any blanks, aborting");
 			return null;
 		}
 		else {

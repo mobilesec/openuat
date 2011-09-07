@@ -15,8 +15,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This is a base class for reading from sensors that are represented by
  * simple files and output ASCII lines, with one line for each sample. It
@@ -32,7 +34,7 @@ import java.util.logging.Logger;
  */
 public abstract class AsciiLineReaderBase extends SamplesSource {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.AsciiLineReaderBase" /*AsciiLineReaderBase.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.AsciiLineReaderBase" /*AsciiLineReaderBase.class*/);
 	
 	/** This represent the stream to read from and is opened in the constructor.
 	 */
@@ -171,7 +173,7 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 			return true;
 		}
 		catch (IOException e) {
-			logger.severe("Could not read from file: " + e);
+			logger.error("Could not read from file: " + e);
 			return false;
 		}
 	}
@@ -188,7 +190,7 @@ public abstract class AsciiLineReaderBase extends SamplesSource {
 				port.close();
 		}
 		catch (Exception e) {
-			logger.severe("Could not properly close input stream");
+			logger.error("Could not properly close input stream");
 		}
 	}
 

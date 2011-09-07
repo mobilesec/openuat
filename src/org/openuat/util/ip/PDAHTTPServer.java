@@ -12,7 +12,8 @@ import java.io.*;
 import java.util.*;
 import java.net.*;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A simple, tiny, nicely embeddable HTTP 1.0 server in Java
@@ -66,7 +67,7 @@ import java.util.logging.Logger;
  */
 public class PDAHTTPServer {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(PDAHTTPServer.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(PDAHTTPServer.class.getName());
 	
 	Vector listeners;
 	
@@ -268,7 +269,7 @@ public class PDAHTTPServer {
 		try {
 			new PDAHTTPServer(port, deamon, ia);
 		} catch (IOException ioe) {
-			logger.severe("Couldn't start server:\n" + ioe);
+			logger.error("Couldn't start server:\n" + ioe);
 			System.exit(-1);
 		}
 	}

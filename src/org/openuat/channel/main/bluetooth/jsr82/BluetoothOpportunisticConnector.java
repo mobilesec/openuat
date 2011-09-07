@@ -21,8 +21,10 @@ import javax.bluetooth.RemoteDevice;
 import javax.bluetooth.ServiceRecord;
 import javax.bluetooth.UUID;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.AuthenticationProgressHandler;
 import org.openuat.authentication.HostProtocolHandler;
@@ -73,7 +75,7 @@ import org.openuat.channel.main.bluetooth.jsr82.BluetoothPeerManager;
 public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		implements HostAuthenticationServer {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(/*BluetoothOpportunisticConnector.class*/ "org.openuat.util.BluetoothOpportunisticConnector");
+	private static Logger logger = LoggerFactory.getLogger(/*BluetoothOpportunisticConnector.class*/ "org.openuat.util.BluetoothOpportunisticConnector");
 
 	/** This is the Bluetooth service UUID used for the opportunistic 
 	 * authentication service.
@@ -238,7 +240,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			manager.startInquiry(true);
 		}
 		else
-			logger.severe("Can not start Bluetooth service, because one is already running");
+			logger.error("Can not start Bluetooth service, because one is already running");
 	}
 	
 	/** Stops the local authentication service and the background inquiry. */
@@ -250,11 +252,11 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 				service.stop();
 			} 
 			catch (InternalApplicationException e) {
-				logger.severe("Could not properly close RFCOMM service socket: " + e);
+				logger.error("Could not properly close RFCOMM service socket: " + e);
 			}
 		}
 		else
-			logger.severe("Can not stop Bluetooth service, because none is running");
+			logger.error("Can not stop Bluetooth service, because none is running");
 	}
 	
 	/** Make sure to free resources when destroyed - particularly to remove 
@@ -280,13 +282,13 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 				numRetries = ((Integer) connectionsQueue.get(connectionURL)).intValue();
 				if (numRetries < 0) {
 					// this is the sign that a connection attempt is already running in parallel!
-					logger.warning("Connection attempt to '" + connectionURL + 
+					logger.warn("Connection attempt to '" + connectionURL + 
 							"' is currently running, not starting a second one. This should not happen.");
 					return false;
 				}
 			}
 			else {
-				logger.warning("attemptConnection called with '" + connectionURL +
+				logger.warn("attemptConnection called with '" + connectionURL +
 						"' which was not found in connectionsQueue. This should not happen!");
 				// we are about to start a connection attempt, so create the lock
 				connectionsQueue.put(connectionURL, new Integer(-1));
@@ -305,7 +307,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 
 		// sanity check
 		if (localAddress.equals(remoteAddress)) {
-			logger.severe("Can't talk to myself - not connecting to Bluetooth address '" + 
+			logger.error("Can't talk to myself - not connecting to Bluetooth address '" + 
 					remoteAddress + "'");
 			return false;
 		}
@@ -329,7 +331,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			}
 		}
 		else
-			logger.warning("Can not check for existing state with remote, as we don't have a valid KeyManager");
+			logger.warn("Can not check for existing state with remote, as we don't have a valid KeyManager");
 
 		/* This is a small but hopefully effective hack to prevent two devices 
 		 * from trying to contact each other at the same time: the higher MAC 
@@ -387,7 +389,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 			synchronized (connectionsQueue) {
 				if (numRetries >= maxConnectionRetries) {
 					// no more retries for this one
-					logger.warning("Could not connect to '" + connectionURL +
+					logger.warn("Could not connect to '" + connectionURL +
 							"' after " + maxConnectionRetries + " tries, aborting");
 					connectionsQueue.remove(connectionURL);
 					// maybe we can stop the timer now, if there are no more scheduled attempts
@@ -430,7 +432,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 	/** Small helper function for stopping the timer if it is running. */
 	private void stopTimer() {
 		if (connectionRetryTimer == null) {
-			logger.severe("Can not stop timer when no one is running. Ignoring, but this should not happen!");
+			logger.error("Can not stop timer when no one is running. Ignoring, but this should not happen!");
 			return;
 		}
 		if (connectionsQueue.isEmpty()) {
@@ -536,7 +538,7 @@ public class BluetoothOpportunisticConnector extends AuthenticationEventSender
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			// sanity check
 			if (! firstLine.startsWith(org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand)) {
-				logger.severe("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
+				logger.error("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
 						org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1.MotionVerificationCommand + "'. This should not happen!");
 				return false;
 			}

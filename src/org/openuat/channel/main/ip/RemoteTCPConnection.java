@@ -13,8 +13,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.channel.main.RemoteConnection;
 import org.openuat.util.DebugInputStream;
 import org.openuat.util.DebugOutputStream;
@@ -22,7 +24,7 @@ import org.openuat.util.DebugOutputStream;
 /** This is a private implementation of RemoteConnection for TCP. */
 public class RemoteTCPConnection implements RemoteConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.RemoteTCPConnection" /*BluetoothRFCOMMChannel.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.util.RemoteTCPConnection" /*BluetoothRFCOMMChannel.class*/);
 
 	/** Just a reference to the Socket object wrapped by this class. */
 	private Socket socket = null;

@@ -12,7 +12,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostAuthenticationServer;
 import org.openuat.channel.main.RemoteConnection;
@@ -77,7 +78,7 @@ import org.openuat.util.LineReaderWriter;
  */
 public abstract class DHWithVerification extends AuthenticationEventSender {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.DHWithVerification" /*DHOverTCPWithVerification.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.DHWithVerification" /*DHOverTCPWithVerification.class*/);
 
 	/** This message is sent via the remote channel to the remote upon authentication success. */
 	private final static String Protocol_Success = "ACK ";
@@ -217,7 +218,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	public boolean startAuthentication(RemoteConnection remote, int protocolTimeoutMs, String param) 
 			throws IOException/*, ConfigurationErrorException, InternalApplicationException*/ {
 		if (! isIdle()) {
-			logger.warning("Tried to start authentication with host " + remote.getRemoteName() + 
+			logger.warn("Tried to start authentication with host " + remote.getRemoteName() + 
 					" while another authentication protocol run is still active. Not starting authentication and " +
 					" returning false." + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -225,7 +226,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		}
 		
 		if (!keyManager.startKeyAgreement(remote)) {
-        	logger.severe("Could not start remote host object, this should not happen! Aborting startAuthentication" +
+        	logger.error("Could not start remote host object, this should not happen! Aborting startAuthentication" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	return false;
 		}
@@ -257,11 +258,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	 */
 	protected void reset(RemoteConnection remote) {
 		if (remote == null) {
-			logger.severe("Can not reset nonexistant remote object, this should not happen!");
+			logger.error("Can not reset nonexistant remote object, this should not happen!");
 			return;
 		}
 		if (!keyManager.reset(remote))
-			logger.severe("Could not reset remote host object, this should not happen!" +
+			logger.error("Could not reset remote host object, this should not happen!" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		
 		// also allow derived classes to do more specific resets
@@ -291,11 +292,11 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	protected void authenticationFailed(boolean failHard, RemoteConnection remote, Object optionalVerificationId, 
 			Exception e, String message) {
 		if (remote == null) {
-			logger.severe("Can not fail nonexistant remote object, this should not happen!");
+			logger.error("Can not fail nonexistant remote object, this should not happen!");
 			return;
 		}
 		if (failHard && !keyManager.fail(remote))
-			logger.severe("Could not fail remote host object, this should not happen!" +
+			logger.error("Could not fail remote host object, this should not happen!" +
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		raiseAuthenticationFailureEvent(remote, e, message);
 		
@@ -333,7 +334,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 	    	logger.finer("Received remote status: '" + remoteStatus + "'" + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		if (remoteStatus.length() == 0) {
-    			logger.severe("Could not get status message from remote host" + 
+    			logger.error("Could not get status message from remote host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(true, remote, optionalVerificationId, null, 
     					"Could not get status message from remote host" + 
@@ -344,7 +345,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     			return remoteStatus;
         }
         catch (IOException e) {
-        	logger.severe("Could not report success/failure to remote host or get status message from remote host: " + e + 
+        	logger.error("Could not report success/failure to remote host or get status message from remote host: " + e + 
 					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	authenticationFailed(true, remote, optionalVerificationId, e, 
         			"Could not report success/failure to remote host or get status message from remote host" + 
@@ -380,7 +381,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 
     			// mark host as succeeded
 		        if (!keyManager.succeed(remote)) {
-		        	logger.severe("Could not succeed remote host object, this should not happen! Aborting verificationSuccess" +
+		        	logger.error("Could not succeed remote host object, this should not happen! Aborting verificationSuccess" +
 							(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		        	return;
 		        }
@@ -396,7 +397,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		         */
 		        byte[] sessKey = keyManager.getSessionKey(remote);
 		        if (sessKey == null) {
-		        	logger.severe("Could not retreive session key for remote host '" + remote.getRemoteName() +
+		        	logger.error("Could not retreive session key for remote host '" + remote.getRemoteName() +
 		        			", this should not happen! Aborting verificationSuccess" +
 							(instanceId != null ? " [instance " + instanceId + "]" : ""));
 		        	return;
@@ -430,7 +431,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
 		        keyManager.reset(remote);
     		}
     		else if (remoteStatus.startsWith(Protocol_HardFailure)) {
-    			logger.severe("Received hard failure status from remote host although local authentication was successful. " + 
+    			logger.error("Received hard failure status from remote host although local authentication was successful. " + 
     					"Authentication protocol failed" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(true, remote, optionalVerificationId, null, 
@@ -438,7 +439,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else if (remoteStatus.startsWith(Protocol_SoftFailure)) {
-    			logger.severe("Received soft failure status from remote host although local authentication was successful. " + 
+    			logger.error("Received soft failure status from remote host although local authentication was successful. " + 
     					"Verification protocol failed, but not resetting keys for this host" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(false, remote, optionalVerificationId, null, 
@@ -446,7 +447,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
         	}
     		else {
-    			logger.severe("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
+    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     			authenticationFailed(true, remote, optionalVerificationId, null, 
     					"Unkown status from remote host (was '" + remoteStatus + "')" + 
@@ -491,7 +492,7 @@ public abstract class DHWithVerification extends AuthenticationEventSender {
     					(failHard ? "Failing hard anyway, and remote should do the same now." : "Good that we agreed." ) + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		} else {
-    			logger.severe("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
+    			logger.error("Unkown status from remote host! Ignoring it (was '" + remoteStatus + "')" + 
     					(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		}
 

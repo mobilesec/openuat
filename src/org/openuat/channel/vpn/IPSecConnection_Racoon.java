@@ -17,8 +17,10 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the racoon IPSec implementation, which is
@@ -30,7 +32,7 @@ import org.apache.commons.codec.binary.*;
  */
 class IPSecConnection_Racoon implements IPSecConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Racoon.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(IPSecConnection_Racoon.class.getName());
 
 	/** To remember the remote host address that was passed in init(). 
 	 * @see #init(String, String, int)
@@ -94,7 +96,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
-			logger.severe("Can not initialize connection with remote '" + remoteHost + 
+			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
 			return false;
 		}
@@ -141,7 +143,7 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	 */
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
-			logger.severe("Can not start connection, remoteHost not yet set");
+			logger.error("Can not start connection, remoteHost not yet set");
 			return false;
 		}
 		
@@ -153,29 +155,29 @@ class IPSecConnection_Racoon implements IPSecConnection {
 		File configConn = new File("/etc/racoon/remote/" + remoteHost + ".conf");
 		// but if it already exists, better not overwrite it....
 		if (configConn.exists()) {
-			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
+			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
 			return false;
 		}
 		File configPsk = new File("/etc/racoon/psk.txt");
 		// this file must already exist, we only append to it
 		if (! configPsk.exists() || ! configPsk.canWrite()) {
-			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " does not exist or is not writable.");
+			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " does not exist or is not writable.");
 			return false;
 		}
 		File configPskTmp = new File("/etc/racoon/psk.tmp");
 		if (configPskTmp.exists()) {
-			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " already exists.");
+			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " already exists.");
 			return false;
 		}
 		try {
 			logger.info("Creating config file " + configConn);
 			if (! configConn.createNewFile()) {
-				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
 			logger.finer("Creating temporary file " + configPskTmp);
 			if (! configPskTmp.createNewFile()) {
-				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " could not be created.");
+				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPskTmp + " could not be created.");
 				configConn.delete();
 				return false;
 			}
@@ -254,12 +256,12 @@ class IPSecConnection_Racoon implements IPSecConnection {
 				logger.info("Established connection to " + remoteHost);
 			}
 			catch (ExitCodeException e) {
-				logger.severe("Command failed: " + e);
+				logger.error("Command failed: " + e);
 				// ignore it, because if one of the connections comes up, we are set
 			}
 		}
 		catch (IOException e) {
-			logger.severe("Could not get list of local addresses: " + e);
+			logger.error("Could not get list of local addresses: " + e);
 			if (configConn.exists())
 				configConn.delete();
 			if (configPskTmp.exists())
@@ -278,19 +280,19 @@ class IPSecConnection_Racoon implements IPSecConnection {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.severe("Unable to stop IPSec connection, it has not been initialized yet (don't know which host to act on)");
+			logger.error("Unable to stop IPSec connection, it has not been initialized yet (don't know which host to act on)");
 			return false;
 		}
 		
 		File configConn = new File("/etc/racoon/remote/" + remoteHost + ".conf");
 		if (! configConn.exists()) {
-			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
 			return false;
 		}
 		// TODO: we should also delete the PSK entry, but don't care right now
 
 		if (! configConn.delete()) {
-			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 			return false;
 		}
 		
@@ -318,11 +320,11 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			Command.executeCommand(new String[] {"/usr/sbin/setkey", "-F"}, null, null);
 		}
 		catch (ExitCodeException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 		
@@ -338,11 +340,11 @@ class IPSecConnection_Racoon implements IPSecConnection {
 			return getConnStatus(remoteHost) == 1;
 		}
 		catch (ExitCodeException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 	}

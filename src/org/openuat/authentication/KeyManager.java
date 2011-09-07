@@ -14,8 +14,10 @@ import java.util.Vector;
 
 import org.apache.commons.codec.binary.Hex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.channel.main.RemoteConnection;
 
 /** This class manages shared secret keys. It assumes that up to two keys are
@@ -62,7 +64,7 @@ import org.openuat.channel.main.RemoteConnection;
  */
 public class KeyManager extends AuthenticationEventSender {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.KeyManager" /*KeyManager.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.KeyManager" /*KeyManager.class*/);
 
 	/** Possible state, indicates that nothing is known about this host. 
 	 */
@@ -178,7 +180,7 @@ public class KeyManager extends AuthenticationEventSender {
 		/** Sanity check on the remote object, to be called by all handlers. */
 		private boolean sanityCheckRemote(Object sender, Object remote) {
 	    	if (! (remote instanceof RemoteConnection)) {
-	    		logger.severe("Received host authentication event from " + sender + " with remote object of unknown type '" + 
+	    		logger.error("Received host authentication event from " + sender + " with remote object of unknown type '" + 
 	    				remote + "', ignoring" +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return false;
@@ -194,7 +196,7 @@ public class KeyManager extends AuthenticationEventSender {
 	    	
 	    	RemoteConnection host = (RemoteConnection) remote;
 	    	if (! hosts.containsKey(host)) {
-	    		logger.warning("Received host authentication event from " + sender + " in nonexistant state, ignoring event" + 
+	    		logger.warn("Received host authentication event from " + sender + " in nonexistant state, ignoring event" + 
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    		return null;
 	    	}
@@ -220,7 +222,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        State remoteState = retreiveState(sender, remote);
 	    	if (remoteState == null) return;
 	    	if (remoteState.state != STATE_KEY_AGREEMENT) {
-	    		logger.severe("Received host authentication success event with remote host " + remote + 
+	    		logger.error("Received host authentication success event with remote host " + remote + 
 	    				" while not expecting one (currently in state " + remoteState.state + 
 	    				")! This event will be ignored." +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
@@ -251,7 +253,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        /*if (res.length < 4 || res[3] == null || 
 	        		!(res[3] instanceof RemoteConnection) ||
 	        		res[3] != remote || !res[3].equals(remote)) {
-	        	logger.severe("Did not receive a proper remote connection object in authentication success event, can not re-use connection for authentication. Aborting and wiping keys." +
+	        	logger.error("Did not receive a proper remote connection object in authentication success event, can not re-use connection for authentication. Aborting and wiping keys." +
 						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	        	if (logger.isLoggable(Level.FINER)) {
 	        		logger.finer("res.length=" + res.length);
@@ -271,7 +273,7 @@ public class KeyManager extends AuthenticationEventSender {
 	    			RemoteConnection k = (RemoteConnection) e.nextElement();
 	    			State s = (State) hosts.get(k);
 	    			if (s.state == STATE_VERIFICATION) {
-	    				logger.severe("Key verification already running with remote host '" + 
+	    				logger.error("Key verification already running with remote host '" + 
 	    						k.getRemoteName() + "' and concurrent verification runs not supported, ignoring event" +
 	    						(instanceId != null ? " [instance " + instanceId + "]" : ""));
 	    				return;
@@ -325,7 +327,7 @@ public class KeyManager extends AuthenticationEventSender {
 	    		remoteState.state = STATE_KEY_AGREEMENT;
 	    	}
 	    	if (cur > 2 && remoteState.state != STATE_KEY_AGREEMENT) {
-	    		logger.severe("Received host authentication progress event (" + cur + 
+	    		logger.error("Received host authentication progress event (" + cur + 
 	    				" with remote host " + remote + 
 	    				" while not expecting one (currently in state " + remoteState.state + 
 	    				")! This event will be ignored." +
@@ -359,7 +361,7 @@ public class KeyManager extends AuthenticationEventSender {
 		    	RemoteConnection host = (RemoteConnection) remote;
 	    		State remoteState = new State();
 	    		if (hosts.put(host, remoteState) != null)
-	    			logger.warning("Got old object while trying to insert the first one, this should not happen!");
+	    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 
 		    	if (logger.isLoggable(Level.FINER))
 		    		logger.finer("Received host authentication started event from " + sender + " in idle state, transitioning to KEY_AGREEMENT." + 
@@ -429,7 +431,7 @@ public class KeyManager extends AuthenticationEventSender {
 		else {
 			State s = (State) hosts.get(host);
 			if (s == null) {
-				logger.severe("State object for host '" + host.getRemoteName() + 
+				logger.error("State object for host '" + host.getRemoteName() + 
 						"' is null. Internal error, this should not happen!" +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 				return STATE_NONEXISTANT;
@@ -509,7 +511,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */ 
 	public boolean succeed(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not succeed host '" + 
+			logger.warn("Can not succeed host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
@@ -525,7 +527,7 @@ public class KeyManager extends AuthenticationEventSender {
 			return true;
 		}
 		else {
-			logger.warning("Can not succeed host '" + 
+			logger.warn("Can not succeed host '" + 
 					host.getRemoteName() + "' that is not in verification state (state is " + s.state +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
@@ -548,7 +550,7 @@ public class KeyManager extends AuthenticationEventSender {
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
     		remoteState = new State();
     		if (hosts.put(host, remoteState) != null)
-    			logger.warning("Got old object while trying to insert the first one, this should not happen!");
+    			logger.warn("Got old object while trying to insert the first one, this should not happen!");
 		}
 		else
 			remoteState = (State) hosts.get(host);
@@ -560,7 +562,7 @@ public class KeyManager extends AuthenticationEventSender {
 			return true;
 		}
 		else {
-			logger.warning("Can not start host '" + 
+			logger.warn("Can not start host '" + 
 					host.getRemoteName() + "' that is not in idle state (state is " + remoteState.state +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
@@ -574,7 +576,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */
 	public boolean fail(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not fail host '" + 
+			logger.warn("Can not fail host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
@@ -597,7 +599,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */
 	public boolean reset(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not reset host '" + 
+			logger.warn("Can not reset host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return false;
@@ -618,7 +620,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */ 
 	public byte[] getAuthenticationKey(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not retrieve authentication key for host '" + 
+			logger.warn("Can not retrieve authentication key for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -627,13 +629,13 @@ public class KeyManager extends AuthenticationEventSender {
 		State s = (State) hosts.get(host);
 		if (s.state == STATE_VERIFICATION) {
 			if (s.authenticationKey == null)
-				logger.warning("Host '" + host.getRemoteName() + 
+				logger.warn("Host '" + host.getRemoteName() + 
 						"' is in verification state, but has no authentication key. This should not happen" +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return s.authenticationKey;
 		}
 		else {
-			logger.warning("Can not retrieve authentication key for host '" + 
+			logger.warn("Can not retrieve authentication key for host '" + 
 					host.getRemoteName() + "' that is not in verification state (state is " + s.state +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -648,7 +650,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */ 
 	public byte[] getSessionKey(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not retrieve session key for host '" + 
+			logger.warn("Can not retrieve session key for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -657,13 +659,13 @@ public class KeyManager extends AuthenticationEventSender {
 		State s = (State) hosts.get(host);
 		if (s.state == STATE_SUCCEEDED) {
 			if (s.sessionKey == null)
-				logger.warning("Host '" + host.getRemoteName() + 
+				logger.warn("Host '" + host.getRemoteName() + 
 						"' is in succeeded state, but has no session key. This should not happen" +
 		        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return s.sessionKey;
 		}
 		else {
-			logger.warning("Can not retrieve session key for host '" + 
+			logger.warn("Can not retrieve session key for host '" + 
 					host.getRemoteName() + "' that is not in succeeded state (state is " + s.state +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -678,7 +680,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */ 
 	public Object getOptionalRemoteReference(RemoteConnection host) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not retrieve optional remote reference for host '" + 
+			logger.warn("Can not retrieve optional remote reference for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return null;
@@ -696,7 +698,7 @@ public class KeyManager extends AuthenticationEventSender {
 	 */ 
 	public void setOptionalRemoteReference(RemoteConnection host, Object optionalRemoteReference) {
 		if (! hosts.containsKey(host)) {
-			logger.warning("Can not set optional remote reference for host '" + 
+			logger.warn("Can not set optional remote reference for host '" + 
 					host.getRemoteName() + "' in nonexistant state" +
 	        		(instanceId != null ? " [instance " + instanceId + "]" : ""));
 			return;

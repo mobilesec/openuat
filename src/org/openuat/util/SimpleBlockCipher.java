@@ -10,8 +10,10 @@ package org.openuat.util;
 
 import java.security.SecureRandom;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 
 /** This class implements a simple interface to a block cipher (AES/Rijndael)
@@ -21,7 +23,7 @@ import org.openuat.authentication.exceptions.InternalApplicationException;
  */
 public class SimpleBlockCipher {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.SimpleBlockCipher" /*SimpleBlockCipher.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.util.SimpleBlockCipher" /*SimpleBlockCipher.class*/);
 
 	/** The current length in byte of the key. */
 	public static final int KeyByteLength = 32;
@@ -273,7 +275,7 @@ public class SimpleBlockCipher {
     	byte[] output = new byte[BlockByteLength];
 		int processedBytes = ((org.bouncycastle.crypto.BlockCipher) cipher).processBlock(input, 0, output, 0);
 		if (processedBytes != BlockByteLength) {
-   			logger.severe("Block processing went wrong: unexpexted number of bytes returned");
+   			logger.error("Block processing went wrong: unexpexted number of bytes returned");
 			return new byte[processedBytes];
 		}
 		return output;

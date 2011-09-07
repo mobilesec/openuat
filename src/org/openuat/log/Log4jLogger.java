@@ -32,7 +32,7 @@ public class Log4jLogger implements Log {
 	 * @param name The name of the new logger.
 	 */
 	public Log4jLogger(String name) {
-		this.logger = Logger.getLogger(name);
+		this.logger = LoggerFactory.getLogger(name);
 	}
 	
 	/**

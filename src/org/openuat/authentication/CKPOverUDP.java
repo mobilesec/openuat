@@ -19,8 +19,10 @@ import java.util.StringTokenizer;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKey;
 import org.openuat.authentication.CandidateKeyProtocol.CandidateKeyPartIdentifier;
 import org.openuat.authentication.exceptions.InternalApplicationException;
@@ -55,11 +57,11 @@ import org.openuat.channel.main.ip.UDPMulticastSocket;
  */
 public abstract class CKPOverUDP extends AuthenticationEventSender {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(CKPOverUDP.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(CKPOverUDP.class.getName());
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.ckp");
+	private static Logger statisticsLogger = LoggerFactory.getLogger("statistics.ckp");
 
 	private final static String Protocol_CandidateKeyPart = "CAND ";
 
@@ -450,7 +452,7 @@ Bogdan Groza, 2007-04-19 */
 					// small optimization: the candidate number is not transmitted explicitly, but just as its position
 					// but do a sanity check here (optimizations are always dangerous)
 					if (candidateKeyParts[i].candidateNumber != i) 
-						logger.warning("Locally generatared candidate number " + candidateKeyParts[i].candidateNumber +
+						logger.warn("Locally generatared candidate number " + candidateKeyParts[i].candidateNumber +
 								" in round " + candidateKeyParts[i].round + " does not match its position " +
 								"in the array: " + i + ". Something might be subtly broken!" +
 								(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -641,7 +643,7 @@ Bogdan Groza, 2007-04-19 */
 			}
 			// check if the "negative" criteria are fulfilled
 			else if ((1-ckp.getMatchingRoundsFraction(remoteHostAddress)) >= maxMismatchRoundsFraction) {
-				logger.warning("Negative criteria are fulfilled for remote host " + remoteHostAddress + 
+				logger.warn("Negative criteria are fulfilled for remote host " + remoteHostAddress + 
 						", aborting protocol and generating authentication failure event" +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 				// abort protocol and generated authentication failure event
@@ -712,7 +714,7 @@ Bogdan Groza, 2007-04-19 */
 				totalMessageSize+=pckt.length;
 			}
 			catch (InternalApplicationException e) {
-				logger.severe("Could not generate key: " + e + 
+				logger.error("Could not generate key: " + e + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			} catch (IOException e) {
 				logger.finer("Can not send candidate key packet: " + e + 
@@ -795,7 +797,7 @@ Bogdan Groza, 2007-04-19 */
 				totalMessageSize+=pckt.length;
 			}
 			catch (IOException f) {
-				logger.severe("Could not send protocol termination message to remote host: " + f + 
+				logger.error("Could not send protocol termination message to remote host: " + f + 
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 		}
@@ -838,7 +840,7 @@ Bogdan Groza, 2007-04-19 */
 		boolean sendAck = false;
 		if (cand.foundMatchingKey != null) {
 			if (! Arrays.equals(cand.foundMatchingKey, foundKey)) {
-				logger.warning("Not overwriting the found matching key for remote host " + remoteHost +
+				logger.warn("Not overwriting the found matching key for remote host " + remoteHost +
 					", because stage 2 not entered yet." + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
@@ -850,7 +852,7 @@ Bogdan Groza, 2007-04-19 */
 			}
 			
 			if (++cand.overwriteBlockedCnt > GeneratedKeyCandidates.MaximumOverwriteBlockedCnt) {
-				logger.warning("Now overwriting the found matching key for remote host " + remoteHost +
+				logger.warn("Now overwriting the found matching key for remote host " + remoteHost +
 						", as it has been blocked in stage 1 for " + GeneratedKeyCandidates.MaximumOverwriteBlockedCnt +
 						" incoming candidate key messages. Maybe the local host's candidate key message got lost?" +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -931,7 +933,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 		}
 		// sanity check
 		if (ackedMatchingKey == null) {
-			logger.warning("Could not find a recently generated key matching the acknowledged hash. " +
+			logger.warn("Could not find a recently generated key matching the acknowledged hash. " +
 					"This might indicate an ongoing attack! " +
 					"Wiping state for remote host " + remoteHostAddress + 
 					(instanceId != null ? " [" + instanceId + "]" : ""));
@@ -1122,7 +1124,7 @@ Suggestion by Bogdan Groza, 2007-04-19
 							 */
 						}
 						else
-							logger.warning("Received candidate key parts packet without any key parts, ignoring it" +
+							logger.warn("Received candidate key parts packet without any key parts, ignoring it" +
 									(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
 					else if (pack.startsWith(Protocol_CandidateMatch)) {
@@ -1203,28 +1205,28 @@ Suggestion by Bogdan Groza, 2007-04-19
 								"Received termination message from remote host");
 					}
 					else {
-						logger.severe("Received unknown packet type '" + pack + "', ignoring it" + 
+						logger.error("Received unknown packet type '" + pack + "', ignoring it" + 
 								(instanceId != null ? " [" + instanceId + "]" : ""));
 					}
 				}
 				catch (NumberFormatException e) {
-					logger.severe("Can not decode number, ignoring whole packet" + 
+					logger.error("Can not decode number, ignoring whole packet" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					authenticationFailed((InetAddress) sender, true, e, "Could not decode number");
 				} catch (DecoderException e) {
-					logger.severe("Can not decode hash, ignoring whole packet" + 
+					logger.error("Can not decode hash, ignoring whole packet" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					authenticationFailed((InetAddress) sender, true, e, "Could not decode hash");
 				} catch (NoSuchElementException e) {
-					logger.severe("Invalid incoming candidate key message received, could not decode: " +e +
+					logger.error("Invalid incoming candidate key message received, could not decode: " +e +
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					authenticationFailed((InetAddress) sender, true, e, "Could not decode message structure");
 				} catch (IOException e) {
-					logger.severe("Can not send packet" + 
+					logger.error("Can not send packet" + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					authenticationFailed((InetAddress) sender, true, e, "Could not send packet");
 				} catch (InternalApplicationException e) {
-					logger.severe("Could not search for matching key: " + e + 
+					logger.error("Could not search for matching key: " + e + 
 							(instanceId != null ? " [" + instanceId + "]" : ""));
 					authenticationFailed((InetAddress) sender, true, e, "Could not search for matching key");
 				}

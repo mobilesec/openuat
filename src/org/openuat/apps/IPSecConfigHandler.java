@@ -12,7 +12,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -26,7 +27,7 @@ import org.xmlpull.v1.XmlSerializer;
  */
 public class IPSecConfigHandler {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConfigHandler.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(IPSecConfigHandler.class.getName());
 	
 	/** This namespace is used for creating the XML config. */
 	private final static String Namespace = "http://www.mayrhofer.eu.org/ns/security/ipsecadmin";
@@ -103,7 +104,7 @@ public class IPSecConfigHandler {
 	 */
 	public boolean parseConfig(Reader input) {
 		if (gateway != null || remoteNetwork != null) {
-			logger.severe("gateway or remote network have already been set. Aborting reading.");
+			logger.error("gateway or remote network have already been set. Aborting reading.");
 			return false;
 		}
 		
@@ -148,20 +149,20 @@ public class IPSecConfigHandler {
 						logger.finer("Associating with CA distinguished name field");
 						caDistinguishedName = str.toString();
 					} else
-						logger.warning("Encountered unkown tag '" + lastTag + "', ignoring it");
+						logger.warn("Encountered unkown tag '" + lastTag + "', ignoring it");
 				} else
-					logger.severe("Encountered unknown event type (" + eventType + "). This should not happen! Error in XmlPullParser.");
+					logger.error("Encountered unknown event type (" + eventType + "). This should not happen! Error in XmlPullParser.");
 				eventType = parser.next();
 			} while (eventType != XmlPullParser.END_DOCUMENT);
 		} catch (XmlPullParserException e) {
-			logger.severe("Could not parse config: " + e);
+			logger.error("Could not parse config: " + e);
 			return false;
 		} catch (IOException e) {
-			logger.severe("Could not get next element from config: " + e);
+			logger.error("Could not get next element from config: " + e);
 			return false;
 		}
 		if (gateway == null) {
-			logger.severe("Did not find definition for remote gateway in configuration");
+			logger.error("Did not find definition for remote gateway in configuration");
 			return false;
 		}
 		return true;
@@ -184,7 +185,7 @@ public class IPSecConfigHandler {
 	
 	public boolean writeConfig(Writer output) {
 		if (gateway == null) {
-			logger.severe("Can not write configuration without a defined gateway");
+			logger.error("Can not write configuration without a defined gateway");
 			return false;
 		}
 		
@@ -210,16 +211,16 @@ public class IPSecConfigHandler {
 			// finished with the config
 			serializer.endDocument();
 		} catch (XmlPullParserException e) {
-			logger.severe("Could not create config: " + e);
+			logger.error("Could not create config: " + e);
 			return false;
 		} catch (IllegalArgumentException e) {
-			logger.severe("Could not write to config: " + e);
+			logger.error("Could not write to config: " + e);
 			return false;
 		} catch (IllegalStateException e) {
-			logger.severe("Could not write to config: " + e);
+			logger.error("Could not write to config: " + e);
 			return false;
 		} catch (IOException e) {
-			logger.severe("Could not write to config: " + e);
+			logger.error("Could not write to config: " + e);
 			return false;
 		}
 		

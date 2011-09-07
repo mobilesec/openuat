@@ -18,7 +18,8 @@ import java.net.InetAddress;
 
 import javax.jmdns.*;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class wraps host and service discovery via Multicast DNS, using the jmDNS library
  * (a MDNS and DNS-SD implementation in pure Java) at the moment. If another MDNS responder
@@ -50,7 +51,7 @@ public class MDNSDiscovery {
 	private static MDNSDiscovery instance = null;
 		
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(MDNSDiscovery.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(MDNSDiscovery.class.getName());
 	
 	/** This holds one instance of the jMDNS responder for each interface that this host has. */
 	private JmDNS[] jmdns = null; 
@@ -125,7 +126,7 @@ public class MDNSDiscovery {
 			}
 		}
 		else {
-			logger.warning("Detected Windows CE, only using primary network interface for mDNS. This might be wrong.");
+			logger.warn("Detected Windows CE, only using primary network interface for mDNS. This might be wrong.");
 			jmdns = new JmDNS[1];
 			jmdns[1] = new JmDNS();
 			jmdns[1].addServiceListener(DNS_SD_Type, new ListenerHelper());
@@ -159,13 +160,13 @@ public class MDNSDiscovery {
 				val -= 0x100;
 			// just a sanity check
 			if (val < -128 || val > 127) {
-				logger.severe("Device id is out of range");
+				logger.error("Device id is out of range");
 				return null;
 			}
 			return new Integer(val);
 		} catch (NumberFormatException e) {
 			// ok, not parseable, probably no entry created by the class
-			logger.severe("Device id is not an integer number");
+			logger.error("Device id is not an integer number");
 			return null;
 		}
 	}
@@ -236,14 +237,14 @@ public class MDNSDiscovery {
 					InetAddress ipAddress = info.getInetAddress();
 					String hostname = info.getServer();
 				} else {
-					logger.warning("No info about service.");
+					logger.warn("No info about service.");
 				}
 				//TODO should we use the other available info ? username for instance ?
 				try {
 					MDNSDiscovery.getMDNSDiscovery();
 				} catch(IOException ex) {
 					//doesn't matter, the source for the event will just be null
-					logger.severe("Unable to access mdns resolver.");
+					logger.error("Unable to access mdns resolver.");
 				}
 				
 			}
@@ -266,7 +267,7 @@ public class MDNSDiscovery {
 						try {
 							MDNSDiscovery.getMDNSDiscovery().resolveAddress(deviceId);
 						} catch(IOException ex) {
-							logger.warning("Couldn't get MDNSDiscovery.");
+							logger.warn("Couldn't get MDNSDiscovery.");
 						}
 					}
 				}, QUERY_DELAY);
@@ -295,7 +296,7 @@ public class MDNSDiscovery {
 			    //set current time since we don't have any other timestamp to work with
 /*				Service service = new Service(ipAddress, hostname, deviceId, System.currentTimeMillis());
 				if(service == null) {
-				    logger.warning("service creation failed");
+				    logger.warn("service creation failed");
 				    return;
 				}
 				services.put(new Integer(deviceId), service);

@@ -10,8 +10,10 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class implements an aggregation of multiple time series into one. To do so,
  * it calculates the magnitude of the multi-dimensional vector for each sample and uses
@@ -34,7 +36,7 @@ import java.util.logging.Logger;
  */
 public class TimeSeriesAggregator extends TimeSeriesBundle {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeriesAggregator" /*TimeSeriesAggregator.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.TimeSeriesAggregator" /*TimeSeriesAggregator.class*/);
 	
 	/** This holds the current, aggregated segment when currently in active state. If
 	 * in quiescent state, it is set to null;
@@ -179,7 +181,7 @@ public class TimeSeriesAggregator extends TimeSeriesBundle {
 			if (aggregatedSeriesIndex_Int < maxSegmentSize+windowSize)
 				aggregatedSeries_Int[aggregatedSeriesIndex_Int++] = magnitude;
 			else
-				logger.warning("Want to write more active samples than segment size. This should not happen!");
+				logger.warn("Want to write more active samples than segment size. This should not happen!");
 
 			/* this is inside an active segment, so also forward the aggregated samples 
 			 * immediately to all registered listeners

@@ -11,8 +11,10 @@
  */
 package org.openuat.features;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class implements a simple linear quantizer to transform double-valued
  * signals into small-ranged integer-valued ones. 
@@ -22,7 +24,7 @@ import java.util.logging.Logger;
  */
 public class Quantizer {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.features.Quantizer" /*Quantizer.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.features.Quantizer" /*Quantizer.class*/);
 
 	/** Quantifies a signal according to the parameters. Every value of the
 	 * input vector is quantized independently.

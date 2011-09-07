@@ -10,7 +10,8 @@ package org.openuat.authentication;
 
 import java.util.Vector;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.util.LoggingHelper;
 
 /** This is an abstract class to encapsulate the notion of an authentication event sender. The basic
@@ -23,7 +24,7 @@ import org.openuat.util.LoggingHelper;
  */
 public abstract class AuthenticationEventSender {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.AuthenticationEventSender" /*AuthenticationEventSender.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.AuthenticationEventSender" /*AuthenticationEventSender.class*/);
 
 	/** The list of listeners that are notified of authentication events. */
     protected Vector eventsHandlers = null;
@@ -53,7 +54,7 @@ public abstract class AuthenticationEventSender {
      */ 
     public boolean setAuthenticationProgressHandlers(Vector handlers) {
     	if (eventsHandlers != null) {
-    		logger.severe("Not overwriting an already existing list of events handlers");
+    		logger.error("Not overwriting an already existing list of events handlers");
     		return false;
     	}
     	eventsHandlers = handlers;
@@ -69,7 +70,7 @@ public abstract class AuthenticationEventSender {
     				h.AuthenticationSuccess(this, remote, result);
     			}
     			catch (Exception e) {
-    				logger.severe("Authentication success handler '" + h + 
+    				logger.error("Authentication success handler '" + h + 
     						"' caused exception '" + e + "', ignoring it here");
     				LoggingHelper.debugWithException(logger, null, e);
     			}
@@ -85,7 +86,7 @@ public abstract class AuthenticationEventSender {
     				h.AuthenticationFailure(this, remote, e, msg);
     			}
     			catch (Exception ee) {
-    				logger.severe("Authentication failure handler '" + h + 
+    				logger.error("Authentication failure handler '" + h + 
     						"' caused exception '" + ee + "', ignoring it here");
     				LoggingHelper.debugWithException(logger, null, e);
     			}
@@ -101,7 +102,7 @@ public abstract class AuthenticationEventSender {
     				h.AuthenticationProgress(this, remote, cur, max, msg);
     			}
     			catch (Exception e) {
-    				logger.severe("Authentication progress handler '" + h + 
+    				logger.error("Authentication progress handler '" + h + 
     						"' caused exception '" + e + "', ignoring it here");
     				LoggingHelper.debugWithException(logger, null, e);
     			}
@@ -119,7 +120,7 @@ public abstract class AuthenticationEventSender {
     					return false;
     			}
     			catch (Exception e) {
-    				logger.severe("Authentication started handler '" + h + 
+    				logger.error("Authentication started handler '" + h + 
     						"' caused exception '" + e + "', ignoring it here");
     				LoggingHelper.debugWithException(logger, null, e);
     			}

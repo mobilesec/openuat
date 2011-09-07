@@ -12,7 +12,8 @@ import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Vector;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.AuthenticationEventSender;
 import org.openuat.authentication.HostProtocolHandler;
 import org.openuat.authentication.SimpleKeyAgreement;
@@ -28,7 +29,7 @@ import org.openuat.authentication.exceptions.*;
 public abstract class HostServerBase extends AuthenticationEventSender 
 		implements HostAuthenticationServer, Runnable {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.HostServerBase" /*HostServerBase.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.util.HostServerBase" /*HostServerBase.class*/);
 
 	/** this is a private thread object instead of the whole class being derived
 	   from thread to prevent other classes from fiddling with this thread */
@@ -190,7 +191,7 @@ public abstract class HostServerBase extends AuthenticationEventSender
     	 * agreement instance.
     	 */
     	if (permanentKeyAgreementInstance == null) {
-    		logger.warning("Can not derive permanent pre-authentication commitment when no permanent key agreement instance has been set");
+    		logger.warn("Can not derive permanent pre-authentication commitment when no permanent key agreement instance has been set");
     		return null;
     	}
     	return new HostProtocolHandler(null, 

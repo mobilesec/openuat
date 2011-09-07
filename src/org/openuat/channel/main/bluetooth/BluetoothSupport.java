@@ -8,7 +8,8 @@
  */
 package org.openuat.channel.main.bluetooth;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class bundles code to initialize and setup different Bluetooth stacks.
  * It is used by Bluetooth client and server classes to perform initialization
@@ -18,7 +19,7 @@ import java.util.logging.Logger;
  */
 public class BluetoothSupport {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(/*BluetoothSupport.class*/ "org.openuat.util.BluetoothSupport");
+	private static Logger logger = LoggerFactory.getLogger(/*BluetoothSupport.class*/ "org.openuat.util.BluetoothSupport");
 	
 	private static boolean initialized = false;
 
@@ -45,13 +46,13 @@ public class BluetoothSupport {
 			// running on J2ME, but need to check if we have JSR82 support
 			// TODO: this doesn't return anything on the Nokia 5500
 			/*if (System.getProperty("bluetooth.api.version") == null) {
-				logger.severe("No JSR82 support detected, property bluetooth.api.version not set");
+				logger.error("No JSR82 support detected, property bluetooth.api.version not set");
 				return false;
 			}*/
 			initialized = true;
 			return true;
 		}
-		logger.severe("No JSR82 support currently known for os.name=" + System.getProperty("os.name"));
+		logger.error("No JSR82 support currently known for os.name=" + System.getProperty("os.name"));
 		return false;
 	}
 	
@@ -67,7 +68,7 @@ public class BluetoothSupport {
 			initialized = true;
 			return true;
 		} catch (Exception e) {
-			logger.severe("Could not initialize local Bluetooth stack. RFCOMM channels will not work");
+			logger.error("Could not initialize local Bluetooth stack. RFCOMM channels will not work");
 			e.printStackTrace();
 			return false;
 		}

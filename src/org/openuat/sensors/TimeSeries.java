@@ -10,8 +10,10 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class represents a possibly multi-dimensional time series of a single
  * sensor. It computes simply statistical values, can distinguish active from
@@ -22,7 +24,7 @@ import java.util.logging.Logger;
  */
 public class TimeSeries implements SamplesSink {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeries" /*TimeSeries.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.TimeSeries" /*TimeSeries.class*/);
 	
 	/** This interface represents the parameters that <b>must</b> be reasonably
 	 * set when initializing a time series that reads from sensors instead of
@@ -163,7 +165,7 @@ public class TimeSeries implements SamplesSink {
 	 */
 	public void addSample(double sample, int sampleNum) {
 /*		if (sampleNum != totalNum) {
-			logger.warning("Sample index " + sampleNum + " does not correspond to number of samples already received "
+			logger.warn("Sample index " + sampleNum + " does not correspond to number of samples already received "
 					+ "(" + totalNum + ")");
 		}*/
 		
@@ -260,7 +262,7 @@ public class TimeSeries implements SamplesSink {
     					float sampleRate = (curTime - lastSampleRateEstimated) / (float) estimateSampleRateWidth;
         				lastSampleRateEstimated = curTime;
     					if (forceSampleRateEstimation)
-    						logger.warning("Current sample rate: " + sampleRate + " Hz");
+    						logger.warn("Current sample rate: " + sampleRate + " Hz");
     					else
     						logger.finer("Current sample rate: " + sampleRate + " Hz");
     				}
@@ -274,12 +276,12 @@ public class TimeSeries implements SamplesSink {
 	
 	/** Dummy implementation of SamplesSink.segmentStart. Does nothing. */
 	public void segmentStart(int indexNotUsed) {
-		logger.warning("segmentStart method of TimeSeries called. This should not happen");
+		logger.warn("segmentStart method of TimeSeries called. This should not happen");
 	}
 
 	/** Dummy implementation of SamplesSink.segmentEnd. Does nothing. */
 	public void segmentEnd(int indexNotUsed) {
-		logger.warning("segmentEnd method of TimeSeries called. This should not happen");
+		logger.warn("segmentEnd method of TimeSeries called. This should not happen");
 	}
 	
 	/** Registers a sink, which will receive all new values as they are sampled.
@@ -405,7 +407,7 @@ public class TimeSeries implements SamplesSink {
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
 		if (subtractTotalMean == true && subtractWindowMean == true) {
-			logger.severe("Can not set both subtractWindowMean and subtractTotalMean");
+			logger.error("Can not set both subtractWindowMean and subtractTotalMean");
 			return;
 		}
 		this.subtractWindowMean = subtractWindowMean;
@@ -425,7 +427,7 @@ public class TimeSeries implements SamplesSink {
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
 		if (subtractTotalMean == true && subtractWindowMean == true) {
-			logger.severe("Can not set both subtractWindowMean and subtractTotalMean");
+			logger.error("Can not set both subtractWindowMean and subtractTotalMean");
 			return;
 		}
 		this.subtractTotalMean = subtractTotalMean;

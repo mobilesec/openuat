@@ -10,8 +10,10 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class implements a collection of multiple time series that belong together,
  * for example multiple dimensions from a single sensor.
@@ -28,7 +30,7 @@ import java.util.logging.Logger;
  */
 public abstract class TimeSeriesBundle {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.TimeSeriesBundle" /*TimeSeriesBundle.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.TimeSeriesBundle" /*TimeSeriesBundle.class*/);
 
 	/** This is a helper class to listen to second stage samples and for active/quiescent
 	 * events of the TimeSeries.
@@ -379,7 +381,7 @@ public abstract class TimeSeriesBundle {
 	 * @see TimeSeries#setSubtractWindowMean(boolean)
 	 */
 	public void setSubtractWindowMean(boolean subtractWindowMean) {
-		logger.warning("Switching window mean subtraction on for all individual dimensions. This is probably not what you want!");
+		logger.warn("Switching window mean subtraction on for all individual dimensions. This is probably not what you want!");
 		for (int i=0; i<curSampleReceived.length; i++) {
 //#if cfg.haveFloatSupport
 			firstStageSeries[i].setSubtractWindowMean(subtractWindowMean);
@@ -392,7 +394,7 @@ public abstract class TimeSeriesBundle {
 	 * @see TimeSeries#setSubtractTotalMean(boolean)
 	 */
 	public void setSubtractTotalMean(boolean subtractTotalMean) {
-		logger.warning("Switching total mean subtraction on for all individual dimensions. This is probably not what you want!");
+		logger.warn("Switching total mean subtraction on for all individual dimensions. This is probably not what you want!");
 		for (int i=0; i<curSampleReceived.length; i++) {
 //#if cfg.haveFloatSupport
 			firstStageSeries[i].setSubtractTotalMean(subtractTotalMean);

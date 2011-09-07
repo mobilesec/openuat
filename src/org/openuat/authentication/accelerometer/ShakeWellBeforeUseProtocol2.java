@@ -17,7 +17,8 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.CKPOverUDP;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.features.QuantizedFFTCoefficients;
@@ -34,11 +35,11 @@ import org.openuat.sensors.TimeSeriesAggregator;
  */
 public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSink  {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2" /*ShakeWellBeforeUseProtocol2.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol2" /*ShakeWellBeforeUseProtocol2.class*/);
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.shake2");
+	private static Logger statisticsLogger = LoggerFactory.getLogger("statistics.shake2");
 
 	/** The TCP port we use for this protocol. */
 	public static final int UdpPort = 54322;
@@ -138,7 +139,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	 */
 	public void addSample(double sample, int numSample) {
 		if (curSegment == null) {
-			logger.warning("Received sample while not in active state, ignoring it" +
+			logger.warn("Received sample while not in active state, ignoring it" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
@@ -180,10 +181,10 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 			try {
 				addCandidates(candBytes, 0);
 			} catch (InternalApplicationException e) {
-				logger.severe("Could not add candidates: " + e +
+				logger.error("Could not add candidates: " + e +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			} catch (IOException e) {
-				logger.severe("Could not add candidates: " + e +
+				logger.error("Could not add candidates: " + e +
 						(instanceId != null ? " [" + instanceId + "]" : ""));
 			}
 			
@@ -199,7 +200,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	
 	public void segmentStart(int numSample) {
 		if (curSegment != null) {
-			logger.warning("Received segment start event while still in active phase, ignoring" +
+			logger.warn("Received segment start event while still in active phase, ignoring" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
@@ -210,7 +211,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	
 	public void segmentEnd(int numSample) {
 		if (curSegment == null) {
-			logger.warning("Received segment end event while no in active phase, ignoring" +
+			logger.warn("Received segment end event while no in active phase, ignoring" +
 					(instanceId != null ? " [" + instanceId + "]" : ""));
 			return;
 		}
@@ -228,7 +229,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 		logger.info("CKP succeeded with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds, shared key is now " + sharedSessionKey.toString() +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
-		statisticsLogger.warning("Data coding took " + totalCodingTime + 
+		statisticsLogger.warn("Data coding took " + totalCodingTime + 
 				"ms, CKP took " + totalCKPTime + 
 				"ms, FFT and quantization took" + totalFFTTime + 
 				"ms with " + totalMessageSize + " bytes in " +
@@ -238,7 +239,7 @@ public class ShakeWellBeforeUseProtocol2 extends CKPOverUDP implements SamplesSi
 	// TODO: activate me again when J2ME polish can deal with Java5 sources!
 	//@Override
 	protected void protocolFailedHook(String remote, float matchingRoundsFraction, Exception e, String message) {
-		logger.severe("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
+		logger.error("CKP failed with remote " + remote + " with " + matchingRoundsFraction + 
 				" matching rounds: " + message + "/" + e +
 				(instanceId != null ? " [" + instanceId + "]" : ""));
 	}

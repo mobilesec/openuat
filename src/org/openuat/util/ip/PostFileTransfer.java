@@ -20,7 +20,8 @@ import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import simple.http.Request;
 import simple.http.Response;
@@ -28,7 +29,7 @@ import simple.http.serve.Context;
 
 
 public class PostFileTransfer extends simple.http.load.Service {
-	private static Logger logger = Logger.getLogger(PostFileTransfer.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(PostFileTransfer.class.getName());
 	private Vector listener;
 	private File path = new File("");
 	

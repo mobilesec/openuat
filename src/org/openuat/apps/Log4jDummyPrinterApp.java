@@ -1,10 +1,11 @@
 package org.openuat.apps;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Log4jDummyPrinterApp {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(Log4jDummyPrinterApp.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(Log4jDummyPrinterApp.class.getName());
 
 	/**
 	 * @param args
@@ -18,8 +19,8 @@ public class Log4jDummyPrinterApp {
 		logger.finest("TEST 0");
 		logger.finer("TEST 1");
 		logger.info("TEST 2");
-		logger.warning("TEST 3");
-		logger.severe("TEST 4");
+		logger.warn("TEST 3");
+		logger.error("TEST 4");
 	}
 
 }

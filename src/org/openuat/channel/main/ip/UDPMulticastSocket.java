@@ -23,8 +23,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.channel.main.MessageListener;
 
 /** This class offers unicast and multicast UDP communication. It binds one
@@ -37,7 +39,7 @@ import org.openuat.channel.main.MessageListener;
  */
 public class UDPMulticastSocket {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(UDPMulticastSocket.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(UDPMulticastSocket.class.getName());
 
 	/** A list of network interface names <b>not</b> to use for communication.
 	 * All other network interfaces not matching these names are used to multicast
@@ -132,7 +134,7 @@ public class UDPMulticastSocket {
 			usingMulticast = true;
 		}
 		else {
-			logger.warning("Address " + multicastGroup + " is not a multicast address, not joining group");
+			logger.warn("Address " + multicastGroup + " is not a multicast address, not joining group");
 			usingMulticast = false;
 		}
 		
@@ -189,12 +191,12 @@ public class UDPMulticastSocket {
 				/*if (loopbackToLocalhost) {
 					multicastSendSockets[i].setLoopbackMode(true);
 					if (!multicastSendSockets[i].getLoopbackMode())
-						logger.warning("Could not set loopback mode, own packets will not be seen by localhost");
+						logger.warn("Could not set loopback mode, own packets will not be seen by localhost");
 				 }*/
 			}
 		}
 		else {
-			logger.warning("Not using multicast group to send to, therefore not binding to specific local addresses");
+			logger.warn("Not using multicast group to send to, therefore not binding to specific local addresses");
 			
 			multicastSendSockets = new MulticastSocket[1];
 			multicastSendSockets[0] = new MulticastSocket();
@@ -259,7 +261,7 @@ public class UDPMulticastSocket {
 			}
 		}
 		catch (IOException e) {
-			logger.warning("Could not properly leave multicast group " + groupAddress + ": " + e);
+			logger.warn("Could not properly leave multicast group " + groupAddress + ": " + e);
 		}
 	}
 	
@@ -318,7 +320,7 @@ public class UDPMulticastSocket {
 			    					for (int j=0; j<e.getStackTrace().length; j++)
 			    						stackTrace += e.getStackTrace()[j].toString() + "\n";
 			    				}
-			    				logger.severe("Incoming message handler '" + l + 
+			    				logger.error("Incoming message handler '" + l + 
 			    						"' caused exception '" + e + "\n" + stackTrace + "', ignoring it here");
 			    			}
 			    		}
@@ -327,7 +329,7 @@ public class UDPMulticastSocket {
 				} catch (SocketTimeoutException e) {
 					// just ignore
 				} catch (IOException e) {
-					logger.severe("Could not receive from UDP socket: " + e);
+					logger.error("Could not receive from UDP socket: " + e);
 				}
 			}
 			logger.finer("Listener thread stopping");

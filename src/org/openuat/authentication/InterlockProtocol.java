@@ -17,8 +17,10 @@ import java.util.BitSet;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.SafetyBeltTimer;
 import org.openuat.util.SimpleBlockCipher;
@@ -51,11 +53,11 @@ import org.openuat.util.SimpleBlockCipher;
  */
 public class InterlockProtocol {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.InterlockProtocol" /*InterlockProtocol.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.InterlockProtocol" /*InterlockProtocol.class*/);
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.interlock");
+	private static Logger statisticsLogger = LoggerFactory.getLogger("statistics.interlock");
 
 	/** This is the start of the line sent during initializing the interlock
 	 * exchange.
@@ -135,7 +137,7 @@ public class InterlockProtocol {
 			throw new IllegalArgumentException("Can not use more rounds than the number of message bits" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey == null)
-			logger.warning("Initializing interlock protocol without shared key - encrypt and decrypt will not work" + 
+			logger.warn("Initializing interlock protocol without shared key - encrypt and decrypt will not work" + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 		if (sharedKey != null && sharedKey.length != SimpleBlockCipher.KeyByteLength)
 			throw new IllegalArgumentException("Expecting shared key with a length of " + SimpleBlockCipher.KeyByteLength + 
@@ -355,7 +357,7 @@ public class InterlockProtocol {
 					addPart(cipherText, messages[round], cipherBitsPerRoundPerBlock*round, curBits);
 				else  {
 					if (messages[round] != null) {
-						logger.severe("Expected null part, but got some content" + 
+						logger.error("Expected null part, but got some content" + 
 								(instanceId != null ? " [instance " + instanceId : ""));
 					}
 				}
@@ -376,7 +378,7 @@ public class InterlockProtocol {
 					}
 					else { 
 						if (messages[round] != null) {
-							logger.severe("Expected null part, but got some content" + 
+							logger.error("Expected null part, but got some content" + 
 									(instanceId != null ? " [instance " + instanceId : ""));
 						}
 					}
@@ -414,7 +416,7 @@ public class InterlockProtocol {
 	 */
     public byte[] reassemble() {
 		if (receivedRounds.nextClearBit(0) < rounds) {
-			logger.severe("ERROR: Did not receive all required messages, first missing is round " + 
+			logger.error("ERROR: Did not receive all required messages, first missing is round " + 
 					(receivedRounds.nextClearBit(0)+1) + ", received rounds are " + receivedRounds + 
 					(instanceId != null ? " [instance " + instanceId : ""));
 			return null;
@@ -525,7 +527,7 @@ public class InterlockProtocol {
 			return ret;
 		}
 		else {
-			logger.severe("Did not receive proper line from remote, expected command '" + command + 
+			logger.error("Did not receive proper line from remote, expected command '" + command + 
 					"', received line '" + remoteLine + "'");
 			return null;
 		}
@@ -653,7 +655,7 @@ public class InterlockProtocol {
 		totalTransferSize += swapSize;
 		totalMessageNum++;
 		if (remoteLength == null) {
-			logger.severe("Did not receive remote message length. Can not continue.");
+			logger.error("Did not receive remote message length. Can not continue.");
 			return null;
 		}
 		int remLen = Integer.parseInt(remoteLength);
@@ -680,7 +682,7 @@ public class InterlockProtocol {
 			totalTransferSize += swapSize;
 			totalMessageNum++;
 			if (remotePart == null) {
-				logger.severe("Did not receive round " + round + " from remote. Can not continue.");
+				logger.error("Did not receive round " + round + " from remote. Can not continue.");
 				return null;
 			}
 
@@ -702,7 +704,7 @@ public class InterlockProtocol {
 						timer.reset();
 				}
 				catch (DecoderException e) {
-					logger.severe("Could not decode remote byte array. Can not continue.");
+					logger.error("Could not decode remote byte array. Can not continue.");
 					return null;
 				}
 		       	totalCodingTime += System.currentTimeMillis()-timestamp;
@@ -739,7 +741,7 @@ public class InterlockProtocol {
 								}
 						}
 						if (!groupSynchronized) {
-							logger.severe("Timeout while waiting for interlock group to arrive at barrier, aborting protocol");
+							logger.error("Timeout while waiting for interlock group to arrive at barrier, aborting protocol");
 							return null;
 						}
 					}
@@ -753,7 +755,7 @@ public class InterlockProtocol {
 		       	timestamp = System.currentTimeMillis();
 			}
 			else {
-				logger.severe("Round number does not match local round. Can not continue.");
+				logger.error("Round number does not match local round. Can not continue.");
 				return null;
 			}
 		}
@@ -772,7 +774,7 @@ public class InterlockProtocol {
 				for (int i=0; i<SimpleBlockCipher.BlockByteLength && equals; i++)
 					if (localCiphertext[i] != remoteCiphertext[i]) equals=false;
 				if (equals) {
-					logger.severe("Mirror attack detected! Aborting interlock protocol!");
+					logger.error("Mirror attack detected! Aborting interlock protocol!");
 					return null;
 				}
 			}
@@ -780,7 +782,7 @@ public class InterlockProtocol {
 			byte[] ret = remoteIp.decrypt(remoteCiphertext); 
 	       	totalCryptoTime += System.currentTimeMillis()-timestamp;
 
-           	statisticsLogger.warning("Key transfers took " + totalTransferTime + 
+           	statisticsLogger.warn("Key transfers took " + totalTransferTime + 
            			"ms for total " + totalTransferSize + 
            			" chars in " + totalMessageNum + 
            			" messages, coding took " + totalCodingTime + 
@@ -789,7 +791,7 @@ public class InterlockProtocol {
 	       	return ret;
 		}
 		else {
-			logger.severe("Interlock protocol did not finish within timeout");
+			logger.error("Interlock protocol did not finish within timeout");
 			return null;
 		}
 	}

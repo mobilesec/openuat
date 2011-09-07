@@ -17,8 +17,10 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 import java.util.Vector;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -30,7 +32,7 @@ import javax.net.ssl.X509TrustManager;
 /** This is a helper class to query local and externally visible IPv6 addresses. */
 public class IPv6AddressesHelper {
 	/** Our logger for this class. */
-	private final static Logger logger = java.util.logging.Logger.getLogger(IPv6AddressesHelper.class.getName());
+	private final static Logger logger = java.util.logging.LoggerFactory.getLogger(IPv6AddressesHelper.class.getName());
 
 	/** This is the host queried for the externally visible IPv6 address of 
 	 * the client when connecting to Internet services. The host name is

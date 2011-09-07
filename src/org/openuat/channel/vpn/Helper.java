@@ -15,7 +15,8 @@ import java.net.SocketException;
 import java.util.Enumeration;
 import java.util.LinkedList;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class implements various helper methods that don' really fit elsewhere. 
  *
@@ -24,7 +25,7 @@ import java.util.logging.Logger;
  */
 public class Helper {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(Helper.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(Helper.class.getName());
 
 	public final static String[] Interface_Names_Blacklist = new String[] { "vmnet", "lo" };
     

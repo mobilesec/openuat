@@ -11,8 +11,10 @@ package org.openuat.util;
 import java.io.IOException;
 import java.io.InputStream;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class implements a "grenade timer" that will let any loop bail out 
  * with a timeout when it is stuck for too long waiting for something. To use
@@ -63,7 +65,7 @@ import java.util.logging.Logger;
  */
 public class SafetyBeltTimer implements Runnable {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.util.SafetyBeltTimer" /*SafetyBeltTimer.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.util.SafetyBeltTimer" /*SafetyBeltTimer.class*/);
 
 	/** This signals the event loop to exit gracefully. */
 	private boolean gracefulStop = false;
@@ -117,11 +119,11 @@ public class SafetyBeltTimer implements Runnable {
 			if (logger.isLoggable(Level.FINER))
 				logger.finer("Safety belt timer triggered");
 			if (abortStream != null) {
-				logger.warning("Forcefully closing input stream to abort reads: " + abortStream);
+				logger.warn("Forcefully closing input stream to abort reads: " + abortStream);
 				try {
 					abortStream.close();
 				} catch (IOException e) {
-					logger.severe("Could not forcefully close input stream: " + e);
+					logger.error("Could not forcefully close input stream: " + e);
 				}
 			}
 		}

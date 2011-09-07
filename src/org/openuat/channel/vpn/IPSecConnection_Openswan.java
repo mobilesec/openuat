@@ -15,8 +15,10 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.*;
 
 /** This is an implementation of a secure channel using the openswan/strongswan/freeswan IPSec implementation
@@ -31,7 +33,7 @@ import org.apache.commons.codec.binary.*;
  */
 class IPSecConnection_Openswan implements IPSecConnection {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Openswan.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(IPSecConnection_Openswan.class.getName());
 
 	private LinkedList ignoredConns = new LinkedList();
     /**constant for connection header*/
@@ -124,7 +126,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	public boolean init(String remoteHost, String remoteNetwork, int remoteNetmask) {
 		if (this.remoteHost != null) {
-			logger.severe("Can not initialize connection with remote '" + remoteHost + 
+			logger.error("Can not initialize connection with remote '" + remoteHost + 
 					"', already initialized with '" + this.remoteHost + "'");
 			return false;
 		}
@@ -175,11 +177,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	//@SuppressWarnings("hiding") // this is as good as a constructor, so allow variable hiding
 	private boolean start(byte[] sharedSecret, String caDistinguishedName, boolean persistent) {
 		if (remoteHost == null) {
-			logger.severe("Can not start connection, remoteHost not yet set");
+			logger.error("Can not start connection, remoteHost not yet set");
 			return false;
 		}
 		if (sharedSecret != null && caDistinguishedName != null) {
-			logger.severe("Can't use both secret key and X.509 certificate authentication");
+			logger.error("Can't use both secret key and X.509 certificate authentication");
 			return false;
 		}
 
@@ -193,24 +195,24 @@ class IPSecConnection_Openswan implements IPSecConnection {
 		File configConn = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".conf");
 		// but if it already exists, better not overwrite it....
 		if (configConn.exists()) {
-			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
+			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " already exists.");
 			return false;
 		}
 		File configPsk = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".psk");
 		// but if it already exists, better not overwrite it....
 		if (configConn.exists()) {
-			logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " already exists.");
+			logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configPsk + " already exists.");
 			return false;
 		}
 		try {
 			logger.info("Creating config files " + configConn + " and " + configPsk);
 			if (! configConn.createNewFile()) {
-				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				return false;
 			}
 			BufferedWriter writerConn = new BufferedWriter(new FileWriter(configConn));
 			if (! configPsk.createNewFile()) {
-				logger.severe("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
+				logger.error("Unable to create IPSec connection to " + remoteHost + ": " + configConn + " could not be created.");
 				configConn.delete();
 				return false;
 			}
@@ -270,7 +272,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 					return isEstablished();
 				}
 				catch (ExitCodeException e) {
-					logger.severe("Command failed: " + e);
+					logger.error("Command failed: " + e);
 					// ignore it, because if one of the connections comes up, we are set
 					try {
 						Command.executeCommand(new String[] {"/usr/sbin/ipsec", "auto", "--delete", createConnName(localAddr, remoteHost)}, null, null);
@@ -282,7 +284,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			writerConn.close();
 			writerPsk.close();
 			// none of the connections came up
-			logger.severe("None of the connections could be established, cleaning up");
+			logger.error("None of the connections could be established, cleaning up");
 			configConn.delete();
 			configPsk.delete();
 			try {
@@ -293,7 +295,7 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			return false;
 		}
 		catch (IOException e) {
-			logger.severe("Could not execute command, handle files, or get list of local addresses: " + e);
+			logger.error("Could not execute command, handle files, or get list of local addresses: " + e);
 			if (configConn.exists())
 				configConn.delete();
 			if (configConn.exists())
@@ -309,18 +311,18 @@ class IPSecConnection_Openswan implements IPSecConnection {
 	
 	public boolean stop() {
 		if (remoteHost == null) {
-			logger.severe("Unable to stop IPSec connection, it has not been initialized yet (don't know which remote host to work on)");
+			logger.error("Unable to stop IPSec connection, it has not been initialized yet (don't know which remote host to work on)");
 			return false;
 		}
 		
 		File configConn = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".conf");
 		if (! configConn.exists()) {
-			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " does not exists.");
 			return false;
 		}
 		File configPsk = new File("/etc/ipsec.d/dynamic/" + remoteHost + ".psk");
 		if (! configPsk.exists()) {
-			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " does not exists.");
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " does not exists.");
 			return false;
 		}
 
@@ -331,20 +333,20 @@ class IPSecConnection_Openswan implements IPSecConnection {
 				logger.info("Skipping to take the connection down, it does not seem to have been started.");
 		}
 		catch (ExitCodeException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			// ignore it here and go on to delete the files
 		}
 		catch (IOException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			// dt.
 		}
 
 		if (! configConn.delete()) {
-			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configConn + " could not be deleted.");
 			return false;
 		}
 		if (! configPsk.delete()) {
-			logger.severe("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " could not be deleted.");
+			logger.error("Unable to stop IPSec connection to " + remoteHost + ": " + configPsk + " could not be deleted.");
 			return false;
 		}
 		
@@ -352,11 +354,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			Command.executeCommand(new String[] {"/usr/sbin/ipsec", "secrets"}, null, null);
 		}
 		catch (ExitCodeException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 		
@@ -372,11 +374,11 @@ class IPSecConnection_Openswan implements IPSecConnection {
 			return getConnStatus(createConnName(localAddr, remoteHost)) == 1;
 		}
 		catch (ExitCodeException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 		catch (IOException e) {
-			logger.severe("Could not execute command: " + e);
+			logger.error("Could not execute command: " + e);
 			return false;
 		}
 	}

@@ -8,7 +8,8 @@
  */
 package org.openuat.sensors;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This is a small helper class for checking the status of a device
  * with multiple lines/time series based on the events fired by its SampleSource objects.
@@ -22,7 +23,7 @@ import java.util.logging.Logger;
  */
 public abstract class DeviceStateListener {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.DeviceStateListener" /*DeviceStateListener.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.DeviceStateListener" /*DeviceStateListener.class*/);
 
 	/** Used to remember which of the lines are currently active. */
 	private boolean[] lineActive;

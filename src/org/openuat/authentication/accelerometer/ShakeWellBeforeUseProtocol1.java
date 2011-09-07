@@ -18,8 +18,10 @@ import java.util.BitSet;
 import java.util.Hashtable;
 import java.util.Vector;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.DHWithVerification;
 import org.openuat.authentication.InterlockProtocol;
 import org.openuat.authentication.KeyManager;
@@ -47,11 +49,11 @@ import org.openuat.util.LineReaderWriter;
 public class ShakeWellBeforeUseProtocol1 extends DHWithVerification 
 		implements SegmentsSink, SegmentsSink_Int {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1" /*ShakeWellBeforeUseProtocol1.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.authentication.accelerometer.ShakeWellBeforeUseProtocol1" /*ShakeWellBeforeUseProtocol1.class*/);
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.shake1");
+	private static Logger statisticsLogger = LoggerFactory.getLogger("statistics.shake1");
 
 	/** The TCP port we use for this protocol, if running over TCP. */
 	public static final int TcpPort = 54322;
@@ -242,7 +244,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				runner.start();
 			}
 			else {
-				logger.warning("Interlock thread already running, can not process two interlock " +
+				logger.warn("Interlock thread already running, can not process two interlock " +
 					"protocol runs concurrently. Terminating second request.");
 			}
 		}
@@ -264,7 +266,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				// sanity check
 				for (int i=0; i<toRemotes.length; i++) {
 					if (keyManager.getState(toRemotes[i]) != KeyManager.STATE_VERIFICATION) {
-						logger.severe("Remote " + toRemotes[i] + " is not in verifying state, not starting key verification with it");
+						logger.error("Remote " + toRemotes[i] + " is not in verifying state, not starting key verification with it");
 						toRemotes[i] = null;
 						groupSize--;
 					}
@@ -286,7 +288,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 			else {
-				logger.warning("Interlock thread already running, can not process two interlock " +
+				logger.warn("Interlock thread already running, can not process two interlock " +
 					"protocol runs concurrently. Terminating second request.");
 			}
 		}
@@ -301,7 +303,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		double[] coherence = Coherence.cohere(equalizedSeries[0], equalizedSeries[1], windowSize, 
 				(int) (ShakeWellBeforeUseParameters.coherenceWindowOverlapFactor * windowSize));
 		if (coherence == null) {
-			logger.warning("Coherence not computed, no match");
+			logger.warn("Coherence not computed, no match");
 			return -1;
 		}
 
@@ -392,7 +394,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 	 */
 	public void setContinuousChecking(boolean continuousChecking) {
 		if (continuousChecking) {
-			logger.warning("Enabling continuous checking mode! This should only be used for debugging, and not in production");
+			logger.warn("Enabling continuous checking mode! This should only be used for debugging, and not in production");
 		}
 		this.continuousChecking = continuousChecking;
 	}
@@ -454,12 +456,12 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			synchronized (localSegmentLock) {
 				// sanity checks
 				if (localSegment == null) {
-					logger.severe("keyVerification called without localSegment being set. This should not happen!");
+					logger.error("keyVerification called without localSegment being set. This should not happen!");
 					return false;
 				}
 /*				for (int i=0; i<localSegment.length; i++) {
 					if (localSegment[i] < 0 || localSegment[i] > 2) {
-						logger.severe("Sample value out of expected range: " + localSegment[i] + ", aborting");
+						logger.error("Sample value out of expected range: " + localSegment[i] + ", aborting");
 						protocolRunFinished(myThread);
 						return false;
 					}
@@ -488,7 +490,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 
 			totalInterlockTime += System.currentTimeMillis()-timestamp;
 			if (remotePlainText == null) {
-				logger.warning("Interlock protocol failed, can not continue to compare with remote segment");
+				logger.warn("Interlock protocol failed, can not continue to compare with remote segment");
 				verificationFailure(true, remote, null, null, null, "Interlock protocol failed");
 				return false;
 			}
@@ -545,7 +547,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				}
 			}
 
-			statisticsLogger.warning("Segment coding took " + totalCodingTime + 
+			statisticsLogger.warn("Segment coding took " + totalCodingTime + 
 						"ms, interlock took " + totalInterlockTime + 
 						"ms, coherence comparison took" + totalComparisonTime + "ms");
 	        return true;
@@ -619,7 +621,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 								if (numRetries == 0) {
 									int holdoff = holdOutgoingVerificationRequestHook(remote);
 									if (holdoff < 0) {
-										logger.warning("Aborting outgoing key verification as requested, not establishing a connection");
+										logger.warn("Aborting outgoing key verification as requested, not establishing a connection");
 										break outer;
 									}
 									do {
@@ -662,7 +664,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 						} while (!opened && 
 								System.currentTimeMillis()-startTime < VerificationConnectionEstablishmentTimeout);
 						if (!opened) {
-							logger.severe("Unable to establish channel for key verification to " +
+							logger.error("Unable to establish channel for key verification to " +
 									remote + ", aborting now");
 							break outer;
 						}
@@ -690,15 +692,15 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				} while (continuousChecking);
 			} catch (IOException e) {
-				logger.severe("Background verification thread aborted with: " + e);
+				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted (possibly due to timeout in interlock phase?)");
 			} catch (InternalApplicationException e) {
-				logger.severe("Background verification thread aborted with: " + e);
+				logger.error("Background verification thread aborted with: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted");
 			} catch (Exception e) {
-				logger.severe("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
+				logger.error("UNEXPECTED EXCEPTION, exiting interlock runner thread: " + e);
 				e.printStackTrace();
 				verificationFailure(true, remote, null, null, e, "Background verification aborted");
 			}
@@ -706,7 +708,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 			// thread finished, so remove ourselves from the list of threads
 			synchronized (interlockRunners) {
 				if (!interlockRunners.removeElement(this)) 
-					logger.severe("Error: tried to remove runner object " + this +
+					logger.error("Error: tried to remove runner object " + this +
 						" but could not find it in list. This should not happen!");
 				if (interlockRunners.isEmpty()) {
 					// removed the last one now, clean up - this allows startVerification to be called again
@@ -730,13 +732,13 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 		public boolean handleProtocol(String firstLine, RemoteConnection remote) {
 			// sanity check
 			if (! firstLine.startsWith(MotionVerificationCommand)) {
-				logger.severe("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
+				logger.error("MotionVerificationCommandHandler invoked with a protocol line that does not start with the expected command '" + 
 						MotionVerificationCommand + "'. This should not happen!");
 				return false;
 			}
 
 			if (!incomingVerificationRequestHook(remote)) {
-				logger.severe("incomingVerificationRequestHook returned false, aborting verification");
+				logger.error("incomingVerificationRequestHook returned false, aborting verification");
 				return true;
 			}
 
@@ -755,7 +757,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 					}
 				}
 				if (localSegment == null && !continuousChecking) {
-					logger.severe("Incoming motion key verification request from " +
+					logger.error("Incoming motion key verification request from " +
 							remote + ", but no local segment available after "+
 							IncomingConnectionWaitForLocalSegmentTimeout + "ms, aborting");
 					// not transmitted any sensor data yet, thus can fail soft
@@ -776,7 +778,7 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				else {
 					byte[] authKey;
 					if (staticAuthenticationKey != null) {
-						logger.warning("Using static authentication key for continuous checking mode");
+						logger.warn("Using static authentication key for continuous checking mode");
 						authKey = staticAuthenticationKey;
 					}
 					else {
@@ -794,10 +796,10 @@ public class ShakeWellBeforeUseProtocol1 extends DHWithVerification
 				
 				return true;
 			} catch (IOException e) {
-				logger.severe("IOException while running incoming key verification: " + e);
+				logger.error("IOException while running incoming key verification: " + e);
 				return false;
 			} catch (InternalApplicationException e) {
-				logger.severe("InternalApplicationException while running incoming key verification: " + e);
+				logger.error("InternalApplicationException while running incoming key verification: " + e);
 				return false;
 			}
 		}

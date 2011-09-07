@@ -44,7 +44,8 @@ import java.util.Vector;
 import java.util.Enumeration;
 
 import org.apache.commons.codec.binary.Hex;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -101,7 +102,7 @@ import org.bouncycastle.x509.extension.SubjectKeyIdentifierStructure;
  */
 public class X509CertificateGenerator {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(X509CertificateGenerator.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(X509CertificateGenerator.class.getName());
 	
 	/** This method is used for signing the certificate. */
 	public static final String CertificateSignatureAlgorithm = "SHA1WithRSAEncryption";
@@ -230,11 +231,11 @@ public class X509CertificateGenerator {
 
 		PKCS12Content content = loadFromKeyStore(new FileInputStream(new File(caFile)), caPassword, caAlias, useBCAPI);
 		if (content.privateKeys == null || content.privateKeys[0] == null) {
-			logger.severe("Got null private key from keystore, initialization failed");
+			logger.error("Got null private key from keystore, initialization failed");
 			throw new RuntimeException("Got null key from keystore!"); 
 		}
 		if (content.certificates == null || content.certificates[0] == null) {
-			logger.severe("Got null certificate from keystore, initialization failed");
+			logger.error("Got null certificate from keystore, initialization failed");
 			throw new RuntimeException("Got null cert from keystore!"); 
 		}
 
@@ -253,7 +254,7 @@ public class X509CertificateGenerator {
 	 */
 	public String getCaDistinguishedName() {
 		if (caCert == null) {
-			logger.severe("CA has not been loaded properly, can not get distinguished name");
+			logger.error("CA has not been loaded properly, can not get distinguished name");
 			return null;
 		}
 		return caCert.getSubjectDN().toString();
@@ -574,7 +575,7 @@ public class X509CertificateGenerator {
 						}
 					}
 					else {
-						logger.warning("Entry " + i + " with alias '" + aliases[i] + 
+						logger.warn("Entry " + i + " with alias '" + aliases[i] + 
 								"' is neither certificate nor private key, ignoring!");
 					}
 				}
@@ -615,7 +616,7 @@ public class X509CertificateGenerator {
 						}
 					}
 					else {
-						logger.warning("Entry " + i + " with alias '" + aliases[i] + 
+						logger.warn("Entry " + i + " with alias '" + aliases[i] + 
 								"' is neither certificate nor private key, ignoring!");
 					}
 				}
@@ -649,19 +650,19 @@ public class X509CertificateGenerator {
 			return ret;
 		} 
 		catch (IOException e) {
-			logger.severe("Could not load from key store: " + e);
+			logger.error("Could not load from key store: " + e);
 			return null;
 		} catch (KeyStoreException e) {
-			logger.severe("Could not load from key store: " + e);
+			logger.error("Could not load from key store: " + e);
 			return null;
 		} catch (NoSuchAlgorithmException e) {
-			logger.severe("Could not load from key store: " + e);
+			logger.error("Could not load from key store: " + e);
 			return null;
 		} catch (CertificateException e) {
-			logger.severe("Could not load from key store: " + e);
+			logger.error("Could not load from key store: " + e);
 			return null;
 		} catch (UnrecoverableKeyException e) {
-			logger.severe("Could not load from key store: " + e);
+			logger.error("Could not load from key store: " + e);
 			return null;
 		}
 	}

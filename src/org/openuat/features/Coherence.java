@@ -11,8 +11,10 @@
  */
 package org.openuat.features;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This class implements computation of the coherence function. It is
  * modelled after the Matlab/Octave "coher" function, but en explanation
@@ -33,7 +35,7 @@ import java.util.logging.Logger;
  */
 public class Coherence {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.features.Coherence" /*Coherence.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.features.Coherence" /*Coherence.class*/);
 	
 	/** This is a small helper function to compute how many slices will be used. */
 	public static int getNumSlices(int signalLength, int windowsize, int overlap) {
@@ -71,7 +73,7 @@ public class Coherence {
 			overlap = windowsize / 2;
 
 		if (s1.length < 2*windowsize - overlap) {
-			logger.severe("Signals are too short to compute coherence. Need at least 2 slices: " +
+			logger.error("Signals are too short to compute coherence. Need at least 2 slices: " +
 					(2*windowsize - overlap) + " samples necessary for window size " + windowsize +
 					" with overlap " + overlap + ", but got only " + s1.length);
 			return null;
@@ -84,7 +86,7 @@ public class Coherence {
 		double[] hann = hann(windowsize);	
 		// sanity check
 		if (hann.length != windowsize) {
-			logger.severe("FFT window size is different from than the hanning window size, can not cope");
+			logger.error("FFT window size is different from than the hanning window size, can not cope");
 			return null;
 		}
 		// normalize the hanning window

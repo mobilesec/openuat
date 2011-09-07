@@ -18,7 +18,8 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import simple.http.load.MapperEngine;
 import simple.http.serve.CacheContext;
@@ -42,7 +43,7 @@ import simple.http.serve.CacheContext;
  *
  */
 public class HTTPServer {
-	private static Logger logger = Logger.getLogger(HTTPServer.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(HTTPServer.class.getName());
 
 	private ServerSocket server;
 
@@ -89,9 +90,9 @@ public class HTTPServer {
 			}
 			outstream.close();
 		} catch (FileNotFoundException e1) {
-			logger.warning("File not found Exception.");
+			logger.warn("File not found Exception.");
 		} catch (IOException e) {
-			logger.warning("IO Exception.");
+			logger.warn("IO Exception.");
 		}
 
 		CacheContext context = new CacheContext(file);

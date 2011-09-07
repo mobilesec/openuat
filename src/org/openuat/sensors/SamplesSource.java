@@ -9,8 +9,10 @@ package org.openuat.sensors;
 
 import java.util.Vector;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This is a base class for emitting samples to a list of registers 
  * SamplesSink objects. It imlements handling the listeners and the background
@@ -21,7 +23,7 @@ import java.util.logging.Logger;
  */
 public abstract class SamplesSource {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger("org.openuat.sensors.SamplesSource" /*SamplesSource.class*/);
+	private static Logger logger = LoggerFactory.getLogger("org.openuat.sensors.SamplesSource" /*SamplesSource.class*/);
 
 	/** The maximum number of data lines to read from the device - depends on the sensor. */
 	protected int maxNumLines;
@@ -236,16 +238,16 @@ public abstract class SamplesSource {
 			catch (InterruptedException e) {
 //#if cfg.haveReflectionSupport
 				if (! System.getProperty("os.name").startsWith("Windows CE")) {
-					logger.severe("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
+					logger.error("Error waiting for sampling thread to terminate: " + e.toString() + "\n" + e.getStackTrace().toString());
 				}
 				else
 //#endif
 				{
 					// J2ME CLDC doesn't have reflection support and thus no getStackTrace()....
-					logger.severe("Error waiting for sampling thread to terminate: " + e.toString());
+					logger.error("Error waiting for sampling thread to terminate: " + e.toString());
 				}
 			}
-			logger.severe("Sampling thread stopped");
+			logger.error("Sampling thread stopped");
 			samplingThread = null;
 		}
 	}
@@ -346,7 +348,7 @@ public abstract class SamplesSource {
 				if (logger.isLoggable(Level.FINER))
 					logger.finer("Background sampling thread terminated regularly due to request");
 			else
-				logger.warning("Background sampling thread received no more samples, ending now");
+				logger.warn("Background sampling thread received no more samples, ending now");
 			// old code that used to read from a UDP socket
 			/*else {
 				// no port to read from, instead read from UDP socket
@@ -369,7 +371,7 @@ public abstract class SamplesSource {
 					}
 				}
 				catch (IOException e) {
-					logger.severe("Aborting reading from UDP port due to: " + e);
+					logger.error("Aborting reading from UDP port due to: " + e);
 				}
 			}*/
 		}

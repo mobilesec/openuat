@@ -13,7 +13,8 @@ import java.net.InetAddress;
 import java.util.Iterator;
 import java.util.Vector;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  * file transfer is realised over http protocol. to 
@@ -32,7 +33,7 @@ import java.util.logging.Logger;
 
 public class FileTransferService {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(FileTransferService.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(FileTransferService.class.getName());
 
 	private static FileTransferService instance;
 
@@ -104,7 +105,7 @@ public class FileTransferService {
 				pdaServer =new PDAHTTPServer(port,false, ia);
 				pdaServer.addFileTransferListener(listener);
 			} catch (IOException ioe) {
-				logger.severe("Couldn't start server:\n");
+				logger.error("Couldn't start server:\n");
 				System.exit(-1);
 			}
 		}else {

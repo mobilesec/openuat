@@ -17,7 +17,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.zip.GZIPInputStream;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
@@ -43,7 +44,7 @@ import org.openuat.sensors.XsensLogReader;
 
 public class AsciiLineReaderRunner {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(AsciiLineReaderRunner.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(AsciiLineReaderRunner.class.getName());
 
 	static class XYSink implements SamplesSink {
 		XYSeries series = new XYSeries("Line", false);
@@ -53,7 +54,7 @@ public class AsciiLineReaderRunner {
 	
 		public void addSample(double s, int index) {
 			if (index != num++)
-				logger.severe("Sample index invalid");
+				logger.error("Sample index invalid");
 			series.add(index, s);
 			if (segment != null)
 				segment.add(new Double(s));
@@ -92,7 +93,7 @@ public class AsciiLineReaderRunner {
 			if (segs[index] == null)
 				segs[index] = segment;
 			else
-				logger.warning("Already received segment " + index + ", this is a second significant one!");
+				logger.warn("Already received segment " + index + ", this is a second significant one!");
 		}
 	}
 	
@@ -111,21 +112,21 @@ public class AsciiLineReaderRunner {
 		// these methods don'tt get called yet
 		public void segmentEnd(int index) {
 /*			if (active) {
-				logger.warning("Ending segment at index " + index);
+				logger.warn("Ending segment at index " + index);
 				done = true;
 				active = false;
 			}
 			else
-				logger.warning("Not ending segment at index " + index + " as it has not been active");
+				logger.warn("Not ending segment at index " + index + " as it has not been active");
 */		}
 
 		public void segmentStart(int index) {
 /*			if (!done) {
 				active = true;
-				logger.warning("Starting segment at index " + index);
+				logger.warn("Starting segment at index " + index);
 			}
 			else
-				logger.warning("Not starting a second segment at index " + index);
+				logger.warn("Not starting a second segment at index " + index);
 */		}
 	}
 	
@@ -600,7 +601,7 @@ public class AsciiLineReaderRunner {
 								}
 							}
 							else
-								logger.warning("Could not get active segment for subject " +
+								logger.warn("Could not get active segment for subject " +
 										i + " " + settings[j] + " " + hands[k] + " try " +
 										k + " device " + device);
 						}

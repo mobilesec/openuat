@@ -10,7 +10,8 @@ package org.openuat.channel.vpn;
 
 import java.io.File;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This is a factory class for generating instances of SecureChannel based on IPSec. Based on the
  * running operating system and installed components, it will select the appropriate IPSecConnection_*
@@ -21,7 +22,7 @@ import java.util.logging.Logger;
  */
 public class IPSecConnection_Factory {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(IPSecConnection_Factory.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(IPSecConnection_Factory.class.getName());
 
 	/** Returns the appropriate instance of the ipsec secure channel implementation. or null if
 	 * no implementation is yet available for the running platform. 
@@ -33,7 +34,7 @@ public class IPSecConnection_Factory {
 		
 		if (osname.startsWith("Windows CE")) {
 			// no implementation for Windows CE/PocketPC
-			logger.warning("No IPSec secure channel implementation available for Windows CE ('" + osname + "'), returning null");
+			logger.warn("No IPSec secure channel implementation available for Windows CE ('" + osname + "'), returning null");
 			return null;
 		}
 		// TODO: how to detect windows XP/2000 explicitly?
@@ -55,7 +56,7 @@ public class IPSecConnection_Factory {
 				return new IPSecConnection_Racoon();
 			}
 			else {
-				logger.warning("Detected Linux, but no supported IPSec IKE daemon");
+				logger.warn("Detected Linux, but no supported IPSec IKE daemon");
 				return null;
 			}
 		}
@@ -64,7 +65,7 @@ public class IPSecConnection_Factory {
 			return new IPSecConnection_Racoon();
 		}
 		else {
-			logger.warning("No IPSec secure channel implementation available for '" + osname + "', returning null");
+			logger.warn("No IPSec secure channel implementation available for '" + osname + "', returning null");
 			return null;
 		}
 	}

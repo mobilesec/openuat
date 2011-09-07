@@ -13,7 +13,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.channel.main.HostServerBase;
 
@@ -30,7 +31,7 @@ import org.openuat.channel.main.HostServerBase;
  */
 public class TCPPortServer extends HostServerBase {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(TCPPortServer.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(TCPPortServer.class.getName());
 
 	/** This is the (bound but unconnected) TCP socket for listening for incoming connections. */
 	private ServerSocket listener;
@@ -70,7 +71,7 @@ public class TCPPortServer extends HostServerBase {
 			super.start();
 		}
 		else
-			logger.severe("Could not start TCP server because one is already running.");
+			logger.error("Could not start TCP server because one is already running.");
 	}
 
 	/** Need to override the stopListening method to properly close the TCP server socket. 
@@ -103,11 +104,11 @@ public class TCPPortServer extends HostServerBase {
 		} catch(SocketException e) {
 			// Only ignore the SocketException when we have been signalled to stop. Otherwise it's a real error. 
 			if (running)
-				logger.severe("Error in listening thread: " + e);
+				logger.error("Error in listening thread: " + e);
 			else
 				logger.finer("Listening socket was forcibly closed, exiting listening thread now.");
 		} catch (IOException e) {
-			logger.severe("Error in listening thread: " + e);
+			logger.error("Error in listening thread: " + e);
 		}
 	}
 }

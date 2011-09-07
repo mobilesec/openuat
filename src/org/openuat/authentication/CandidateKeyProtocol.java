@@ -17,8 +17,10 @@ import java.util.LinkedList;
 
 import org.apache.commons.codec.binary.Hex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openuat.authentication.exceptions.InternalApplicationException;
 import org.openuat.util.Hash;
 
@@ -112,11 +114,11 @@ import org.openuat.util.Hash;
  */
 public class CandidateKeyProtocol {
 	/** Our logger. */
-	private static Logger logger = Logger.getLogger(CandidateKeyProtocol.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(CandidateKeyProtocol.class.getName());
 	/** This is a special logger used for logging only statistics. It is separate from the main logger
 	 * so that it's possible to turn statistics on an off independently.
 	 */
-	private static Logger statisticsLogger = Logger.getLogger("statistics.ckp");
+	private static Logger statisticsLogger = LoggerFactory.getLogger("statistics.ckp");
 
 	/** This is used for deriving the shared key them from the one used for comparing 
 	 * key to ensure that they are different. It's just some random text, the exact value really 
@@ -321,7 +323,7 @@ public class CandidateKeyProtocol {
 				while (inI < coded.length()) {
 					if (Character.isDigit(coded.charAt(inI))) {
 						if (finishedGroup) {
-							logger.severe("Unexpected digit in index tuple string at index " + inI);
+							logger.error("Unexpected digit in index tuple string at index " + inI);
 						}
 						// aha, start of a number, extract it
 						int end = coded.indexOf(firstDigit ? '/' : ';', inI), val;
@@ -357,7 +359,7 @@ public class CandidateKeyProtocol {
 					}
 					else if (coded.charAt(inI) == ';') {
 						if (firstDigit || !finishedGroup) {
-							logger.severe("Unexpected ; in index tuplex string at index " + inI);
+							logger.error("Unexpected ; in index tuplex string at index " + inI);
 							return null;
 						}
 						firstDigit = true;
@@ -366,14 +368,14 @@ public class CandidateKeyProtocol {
 					}
 					else if (coded.charAt(inI) == '/') {
 						if (!firstDigit || finishedGroup) {
-							logger.severe("Unexpected / in index tuplex string at index " + inI);
+							logger.error("Unexpected / in index tuplex string at index " + inI);
 							return null;
 						}
 						firstDigit = false;
 						inI++;
 					}
 					else {
-						logger.severe("Unexpected character '" + coded.charAt(inI) + 
+						logger.error("Unexpected character '" + coded.charAt(inI) + 
 								"' in index tuple string at index " + inI);
 						inI++;
 					}
@@ -384,7 +386,7 @@ public class CandidateKeyProtocol {
 				return ret;
 			}
 			catch (NumberFormatException e) {
-				logger.severe("Could not decode string tuples: " + e);
+				logger.error("Could not decode string tuples: " + e);
 				return null;
 			}
 		}
@@ -531,7 +533,7 @@ public class CandidateKeyProtocol {
 		int candidateKeyPartsLength = -1;
 		for (int i=0; i<candidateKeys.length; i++) {
 			if (candidateKeys[i] == null) {
-				logger.warning("Candidate with index " + i + " is null, ignoring" +
+				logger.warn("Candidate with index " + i + " is null, ignoring" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				continue;
 			}
@@ -593,7 +595,7 @@ public class CandidateKeyProtocol {
 			throw new IllegalArgumentException("candidateIdentifiers can not be null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (candidateIdentifiers.length > recentKeyParts.length)
-			logger.warning("Length of incoming candidate list is larger than the history size" +
+			logger.warn("Length of incoming candidate list is larger than the history size" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (candidateIdentifiers.length > 127)
 			throw new IllegalArgumentException("Maximum of 127 key parts supported for each round" +
@@ -609,7 +611,7 @@ public class CandidateKeyProtocol {
 				
 				for (int i=0; i<candidateIdentifiers.length; i++) {
 					if (candidateIdentifiers[i] == null) {
-						logger.warning("Candidate with index " + i + " is null, ignoring" +
+						logger.warn("Candidate with index " + i + " is null, ignoring" +
 								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 						continue;
 					}
@@ -617,7 +619,7 @@ public class CandidateKeyProtocol {
 					if (recentKeyParts[j].hash.length != candidateIdentifiers[i].hash.length) {
 						compareBytes = recentKeyParts[j].hash.length < candidateIdentifiers[i].hash.length ?
 								recentKeyParts[j].hash.length : candidateIdentifiers[i].hash.length;
-						logger.warning("Length of candidate " + i + " does not match expected length, " +
+						logger.warn("Length of candidate " + i + " does not match expected length, " +
 								"comparing only " + compareBytes + " bytes" +
 								(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 					}
@@ -641,7 +643,7 @@ public class CandidateKeyProtocol {
 						numMatches++;
 						// just a small sanity check
 						if (candidateIdentifiers[i].round < 0 || candidateIdentifiers[i].candidateNumber < 0) {
-							logger.severe("Matching candidate does either not have a valid round (" + candidateIdentifiers[i].round +
+							logger.error("Matching candidate does either not have a valid round (" + candidateIdentifiers[i].round +
 									") or number (" + candidateIdentifiers[i].candidateNumber + ")");
 							continue;
 						}
@@ -649,7 +651,7 @@ public class CandidateKeyProtocol {
 						if (firstMatch == -1) {
 							// sanity check
 							if (candidateIdentifiers[i].candidateNumber != i)
-								logger.warning("Incoming candidate number " + candidateIdentifiers[i].candidateNumber +
+								logger.warn("Incoming candidate number " + candidateIdentifiers[i].candidateNumber +
 										" in round " + candidateIdentifiers[i].round + " does not match its position " +
 										"in the array: " + i +
 										(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -703,7 +705,7 @@ public class CandidateKeyProtocol {
 				advanceCandidateToMatch(remoteHost, i, -1, -1);
 			}
 		if (!found)
-			logger.warning("Local candidate number of round " + round + " with number " + candidateNumber + 
+			logger.warn("Local candidate number of round " + round + " with number " + candidateNumber + 
 					" could not be found in recent parts list, probably outdated" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 
@@ -775,7 +777,7 @@ public class CandidateKeyProtocol {
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				// TODO: generate timeout events so that higher levels can react (e.g. with failure events and protocol abort)
 				if (! wipe(checkHost)) 
-					logger.severe("Could not purge match list for remote host " + checkHost + 
+					logger.error("Could not purge match list for remote host " + checkHost + 
 							". This should not happen." +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				if (statisticsLogger.isLoggable(Level.FINE))
@@ -851,7 +853,7 @@ public class CandidateKeyProtocol {
 					" rounds with matches out of " + (lastRound-matchList.firstLocalRoundNumber) +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 		if (lastRound-matchList.firstLocalRoundNumber+1 < matchList.numMatchingRounds) {
-			logger.severe("More matching rounds (" + matchList.numMatchingRounds + ") than total rounds (" +
+			logger.error("More matching rounds (" + matchList.numMatchingRounds + ") than total rounds (" +
 					(lastRound-matchList.firstLocalRoundNumber) + "), correcting first round number for remote host " +
 					remoteHost + " to " + (lastRound-matchList.numMatchingRounds) +
 					" - BUT THIS SHOULD NOT LONGER HAPPEN - " +
@@ -929,7 +931,7 @@ public class CandidateKeyProtocol {
 		
 		float ret = ((float) matchList.numMatchingRounds) / (lastRound - matchList.firstLocalRoundNumber + 1);
 		if (ret > 1) {
-			logger.warning("Computed a matching rounds fraction > 1 - this indicates a strange order " +
+			logger.warn("Computed a matching rounds fraction > 1 - this indicates a strange order " +
 					"of local and remote message generation and should not happen in practice! " +
 					"Check the higher level protocol implementation!");
 			ret=1;
@@ -980,7 +982,7 @@ public class CandidateKeyProtocol {
 	 */
 	public synchronized CandidateKey generateKey(Object remoteHost) throws InternalApplicationException {
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warning("generateKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" +
+			logger.warn("generateKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
@@ -1029,14 +1031,14 @@ public class CandidateKeyProtocol {
 		if (hash == null)
 			throw new IllegalArgumentException("hash must be set");
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warning("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" + 
+			logger.warn("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 		
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 		if (numParts > matchList.parts.length) {
-			logger.severe("Received candidate key has been created of more key parts than " + 
+			logger.error("Received candidate key has been created of more key parts than " + 
 					"there are in the local list of matching key parts. Can not possibly find " +
 					"a matching key. Giving up." +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -1159,14 +1161,14 @@ public class CandidateKeyProtocol {
 			return searchKey(remoteHost, hash, localIndices.length);
 		
 		if (! matchingKeyParts.containsKey(remoteHost)) {
-			logger.warning("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" + 
+			logger.warn("searchKey called for a remote host where no match list has yet been created or it has already been pruned, returning null" + 
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
 		
 		MatchingKeyParts matchList = (MatchingKeyParts) matchingKeyParts.get(remoteHost);
 		if (localIndices.length > matchList.parts.length) {
-			logger.severe("Received candidate key has been created of more key parts than " + 
+			logger.error("Received candidate key has been created of more key parts than " + 
 					"there are in the local list of matching key parts. Can not possibly find " +
 					"a matching key. Giving up." +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -1231,7 +1233,7 @@ public class CandidateKeyProtocol {
 			}
 			else {
 				// Houston, we have a problem
-				logger.severe("Both local and remote index tuples at position " + i + " are invalid. Can not construct a key" +
+				logger.error("Both local and remote index tuples at position " + i + " are invalid. Can not construct a key" +
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 				return null;
 			}
@@ -1251,7 +1253,7 @@ public class CandidateKeyProtocol {
 			 */
 			for (int j=0; j<i && !found; j++) {
 				if (keyParts[j].round == foundPart.round) {
-					logger.severe("In round " + matchList.parts[i].round + ", reported two parts for key: " +
+					logger.error("In round " + matchList.parts[i].round + ", reported two parts for key: " +
 							keyParts[j].candidateNumber + " and " + 
 							foundPart.candidateNumber + ". Can not construct a key" +
 							(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
@@ -1307,7 +1309,7 @@ public class CandidateKeyProtocol {
 			return generateKey(assembledKey, localIndices.length, localIndices, remoteIndices);
 		}
 		else {
-			logger.severe("Key that has been assembled from given index tuples does not match" +
+			logger.error("Key that has been assembled from given index tuples does not match" +
 					(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : ""));
 			return null;
 		}
@@ -1369,7 +1371,7 @@ public class CandidateKeyProtocol {
 			wipe(iter.next());
 		// sanity check
 		if (matchingKeyParts.size() > 0)
-			logger.severe("Wiping all matching key parts failed");
+			logger.error("Wiping all matching key parts failed");
 		
 		// and call the garbage collector
 		System.gc();
@@ -1483,7 +1485,7 @@ public class CandidateKeyProtocol {
 						(remoteIdentifier != null ? " [" + remoteIdentifier + "]" : "") + " in thread " + Thread.currentThread());
 			
 			if (!extractAllCombinations) {
-				logger.warning("extractAllCombinations is set to false, but collected more parts than explicitly requested. " +
+				logger.warn("extractAllCombinations is set to false, but collected more parts than explicitly requested. " +
 						"Will skip exploding into different possibilities of choosing rounds and only choose the first rounds.");
 			}
 			else {
@@ -1491,7 +1493,7 @@ public class CandidateKeyProtocol {
 				// but restrict search space somehow, because else it would be too many
 				int numUse = numCopied;
 				if (numUse > numParts + MAX_EXPLODE_SEARCH_SPACE) {
-					logger.warning("Restricting search space: only using " + (numParts+2) +
+					logger.warn("Restricting search space: only using " + (numParts+2) +
 							" out of " + numCopied + " rounds collected from the match list, and generating keys of " +
 							numParts + " parts from it");
 					numUse = numParts + MAX_EXPLODE_SEARCH_SPACE;
@@ -1505,7 +1507,7 @@ public class CandidateKeyProtocol {
 					roundNumbersToUse = explodeKOutOfN(set, numParts);
 				}
 				else {
-					logger.warning("Not pre-exploding with " + numParts + 
+					logger.warn("Not pre-exploding with " + numParts + 
 							" parts to search to restrict search space, only shifting");
 					// this is independent of the first restriction of the search space and takes precedence
 					/* Only shift in this case, but don't use all options. This generates e.g.
