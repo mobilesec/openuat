@@ -343,8 +343,6 @@
 		<junit printsummary="on" haltonfailure="true"
 		       haltonerror="true" showoutput="false" fork="true" forkmode="perTest">
 			<!-- doesn't do anything with fork=false -->
-			<jvmarg value="-Djava.library.path=${platform-j2se-desktop}/nativelib/linux" />
-			<jvmarg value="-Djava.util.logging.config.file=${src}/logging.properties" />
 			<jvmarg value="-Xmx512m" />
 			<jvmarg value="-Xms512m" />
 			<classpath>
