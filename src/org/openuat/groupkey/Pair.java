@@ -272,7 +272,8 @@ public class Pair implements PairwiseKeyHandler
 				CommandTok.nextToken(); //abolish command
 				String pair =CommandTok.nextToken();
 				//Ask for all Pairs
-				comm.sendMsg("PairOb"+pair, name+"-"+encypt("GETPAIRS*"+name+"*"+magicWord,getKey(pair)), this);
+				if (comm != null)
+					comm.sendMsg("PairOb"+pair, name+"-"+encypt("GETPAIRS*"+name+"*"+magicWord,getKey(pair)), this);
 				lock=true;
 				workspace.removeElementAt(0);
 			}
