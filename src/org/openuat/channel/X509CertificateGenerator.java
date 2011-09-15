@@ -470,7 +470,7 @@ public class X509CertificateGenerator {
 			((java.security.KeyStore) store).load(null, null);
 		}
 		else {
-			store = new JDKPKCS12KeyStore(null);
+			store = new JDKPKCS12KeyStore(null, sigOID, sigOID);
 			((JDKPKCS12KeyStore) store).engineLoad(null, null);
 		}
 
@@ -581,7 +581,7 @@ public class X509CertificateGenerator {
 				}
 			}
 			else {
-				caKs = new JDKPKCS12KeyStore(null);
+				caKs = new JDKPKCS12KeyStore(null, null, null);
 				((JDKPKCS12KeyStore) caKs).engineLoad(keystore, password.toCharArray());
 				
 				// extract all known aliases and remember if they are keys or certificates

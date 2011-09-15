@@ -32,14 +32,10 @@
 	<property name="checkstyle.importcontrol.file" location="${src}/import-control.xml"/>
 	<property name="translation.severity" value="warning"/>
 	<property name="thirdparty" location="thirdparty"/>
-	<property name="thirdparty-BC-core" location="${thirdparty}/bouncycastle-core-deps"/>
-	<property name="bin-BC-core" location="${build}/bin-bouncycastle-core"/>
-	<property name="thirdparty-BC-x509" location="${thirdparty}/bouncycastle-x509-deps"/>
-	<property name="bin-BC-x509" location="${build}/bin-bouncycastle-x509"/>
-	<property name="thirdparty-BC-openssl" location="${thirdparty}/bouncycastle-openssl-deps"/>
-	<property name="bin-BC-openssl" location="${build}/bin-bouncycastle-openssl"/>
 	<property name="thirdparty-apache-bzip2" location="${thirdparty}/apache-bzip2"/>
 	<property name="bin-apache-bzip2" location="${build}/bin-apache-bzip2"/>
+	<property name="thirdparty-apache-commons" location="${thirdparty}/apache-commons"/>
+	<property name="bin-apache-commons" location="${build}/bin-apache-commons"/>
 	<property name="thirdparty-google-zxing" location="${thirdparty}/zxing"/>
 	<property name="bin-google-zxing" location="${build}/bin-zxing"/>
 	<property name="findbugs.home" value="${thirdparty}/findbugs-1.3.6" />
@@ -57,17 +53,15 @@
 	 between hosts and the Relate authentication protocol. It has only 
 	 minor dependencies on crypto classes. -->
 	<property name="jarfile.core" location="${dist}/${ant.project.name}-core.jar"/>
-	<property name="dependencies.core" value="${thirdparty-BC-core}:${thirdparty-apache-bzip2}"/>
+	<property name="dependencies.core" location="${thirdparty-apache-bzip2}:${thirdparty-apache-commons}"/>
 	<!-- This one includes the secure channels package and the available
 	 implementations for secure channels. Since the IPSec secure 
 	 channel implementations can support X.509 certificates, this
 	 has huge dependencies on the X.509 support in Bouncycastle. 
 	 It of course needs the core. -->
 	<property name="jarfile.channels" location="${dist}/${ant.project.name}-channels.jar"/>
-	<property name="dependencies.channels" value="${thirdparty-BC-x509}"/>
 	<!-- And finally the applications. This needs the channels. -->
 	<property name="jarfile.apps" location="${dist}/${ant.project.name}-apps.jar"/>
-	<property name="dependencies.channels" value="${thirdparty-BC-openssl}"/>
 	<!-- This is the distribution bundle including everything, even the 
 	 dependencies -->
 	<property name="jarfile.distbundle" location="${dist}/${ant.project.name}-distbundle.jar"/>
@@ -95,6 +89,7 @@
 	<fileset id="lib.bundleinclude-jars" dir="${lib}">
 		<include name="slf4j-api-1.6.2.jar"/>
 		<include name="log4j-over-slf4j-1.6.2.jar"/>
+		<include name="bcprov-jdk15-146.jar"/>
 		<include name="kxml2-2.2.2.jar"/>
 		<include name="RXTXcomm.jar"/>
 		<include name="bluecove-2.1.0.jar"/>
@@ -108,31 +103,15 @@
 	<path id="lib.path.jars">
 		<fileset refid="lib.alljars"/>
 	</path>
-	<path id="lib.path.jars_BCcore">
-		<fileset refid="lib.alljars"/>
-		<pathelement location="${bin-BC-core}"/>
-	</path>
-	<path id="lib.path.jars_BCx509">
-		<fileset refid="lib.alljars"/>
-		<pathelement location="${bin-BC-core}"/>
-		<pathelement location="${bin-BC-x509}"/>
-	</path>
 	<path id="lib.path.all">
 		<fileset refid="lib.alljars"/>
 		<pathelement location="${bin-core}"/>
 		<pathelement location="${bin-auxchannels}"/>
 		<pathelement location="${bin-apps}"/>
 		<pathelement location="${bin-test}"/>
-		<pathelement location="${bin-BC-core}"/>
-		<pathelement location="${bin-BC-x509}"/>
-		<pathelement location="${bin-BC-openssl}"/>
 		<pathelement location="${bin-apache-bzip2}"/>
+		<pathelement location="${bin-apache-commons}"/>
 		<pathelement location="${bin-google-zxing}"/>
-		<!-- We also need SWT to compile, but can't include it in the
-		     distribution JAR because there are multiple OS versions.
-		     Therefore, include it only in this class path but not in
-		     the JAR collection set. -->
-		<pathelement location="${lib}/linux/swt-3.1.1_gtk.linux.x86.jar"/>
 	</path>
 
 	<path id="cobertura.classpath">
@@ -174,10 +153,8 @@
         <mkdir dir="${bin-auxchannels}"/>
         <mkdir dir="${bin-apps}"/>
         <mkdir dir="${bin-test}"/>
-		<mkdir dir="${bin-BC-core}"/>
-		<mkdir dir="${bin-BC-x509}"/>
-		<mkdir dir="${bin-BC-openssl}"/>
 		<mkdir dir="${bin-apache-bzip2}"/>
+		<mkdir dir="${bin-apache-commons}"/>
 		<mkdir dir="${bin-google-zxing}"/>
 	
 		<!-- Keep track of the build number -->
@@ -186,24 +163,15 @@
 		<echo message="    Java5: ${haveJava5.echo}" level="info"/>
 		<echo message="    Java6: ${haveJava6.echo}" level="info"/>
 	
-		<echo message="    * Compiling thirdparty crypto core"/>
-		<!-- Compile the BC core dependencies -->
-		<javac srcdir="${thirdparty-BC-core}" destdir="${bin-BC-core}" includeAntRuntime="no"
-		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
-	
-		<!-- Compile the BC X.509 dependencies -->
-		<javac srcdir="${thirdparty-BC-x509}" destdir="${bin-BC-x509}" includeAntRuntime="no"
-		       classpathref="lib.path.jars_BCcore" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
-	
-		<!-- Compile the BC openssl interoperability dependencies -->
-		<javac srcdir="${thirdparty-BC-openssl}" destdir="${bin-BC-openssl}" includeAntRuntime="no"
-		       classpathref="lib.path.jars_BCx509" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
-
 		<echo message="    * Compiling other thirdparty helper code"/>
 		<!-- Compile the Apache BZIP2 stream dependencies -->
 		<javac srcdir="${thirdparty-apache-bzip2}" destdir="${bin-apache-bzip2}" includeAntRuntime="no"
 		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
-		       
+
+		<!-- Compile the Apache Hex encoder/decoder dependencies -->
+		<javac srcdir="${thirdparty-apache-commons}" destdir="${bin-apache-commons}" includeAntRuntime="no"
+		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}" />
+
 	        <!-- And the Google Zxing QR codes -->
 		<javac srcdir="${thirdparty-google-zxing}" destdir="${bin-google-zxing}" includeAntRuntime="no"
 		       classpathref="lib.path.jars" debug="${compile.debug}" target="${compile.level}" source="${compile.level}">
@@ -295,22 +263,20 @@
 		<jar jarfile="${jarfile.core}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
 			<fileset dir="${bin-core}" />
-<!--			<fileset dir="${bin-BC-core}" /> -->
 			<fileset dir="${bin-apache-bzip2}" />
+			<fileset dir="${bin-apache-commons}" />
 			<fileset dir="${src}" includes="*.properties" />
 		</jar>
     
 		<jar jarfile="${jarfile.channels}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
 			<fileset dir="${bin-auxchannels}" />
-<!--			<fileset dir="${bin-BC-x509}" /> -->
 			<fileset dir="${bin-google-zxing}" />
 		</jar>
 
 		<jar jarfile="${jarfile.apps}" manifest="${src}/Manifest"
 		     update="false" duplicate="fail" index="true">
 			<fileset dir="${bin-apps}" />
-<!--			<fileset dir="${bin-BC-openssl}" /> -->
 		</jar>
 
 		<jar jarfile="${jarfile.distbundle}" manifest="${src}/Manifest"
@@ -319,10 +285,8 @@
 			<fileset dir="${bin-auxchannels}" />
 			<fileset dir="${bin-apps}" />
 			<fileset dir="${bin-test}" />
-			<fileset dir="${bin-BC-core}" />
-			<fileset dir="${bin-BC-x509}" />
-			<fileset dir="${bin-BC-openssl}" />
 			<fileset dir="${bin-apache-bzip2}" />
+			<fileset dir="${bin-apache-commons}" />
 			<fileset dir="${bin-google-zxing}" />
 			<fileset dir="resources" includes="*_bg.png"/>
 			<zipfileset dir="resources" 
@@ -353,8 +317,6 @@
 				<pathelement location="${jarfile.channels}"/>
 				<pathelement location="${jarfile.apps}"/>
 				<pathelement location="${bin-test}"/>
-				<pathelement location="${bin-BC-core}"/>
-				<pathelement location="${bin-BC-x509}"/>
 				<!-- to also use the log4.properties file -->
 				<pathelement location="${src}"/>
 				<!-- for Bluetooth loopback (emulator) tests -->
